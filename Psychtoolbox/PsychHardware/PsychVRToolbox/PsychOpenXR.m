@@ -239,17 +239,42 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 %
 % pulseEndTime = PsychOpenXR('HapticPulse', hmd, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);
-% - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'
-% associated with the specified 'hmd'. 'duration' is pulse duration in seconds, by default a maximum
-% of 2.5 seconds is executed. 'freq' is normalized frequency in range 0.0 - 1.0. A value of 0 will
-% disable an ongoing pulse. As of OpenXR 1, only freq values 0.5 and 1.0 are
-% reproduced. Other freq values will be clamped/quantized to those values. 'amplitude' is the
-% amplitude of the vibration in normalized 0.0 - 1.0 range.
+% - Trigger a haptic feedback pulse, some controller vibration, on the
+% specified 'controllerType' associated with the specified 'hmd'.
 %
-% 'pulseEndTime' returns the expected stop time of vibration in seconds, given the parameters.
-% Currently the function will return immediately for a (default) 'duration' of 2.5 seconds, and the pulse
-% will end after 2.5 seconds. Smaller 'duration' values will block the execution of the function
-% until the 'duration' has passed on some types of controllers.
+% Currently supported values for 'controllerType' are:
+%
+% OVR.ControllerType_XBox   - The Microsoft XBox controller or compatible.
+% OVR.ControllerType_LTouch - Haptic enabled left hand controller.
+% OVR.ControllerType_RTouch - Haptic enabled right hand controller.
+% OVR.ControllerType_Touch  - All haptics enabled hand controllers.
+% OVR.ControllerType_Active - All active haptics enabled controllers.
+%
+% 'duration' is requested pulse duration in seconds. By default a pulse of
+% 2.5 seconds duration is executed, as this is the maximum pulse duration
+% supported by Oculus Rift CV1 touch controllers. Other controllers or
+% OpenXR runtimes may have different limits on pulse duration, or no limit
+% at all. A duration of 0 maps to the minimum duration supported by the
+% active OpenXR runtime and device. 'freq' may be a normalized frequency in
+% range 0.0 - 1.0, or a higher frequency in Hz. A value of 0 will disable
+% an ongoing pulse. The range up to 1.0 gets mapped to the interval 0 - 320
+% Hz for backwards compatibility with older Oculus VR drivers. Values
+% greater than 1 are interpreted as desired frequency in Hz. OpenXR
+% runtimes and hardware may clamp the requested frequency to implementation
+% dependent minimum or maximum values, or quantize to only a few discrete
+% frequencies. E.g., Oculus touch controllers only support 160 Hz and 320
+% Hz, no other frequencies. 'amplitude' is the amplitude of the vibration
+% in normalized 0.0 - 1.0 range.
+%
+% 'pulseEndTime' returns the expected stop time of vibration in seconds,
+% given the parameters. This may be inaccurate, depending on OpenXR runtime
+% and hardware.
+%
+% In general, unfortunately, testing so far shows that OpenXR runtimes vary
+% considerably in how well they follow the requested haptic pulse duration,
+% frequency, and timing, so some caution is advised wrt. haptic pulse
+% feedback. Never trust a given software + hardware combo blindly, always
+% verify your specific setup!
 %
 %
 % state = PsychOpenXR('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
@@ -1138,10 +1163,10 @@ if strcmpi(cmd, 'Open')
   newhmd.separateEyePosesSupported = 0;
   newhmd.videoRefreshDuration = 0;
   newhmd.handTrackingSupported = 1;
+  newhmd.hapticFeedbackSupported = 1;
   % TODO setup the following...
   newhmd.controllerTypes = 0;
   newhmd.VRControllersSupported = 0;
-  newhmd.hapticFeedbackSupported = 0;
   newhmd.multiThreaded = 0; % TODO Technically 2nd argument varargin{2} would define this.
 
   % Default autoclose flag to "no autoclose":
