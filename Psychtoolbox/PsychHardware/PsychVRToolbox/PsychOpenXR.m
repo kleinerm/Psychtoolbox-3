@@ -113,8 +113,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 % PsychOpenXR('Controllers', hmd);
 % - Return a bitmask of all connected controllers: Can be the bitand
 % of the OVR.ControllerType_XXX flags described in 'GetInputState'.
-% This does not detect if controllers are hot-plugged or unplugged after
-% the HMD was opened. Iow. only probed at 'Open'.
 %
 %
 % info = PsychOpenXR('GetInfo', hmd);
@@ -217,6 +215,19 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
 % 'Time' Time of last input state change of controller.
+% 'ActiveInputs' = Bitmask defining which of the following struct elements do contain
+% meaningful input from actual physical input source devices. This is a more fine-grained
+% reporting of what 'Valid' conveys, split up into categories. The following flags will be
+% logical or'ed together if the corresponding input category is valid, ie. provided with
+% actual input data from some physical input source element, controller etc.:
+%
+% +1  = 'Buttons' gets input from some real buttons or switches.
+% +2  = 'Touches' gets input from some real touch/proximity sensors or gesture recognizers.
+% +4  = 'Trigger' gets input from some real analog trigger sensor or gesture recognizer.
+% +8  = 'Grip' gets input from some real analog grip sensor or gesture recognizer.
+% +16 = 'Thumbstick' gets input from some real thumbstick, joystick or trackpad or similar 2D sensor.
+% +32 = 'Thumbstick2' gets input from some real secondary thumbstick, joystick or trackpad or similar 2D sensor.
+%
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
 % reports pressed (1) or released (0) state of a specific button. Use the OVR.Button_XXX
@@ -237,6 +248,9 @@ function varargout = PsychOpenXR(cmd, varargin)
 % 'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.
 % 'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.
 %
+% 'Thumbstick2' = Like 'Thumbstick', but for devices with a 2nd 2D input device for each hand, e.g.,
+% a 2nd thumbstick or a trackpad.
+%
 %
 % pulseEndTime = PsychOpenXR('HapticPulse', hmd, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);
 % - Trigger a haptic feedback pulse, some controller vibration, on the
@@ -244,7 +258,8 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % Currently supported values for 'controllerType' are:
 %
-% OVR.ControllerType_XBox   - The Microsoft XBox controller or compatible.
+% OVR.ControllerType_XBox   - The Microsoft XBox controller or compatible gamepad.
+% OVR.ControllerType_Remote - Connected remote control or similar, e.g., control buttons on HMD.
 % OVR.ControllerType_LTouch - Haptic enabled left hand controller.
 % OVR.ControllerType_RTouch - Haptic enabled right hand controller.
 % OVR.ControllerType_Touch  - All haptics enabled hand controllers.
@@ -908,11 +923,20 @@ if strcmpi(cmd, 'GetInputState')
     error('PsychOpenXR:GetInputState: Required ''controllerType'' argument missing.');
   end
 
-  %varargout{1} = PsychOpenXRCore('GetInputState', myhmd.handle, double(varargin{2}));
-  rc.Valid = 1;
-  rc.Time = GetSecs;
-  rc.Buttons = zeros(1, 32);
-  varargout{1} = rc;
+  % Get input state from OpenXR:
+  state = PsychOpenXRCore('GetInputState', myhmd.handle, double(varargin{2}));
+
+  % Add some fields which are unsupported by OpenXR, but required for (backwards)
+  % compatibility with PsychVRHMD. Make them simply copies of what we actually
+  % get from the driver:
+  state.TriggerNoDeadzone = state.Trigger;
+  state.TriggerRaw = state.Trigger;
+  state.GripNoDeadzone = state.Grip;
+  state.GripRaw = state.Grip;
+  state.ThumbstickNoDeadzone = state.Thumbstick;
+  state.ThumbstickRaw = state.Thumbstick;
+
+  varargout{1} = state;
 
   return;
 end
@@ -1164,10 +1188,11 @@ if strcmpi(cmd, 'Open')
   newhmd.videoRefreshDuration = 0;
   newhmd.handTrackingSupported = 1;
   newhmd.hapticFeedbackSupported = 1;
-  % TODO setup the following...
+  newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
-  newhmd.VRControllersSupported = 0;
-  newhmd.multiThreaded = 0; % TODO Technically 2nd argument varargin{2} would define this.
+
+  % TODO Technically 2nd argument varargin{2} would define this.
+  newhmd.multiThreaded = 0;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -1214,6 +1239,7 @@ if strcmpi(cmd, 'Open')
     OVR.Button_Private = [OVR.Button_VolUp, OVR.Button_VolDown, OVR.Button_Home];
     OVR.Button_RMask = [OVR.Button_A, OVR.Button_B, OVR.Button_RThumb, OVR.Button_RShoulder];
     OVR.Button_LMask = [OVR.Button_X, OVR.Button_Y, OVR.Button_LThumb, OVR.Button_LShoulder, OVR.Button_Enter];
+    OVR.Button_MicMute = 1 + log2(hex2dec('02000000')); % PTB extension, not in original OVR spec.
 
     OVR.Touch_A = OVR.Button_A;
     OVR.Touch_B = OVR.Button_B;
@@ -1279,7 +1305,9 @@ if strcmpi(cmd, 'Controllers')
     error('Controllers: Passed in handle does not refer to a valid and open HMD.');
   end
 
-  varargout{1} = myhmd.controllerTypes;
+  hmd{myhmd.handle}.controllerTypes = PsychOpenXRCore('Controllers', myhmd.handle);
+  varargout{1} = hmd{myhmd.handle}.controllerTypes;
+
   return;
 end
 
@@ -1894,6 +1922,30 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
   end
+
+  % Query set of currently connected controllers:
+  if strcmpi(hmd{handle}.subtype, 'Oculus')
+    % On at least the Oculus XR runtime on MS-Windows, we need this
+    % workaround, or 'Controllers' will not report connected controllers,
+    % but only after multiple repeated queries. We don't want the 1st query
+    % from a user-script to potentially fail, so lets do the failed queries
+    % here already. Why? Nobody knows, but apparently somehow one needs to
+    % sync up with the XR runtime, maybe in the xrWaitFrame() or
+    % xrBeginFrame() calls inside Flip. Just calling 'Controllers' multiple
+    % times did not help, despite that also executing xrSyncActions() and
+    % XR event processing. Also the wait of at least this duration and
+    % multiple repetitions are crucial. Just the normal nightmares of
+    % dealing with proprietary runtimes...
+    % TODO: Can something be done about this idiocy, in case we switch to
+    % multi-threaded operations?
+    for i = 1:3
+      Screen('Flip', win);
+      WaitSecs(0.5);
+    end
+  end
+
+  % Do "real" first connected controller query:
+  hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
 
   % Return success result code 1:
   varargout{1} = 1;
