@@ -58,6 +58,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("Start", &PSYCHOPENXRStart));
     PsychErrorExit(PsychRegister("Stop", &PSYCHOPENXRStop));
     PsychErrorExit(PsychRegister("GetCount", &PSYCHOPENXRGetCount));
+    PsychErrorExit(PsychRegister("Controllers", &PSYCHOPENXRControllers));
     PsychErrorExit(PsychRegister("GetTrackingState", &PSYCHOPENXRGetTrackingState));
     PsychErrorExit(PsychRegister("GetInputState", &PSYCHOPENXRGetInputState));
     PsychErrorExit(PsychRegister("GetFovTextureSize", &PSYCHOPENXRGetFovTextureSize));
@@ -81,7 +82,6 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOPENXRGetNextTextureHandle));
     PsychErrorExit(PsychRegister("CreateAndStartSession", &PSYCHOPENXRCreateAndStartSession));
     //PsychErrorExit(PsychRegister("GetEyePose", &PSYCHOPENXRGetEyePose));
-    //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));

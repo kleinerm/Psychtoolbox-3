@@ -66,6 +66,7 @@ PsychError PSYCHOPENXRStart(void);
 PsychError PSYCHOPENXRStop(void);
 PsychError PSYCHOPENXRGetCount(void);
 PsychError PSYCHOPENXRGetTrackingState(void);
+PsychError PSYCHOPENXRControllers(void);
 PsychError PSYCHOPENXRGetInputState(void);
 PsychError PSYCHOPENXRGetFovTextureSize(void);
 PsychError PSYCHOPENXRCreateRenderTextureChain(void);
