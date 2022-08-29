@@ -116,6 +116,11 @@ while 1
     DrawFormattedText(win, 'Press BackSpace key on keyboard, or Enter-Button or\nBack-Button on controller', 'center', 'center', [1 1 0]);
     Screen('Flip', win);
 
+    [~, ~, keycode] = KbCheck(-1);
+    if keycode(KbName('BackSpace'))
+        break;
+    end
+
     % Query and display all input state:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
 
@@ -208,7 +213,6 @@ while 1
         fprintf('Button_Private ');
     end
 
-    [~, ~, keycode] = KbCheck(-1);
     if istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Enter) || keycode(KbName('BackSpace'))
         break;
     end
@@ -636,6 +640,17 @@ if hmdinfo.handTrackingSupported
           pulseEnd = [];
           PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, [], 0, 0);
       end
+    end
+
+    secs = GetSecs;
+    if hmdinfo.hapticFeedbackSupported && hmdinfo.VRControllersSupported && ...
+       istate.Buttons(OVR.Button_A) && (isempty(pulseEnd) || pulseEnd + 1 < secs)
+        pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_XBox, [], 0.25, 0.8);
+        KbReleaseWait;
+    end
+
+    if ~isempty(pulseEnd) && pulseEnd > secs
+        DrawFormattedText(win, sprintf('t = %f secs.', pulseEnd - secs), 'center', 'center');
     end
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,

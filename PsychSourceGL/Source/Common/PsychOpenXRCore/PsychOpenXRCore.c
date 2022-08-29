@@ -46,6 +46,47 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+// Define indices of mapping of standard PsychVRHMD() compatible OVR buttons/touch
+// sensor constants / indices to XrAction buttonAction[] slots:
+#define OVR_Button_A                0
+#define OVR_Button_B                1
+#define OVR_Button_RThumb           2
+#define OVR_Button_RShoulder        3
+#define OVR_Button_X                8
+#define OVR_Button_Y                9
+#define OVR_Button_LThumb           10
+#define OVR_Button_LShoulder        11
+#define OVR_Button_Up               16
+#define OVR_Button_Down             17
+#define OVR_Button_Left             18
+#define OVR_Button_Right            19
+#define OVR_Button_Enter            20
+#define OVR_Button_Back             21
+#define OVR_Button_VolUp            22
+#define OVR_Button_VolDown          23
+#define OVR_Button_Home             24
+// PTB extension to OVR official defines:
+#define OVR_Button_MicMute          25
+
+#define NUM_OVR_BUTTONS             26
+
+#define OVR_Touch_A                 0
+#define OVR_Touch_B                 1
+#define OVR_Touch_RThumb            2
+#define OVR_Touch_RThumbRest        3
+#define OVR_Touch_RIndexTrigger     4
+#define OVR_Touch_X                 8
+#define OVR_Touch_Y                 9
+#define OVR_Touch_LThumb            10
+#define OVR_Touch_LThumbRest        11
+#define OVR_Touch_LIndexTrigger     12
+#define OVR_Touch_RIndexPointing    5
+#define OVR_Touch_RThumbUp          6
+#define OVR_Touch_LIndexPointing    13
+#define OVR_Touch_LThumbUp          14
+
+#define NUM_OVR_TOUCHES             15
+
 // Defines and includes for/from OpenXR SDK:
 
 // Use extension prototypes:
@@ -108,7 +149,7 @@ typedef struct PsychOpenXRDevice {
     XrActionSet                         actionSet;
     XrAction                            hapticAction;
     XrAction                            handPoseAction;
-    XrPath                              handPath[3];
+    XrPath                              handPath[4];
     XrSpace                             handPoseSpace[2];
     psych_bool                          isTracking;
     XrViewConfigurationType             viewType;
@@ -133,7 +174,13 @@ typedef struct PsychOpenXRDevice {
     double                              lastPresentExecTime;
     double                              scheduledPresentExecTime;
     double                              VRtimeoutSecs;
-    //ovrPerfStats              perfStats;
+
+    XrAction                            triggerValueAction[2];      // 1D
+    XrAction                            gripValueAction[2];         // 1D
+    XrAction                            thumbStick2DAction[4];      // 2 x 2D
+
+    XrAction                            buttonAction[NUM_OVR_BUTTONS];  // Bool
+    XrAction                            touchAction[NUM_OVR_TOUCHES];   // Bool
 } PsychOpenXRDevice;
 
 // Shared XrInstance for the whole process:
@@ -207,7 +254,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "numHMDs = PsychOpenXRCore('GetCount');";
     synopsis[i++] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0][, multiThreaded=0]);";
     synopsis[i++] = "PsychOpenXRCore('Close' [, openxrPtr]);";
-    //synopsis[i++] = "PsychOpenXRCore('SetHUDState', openxrPtr , mode);";
+    synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
     //synopsis[i++] = "[isVisible, playboundsxyz, outerboundsxyz] = PsychOpenXRCore('VRAreaBoundary', openxrPtr [, requestVisible]);";
     //synopsis[i++] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOpenXRCore('TestVRBoundary', openxrPtr, trackedDeviceType, boundaryType);";
     //synopsis[i++] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOpenXRCore('TestVRBoundaryPoint', openxrPtr, pointxyz, boundaryType);";
@@ -215,7 +262,7 @@ void InitializeSynopsis(void)
     //synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
     //synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
     synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
-    //synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
+    synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "PsychOpenXRCore('StartRender', openxrPtr [, targetTime=nextFrame]);";
@@ -394,6 +441,52 @@ static int enumerateXRDevices(XrInstance instance) {
     return(numAvailableDevices);
 }
 
+static XrPath toXrPath(XrInstance xrInstance, const char* pathSpec)
+{
+    XrPath ret = XR_NULL_PATH;
+
+    if (!resultOK(xrStringToPath(xrInstance, pathSpec, &ret)) && (verbosity > 0))
+        printf("PsychOpenXRCore-ERROR: Failed to build XrPath for string '%s': %s\n", pathSpec, errorString);
+
+    return(ret);
+}
+
+// Get current interaction profile name for given input toplevel 'path': A non-NULL 'profile' must have at least 128 chars capacity.
+// Returns TRUE if profile active, FALSE on error or no profile bound or string mapping failure if 'profile' is requested.
+static psych_bool getActiveXRInteractionProfile(XrInstance xrInstance, PsychOpenXRDevice *openxr, XrPath path, char* profile)
+{
+    uint32_t out_Length = 0;
+
+    XrInteractionProfileState state = {
+        .type = XR_TYPE_INTERACTION_PROFILE_STATE,
+        .next = NULL,
+    };
+
+    // Query active interaction profile for toplevel input path 'path':
+    if (!resultOK(xrGetCurrentInteractionProfile(openxr->hmd, path, &state))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR:getActiveXRInteractionProfile(): xrGetCurrentInteractionProfile() failed: %s\n", errorString);
+
+        return(FALSE);
+    }
+
+    // None active?
+    if (state.interactionProfile == XR_NULL_PATH) {
+        // This probably means no suitable input device bound:
+        return(FALSE);
+    }
+
+    // Profile active - map XrPath of profile to string and return it, if 'profile' name requested, ie. non-NULL:
+    if (profile && !resultOK(xrPathToString(xrInstance, state.interactionProfile, 128, &out_Length, profile))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR:getActiveXRInteractionProfile(): xrPathToString() failed: %s\n", errorString);
+
+        return(FALSE);
+    }
+
+    return(TRUE);
+}
+
 static psych_bool suggestXRInteractionBindings(XrInstance xrInstance, const char* interactionProfile, uint32_t count, const XrActionSuggestedBinding* bindings)
 {
     XrPath interactionProfilePath;
@@ -433,6 +526,7 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     xrStringToPath(xrInstance, "/user/hand/left", &openxr->handPath[0]);
     xrStringToPath(xrInstance, "/user/hand/right", &openxr->handPath[1]);
     xrStringToPath(xrInstance, "/user/gamepad", &openxr->handPath[2]);
+    xrStringToPath(xrInstance, "/user/head", &openxr->handPath[3]);
 
     XrPath gripPosePath[2];
     xrStringToPath(xrInstance, "/user/hand/left/input/grip/pose", &gripPosePath[0]);
@@ -443,6 +537,26 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     xrStringToPath(xrInstance, "/user/hand/right/output/haptic", &hapticPath[1]);
     xrStringToPath(xrInstance, "/user/gamepad/output/haptic_left", &hapticPath[2]);
     xrStringToPath(xrInstance, "/user/gamepad/output/haptic_right", &hapticPath[3]);
+
+    XrPath triggerPath[4];
+    xrStringToPath(xrInstance, "/user/hand/left/input/trigger", &triggerPath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/trigger", &triggerPath[1]);
+    xrStringToPath(xrInstance, "/user/gamepad/input/trigger_left/value", &triggerPath[2]);
+    xrStringToPath(xrInstance, "/user/gamepad/input/trigger_right/value", &triggerPath[3]);
+
+    XrPath gripPath[2];
+    xrStringToPath(xrInstance, "/user/hand/left/input/squeeze", &gripPath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/squeeze", &gripPath[1]);
+
+    XrPath trackpadPath[2];
+    xrStringToPath(xrInstance, "/user/hand/left/input/trackpad", &trackpadPath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/trackpad", &trackpadPath[1]);
+
+    XrPath thumbStickPath[4];
+    xrStringToPath(xrInstance, "/user/hand/left/input/thumbstick", &thumbStickPath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/thumbstick", &thumbStickPath[1]);
+    xrStringToPath(xrInstance, "/user/gamepad/input/thumbstick_left", &thumbStickPath[2]);
+    xrStringToPath(xrInstance, "/user/gamepad/input/thumbstick_right", &thumbStickPath[3]);
 
     // Create our action set which is the container for all our input actions:
     XrActionSetCreateInfo actionSetCreateInfo = {
@@ -498,6 +612,7 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
         }
     }
 
+    // Define haptic feedback output action:
     XrActionCreateInfo hapticActionInfo = {
         .type = XR_TYPE_ACTION_CREATE_INFO,
         .next = NULL,
@@ -516,52 +631,522 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
         return(FALSE);
     }
 
+    // Define input actions for trigger/grip/thumbsticks on hand-controllers and gamepads:
+    // ===================================================================================
+
+    // Left trigger:
+    {
+        XrActionCreateInfo triggerValueActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_FLOAT_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "triggervalueactionleft",
+            .localizedActionName = "Left-Trigger value"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &triggerValueActionInfo, &openxr->triggerValueAction[0]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create triggerValueAction[0]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Right trigger:
+    {
+        XrActionCreateInfo triggerValueActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_FLOAT_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "triggervalueactionright",
+            .localizedActionName = "Right-Trigger value"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &triggerValueActionInfo, &openxr->triggerValueAction[1]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create triggerValueAction[1]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Left grip:
+    {
+        XrActionCreateInfo gripValueActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_FLOAT_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "gripvalueactionleft",
+            .localizedActionName = "Left-Grip value"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &gripValueActionInfo, &openxr->gripValueAction[0]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create gripValueAction[0]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Right grip:
+    {
+        XrActionCreateInfo gripValueActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_FLOAT_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "gripvalueactionright",
+            .localizedActionName = "Right-Grip value"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &gripValueActionInfo, &openxr->gripValueAction[1]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create gripValueAction[1]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Left thumbstick / trackpad / joystick:
+    {
+        XrActionCreateInfo thumbStick2DActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_VECTOR2F_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "thumbstickactionleft",
+            .localizedActionName = "Left-Thumbstick"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &thumbStick2DActionInfo, &openxr->thumbStick2DAction[0]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create thumbStick2DAction[0]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Right thumbstick / trackpad / joystick:
+    {
+        XrActionCreateInfo thumbStick2DActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_VECTOR2F_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "thumbstickactionright",
+            .localizedActionName = "Right-Thumbstick"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &thumbStick2DActionInfo, &openxr->thumbStick2DAction[1]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create thumbStick2DAction[1]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Left thumbstick2 / trackpad2 / joystick2:
+    {
+        XrActionCreateInfo thumbStick2DActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_VECTOR2F_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "thumbstickactionleft2",
+            .localizedActionName = "Left-Thumbstick2"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &thumbStick2DActionInfo, &openxr->thumbStick2DAction[2]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create thumbStick2DAction[2]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Right thumbstick2 / trackpad2 / joystick2:
+    {
+        XrActionCreateInfo thumbStick2DActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_VECTOR2F_INPUT,
+            .countSubactionPaths = 3,
+            .subactionPaths = openxr->handPath,
+            .actionName = "thumbstickactionright2",
+            .localizedActionName = "Right-Thumbstick2"
+        };
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &thumbStick2DActionInfo, &openxr->thumbStick2DAction[3]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create thumbStick2DAction[3]: %s\n", errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Buttons:
+    for (i = 0; i < NUM_OVR_BUTTONS; i++) {
+        XrActionCreateInfo buttonActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_BOOLEAN_INPUT,
+            .countSubactionPaths = 4,
+            .subactionPaths = openxr->handPath,
+        };
+
+        sprintf(buttonActionInfo.actionName, "buttonaction_%i", i);
+        sprintf(buttonActionInfo.localizedActionName, "Button %i", i);
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &buttonActionInfo, &openxr->buttonAction[i]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create buttonAction[%i]: %s\n", i, errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Touch sensors:
+    for (i = 0; i < NUM_OVR_TOUCHES; i++) {
+        XrActionCreateInfo touchActionInfo = {
+            .type = XR_TYPE_ACTION_CREATE_INFO,
+            .next = NULL,
+            .actionType = XR_ACTION_TYPE_BOOLEAN_INPUT,
+            .countSubactionPaths = 4,
+            .subactionPaths = openxr->handPath,
+        };
+
+        sprintf(touchActionInfo.actionName, "touchaction_%i", i);
+        sprintf(touchActionInfo.localizedActionName, "Touch %i", i);
+
+        if (!resultOK(xrCreateAction(openxr->actionSet, &touchActionInfo, &openxr->touchAction[i]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create touchAction[%i]: %s\n", i, errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    #define ARRAY_SIZE(a) (sizeof((a)) / sizeof((a)[0]))
+    #define BBIND(a, b) { .action = openxr->buttonAction[(a)], .binding = toXrPath(xrInstance, (b)) }
+    #define TBIND(a, b) { .action = openxr->touchAction[(a)], .binding = toXrPath(xrInstance, (b)) }
+
     // Binding set useful to most controllers and devices:
-    XrActionSuggestedBinding aB[] = {
+    XrActionSuggestedBinding unused_template[] = {
         { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
         { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
-        { .action = openxr->hapticAction, .binding = hapticPath[0] },
-        { .action = openxr->hapticAction, .binding = hapticPath[1] },
+        { .action = openxr->hapticAction, .binding = hapticPath[0] }, // Not Daydream
+        { .action = openxr->hapticAction, .binding = hapticPath[1] }, // Not Daydream
+        { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] }, // Not simple or Daydream
+        { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] }, // Not simple or Daydream
+        { .action = openxr->gripValueAction[0], .binding = gripPath[0] }, // Not simple or Daydream
+        { .action = openxr->gripValueAction[1], .binding = gripPath[1] }, // Not simple or Daydream
+        { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] }, // Not simple or Daydream or Vive
+        { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] }, // Not simple or Daydream or Vive
+        { .action = openxr->thumbStick2DAction[2], .binding = trackpadPath[0] }, // Not simple or Daydream or Vive
+        { .action = openxr->thumbStick2DAction[3], .binding = trackpadPath[1] }, // Not simple or Daydream or Vive
+        BBIND(OVR_Button_A, "/user/hand/left/input/a/click"), // Index
+        BBIND(OVR_Button_A, "/user/hand/right/input/a/click"), // Touch, Index
+        BBIND(OVR_Button_B, "/user/hand/left/input/b/click"), // Index
+        BBIND(OVR_Button_B, "/user/hand/right/input/b/click"), // Touch, Index
+        BBIND(OVR_Button_X, "/user/hand/left/input/x/click"), // Touch
+        BBIND(OVR_Button_X, "/user/hand/right/input/x/click"), // NO
+        BBIND(OVR_Button_Y, "/user/hand/left/input/y/click"), // Touch
+        BBIND(OVR_Button_Y, "/user/hand/right/input/y/click"), // NO
+        BBIND(OVR_Button_LThumb, "/user/hand/left/input/thumbstick/click"), // Touch, Index, WMR, HPe, Cosmos, Focus
+        BBIND(OVR_Button_RThumb, "/user/hand/right/input/thumbstick/click"), // Touch, Index, WMR, HPe, Cosmos, Focus
+        BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"), // Simple, Vive, WMR, Touch
+        BBIND(OVR_Button_Enter, "/user/hand/right/input/menu/click"), // Simple, Vive, WMR
+        BBIND(OVR_Button_Back, "/user/hand/left/input/select/click"), // Simple, Daydream
+        BBIND(OVR_Button_Back, "/user/hand/right/input/select/click"), // Simple, Daydream
+        BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"), // Vive, Index
+        BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"), // Vive, Touch, Index, Cosmos, Focus
+
+        // Extensions
+        BBIND(OVR_Button_VolDown, "/user/hand/left/input/volume_down/click"), // Huawaii
+        BBIND(OVR_Button_VolDown, "/user/hand/left/input/volume_down/click"), // Huawaii
+        BBIND(OVR_Button_VolUp, "/user/hand/left/input/volume_up/click"), // Huawaii
+        BBIND(OVR_Button_VolUp, "/user/hand/left/input/volume_up/click"), // Huawaii
+        BBIND(OVR_Button_Back, "/user/hand/left/input/back/click"), // Go
+        BBIND(OVR_Button_Back, "/user/hand/right/input/back/click"), // Go
+        BBIND(OVR_Button_LShoulder, "/user/hand/left/input/shoulder/click"), // Vive Cosmos
+        BBIND(OVR_Button_RShoulder, "/user/hand/right/input/shoulder/click"), // Vive Cosmos
+
+        TBIND(OVR_Touch_A, "/user/hand/left/input/a/touch"), // Index
+        TBIND(OVR_Touch_A, "/user/hand/right/input/a/touch"), // Touch, Index
+        TBIND(OVR_Touch_B, "/user/hand/left/input/b/touch"), // Index
+        TBIND(OVR_Touch_B, "/user/hand/right/input/b/touch"), // Touch, Index
+        TBIND(OVR_Touch_X, "/user/hand/left/input/x/touch"), // Touch
+        TBIND(OVR_Touch_Y, "/user/hand/left/input/y/touch"), // Touch
+        TBIND(OVR_Touch_LIndexTrigger, "/user/hand/left/input/trigger/touch"), // Touch, Focus
+        TBIND(OVR_Touch_RIndexTrigger, "/user/hand/right/input/trigger/touch"), // Touch, Focus
+        TBIND(OVR_Touch_LThumb, "/user/hand/left/input/thumbstick/touch"), // Touch, Index, Cosmos, Focus
+        TBIND(OVR_Touch_RThumb, "/user/hand/right/input/thumbstick/touch"), // Touch, Index, Cosmos, Focus
+        TBIND(OVR_Touch_LThumbRest, "/user/hand/left/input/thumbrest/touch"), // Touch, Focus
+        TBIND(OVR_Touch_RThumbRest, "/user/hand/right/input/thumbrest/touch"), // Touch, Focus
     };
 
     // Suggest basic action bindings for the Khronos simple_controller interaction profile,
     // which is a generic fallback expected to be supported by many different XR devices, so
     // an OpenXR app that supports this profile will have at least basic controller input and
     // tracking working with all kinds of controller devices:
-    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/khr/simple_controller", sizeof(aB) / sizeof(aB[0]), aB))
-        return(FALSE);
+    {
+        XrActionSuggestedBinding simpleBinding[] = {
+            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] },
+            { .action = openxr->hapticAction, .binding = hapticPath[1] },
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/right/input/menu/click"),
+            BBIND(OVR_Button_Back, "/user/hand/left/input/select/click"),
+            BBIND(OVR_Button_Back, "/user/hand/right/input/select/click"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/khr/simple_controller", ARRAY_SIZE(simpleBinding), simpleBinding))
+            return(FALSE);
+    }
+
+    // Suggest basic action bindings for the Google Daydream controller interaction profile:
+    {
+        XrActionSuggestedBinding daydreamBinding[] = {
+            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = trackpadPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = trackpadPath[1] },
+            BBIND(OVR_Button_Back, "/user/hand/left/input/select/click"),
+            BBIND(OVR_Button_Back, "/user/hand/right/input/select/click"),
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/trackpad/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/trackpad/click"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/google/daydream_controller", ARRAY_SIZE(daydreamBinding), daydreamBinding))
+            return(FALSE);
+    }
+
+    // Suggest basic action bindings for the HTC Vive controller interaction profile.
+    {
+        XrActionSuggestedBinding viveBinding[] = {
+            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] },
+            { .action = openxr->hapticAction, .binding = hapticPath[1] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = trackpadPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = trackpadPath[1] },
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/right/input/menu/click"),
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/trackpad/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/trackpad/click"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
+            // Following don't work on Windows/OculusVR, but do on Linux/Monado
+            // BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
+            // BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_controller", ARRAY_SIZE(viveBinding), viveBinding))
+            return(FALSE);
+    }
 
     // Suggest basic action bindings for the Oculus touch controller interaction profile, which
     // is used by Oculus VR touch input controllers, e.g., for Oculus Rift-CV1, Rift-S, Quest etc.:
-    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/oculus/touch_controller", sizeof(aB) / sizeof(aB[0]), aB))
-        return(FALSE);
+    {
+        XrActionSuggestedBinding oculusBinding[] = {
+            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] },
+            { .action = openxr->hapticAction, .binding = hapticPath[1] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
+            BBIND(OVR_Button_A, "/user/hand/right/input/a/click"),
+            BBIND(OVR_Button_B, "/user/hand/right/input/b/click"),
+            BBIND(OVR_Button_X, "/user/hand/left/input/x/click"),
+            BBIND(OVR_Button_Y, "/user/hand/left/input/y/click"),
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/thumbstick/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/thumbstick/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
+            BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+            TBIND(OVR_Touch_A, "/user/hand/right/input/a/touch"),
+            TBIND(OVR_Touch_B, "/user/hand/right/input/b/touch"),
+            TBIND(OVR_Touch_X, "/user/hand/left/input/x/touch"),
+            TBIND(OVR_Touch_Y, "/user/hand/left/input/y/touch"),
+            TBIND(OVR_Touch_LIndexTrigger, "/user/hand/left/input/trigger/touch"),
+            TBIND(OVR_Touch_RIndexTrigger, "/user/hand/right/input/trigger/touch"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/thumbstick/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/thumbstick/touch"),
+            TBIND(OVR_Touch_LThumbRest, "/user/hand/left/input/thumbrest/touch"),
+            TBIND(OVR_Touch_RThumbRest, "/user/hand/right/input/thumbrest/touch"),
+        };
 
-    // Suggest basic action bindings for the HTC Vive controller interaction profile.
-    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_controller", sizeof(aB) / sizeof(aB[0]), aB))
-        return(FALSE);
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/oculus/touch_controller", ARRAY_SIZE(oculusBinding), oculusBinding))
+            return(FALSE);
+    }
+
+    // Suggest basic action bindings for the Oculus Go controller interaction profile, which
+    // is used by Oculus controllers of the Oculus Go:
+    {
+        XrActionSuggestedBinding oculusGoBinding[] = {
+            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = trackpadPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = trackpadPath[1] },
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/trackpad/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/trackpad/click"),
+            BBIND(OVR_Button_Back, "/user/hand/left/input/back/click"),
+            BBIND(OVR_Button_Back, "/user/hand/right/input/back/click"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
+            // Following don't work on Windows/OculusVR, but do on Linux/Monado
+            // BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
+            // BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/oculus/go_controller", ARRAY_SIZE(oculusGoBinding), oculusGoBinding))
+            return(FALSE);
+    }
 
     // Suggest basic action bindings for the Valve Index controller interaction profile.
-    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/valve/index_controller", sizeof(aB) / sizeof(aB[0]), aB))
-        return(FALSE);
+    {
+        XrActionSuggestedBinding valveIndexBinding[] = {
+            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] }, // Not Daydream
+            { .action = openxr->hapticAction, .binding = hapticPath[1] }, // Not Daydream
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
+            // Trackpad is mapped to Thumbstick2:
+            { .action = openxr->thumbStick2DAction[2], .binding = trackpadPath[0] },
+            { .action = openxr->thumbStick2DAction[3], .binding = trackpadPath[1] },
+            BBIND(OVR_Button_A, "/user/hand/left/input/a/click"),
+            BBIND(OVR_Button_A, "/user/hand/right/input/a/click"),
+            BBIND(OVR_Button_B, "/user/hand/left/input/b/click"),
+            BBIND(OVR_Button_B, "/user/hand/right/input/b/click"),
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/thumbstick/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/thumbstick/click"),
+            TBIND(OVR_Touch_A, "/user/hand/left/input/a/touch"),
+            TBIND(OVR_Touch_A, "/user/hand/right/input/a/touch"),
+            TBIND(OVR_Touch_B, "/user/hand/left/input/b/touch"),
+            TBIND(OVR_Touch_B, "/user/hand/right/input/b/touch"),
+            TBIND(OVR_Touch_LIndexTrigger, "/user/hand/left/input/trigger/touch"),
+            TBIND(OVR_Touch_RIndexTrigger, "/user/hand/right/input/trigger/touch"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/thumbstick/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/thumbstick/touch"),
+            // Following don't work on Windows/OculusVR, but do on Linux/Monado
+            // BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
+            // BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/valve/index_controller", ARRAY_SIZE(valveIndexBinding), valveIndexBinding))
+            return(FALSE);
+    }
 
     // Suggest basic action bindings for the Microsoft Mixed Reality (WMR) controller interaction profile.
-    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/microsoft/motion_controller", sizeof(aB) / sizeof(aB[0]), aB))
-        return(FALSE);
+    {
+        XrActionSuggestedBinding wmrBinding[] = {
+            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] },
+            { .action = openxr->hapticAction, .binding = hapticPath[1] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
+            // Trackpad is mapped to Thumbstick2:
+            { .action = openxr->thumbStick2DAction[2], .binding = trackpadPath[0] },
+            { .action = openxr->thumbStick2DAction[3], .binding = trackpadPath[1] },
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/thumbstick/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/thumbstick/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/right/input/menu/click"),
 
-    // Suggest basic action bindings for the Google Daydream controller interaction profile. Only use the gripPosePath, as
-    // haptic output is not supported:
-    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/google/daydream_controller", 2, aB))
-        return(FALSE);
+            // Map trackpad click/touch onto these, although it is not strictly correct:
+            BBIND(OVR_Button_LShoulder, "/user/hand/left/input/trackpad/click"),
+            BBIND(OVR_Button_RShoulder, "/user/hand/right/input/trackpad/click"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
+
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/microsoft/motion_controller", ARRAY_SIZE(wmrBinding), wmrBinding))
+            return(FALSE);
+    }
 
     // Suggest action bindings for Microsoft XBox controller:
     {
-        // This one needs its own dedicated bindings, as it is not a hand-tracker/hand-controller, but a gamepad device:
-        XrActionSuggestedBinding aB[] = {
+        XrActionSuggestedBinding xboxBinding[] = {
             { .action = openxr->hapticAction, .binding = hapticPath[2] },
             { .action = openxr->hapticAction, .binding = hapticPath[3] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[2] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[3] },
+            { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[2] },
+            { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[3] },
+            BBIND(OVR_Button_Enter, "/user/gamepad/input/menu/click"),
+            BBIND(OVR_Button_Back, "/user/gamepad/input/view/click"),
+            BBIND(OVR_Button_A, "/user/gamepad/input/a/click"),
+            BBIND(OVR_Button_B, "/user/gamepad/input/b/click"),
+            BBIND(OVR_Button_X, "/user/gamepad/input/x/click"),
+            BBIND(OVR_Button_Y, "/user/gamepad/input/y/click"),
+            BBIND(OVR_Button_Down, "/user/gamepad/input/dpad_down/click"),
+            BBIND(OVR_Button_Right, "/user/gamepad/input/dpad_right/click"),
+            BBIND(OVR_Button_Up, "/user/gamepad/input/dpad_up/click"),
+            BBIND(OVR_Button_Left, "/user/gamepad/input/dpad_left/click"),
+            BBIND(OVR_Button_LShoulder, "/user/gamepad/input/shoulder_left/click"),
+            BBIND(OVR_Button_RShoulder, "/user/gamepad/input/shoulder_right/click"),
+            BBIND(OVR_Button_LThumb, "/user/gamepad/input/thumbstick_left/click"),
+            BBIND(OVR_Button_RThumb, "/user/gamepad/input/thumbstick_right/click")
         };
 
-        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/microsoft/xbox_controller", sizeof(aB) / sizeof(aB[0]), aB))
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/microsoft/xbox_controller", ARRAY_SIZE(xboxBinding), xboxBinding))
+            return(FALSE);
+    }
+
+    // Suggest action bindings for Vive Pro HMD control buttons:
+    {
+        XrActionSuggestedBinding viveProBinding[] = {
+            BBIND(OVR_Button_VolDown, "/user/head/input/volume_down/click"),
+            BBIND(OVR_Button_VolUp, "/user/head/input/volume_up/click"),
+            BBIND(OVR_Button_MicMute, "/user/head/input/mute_mic/click"),
+            // Following does not work on Windows/OculusVR, but does on Linux/Monado
+            // BBIND(OVR_Button_Home, "/user/head/input/system/click"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_pro", ARRAY_SIZE(viveProBinding), viveProBinding))
             return(FALSE);
     }
 
@@ -1742,7 +2327,6 @@ PsychError PSYCHOPENXRStop(void)
     return(PsychError_none);
 }
 
-// TODO: Touch input controllers
 PsychError PSYCHOPENXRGetTrackingState(void)
 {
     static char useString[] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
@@ -2001,61 +2585,84 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     return(PsychError_none);
 }
 
-// TODO
+// TODO: Timestamps, Extensions for more controllers?
 PsychError PSYCHOPENXRGetInputState(void)
 {
     static char useString[] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
-    //                         1                                           1          2
+    //                         1                                        1          2
     static char synopsisString[] =
         "Return current state of input device 'controllerType' associated with OpenXR device 'openxrPtr'.\n\n"
-        "'controllerType' can be one of the follwing values:\n"
+        "'controllerType' can be one of the following values:\n"
         "OVR.ControllerType_LTouch = Left touch controller (Left tracked hand).\n"
         "OVR.ControllerType_RTouch = Right touch controller (Right tracked hand).\n"
-        "OVR.ControllerType_Remote = OpenXR remote control.\n"
-        "OVR.ControllerType_XBox = XBox controller.\n"
+        "OVR.ControllerType_Remote = Connected remote control or similar, e.g., control buttons on HMD.\n"
+        "OVR.ControllerType_XBox = Microsoft XBox controller or some equivalent gamepad.\n"
         "OVR.ControllerType_Active = Whatever controller is connected and active.\n"
         "\n"
         "'input' is a struct with fields reporting the following status values of the controller:\n"
-        "'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.\n"
+        "'Valid' Reports 1 if 'input' contains any valid results, or 0 if input is completely unavailable, "
+        "e.g., because there isn't any input hardware connected and active, or Psychtoolbox lost XR input focus.\n"
+        "'ActiveInputs' = Bitmask of which 'input' contains valid results, or 0 if input completely unavailable.\n"
+        "The following flags will be logical or'ed together if the corresponding input category is valid, "
+        "ie. provided with actual input date from some physical input source element, controller etc.:\n"
+        "+1  = 'Buttons' gets input from some real buttons or switches.\n"
+        "+2  = 'Touches' gets input from some real touch/proximity sensors or gesture recognizers.\n"
+        "+4  = 'Trigger' gets input from some real analog trigger sensor or gesture recognizer.\n"
+        "+8  = 'Grip' gets input from some real analog grip sensor or gesture recognizer.\n"
+        "+16 = 'Thumbstick' gets input from some real thumbstick, joystick or trackpad or similar 2D sensor.\n"
+        "+32 = 'Thumbstick2' gets input from some real secondary thumbstick, joystick or trackpad or similar 2D sensor.\n"
+        "\n"
         "'Time' = Time in seconds when controller state was last updated.\n"
         "'Buttons' = Vector with each positions value corresponding to a specifc button being pressed (1) "
         "or released (0). The OVR.Button_XXX constants map button names to vector indices (like KbName() "
         "does for KbCheck()).\n"
         "'Touches' = Vector with touch values as described by the OVR.Touch_XXX constants. Works like 'Buttons'.\n"
-        "'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.\n"
-        "'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.\n"
-        "'TriggerRaw'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, raw values unfiltered.\n"
-        "'Grip'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered and with dead-zone.\n"
-        "'GripNoDeadzone'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered.\n"
-        "'GripRaw'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, raw values unfiltered.\n"
-        "'Thumbstick' = 2x2 matrix: Column 1 contains left thumbsticks [x;y] axis values, column 2 contains "
-        "right sticks [x;y] axis values. Values are in range -1 to +1, filtered and with deadzone applied.\n"
-        "'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.\n"
-        "'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.\n"
+        "'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0.\n"
+        "'Grip'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0.\n"
+        "'Thumbstick' = 2x2 matrix: Column 1 contains left thumbsticks [x ; y] axis values, column 2 contains "
+        "right sticks [x ; y] axis values. Values are in range -1 to +1. Note that some controllers do not have "
+        "thumbsticks, but trackpads instead. These would be exposed as Thumbstick as well, being 2D input.\n"
+        "'Thumbstick2' = 2x2 matrix: Column 1 contains left thumbsticks [x ; y] axis values, column 2 contains "
+        "right thumbsticks [x ; y] axis values. Values are in range -1 to +1. Only a few controllers have a 2nd "
+        "thumbstick for each hand, and it is often a trackpad instead of a thumbstick.\n"
         "\n";
-
-    static char seeAlsoString[] = "Start Stop GetTrackedState GetTrackersState";
+    static char seeAlsoString[] = "Start Stop GetTrackingState GetTrackersState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = { "Valid", "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
-                                 "GripNoDeadzone", "TriggerRaw", "GripRaw", "Thumbstick",
-                                 "ThumbstickNoDeadzone", "ThumbstickRaw" };
-    const int FieldCount = 13;
-/*
-    PsychGenericScriptType *outMat;
-    double *v;
-    int handle, i;
-    unsigned long controllerType;
-    double controllerTypeD;
+    const char *FieldNames[] = { "Valid", "ActiveInputs", "Time", "Buttons", "Touches", "Trigger", "Grip", "Thumbstick", "Thumbstick2" };
+    const int FieldCount = 9;
+
+    int handle;
     PsychOpenXRDevice *openxr;
-    ovrInputState state;
-    ovrSessionStatus sessionStatus;
+    psych_int64 controllerType;
+    XrPath path;
+    PsychGenericScriptType *outMat;
+    int i;
+    double *v;
+    XrTime time = 0;
+    double timeStamp = 0;
+    int valid = 0;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    XrActionStateBoolean bv = {
+        .type = XR_TYPE_ACTION_STATE_BOOLEAN,
+        .next = NULL,
+    };
 
-    // Check to see if the user supplied superfluous arguments
+    XrActionStateFloat fv = {
+        .type = XR_TYPE_ACTION_STATE_FLOAT,
+        .next = NULL,
+    };
+
+    XrActionStateVector2f vv = {
+        .type = XR_TYPE_ACTION_STATE_VECTOR2F,
+        .next = NULL,
+    };
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(2));
@@ -2063,130 +2670,242 @@ PsychError PSYCHOPENXRGetInputState(void)
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
 
-    // Device handle:
+    // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Controller type:
-    PsychCopyInDoubleArg(2, kPsychArgRequired, &controllerTypeD);
-    controllerType = (unsigned long) controllerTypeD;
+    // Get controller type:
+    PsychCopyInIntegerArg64(2, kPsychArgRequired, &controllerType);
+    switch (controllerType) {
+        case 1: // Left hand controller? OVR.ControllerType_LTouch
+            path = openxr->handPath[0];
+            break;
 
+        case 2: // Right hand controller? OVR.ControllerType_RTouch
+            path = openxr->handPath[1];
+            break;
+
+        case 4: // Remote control or equivalent? OVR.ControllerType_Remote
+            path = openxr->handPath[3];
+            break;
+
+        case 16: // Gamepad / Microsoft X-Box controller or equivalent? OVR.ControllerType_XBox
+            path = openxr->handPath[2];
+            break;
+
+        case 0xffffffff: // All active controllers? OVR.ControllerType_Active
+            // XR_NULL_PATH queries all active devices:
+            path = XR_NULL_PATH;
+            break;
+
+        default:
+            printf("PsychOpenXRCore-ERROR: 'GetInputState' invalid controllerType 0x%x.\n", (unsigned int) controllerType);
+            PsychErrorExitMsg(PsychError_user, "Invalid controllerType for GetInputState query specified.");
+    }
+
+    XrActionStateGetInfo actionStateGetInfo = {
+        .type = XR_TYPE_ACTION_STATE_GET_INFO,
+        .next = NULL,
+        .action = XR_NULL_HANDLE,
+        .subactionPath = path,
+    };
+
+    // Prepare output struct "input":
     PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount, FieldNames, &status);
 
-    // Check session status if we have VR input focus:
-    if (OVR_FAILURE(ovr_GetSessionStatus(openxr->hmd, &sessionStatus))) {
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0) printf("PsychOpenXRCore-ERROR: ovr_GetSessionStatus failed: %s\n", errorInfo.ErrorString);
-        PsychErrorExitMsg(PsychError_system, "Failed to get current session status from VR compositor.");
-    }
+    // Session has XR input focus, so try to get input state:
+    PsychLockMutex(&(openxr->presenterLock));
+    syncXRActions(openxr);
+    PsychGetAdjustedPrecisionTimerSeconds(&timeStamp); // TODO: Replace with time -> timeStamp
+    PsychUnlockMutex(&(openxr->presenterLock));
 
-    if (sessionStatus.IsVisible) {
-        // Have VR input focus, try to get input state:
-        if (OVR_FAILURE(ovr_GetInputState(openxr->hmd, (ovrControllerType) controllerType, &state))) {
-            ovr_GetLastErrorInfo(&errorInfo);
-            if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: ovr_GetInputState() for controller %f 0x%lx failed: %s\n",
-                       controllerTypeD, controllerType, errorInfo.ErrorString);
-            PsychErrorExitMsg(PsychError_system, "Failed to get some controller input status.");
-        }
-
-        // Mark as valid:
-        PsychSetStructArrayDoubleElement("Valid", 0, 1, status);
-    }
-    else {
-        // No VR input focus -> No valid input -> Mark as invalid:
-        PsychSetStructArrayDoubleElement("Valid", 0, 0, status);
-
-        // Fail gracefully, by returning an all-zero input struct:
-        memset(&state, 0, sizeof(state));
-    }
-
-    // Controller update time:
-    PsychSetStructArrayDoubleElement("Time", 0, state.TimeInSeconds, status);
+    // All input states updated by syncXRActions(). Query current values:
 
     // Button states:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 32, 1, &v, &outMat);
-    for (i = 0; i < 32; i++)
-        v[i] = (state.Buttons & (1 << i)) ? 1 : 0;
+    for (i = 0; i < NUM_OVR_BUTTONS; i++) {
+        // Skip indices without actual actions assigned:
+        if (openxr->buttonAction[i] == XR_NULL_HANDLE) {
+            v[i] = 0;
+            continue;
+        }
+
+        actionStateGetInfo.action = openxr->buttonAction[i];
+        if (!resultOK(xrGetActionStateBoolean(openxr->hmd, &actionStateGetInfo, &bv))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: 'Button' query %i failed: %s\n", i, errorString);
+
+            PsychErrorExitMsg(PsychError_system, "GetInputState query failed.");
+        }
+
+        // Meaningful result for this component from active input source?
+        if (bv.isActive) {
+            valid |= 1;
+            v[i] = (double) bv.currentState;
+            time = (bv.lastChangeTime > time) ? bv.lastChangeTime : time;
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG: 'Button' query %i = %i\n", i, (int) v[i]);
+        }
+        else {
+            v[i] = 0;
+        }
+    }
+
     PsychSetStructArrayNativeElement("Buttons", 0, outMat, status);
 
     // Touch states:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 32, 1, &v, &outMat);
-    for (i = 0; i < 32; i++)
-        v[i] = (state.Touches & (1 << i)) ? 1 : 0;
+    for (i = 0; i < NUM_OVR_TOUCHES; i++) {
+        // Skip indices without actual actions assigned:
+        if (openxr->touchAction[i] == XR_NULL_HANDLE) {
+            v[i] = 0;
+            continue;
+        }
+
+        actionStateGetInfo.action = openxr->touchAction[i];
+        if (!resultOK(xrGetActionStateBoolean(openxr->hmd, &actionStateGetInfo, &bv))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: 'Touches' query %i failed: %s\n", i, errorString);
+
+            PsychErrorExitMsg(PsychError_system, "GetInputState query failed.");
+        }
+
+        // Meaningful result for this component from active input source?
+        if (bv.isActive) {
+            valid |= 2;
+            v[i] = (double) bv.currentState;
+            time = (bv.lastChangeTime > time) ? bv.lastChangeTime : time;
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG: 'Touches' query %i = %i\n", i, (int) v[i]);
+        }
+        else {
+            v[i] = 0;
+        }
+    }
+
     PsychSetStructArrayNativeElement("Touches", 0, outMat, status);
 
     // Trigger left/right:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = state.IndexTrigger[0];
-    v[1] = state.IndexTrigger[1];
+    for (i = 0; i < 2; i++) {
+        actionStateGetInfo.action = openxr->triggerValueAction[i];
+        if (!resultOK(xrGetActionStateFloat(openxr->hmd, &actionStateGetInfo, &fv))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: 'Trigger' query %i failed: %s\n", i, errorString);
+
+            PsychErrorExitMsg(PsychError_system, "GetInputState query failed.");
+        }
+
+        // Meaningful result for this component from active input source?
+        if (fv.isActive) {
+            valid |= 4;
+            v[i] = fv.currentState;
+            time = (fv.lastChangeTime > time) ? fv.lastChangeTime : time;
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG: 'Trigger' query %i = %f\n", i, v[i]);
+        }
+        else {
+            v[i] = 0;
+        }
+    }
+
     PsychSetStructArrayNativeElement("Trigger", 0, outMat, status);
 
     // Grip left/right:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = state.HandTrigger[0];
-    v[1] = state.HandTrigger[1];
+    for (i = 0; i < 2; i++) {
+        actionStateGetInfo.action = openxr->gripValueAction[i];
+        if (!resultOK(xrGetActionStateFloat(openxr->hmd, &actionStateGetInfo, &fv))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: 'Grip' query %i failed: %s\n", i, errorString);
+
+            PsychErrorExitMsg(PsychError_system, "GetInputState query failed.");
+        }
+
+        // Meaningful result for this component from active input source?
+        if (fv.isActive) {
+            valid |= 8;
+            v[i] = fv.currentState;
+            time = (fv.lastChangeTime > time) ? fv.lastChangeTime : time;
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG: 'Grip' query %i = %f\n", i, v[i]);
+        }
+        else {
+            v[i] = 0;
+        }
+    }
+
     PsychSetStructArrayNativeElement("Grip", 0, outMat, status);
-
-    // TriggerNoDeadzone left/right:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = state.IndexTriggerNoDeadzone[0];
-    v[1] = state.IndexTriggerNoDeadzone[1];
-    PsychSetStructArrayNativeElement("TriggerNoDeadzone", 0, outMat, status);
-
-    // GripNoDeadzone left/right:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = state.HandTriggerNoDeadzone[0];
-    v[1] = state.HandTriggerNoDeadzone[1];
-    PsychSetStructArrayNativeElement("GripNoDeadzone", 0, outMat, status);
-
-    // TriggerRaw left/right:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = state.IndexTriggerRaw[0];
-    v[1] = state.IndexTriggerRaw[1];
-    PsychSetStructArrayNativeElement("TriggerRaw", 0, outMat, status);
-
-    // GripRaw left/right:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = state.HandTriggerRaw[0];
-    v[1] = state.HandTriggerRaw[1];
-    PsychSetStructArrayNativeElement("GripRaw", 0, outMat, status);
 
     // Thumbstick: column 1 = left hand, column 2 = right hand. row 1 = x, row 2= y:
     v = NULL;
     PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
-    v[0] = state.Thumbstick[0].x;
-    v[1] = state.Thumbstick[0].y;
-    v[2] = state.Thumbstick[1].x;
-    v[3] = state.Thumbstick[1].y;
+    for (i = 0; i < 2; i++) {
+        actionStateGetInfo.action = openxr->thumbStick2DAction[i];
+        if (!resultOK(xrGetActionStateVector2f(openxr->hmd, &actionStateGetInfo, &vv))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: 'Thumbstick' query %i failed: %s\n", i, errorString);
+
+            PsychErrorExitMsg(PsychError_system, "GetInputState query failed.");
+        }
+
+        // Meaningful result for this component from active input source?
+        if (vv.isActive) {
+            valid |= 16;
+            *(v++) = vv.currentState.x;
+            *(v++) = vv.currentState.y;
+            time = (vv.lastChangeTime > time) ? vv.lastChangeTime : time;
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG: 'Thumbstick' query %i = [%f ; %f]\n", i, vv.currentState.x, vv.currentState.y);
+        }
+        else {
+            *(v++) = 0;
+            *(v++) = 0;
+        }
+    }
+
     PsychSetStructArrayNativeElement("Thumbstick", 0, outMat, status);
 
-    // ThumbstickNoDeadzone:
+    // Thumbstick2: column 1 = left hand, column 2 = right hand. row 1 = x, row 2= y:
     v = NULL;
     PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
-    v[0] = state.ThumbstickNoDeadzone[0].x;
-    v[1] = state.ThumbstickNoDeadzone[0].y;
-    v[2] = state.ThumbstickNoDeadzone[1].x;
-    v[3] = state.ThumbstickNoDeadzone[1].y;
-    PsychSetStructArrayNativeElement("ThumbstickNoDeadzone", 0, outMat, status);
+    for (i = 2; i < 4; i++) {
+        actionStateGetInfo.action = openxr->thumbStick2DAction[i];
+        if (!resultOK(xrGetActionStateVector2f(openxr->hmd, &actionStateGetInfo, &vv))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: 'Thumbstick2' query %i failed: %s\n", i, errorString);
 
-    // ThumbstickRaw:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
-    v[0] = state.ThumbstickRaw[0].x;
-    v[1] = state.ThumbstickRaw[0].y;
-    v[2] = state.ThumbstickRaw[1].x;
-    v[3] = state.ThumbstickRaw[1].y;
-    PsychSetStructArrayNativeElement("ThumbstickRaw", 0, outMat, status);
-*/
+            PsychErrorExitMsg(PsychError_system, "GetInputState query failed.");
+        }
+
+        // Meaningful result for this component from active input source?
+        if (vv.isActive) {
+            valid |= 32;
+            *(v++) = vv.currentState.x;
+            *(v++) = vv.currentState.y;
+            time = (vv.lastChangeTime > time) ? vv.lastChangeTime : time;
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG: 'Thumbstick2' query %i = [%f ; %f]\n", i, vv.currentState.x, vv.currentState.y);
+        }
+        else {
+            *(v++) = 0;
+            *(v++) = 0;
+        }
+    }
+
+    PsychSetStructArrayNativeElement("Thumbstick2", 0, outMat, status);
+
+    // Controller update time:
+    PsychSetStructArrayDoubleElement("Time", 0, timeStamp, status);
+
+    // Data valid status:
+    PsychSetStructArrayDoubleElement("Valid", 0, (valid != 0) ? 1 : 0, status);
+    PsychSetStructArrayDoubleElement("ActiveInputs", 0, valid, status);
+
     return(PsychError_none);
 }
 
@@ -2325,7 +3044,6 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     return(PsychError_none);
 }
 
-// TODO
 PsychError PSYCHOPENXRCreateAndStartSession(void)
 {
     static char useString[] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
@@ -2535,6 +3253,84 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     if (verbosity > 3)
         printf("PsychOpenXRCore-INFO: OpenXR session created for XR device with OpenGL rendering.\n");
+
+    return(PsychError_none);
+}
+
+
+PsychError PSYCHOPENXRControllers(void)
+{
+    static char useString[] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
+    //                         1                                                1
+    static char synopsisString[] =
+    "Return currently available and active controllers for OpenXR device 'openxrPtr'.\n"
+    "The returned 'controllerTypes' can be the logical OR of one of these flags:\n"
+    "OVR.ControllerType_LTouch = Left touch controller (Left tracked hand).\n"
+    "OVR.ControllerType_RTouch = Right touch controller (Right tracked hand).\n"
+    "OVR.ControllerType_Remote = Connected remote control or similar, e.g., control buttons on HMD.\n"
+    "OVR.ControllerType_XBox = Microsoft XBox controller or some equivalent gamepad.\n"
+    "\n";
+    static char seeAlsoString[] = "GetInputState HapticPulse";
+
+    char profile[128];
+    int handle, i;
+    PsychOpenXRDevice *openxr;
+    int controllerTypes = 0;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, FALSE);
+
+    // Need sync actions to make sure proper interaction profiles are bound:
+    if (!processXREvents(xrInstance) && (verbosity > 0))
+        printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!");
+
+    PsychLockMutex(&(openxr->presenterLock));
+    syncXRActions(openxr);
+    PsychUnlockMutex(&(openxr->presenterLock));
+
+    if (!processXREvents(xrInstance) && (verbosity > 0))
+        printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!");
+
+    for (i = 0; i < 4; i++) {
+        if (getActiveXRInteractionProfile(xrInstance, openxr, openxr->handPath[i], profile)) {
+            switch (i) {
+                case 0: // Left controller: OVR.ControllerType_LTouch
+                    controllerTypes |= 1;
+                    break;
+
+                case 1: // Right controller: OVR.ControllerType_RTouch
+                    controllerTypes |= 2;
+                    break;
+
+                case 2: // Gamepad / "XBox" controller: OVR.ControllerType_XBox
+                    controllerTypes |= 16;
+                    break;
+
+                case 3: // Controls on HMD, or remote control: OVR.ControllerType_Remote
+                    controllerTypes |= 4;
+                    break;
+            }
+
+            if (verbosity > 3)
+                printf("PsychOpenXRCore-INFO: Active interaction profile for [%i]: %s\n", i, profile);
+        }
+    }
+
+    // Return controllerTypes mask:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, controllerTypes);
 
     return(PsychError_none);
 }
@@ -4052,7 +4848,6 @@ PsychError PSYCHOPENXRHapticPulse(void)
             outpath = openxr->handPath[1];
             break;
 
-        case 3: // Both hand controllers? OVR.ControllerType_Touch
         case 0xffffffff: // All active controllers? OVR.ControllerType_Active
             // XR_NULL_PATH triggers haptic action on all capable and active devices:
             outpath = XR_NULL_PATH;
