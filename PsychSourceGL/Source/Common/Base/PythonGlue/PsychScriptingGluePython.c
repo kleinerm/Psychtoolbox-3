@@ -50,29 +50,16 @@
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
 
-// Import NumPy array handling functions: Require at least NumPy v 1.7, released
-// in February 2013:
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+// Import NumPy array handling functions: Require at least NumPy v 1.13.0, released
+// in June 2017:
+#define NPY_NO_DEPRECATED_API NPY_1_13_API_VERSION
 #include <numpy/arrayobject.h>
 
 #if defined(Py_LIMITED_API) && defined(__GNUC__) && (__GNUC__ < 10)
-/* Workaround from https://github.com/lpsinger/ligo.skymap/blob/v0.5.3/src/core.c#L21
- *
- * FIXME:
- * The Numpy C-API defines PyArrayDescr_Type as:
- *
- *   #define PyArrayDescr_Type (*(PyTypeObject *)PyArray_API[3])
- *
- * and then in some places we need to take its address, &PyArrayDescr_Type.
- * This is fine in GCC 10 and Clang, but earlier versions of GCC complain:
- *
- *   error: dereferencing pointer to incomplete type 'PyTypeObject'
- *   {aka 'struct _typeobject'}
- *
- * As a workaround, provide a faux forward declaration for PyTypeObject.
- * See https://github.com/numpy/numpy/issues/16970.
- */
-struct _typeobject {};
+#error \
+"This version of gcc has a bug and cannot compile this code. \
+Please upgrade gcc to a version >= 10.1 and try again. \
+See https://github.com/numpy/numpy/issues/16970 for details."
 #endif
 
 // Define this to 1 if you want lots of debug-output for the Python-Scripting glue.
@@ -449,9 +436,13 @@ PyObject* mxCreateString(const char* instring)
         ret = PyUnicode_DecodeLocale(instring, "surrogateescape");
         PyErr_Clear();
 
+        // If Py_LIMITED_API is enabled, it means we're compiling on
+        // at least Python 3.7. If that's the case, we can skip the
+        // next two checks, which deal with incompatibilties in earlier
+        // Python versions
+        #ifndef Py_LIMITED_API
         // Retry with strict error handler, because of backwards incompatible
         // change in Python 3.6 -> 3.7 (sigh):
-        #ifndef Py_LIMITED_API
         if (!ret) {
             ret = PyUnicode_DecodeLocale(instring, "strict");
             PyErr_Clear();

@@ -37,6 +37,11 @@ import numpy                                # To get include dir on macOS.
 
 from wheel.bdist_wheel import bdist_wheel
 
+# We borrowed the custom wheel configuration from https://github.com/joerick/python-abi3-package-sample
+# It lives in a separate file for licensing simplicity
+sys.path.append(os.path.join(os.path.dirname(__file__), 'PsychPython', 'psychtoolbox'))
+from _abi3_wheel import abi3_wheel
+
 is_64bits = sys.maxsize > 2**32
 
 # unified version number, read from simple text file
@@ -91,13 +96,7 @@ base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')]
 if sys.version_info >= (3, 7) and os.environ.get('PTB_LIMITED_WHEEL') == '1':
     base_macros.append(('Py_LIMITED_API', '0x03070000'))
     py_limited_api = True
-    # https://github.com/joerick/python-abi3-package-sample/blob/7f05b22b9e0cfb4e60293bc85252e95278a80720/setup.py#L5
-    class bdist(bdist_wheel):
-        def get_tag(self):
-            py, abi, plat = super().get_tag()
-            if py.startswith('cp'):
-                return 'cp37', 'abi3', plat
-            return py, abi, plat
+    bdist = abi3_wheel
 else:
     py_limited_api = False
     bdist = bdist_wheel
@@ -306,7 +305,7 @@ setup (name = 'psychtoolbox',
        ext_package = 'psychtoolbox',
        ext_modules = ext_modules,
        include_package_data=True,  # Include files listed in MANIFEST.in
-       install_requires = ['numpy>=1.16.5'], # https://github.com/numpy/numpy/pull/13725
+       install_requires = ['numpy>=1.13.3'], # Oldest supported numpy on Python 3.6
        cmdclass={"bdist_wheel": bdist},
       )
 
