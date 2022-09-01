@@ -220,6 +220,12 @@ PFN_xrGetOpenGLGraphicsRequirementsKHR pxrGetOpenGLGraphicsRequirementsKHR = NUL
 // XR_FB_display_refresh_rate for HMD video refresh rate query and control:
 PFN_xrGetDisplayRefreshRateFB pxrGetDisplayRefreshRateFB = NULL;
 
+#if defined(XR_USE_PLATFORM_WIN32)
+// XR_KHR_WIN32_convert_performance_counter_time for MS-Windows timestamp mapping:
+PFN_xrConvertWin32PerformanceCounterToTimeKHR pxrConvertWin32PerformanceCounterToTimeKHR = NULL;
+PFN_xrConvertTimeToWin32PerformanceCounterKHR pxrConvertTimeToWin32PerformanceCounterKHR = NULL;
+#endif
+
 #define GET_INSTANCE_PROC_ADDR(inst, entrypoint)                                                                                                            \
 {                                                                                                                                                           \
     XrResult result;                                                                                                                                        \
@@ -387,6 +393,53 @@ static psych_bool addInstanceExtension(XrExtensionProperties* exts, unsigned int
         printf("PsychOpenXRCore-INFO: Extension '%s' is not supported.\n", wantedExt);
 
     return(FALSE);
+}
+
+static XrTime PsychTimeToXrTime(double refTime)
+{
+    XrTime outTime = 0;
+
+    refTime = PsychOSRefTimeToMonotonicTime(refTime);
+
+    #if defined(XR_USE_PLATFORM_WIN32)
+    {
+        LARGE_INTEGER qpc;
+
+        // Map refTime in GetSecs to QPC:
+        qpc.QuadPart = (refTime * PsychGetKernelTimebaseFrequencyHz());
+
+        // Map QPC time to XrTime:
+        if (!resultOK(pxrConvertWin32PerformanceCounterToTimeKHR(xrInstance, &qpc, &outTime))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: xrConvertWin32PerformanceCounterToTimeKHR() failed: %s\n", errorString);
+        }
+    }
+    #endif
+
+    return(outTime);
+}
+
+static double XrTimeToPsychTime(XrTime xrTime)
+{
+    double outTime = 0;
+
+    #if defined(XR_USE_PLATFORM_WIN32)
+    {
+        LARGE_INTEGER qpc;
+
+        // Map XrTime to QPC time:
+        if (!resultOK(pxrConvertTimeToWin32PerformanceCounterKHR(xrInstance, xrTime, &qpc))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: pxrConvertTimeToWin32PerformanceCounterKHR() failed: %s\n", errorString);
+        }
+        else {
+            // Map QPC time to GetSecs time:
+            outTime = PsychMapPrecisionTimerTicksToSeconds(qpc.QuadPart);
+        }
+    }
+    #endif
+
+    return(outTime);
 }
 
 static int enumerateXRDevices(XrInstance instance) {
@@ -1153,14 +1206,13 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     return(TRUE);
 }
 
-// TODO: Use non-zero predictionTime to override openxr->frameState.predictedDisplayTime
-static psych_bool locateXRViews(PsychOpenXRDevice* openxr, double predictionTime)
+static psych_bool locateXRViews(PsychOpenXRDevice* openxr, XrTime predictionTime)
 {
     XrViewLocateInfo viewLocateInfo = {
         .type = XR_TYPE_VIEW_LOCATE_INFO,
         .next = NULL,
         .viewConfigurationType = openxr->viewType,
-        .displayTime = openxr->frameState.predictedDisplayTime,
+        .displayTime = predictionTime,
         .space = openxr->worldSpace
     };
 
@@ -1539,6 +1591,11 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     if (has_XR_FB_display_refresh_rate) {
         GET_INSTANCE_PROC_ADDR(xrInstance, xrGetDisplayRefreshRateFB);
     }
+
+    #if defined(XR_USE_PLATFORM_WIN32)
+        GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertWin32PerformanceCounterToTimeKHR);
+        GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimeToWin32PerformanceCounterKHR);
+    #endif
 
     // Perform initial XR hardware enumeration:
     enumerateXRDevices(xrInstance);
@@ -2385,6 +2442,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     int handle, i;
     PsychOpenXRDevice *openxr;
     double predictionTime;
+    XrTime xrPredictionTime;
     PsychGenericScriptType *outMat;
     double *v;
     int StatusFlags = 0;
@@ -2407,28 +2465,30 @@ PsychError PSYCHOPENXRGetTrackingState(void)
 
     // Get optional target time for predicted tracking state. Default to the
     // predicted state for the predicted mid-point of the next video frame:
-    if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
-        predictionTime = 0;
+    if (PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime)) {
+        xrPredictionTime = PsychTimeToXrTime(predictionTime);
+    }
+    else {
+        xrPredictionTime = openxr->frameState.predictedDisplayTime;
+        predictionTime = XrTimeToPsychTime(xrPredictionTime);
+    }
 
     // Do the actual eye pose / view update from tracking + prediction:
     // Also updates openxr->viewState with its status flags.
     PsychLockMutex(&(openxr->presenterLock));
-    locateXRViews(openxr, predictionTime);
+    locateXRViews(openxr, xrPredictionTime);
     syncXRActions(openxr);
     PsychUnlockMutex(&(openxr->presenterLock));
 
-    // TODO: PsychGetAdjustedPrecisionTimerSeconds() -> Something meaningful, maybe predictedDisplayTime from frameState?
-    openxr->sensorSampleTime = (predictionTime > 0) ? predictionTime : PsychGetAdjustedPrecisionTimerSeconds(NULL);
-
     // Print out tracking status:
-    if (verbosity >= 4) {
-        printf("PsychOpenXRCore-INFO: Tracking state predicted for device %i at time %f.\n", handle, predictionTime);
-        printf("PsychOpenXRCore-INFO: Time %f : Status %i\n", openxr->sensorSampleTime, openxr->viewState.viewStateFlags);
-    }
+    if (verbosity >= 4)
+        printf("PsychOpenXRCore-INFO: Tracking state predicted for device %i at time %f. Status = %i\n", handle, predictionTime, openxr->viewState.viewStateFlags);
 
     PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount1, FieldNames1, &status);
 
-    PsychSetStructArrayDoubleElement("Time", 0, openxr->sensorSampleTime, status);
+    // Timestamp for when this prediction is valid:
+    openxr->sensorSampleTime = predictionTime;
+    PsychSetStructArrayDoubleElement("Time", 0, predictionTime, status);
 
     // HMD tracking status:
     StatusFlags = 0;
@@ -2519,7 +2579,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         handPoses[i].type = XR_TYPE_SPACE_LOCATION;
         handPoses[i].next = &handVelocity[i];
 
-        if (!resultOK(xrLocateSpace(openxr->handPoseSpace[i], openxr->worldSpace, openxr->frameState.predictedDisplayTime, &handPoses[i]))) {
+        if (!resultOK(xrLocateSpace(openxr->handPoseSpace[i], openxr->worldSpace, xrPredictionTime, &handPoses[i]))) {
             if (verbosity > 3)
                 printf("PsychOpenXRCore-DEBUG: xrLocateSpace() failed: %s\n", errorString);
 
@@ -2528,8 +2588,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
             handVelocity[i].velocityFlags = 0;
         }
 
-        // Timestamp for when this tracking info is valid: TODO
-        PsychSetStructArrayDoubleElement("Time", i, openxr->sensorSampleTime, status);
+        // Timestamp for when this tracking info is valid:
+        PsychSetStructArrayDoubleElement("Time", i, predictionTime, status);
 
         // Hand / touch controller tracking state:
         StatusFlags = 0;
@@ -2585,7 +2645,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     return(PsychError_none);
 }
 
-// TODO: Timestamps, Extensions for more controllers?
+// TODO: Extensions for more controllers?
 PsychError PSYCHOPENXRGetInputState(void)
 {
     static char useString[] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
@@ -2640,7 +2700,6 @@ PsychError PSYCHOPENXRGetInputState(void)
     int i;
     double *v;
     XrTime time = 0;
-    double timeStamp = 0;
     int valid = 0;
 
     XrActionStateBoolean bv = {
@@ -2716,7 +2775,6 @@ PsychError PSYCHOPENXRGetInputState(void)
     // Session has XR input focus, so try to get input state:
     PsychLockMutex(&(openxr->presenterLock));
     syncXRActions(openxr);
-    PsychGetAdjustedPrecisionTimerSeconds(&timeStamp); // TODO: Replace with time -> timeStamp
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // All input states updated by syncXRActions(). Query current values:
@@ -2900,7 +2958,7 @@ PsychError PSYCHOPENXRGetInputState(void)
     PsychSetStructArrayNativeElement("Thumbstick2", 0, outMat, status);
 
     // Controller update time:
-    PsychSetStructArrayDoubleElement("Time", 0, timeStamp, status);
+    PsychSetStructArrayDoubleElement("Time", 0, XrTimeToPsychTime(time), status);
 
     // Data valid status:
     PsychSetStructArrayDoubleElement("Valid", 0, (valid != 0) ? 1 : 0, status);
@@ -3952,7 +4010,7 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     PsychCopyInDoubleArg(3, kPsychArgOptional, &clip_far);
 
     // Make sure our views field of view .fov is well defined:
-    locateXRViews(openxr, 0);
+    locateXRViews(openxr, openxr->frameState.predictedDisplayTime);
 
     if (verbosity > 4) {
         int eyeIndex;
@@ -4107,9 +4165,6 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         goto present_out;
     }
 
-    // Mark frame as not skipped, ie. greater than zero timestamp:
-    tPredictedOnset = 1;
-
     // Do the frame present cycle:
     openxr->frameState.type = XR_TYPE_FRAME_STATE;
     openxr->frameState.next = NULL;
@@ -4127,9 +4182,13 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         success = FALSE;
         goto present_fail;
     }
+    else {
+        // Mark frame as not skipped, ie. greater than zero timestamp:
+        tPredictedOnset = XrTimeToPsychTime(openxr->frameState.predictedDisplayTime);
+    }
 
     // Enforce view[] update with proper fov, pose:
-    locateXRViews(openxr, 0);
+    locateXRViews(openxr, openxr->frameState.predictedDisplayTime);
 
     result = xrBeginFrame(openxr->hmd, NULL);
     if (!resultOK(result)) {
@@ -4474,7 +4533,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
         printf("PsychOpenXRCore-INFO: Present of new frame to VR compositor skipped.\n");
 
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-//    tHMD = ovr_GetTimeInSeconds();
+    tHMD = tNow;
 
     if (doTimestamp) {
         /*
@@ -4553,6 +4612,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
 
     // Copy out predicted onset time for the just emitted frame, or -1 on failure, or 0 on skipped:
     if (tPredictedOnset > 0) {
+        // TODO: May not be neccessary anymore under OpenXR? Or wrong?
         tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * openxr->frameDuration;
     }
 
@@ -4593,6 +4653,7 @@ PsychError PSYCHOPENXRGetEyePose(void)
     PsychOpenXRDevice *openxr;
     double *outM;
     double predictionTime;
+    XrTime xrPredictionTime;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4616,15 +4677,20 @@ PsychError PSYCHOPENXRGetEyePose(void)
 
     // Get optional target time for predicted tracking state. Default to the
     // predicted state for the predicted mid-point of the next video frame:
-    if (!PsychCopyInDoubleArg(3, kPsychArgOptional, &predictionTime))
-        predictionTime = 0;
+    if (PsychCopyInDoubleArg(3, kPsychArgOptional, &predictionTime)) {
+        xrPredictionTime = PsychTimeToXrTime(predictionTime);
+    }
+    else {
+        xrPredictionTime = openxr->frameState.predictedDisplayTime;
+        predictionTime = XrTimeToPsychTime(xrPredictionTime);
+    }
 
     // Get eye pose for the renderPass. OpenXR does not provide advantages for seprate render passes,
     // so renderPass to eye mapping is meaningless for quality, and we just set arbitrarily eye = renderPass:
     eye = renderPass;
 
     PsychLockMutex(&(openxr->presenterLock));
-    locateXRViews(openxr, predictionTime);
+    locateXRViews(openxr, xrPredictionTime);
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // Eye pose as raw data:
