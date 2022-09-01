@@ -221,6 +221,19 @@ function varargout = PsychVRHMD(cmd, varargin)
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
+% 'ActiveInputs' = Bitmask defining which of the following struct elements do contain
+% meaningful input from actual physical input source devices. This is a more fine-grained
+% reporting of what 'Valid' conveys, split up into categories. The following flags will be
+% logical or'ed together if the corresponding input category is valid, ie. provided with
+% actual input data from some physical input source element, controller etc.:
+%
+% +1  = 'Buttons' gets input from some real buttons or switches.
+% +2  = 'Touches' gets input from some real touch/proximity sensors or gesture recognizers.
+% +4  = 'Trigger' gets input from some real analog trigger sensor or gesture recognizer.
+% +8  = 'Grip' gets input from some real analog grip sensor or gesture recognizer.
+% +16 = 'Thumbstick' gets input from some real thumbstick, joystick or trackpad or similar 2D sensor.
+% +32 = 'Thumbstick2' gets input from some real secondary thumbstick, joystick or trackpad or similar 2D sensor.
+%
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
@@ -242,6 +255,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.
 % 'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.
 %
+% Some devices driven by an OpenXR runtime may also expose a 'Thumbstick2' field, with same semantic
+% as the 'Thumbstick' 2x2 matrix, but for secondary 2D input sources, e.g., a 2nd thumbstick,
+% joystick or trackpad or similar for each hand-controller. The presence of the 'Thumbstick2' field
+% in the 'input' struct is not guaranteed, unless 'ActiveInputs' contains the +32 flag 'Thumbstick2'.
 %
 % pulseEndTime = PsychVRHMD('HapticPulse', hmd, controllerType [, duration=XX][, freq=1.0][, amplitude=1.0]);
 % - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'

@@ -1491,6 +1491,14 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
     "\n"
     "'input' is a struct with fields reporting the following status values of the controller:\n"
     "'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.\n"
+    "'ActiveInputs' = Bitmask of which 'input' contains valid results, or 0 if input completely unavailable.\n"
+    "The following flags will be logical or'ed together if the corresponding input category is valid, "
+    "ie. provided with actual input date from some physical input source element, controller etc.:\n"
+    "+1  = 'Buttons' gets input from some real buttons or switches.\n"
+    "+2  = 'Touches' gets input from some real touch/proximity sensors or gesture recognizers.\n"
+    "+4  = 'Trigger' gets input from some real analog trigger sensor or gesture recognizer.\n"
+    "+8  = 'Grip' gets input from some real analog grip sensor or gesture recognizer.\n"
+    "+16 = 'Thumbstick' gets input from some real thumbstick, joystick or trackpad or similar 2D sensor.\n"
     "'Time' = Time in seconds when controller state was last updated.\n"
     "'Buttons' = Vector with each positions value corresponding to a specifc button being pressed (1) "
     "or released (0). The OVR.Button_XXX constants map button names to vector indices (like KbName() "
@@ -1511,10 +1519,10 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
     static char seeAlsoString[] = "Start Stop GetTrackingState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = { "Valid", "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
+    const char *FieldNames[] = { "Valid", "ActiveInputs", "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
                                  "GripNoDeadzone", "TriggerRaw", "GripRaw", "Thumbstick",
                                  "ThumbstickNoDeadzone", "ThumbstickRaw" };
-    const int FieldCount = 13;
+    const int FieldCount = 14;
 
     PsychGenericScriptType *outMat;
     double *v;
@@ -1529,6 +1537,7 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
     PsychOpenHMDDevice *openhmd;
     int control_id[256] = { 0 };
     float state[256] = { 0 };
+    int valid = 0;
     ohmd_device *dev = NULL;
 
     // All sub functions should have these two lines
@@ -1585,6 +1594,8 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
         grip[0] = getControlValue(state, control_id, OHMD_SQUEEZE);
         stick[0][0] = getControlValue(state, control_id, OHMD_ANALOG_X);
         stick[0][1] = getControlValue(state, control_id, OHMD_ANALOG_Y);
+
+        valid |= (1 | 4 | 8 | 16);
     }
 
     // Right touch, if any:
@@ -1608,6 +1619,8 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
         grip[1] = getControlValue(state, control_id, OHMD_SQUEEZE);
         stick[1][0] = getControlValue(state, control_id, OHMD_ANALOG_X);
         stick[1][1] = getControlValue(state, control_id, OHMD_ANALOG_Y);
+
+        valid |= (1 | 4 | 8 | 16);
     }
 
     // HMD integrated inputs?
@@ -1637,6 +1650,8 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
 
         // Oculus button:
         v[24] += getControlValue(state, control_id, OHMD_MENU);
+
+        valid |= 1;
     }
 
     // HMD itself for a non-Oculus/non-Nolo device. Treat like a remote control:
@@ -1673,6 +1688,8 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
 
         // Oculus button:
         v[24] += getControlValue(state, control_id, OHMD_MENU);
+
+        valid |= 1;
     }
 
     // TODO: openhmd->controller[2] - OHMD_DEVICE_CLASS_GENERIC_TRACKER, but no
@@ -1755,6 +1772,9 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
     v[2] = stick[1][0];
     v[3] = stick[1][1];
     PsychSetStructArrayNativeElement("ThumbstickRaw", 0, outMat, status);
+
+    // Return bitmask of valid inputs:
+    PsychSetStructArrayDoubleElement("ActiveInputs", 0, valid, status);
 
     return(PsychError_none);
 }
