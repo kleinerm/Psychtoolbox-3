@@ -189,7 +189,14 @@ function varargout = PsychOculusVR(cmd, varargin)
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
+% This is always 1, as any kind of connected keyboard can emulate at least 'Buttons', by
+% using KbCheck to query keys and map them to "fake buttons".
+%
+% 'ActiveInputs' = 1, signifying the presence of a valid 'Buttons' input due to emulation
+% by KbCheck on any connected keyboard.
+%
 % 'Time' Time of last input state change of controller.
+%
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
 % reports pressed (1) or released (0) state of a specific button. Use the OVR.Button_XXX
@@ -789,6 +796,7 @@ if strcmpi(cmd, 'GetInputState')
   end
 
   rc.Valid = 1;
+  rc.ActiveInputs = 1; % Emulated 'Buttons' via KbCheck.
 
   [anykey, rc.Time, keyCodes] = KbCheck(-1);
   rc.Buttons = zeros(1, 32);

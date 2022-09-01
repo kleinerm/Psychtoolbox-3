@@ -246,6 +246,18 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
+% 'ActiveInputs' = Bitmask defining which of the following struct elements do contain
+% meaningful input from actual physical input source devices. This is a more fine-grained
+% reporting of what 'Valid' conveys, split up into categories. The following flags will be
+% logical or'ed together if the corresponding input category is valid, ie. provided with
+% actual input data from some physical input source element, controller etc.:
+%
+% +1  = 'Buttons' gets input from some real buttons or switches.
+% +2  = 'Touches' gets input from some real touch/proximity sensors or gesture recognizers.
+% +4  = 'Trigger' gets input from some real analog trigger sensor or gesture recognizer.
+% +8  = 'Grip' gets input from some real analog grip sensor or gesture recognizer.
+% +16 = 'Thumbstick' gets input from some real thumbstick, joystick or trackpad or similar 2D sensor.
+%
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
