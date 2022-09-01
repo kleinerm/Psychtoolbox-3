@@ -130,7 +130,8 @@ while 1
         continue;
     end
 
-    fprintf('Press Back button on remote control or other controllers, or Enter-Button on controller, or backspace key, to finish.\n\n');
+    fprintf('Press Back button on remote control or other controllers, or Enter-Button on controller, or backspace key, to finish.\n');
+    fprintf('Delta now - controller update time in msecs: %f\n\n', 1000 * (GetSecs - istate.Time));
     disp(istate);
 
     if istate.Buttons(OVR.Button_A)
