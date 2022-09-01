@@ -231,6 +231,18 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
+% 'ActiveInputs' = Bitmask defining which of the following struct elements do contain
+% meaningful input from actual physical input source devices. This is a more fine-grained
+% reporting of what 'Valid' conveys, split up into categories. The following flags will be
+% logical or'ed together if the corresponding input category is valid, ie. provided with
+% actual input data from some physical input source element, controller etc.:
+%
+% +1  = 'Buttons' gets input from some real buttons or switches, ie. Touch / XBox / Oculus remote controller.
+% +2  = 'Touches' gets input from some real touch sensors or gesture recognizers, e.g., Touch controller.
+% +4  = 'Trigger' gets input from some real analog trigger sensor, e.g., Touch or XBox controller.
+% +8  = 'Grip' gets input from Touch controllers.
+% +16 = 'Thumbstick' gets input from some real thumbstick, e.g., from Touch controllers or XBox controller.
+%
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector

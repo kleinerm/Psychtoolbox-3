@@ -1366,6 +1366,14 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
         "\n"
         "'input' is a struct with fields reporting the following status values of the controller:\n"
         "'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.\n"
+        "'ActiveInputs' = Bitmask of which 'input' contains valid results, or 0 if input completely unavailable.\n"
+        "The following flags will be logical or'ed together if the corresponding input category is valid, "
+        "ie. provided with actual input date from some physical input source element, controller etc.:\n"
+        "+1  = 'Buttons' gets input from some real buttons or switches.\n"
+        "+2  = 'Touches' gets input from some real touch/proximity sensors or gesture recognizers.\n"
+        "+4  = 'Trigger' gets input from some real analog trigger sensor or gesture recognizer.\n"
+        "+8  = 'Grip' gets input from some real analog grip sensor or gesture recognizer.\n"
+        "+16 = 'Thumbstick' gets input from some real thumbstick, joystick or trackpad or similar 2D sensor.\n"
         "'Time' = Time in seconds when controller state was last updated.\n"
         "'Buttons' = Vector with each positions value corresponding to a specifc button being pressed (1) "
         "or released (0). The OVR.Button_XXX constants map button names to vector indices (like KbName() "
@@ -1386,10 +1394,10 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     static char seeAlsoString[] = "Start Stop GetTrackedState GetTrackersState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = { "Valid", "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
+    const char *FieldNames[] = { "Valid", "ActiveInputs", "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
                                  "GripNoDeadzone", "TriggerRaw", "GripRaw", "Thumbstick",
                                  "ThumbstickNoDeadzone", "ThumbstickRaw" };
-    const int FieldCount = 13;
+    const int FieldCount = 14;
 
     PsychGenericScriptType *outMat;
     double *v;
@@ -1399,6 +1407,7 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     PsychOculusDevice *oculus;
     ovrInputState state;
     ovrSessionStatus sessionStatus;
+    int valid = 0;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -1449,6 +1458,20 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
         // Fail gracefully, by returning an all-zero input struct:
         memset(&state, 0, sizeof(state));
     }
+
+    // Set validity bitmask:
+
+    // Buttons valid if any controller available:
+    if (state.ControllerType != ovrControllerType_None)
+        valid |= 1;
+
+    // Touches, Trigger, Grip, Thumbstick valid if any touch controller available:
+    if (state.ControllerType & ovrControllerType_Touch)
+        valid |= (2 | 4 | 8 | 16);
+
+    // Trigger, Thumbstick valid if XBox controller available:
+    if (state.ControllerType & ovrControllerType_XBox)
+        valid |= (4 | 16);
 
     // Controller update time:
     PsychSetStructArrayDoubleElement("Time", 0, state.TimeInSeconds, status);
@@ -1535,6 +1558,9 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     v[2] = state.ThumbstickRaw[1].x;
     v[3] = state.ThumbstickRaw[1].y;
     PsychSetStructArrayNativeElement("ThumbstickRaw", 0, outMat, status);
+
+    // Return bitmask of valid inputs:
+    PsychSetStructArrayDoubleElement("ActiveInputs", 0, valid, status);
 
     return(PsychError_none);
 }
