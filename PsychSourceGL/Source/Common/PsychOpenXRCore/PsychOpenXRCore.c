@@ -2692,7 +2692,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     return(PsychError_none);
 }
 
-// TODO: Extensions for more controllers?
+
 PsychError PSYCHOPENXRGetInputState(void)
 {
     static char useString[] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
@@ -3005,7 +3005,7 @@ PsychError PSYCHOPENXRGetInputState(void)
     PsychSetStructArrayNativeElement("Thumbstick2", 0, outMat, status);
 
     // Controller update time:
-    PsychSetStructArrayDoubleElement("Time", 0, XrTimeToPsychTime(time), status);
+    PsychSetStructArrayDoubleElement("Time", 0, (time > 0) ? XrTimeToPsychTime(time) : 0, status);
 
     // Data valid status:
     PsychSetStructArrayDoubleElement("Valid", 0, (valid != 0) ? 1 : 0, status);
