@@ -226,6 +226,13 @@ PFN_xrConvertWin32PerformanceCounterToTimeKHR pxrConvertWin32PerformanceCounterT
 PFN_xrConvertTimeToWin32PerformanceCounterKHR pxrConvertTimeToWin32PerformanceCounterKHR = NULL;
 #endif
 
+#if defined(XR_USE_PLATFORM_XLIB)
+// XR_KHR_convert_timespec_time for Linux timestamp mapping:
+PFN_xrConvertTimespecTimeToTimeKHR pxrConvertTimespecTimeToTimeKHR = NULL;
+PFN_xrConvertTimeToTimespecTimeKHR pxrConvertTimeToTimespecTimeKHR = NULL;
+#endif
+
+
 #define GET_INSTANCE_PROC_ADDR(inst, entrypoint)                                                                                                            \
 {                                                                                                                                                           \
     XrResult result;                                                                                                                                        \
@@ -416,6 +423,22 @@ static XrTime PsychTimeToXrTime(double refTime)
     }
     #endif
 
+    #if defined(XR_USE_PLATFORM_XLIB)
+    {
+        struct timespec ts;
+
+        // Map CLOCK_MONOTONIC double time to CLOCK_MONOTONIC timespec time:
+        ts.tv_sec   = (unsigned long long) refTime;
+        ts.tv_nsec  = ((refTime - (double) ts.tv_sec) * (double) 1e9);
+
+        // Map CLOCK_MONOTONIC timespec time to XrTime:
+        if (!resultOK(pxrConvertTimespecTimeToTimeKHR(xrInstance, &ts, &outTime))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: xrConvertTimespecTimeToTimeKHR() failed: %s\n", errorString);
+        }
+    }
+    #endif
+
     return(outTime);
 }
 
@@ -435,6 +458,25 @@ static double XrTimeToPsychTime(XrTime xrTime)
         else {
             // Map QPC time to GetSecs time:
             outTime = PsychMapPrecisionTimerTicksToSeconds(qpc.QuadPart);
+        }
+    }
+    #endif
+
+    #if defined(XR_USE_PLATFORM_XLIB)
+    {
+        struct timespec ts;
+
+        // Map XrTime to CLOCK_MONOTONIC timespec time:
+        if (!resultOK(pxrConvertTimeToTimespecTimeKHR(xrInstance, xrTime, &ts))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: xrConvertTimeToTimespecTimeKHR() failed: %s\n", errorString);
+        }
+        else {
+            // Map timespec to CLOCK_MONOTONIC time as double:
+            outTime = (double) ts.tv_sec + ((double) ts.tv_nsec / (double) 1e9);
+
+            // Map CLOCK_MONOTONIC to GetSecs time:
+            outTime = PsychOSMonotonicToRefTime(outTime);
         }
     }
     #endif
@@ -1595,6 +1637,11 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     #if defined(XR_USE_PLATFORM_WIN32)
         GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertWin32PerformanceCounterToTimeKHR);
         GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimeToWin32PerformanceCounterKHR);
+    #endif
+
+    #if defined(XR_USE_PLATFORM_XLIB)
+        GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimespecTimeToTimeKHR);
+        GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimeToTimespecTimeKHR);
     #endif
 
     // Perform initial XR hardware enumeration:
