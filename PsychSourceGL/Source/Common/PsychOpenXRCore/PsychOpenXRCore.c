@@ -627,6 +627,10 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     xrStringToPath(xrInstance, "/user/hand/left/input/grip/pose", &gripPosePath[0]);
     xrStringToPath(xrInstance, "/user/hand/right/input/grip/pose", &gripPosePath[1]);
 
+    XrPath aimPosePath[2];
+    xrStringToPath(xrInstance, "/user/hand/left/input/aim/pose", &aimPosePath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/aim/pose", &aimPosePath[1]);
+
     XrPath hapticPath[4];
     xrStringToPath(xrInstance, "/user/hand/left/output/haptic", &hapticPath[0]);
     xrStringToPath(xrInstance, "/user/hand/right/output/haptic", &hapticPath[1]);
@@ -947,8 +951,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
 
     // Binding set useful to most controllers and devices:
     XrActionSuggestedBinding unused_template[] = {
-        { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-        { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+        { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+        { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
         { .action = openxr->hapticAction, .binding = hapticPath[0] }, // Not Daydream
         { .action = openxr->hapticAction, .binding = hapticPath[1] }, // Not Daydream
         { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] }, // Not simple or Daydream
@@ -1006,8 +1010,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // tracking working with all kinds of controller devices:
     {
         XrActionSuggestedBinding simpleBinding[] = {
-            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->hapticAction, .binding = hapticPath[0] },
             { .action = openxr->hapticAction, .binding = hapticPath[1] },
             BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
@@ -1023,8 +1027,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // Suggest basic action bindings for the Google Daydream controller interaction profile:
     {
         XrActionSuggestedBinding daydreamBinding[] = {
-            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->thumbStick2DAction[0], .binding = trackpadPath[0] },
             { .action = openxr->thumbStick2DAction[1], .binding = trackpadPath[1] },
             BBIND(OVR_Button_Back, "/user/hand/left/input/select/click"),
@@ -1042,8 +1046,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // Suggest basic action bindings for the HTC Vive controller interaction profile.
     {
         XrActionSuggestedBinding viveBinding[] = {
-            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->hapticAction, .binding = hapticPath[0] },
             { .action = openxr->hapticAction, .binding = hapticPath[1] },
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
@@ -1071,8 +1075,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // is used by Oculus VR touch input controllers, e.g., for Oculus Rift-CV1, Rift-S, Quest etc.:
     {
         XrActionSuggestedBinding oculusBinding[] = {
-            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->hapticAction, .binding = hapticPath[0] },
             { .action = openxr->hapticAction, .binding = hapticPath[1] },
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
@@ -1109,8 +1113,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // is used by Oculus controllers of the Oculus Go:
     {
         XrActionSuggestedBinding oculusGoBinding[] = {
-            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
             { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
             { .action = openxr->thumbStick2DAction[0], .binding = trackpadPath[0] },
@@ -1133,8 +1137,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // Suggest basic action bindings for the Valve Index controller interaction profile.
     {
         XrActionSuggestedBinding valveIndexBinding[] = {
-            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->hapticAction, .binding = hapticPath[0] }, // Not Daydream
             { .action = openxr->hapticAction, .binding = hapticPath[1] }, // Not Daydream
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
@@ -1172,8 +1176,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // Suggest basic action bindings for the Microsoft Mixed Reality (WMR) controller interaction profile.
     {
         XrActionSuggestedBinding wmrBinding[] = {
-            { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
-            { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->hapticAction, .binding = hapticPath[0] },
             { .action = openxr->hapticAction, .binding = hapticPath[1] },
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
