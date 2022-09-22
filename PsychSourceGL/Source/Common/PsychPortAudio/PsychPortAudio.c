@@ -2031,10 +2031,9 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(int latencyclass)
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    #ifdef PTB_USE_ASIO
-    // Try ASIO first. It's supposed to be the lowest latency Windows API on soundcards that suppport it.
+    // Try ASIO first. It is supposed to be the lowest latency Windows API on soundcards that suppport it, iff a 3rd party ASIO
+    // enabled portaudio dll would be used to enable it. Psychtoolbox own portaudio dll does not support ASIO at all.
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
-    #endif
 
     // Then Vistas new WASAPI, which is supposed to be usable since around Windows-7 and pretty good since Windows-10:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
@@ -2876,7 +2875,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
             lowlatency = 0.05;  // Choose some half-way safe tradeoff: 50 msecs.
             break;
 
-        #ifdef PTB_USE_ASIO
         case paASIO:
             // ASIO: A value of zero would set safe (and high latency!) defaults. Too small values get
             // clamped to a safe minimum by the driver, so we select a very small positive value, say
@@ -2884,7 +2882,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
             // we play a bit safer and go for 5 msecs:
             lowlatency = (latencyclass >= 2) ? 0.001 : 0.005;
             break;
-        #endif
 
         case paALSA:
             // For ALSA we choose 10 msecs by default, lowering to 5 msecs if exp. requested. Experience
@@ -5639,25 +5636,17 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     "'deviceIndex'.\n\n"
     "Each struct contains information about its associated PortAudio device. The optional "
     "parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
-    #ifdef PTB_USE_ASIO
-    "1=Windows/DirectSound, 2=Windows/MME, 3=Windows/ASIO, 11=Windows/WDMKS, 13=Windows/WASAPI, "
-    #else
     "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
-    #endif
     "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, probably 16=Linux/PulseAudio, 5=MacOSX/CoreAudio.\n\n"
-    "On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
+    "On macOS you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
     "On Linux you may have the choice between ALSA, JACK, PulseAudio and OSS. ALSA or JACK provide very low "
-    "latencies and very good timing, OSS is an older system which is less capable but not very "
-    "widespread in use anymore. On MS-Windows you'll have the choice between up to 5 different "
+    "latencies and very good timing, OSS is an older system which is less capable and not in "
+    "widespread in use anymore. On MS-Windows you'll have the choice between multiple different "
     "audio subsystems:\n"
-    #ifdef PTB_USE_ASIO
-    "- If you buy a sound card with ASIO drivers, then you can pick that API for low latency. It "
-    "should give you comparable performance to OS/X or Linux.\n"
-    #endif
     "WASAPI (on Windows-Vista and later), or WDMKS (on Windows-2000/XP) should provide ok latency.\n"
     "DirectSound is the next worst choice if you have hardware with DirectSound support.\n"
     "If everything else fails, you'll be left with MME, a completely unusable API for precise or "
-    "low latency timing.\n"
+    "low latency timing. Current PsychPortAudio only provides reasonably precise timing with WASAPI.\n"
     "\n";
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";
