@@ -31,6 +31,8 @@
 
 #include "PsychPortAudio.h"
 
+unsigned int verbosity = 4;
+
 // This is a define of the PulseAudio host api id. It will be 16, once a portaudio
 // version with PulseAudio support is officially released. Define it here, so we
 // can already build a driver that is able to handle paPulseAudio quirks:
@@ -46,6 +48,11 @@
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #include "pa_win_wasapi.h"
+#if defined(__LP64__) || defined(_WIN64)
+#define PORTAUDIO_DLLNAME "portaudio_x64.dll"
+#else
+#define PORTAUDIO_DLLNAME "portaudio_x86.dll"
+#endif
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -149,17 +156,28 @@ typedef struct PseudoAlsaStreamExt {
 typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
-#if PSYCH_SYSTEM == PSYCH_LINUX
+// TODO: Also dynamically bind PaUtil_SetDebugPrintFunction on macOS?
+#if PSYCH_SYSTEM != PSYCH_OSX
 void (*myPaUtil_SetDebugPrintFunction)(PaUtilLogCallback  cb) = NULL;
 
-// Wrapper implementation, as many libportaudio.so implementations seem to lack this function :(:
+// Wrapper implementation, as many libportaudio library implementations seem to lack this function,
+// causing linker / mex load time failure if we'd depend on it:(:
 void PsychPAPaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
 {
-    // Try to get function dynamically:
-    myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
+    // Try to get/link function dynamically:
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // Windows:
+        myPaUtil_SetDebugPrintFunction = (void*) GetProcAddress(GetModuleHandle(PORTAUDIO_DLLNAME), "PaUtil_SetDebugPrintFunction");
+    #else
+        // Linux and macOS:
+        myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
+    #endif
 
+    // Call if function is supported, otherwise we no-op:
     if (myPaUtil_SetDebugPrintFunction)
         myPaUtil_SetDebugPrintFunction(cb);
+    else if ((verbosity > 5) && (cb != NULL))
+        printf("PTB-DEBUG: PortAudio library lacks PaUtil_SetDebugPrintFunction(). Low-Level PortAudio debugging output unavailable.\n");
 
     return;
 }
@@ -312,7 +330,6 @@ typedef struct PsychPADevice {
 
 PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
 unsigned int  audiodevicecount = 0;
-unsigned int  verbosity = 4;
 double        yieldInterval = 0.001;            // How long to wait in calls to PsychYieldIntervalSeconds().
 psych_bool    uselocking = TRUE;                // Use Mutex locking and signalling code for thread synchronization?
 psych_bool    lockToCore1 = TRUE;               // NO LONGER USED: Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
@@ -2146,10 +2163,10 @@ void PsychPortAudioInitialize(void)
 
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Sanity check dynamic portaudio dll loading on Windows:
-        if ((NULL == LoadLibrary("portaudio_x86.dll")) && (NULL == LoadLibrary("portaudio_x64.dll"))) {
+        if (NULL == LoadLibrary(PORTAUDIO_DLLNAME)) {
             // Failed:
             printf("\n\nPTB-ERROR: Tried to initialize PsychPortAudio's PortAudio engine. This didn't work,\n");
-            printf("PTB-ERROR: because i couldn't find or load the required portaudio_x86.dll or portaudio_x64.dll library.\n");
+            printf("PTB-ERROR: because i couldn't find or load the required %s library.\n", PORTAUDIO_DLLNAME);
             printf("PTB-ERROR: Please make sure to call the InitializePsychSound function before first use of\n");
             printf("PTB-ERROR: PsychPortAudio, otherwise this error will happen.\n\n");
             PsychErrorExitMsg(PsychError_user, "Failed to initialize due to portaudio DLL loading problem. Call InitializePsychSound first! Aborted.");
@@ -2187,7 +2204,7 @@ void PsychPortAudioInitialize(void)
         }
         else {
             if(verbosity>2) {
-                printf("PTB-INFO: Using modified %s\n", Pa_GetVersionText());
+                printf("PTB-INFO: Using %s\n", Pa_GetVersionText());
             }
         }
 
