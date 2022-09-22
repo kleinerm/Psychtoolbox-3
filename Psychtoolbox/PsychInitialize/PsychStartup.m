@@ -151,10 +151,14 @@ try
             fprintf('\nPsychStartup: Only leightweight GStreamer-less Screen() mex file will work.\n');
         end
 
-        % For Octave-5.1 on Windows, also need to prepend path to portaudio dll
-        % to library path, otherwise PsychPortAudio won't load:
-        driverloadpath = [PsychtoolboxRoot 'PsychSound'];
-        newpath = [driverloadpath ';' newpath];
+        if IsOctave
+            % For Octave-5.1 and later on Windows, we also need to prepend path to the
+            % possible portaudio dll locations to the library path, otherwise PsychPortAudio
+            % won't load, as Octave does not allow delay-loading like Matlab. Set path in
+            % preference order, so a possible override dll in PsychtoolboxRoot gets priority:
+            driverloadpath = [PsychtoolboxRoot ';' PsychtoolboxRoot 'PsychSound'];
+            newpath = [driverloadpath ';' newpath];
+        end
 
         % For moglcore we need to prepend the path to freeglut.dll:
         if Is64Bit
