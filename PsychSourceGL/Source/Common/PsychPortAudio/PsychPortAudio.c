@@ -2281,13 +2281,22 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "two of the 16 channels to use for playback. 'selectchannels' is a one row by 'channels' matrix with mappings "
     "for pure playback or pure capture. For full-duplex mode (playback and capture), 'selectchannels' must be a "
     "2 rows by max(channels) column matrix. row 1 will define playback channel mappings, whereas row 2 will then "
-    "define capture channel mappings. In any case, the number in the i'th column will define which physical device "
+    "define capture channel mappings. Ideally, the number in the i'th column will define which physical device "
     "channel will be used for playback or capture of the i'th PsychPortAudio channel (the i'th row of your sound "
-    "matrix). Numbering of physical device channels starts with zero! Example: Both, playback and simultaneous "
-    "recording are requested and 'channels' equals 2, ie, two playback channels and two capture channels. If you'd "
-    "specify 'selectchannels' as [0, 6 ; 12, 14], then playback would happen to device channels zero and six, "
-    "sound would be captured from device channels 12 and 14. Please note that channel selection is currently "
-    "only supported on some sound cards. The parameter is silently ignored on non-capable hardware or driver software.\n\n"
+    "matrix), but note various significant limitations on MS-Windows! Numbering of physical device channels starts "
+    "with zero! Example: Both, playback and simultaneous recording are requested and 'channels' equals 2, ie. two "
+    "playback channels and two capture channels. If you'd specify 'selectchannels' as [0, 6 ; 12, 14], then playback "
+    "would happen to device channels zero and six, sound would be captured from device channels 12 and 14.\n"
+    "Limitations: Please note that 'selectchannels' is currently only supported on macOS and on Windows WASAPI and only "
+    "with some sound cards in some configurations. The parameter is silently ignored on non-capable hardware/driver/operating "
+    "system software, or in unsupported configurations, e.g., it will do nothing on Linux, or on Windows with other sound "
+    "backends than WASAPI. On Windows, channel mapping only works for sound playback, not for sound capture. On Windows, "
+    "you can only select which physical sound channels are used, but not to which logical sound channel they are assigned. "
+    "This means that effectively the entries in the 'selectchannels' row vector will get sorted in ascending order, e.g., "
+    "a vector of [12, 0, 4, 2] for a 4 channel setup will be interpreted as if it were [0, 2, 4, 12]! This is a limitation "
+    "of the Windows sound system, nothing we could do about it.\n"
+    "All these limitations of 'selectchannels' make your scripts quite non-portable to different operating systems and "
+    "sound cards if you choose to use this parameter, so use with caution!\n\n"
     "'specialFlags' Optional flags: Default to zero, can be or'ed or added together with the following flags/settings:\n"
     "1 = Never prime output stream. By default the output stream is primed. Don't bother if you don't know what this means.\n"
     "2 = Always clamp audio data to the valid -1.0 to 1.0 range. Clamping is enabled by default.\n"
@@ -2687,9 +2696,12 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     channelMask |= (PaWinWaveFormatChannelMask) (1 << ((int) mychannelmap[i * m]));
 
                 if (verbosity > 3) {
+                    int j = 0;
+
                     printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
-                    for (i = 0; i < mynrchannels[0]; i++)
-                        printf("%i --> %i : ", i + 1, (int) mychannelmap[i * m]);
+                    for (i = 0; (i < sizeof(PaWinWaveFormatChannelMask) * 8) && (j < mynrchannels[0]); i++)
+                        if (channelMask & (1 << i))
+                            printf("%i --> %i : ", ++j, i);
 
                     printf("\n\n");
                 }
@@ -2716,10 +2728,14 @@ PsychError PSYCHPORTAUDIOOpen(void)
                         outwasapiapisettings.channelMask = channelMask;
                         break;
                     */
+
+                    default: // Unsupported backend for channel mapping:
+                        if (verbosity > 3)
+                            printf("PTB-INFO: 'selectchannels' mapping for audio playback is ignored on this hardware + driver combo.\n");
                 }
             }
 
-            // Windows api's can't do channel mapping on the capture side, i think?
+            // Windows builtin sound api's can't do channel mapping on the capture side:
             if ((mode & kPortAudioCapture) && (verbosity > 3)) {
                 printf("PTB-INFO: Audio capture enabled, but 'selectchannels' mapping for audio capture is ignored on this hardware + driver combo.\n");
             }
