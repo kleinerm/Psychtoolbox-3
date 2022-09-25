@@ -2,6 +2,10 @@
 #
 # (c) 2018-2022 Mario Kleiner
 # (c) 2020-2022 Alex Forrence
+# (c) 2019      Jonathan Peirce
+# (c) 2019      Richard Höchenberger
+# (c) 2019      Eric Larson
+# (c) 2019      Bernhard M. Wiedemann
 #
 # Licensed under the MIT license.
 #
