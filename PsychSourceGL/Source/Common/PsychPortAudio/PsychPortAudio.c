@@ -156,7 +156,8 @@ typedef struct PseudoAlsaStreamExt {
 typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
-// TODO: Also dynamically bind PaUtil_SetDebugPrintFunction on macOS?
+// Only dynamically bind PaUtil_SetDebugPrintFunction on non-macOS, as on
+// macOS we link portaudio statically so this would not work:
 #if PSYCH_SYSTEM != PSYCH_OSX
 void (*myPaUtil_SetDebugPrintFunction)(PaUtilLogCallback  cb) = NULL;
 
