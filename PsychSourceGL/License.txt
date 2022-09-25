@@ -50,14 +50,15 @@
 % open-source license, with the following copyright:
 %
 % Copyright (c) The individual Psychtoolbox core developers:
-%           (c) 1996-2018, David Brainard <brainard@psych.upenn.edu>
-%           (c) 1996-2007, Denis Pelli    <denis.pelli@nyu.edu>
-%                          Allen Ingling  <allen.ingling@nyu.edu>
-%           (c) 2005-2018, Mario Kleiner  <mario.kleiner.de@gmail.com>
+%           (c) 1996-2022, David Brainard <brainard@psych.upenn.edu>
+%           (c) 1996-2022, Denis Pelli    <denis.pelli@nyu.edu>
+%           (c) 1996-2007, Allen Ingling  <allen.ingling@nyu.edu>
+%           (c) 2005-2022, Mario Kleiner  <mario.kleiner.de@gmail.com>
 %
 %           (c) Individual major contributors:
 %           (c) 2006       Richard F. Murray <rfm@yorku.ca>
-%           (c) 2008-2018  Diederick C. Niehorster <dcnieho@gmail.com>
+%           (c) 2008-2022  Diederick C. Niehorster <dcnieho@gmail.com>
+%           (c) 2013-2022  Ian Andolina
 %           (c) 2008-2011  Tobias Wolf <towolf@tuebingen.mpg.de>
 %
 % MIT license:
