@@ -739,9 +739,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
     }
 
-    // Store Cocoa onscreen window handle:
-    windowRecord->targetSpecific.windowHandle = cocoaWindow;
-
     // Objective-C setup path, using Cocoa + NSOpenGLContext wrapped around already
     // existing and setup CGLContext:
     if (!useCGL && PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(cocoaWindow, windowRecord)) {
@@ -846,6 +843,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Pass through as simple mode, because our caller needs to know if VRR was requested
         // to be enabled - this then triggers proper error handling in caller:
         windowRecord->vrrMode = kPsychVRRSimple;
+    }
+
+    // Execute workaround for the latest macOS 12 bugs wrt. CoreAnimation/Metal/Vulkan interop:
+    if ((windowRecord->specialflags & kPsychExternalDisplayMethod) && !PsychCocoaMetalWorkaround(windowRecord)) {
+        printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to execute PsychCocoaMetalWorkaround() for Vulkan/Metal interop macOS bugs.\n");
+        return(FALSE);
     }
 
     // Done.

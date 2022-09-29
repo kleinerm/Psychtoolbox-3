@@ -190,6 +190,46 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     return(PsychError_none);
 }
 
+psych_bool PsychCocoaMetalWorkaround(PsychWindowRecordType *windowRecord)
+{
+    __block NSWindow *cocoaWindow;
+
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Define size of client area - the actual stimulus display area:
+    NSRect windowRect = NSMakeRect(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+
+    DISPATCH_SYNC_ON_MAIN({
+        cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:YES];
+    });
+
+    if (cocoaWindow == nil) {
+        printf("PTB-ERROR: PsychCocoaMetalWorkaround(): Could not create Metal workaround temporary Cocoa-Window!\n");
+        return(FALSE);
+    }
+
+    DISPATCH_SYNC_ON_MAIN({
+        // Initial CAMetalLayer attach: Needed before window is shown 1st time:
+        [[cocoaWindow contentView] setWantsLayer:YES];
+        [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
+
+        // Show window:
+        [cocoaWindow orderFrontRegardless];
+        [cocoaWindow display];
+
+        // Then immediately close it:
+        [[cocoaWindow contentView] setWantsLayer:NO];
+        [[cocoaWindow contentView] setLayer:NULL];
+        [cocoaWindow close];
+    });
+
+    // Drain the pool:
+    [pool drain];
+
+    return(TRUE);
+}
+
 void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRectType windowpixelRect)
 {
     PsychRectType screenRect;
