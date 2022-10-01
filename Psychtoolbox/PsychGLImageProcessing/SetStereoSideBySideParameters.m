@@ -1,7 +1,7 @@
-function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, rightScale, shaders)
+function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, rightScale, shaders, offsetUnit)
 % Change parameters for side-by-side stereo display modes (4 and 5).
 %
-% SetStereoSideBySideParameters(win [, leftOffset][, leftScale][, rightOffset][, rightScale][, shaders])
+% SetStereoSideBySideParameters(win [, leftOffset][, leftScale][, rightOffset][, rightScale][, shaders][, offsetUnit='windowsizes'])
 %
 % Call this function after the win = PsychImaging('OpenWindow',...); call on an
 % onscreen window in side-by-side stereo mode to change the parameters
@@ -12,7 +12,10 @@ function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, 
 %
 % 'leftOffset' = Top-Left [x,y] offset of left eye framebuffer in relative
 % coordinates [0,0] == top-left of framebuffer, [1,0] == 1 stereo window
-% width to the right, [2,0] == 2 stereo window width to the right etc.
+% width to the right, [2,0] == 2 stereo window width to the right etc. This
+% is the case if the optional parameter 'offsetUnit' is omitted, empty, or
+% set to 'windowsizes'. Otherwise the unit for 'leftOffset' and 'rightOffset'
+% is selected by the 'offsetUnit' parameter.
 %
 % 'leftScale' = Scaling of left eye image buffer. E.g., [1,1] == Don't
 % scale. [0.75, 0.5] scale to 75% of original width, 50% of original
@@ -24,10 +27,25 @@ function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, 
 % the standard builtin side-by-side compositing shaders. shaders(1) for left eye
 % view, shaders(2) for right eye view. The old shaders are deleted if new shaders
 % are assigned.
+%
+% 'offsetUnit' is a string, specifying the unit used for specifying 'leftOffset'
+% and 'rightOffset'. If omitted, by default it is 'windowsizes'. Following values
+% are currently supported:
+%
+% 'windowsizes' - 1 Unit for x or y is one width or height of the onscreen window,
+%                 as described above for 'leftOffset'.
+% 'pixels'      - 1 Unit for x or y is one pixel, so you can specify offsets in
+%                 absolute pixel coordinates. The pixels are likely framebuffer
+%                 pixels, ie. after potential application of Retina/HiDPI scaling
+%                 or the panelfitter, but other correction tasks like 'GeometryCorrection'
+%                 may affect which 'pixels' are meant, if such tasks change
+%                 imaging geometry further.
+%
 
 % History:
-% 3.12.2012  mk   Written.
-% 22.07.2021 mk   Add optional override 'shaders' parameter.
+% 03-Dec-2012 mk   Written.
+% 22-Jul-2021 mk   Add optional override 'shaders' parameter.
+% 01-Oct-2022 mk   Add optional 'offsetUnit' parameter to allow offsets in pixels.
 
 % Test if a windowhandle is provided...
 if nargin < 1
@@ -70,6 +88,27 @@ if nargin < 6
     shaders = [];
 end
 
+if nargin < 7 || isempty(offsetUnit)
+    offsetUnit = 'windowsizes';
+else
+    if ~ischar(offsetUnit)
+        error('Optional parameter offsetUnit is not a character string, as required.');
+    end
+end
+
+switch (lower(offsetUnit))
+    case {'windowsizes'}
+        sw = w;
+        sh = h;
+
+    case {'pixels'}
+        sw = 1;
+        sh = 1;
+
+    otherwise
+        error('Invalid value ''%s'' for parameter offsetUnit specified.', offsetUnit);
+end
+
 % Query full specification of processing slot for left eye view shader:
 % 'slot' is position in processing chain, others are parameters for the
 % operation:
@@ -87,9 +126,9 @@ if ~isempty(shaders)
 end
 
 % Define new blitter configuration for changed parameters:
-leftOffset(1) = floor(leftOffset(1) * w);
-leftOffset(2) = floor(leftOffset(2) * h);
-blittercfg = sprintf('Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f', leftOffset(1), leftOffset(2), leftScale(1), leftScale(2));
+leftOffset(1) = leftOffset(1) * sw;
+leftOffset(2) = leftOffset(2) * sh;
+blittercfg = sprintf('Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f', floor(leftOffset(1)), floor(leftOffset(2)), leftScale(1), leftScale(2));
 
 % Insert modified processing function at old position (slot) in the
 % pipeline, effectively replacing the slot:
@@ -113,9 +152,9 @@ if ~isempty(shaders)
 end
 
 % Define new blitter configuration for changed parameters:
-rightOffset(1) = floor(rightOffset(1) * w);
-rightOffset(2) = floor(rightOffset(2) * h);
-blittercfg = sprintf('Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f', rightOffset(1), rightOffset(2), rightScale(1), rightScale(2));
+rightOffset(1) = rightOffset(1) * sw;
+rightOffset(2) = rightOffset(2) * sh;
+blittercfg = sprintf('Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f', floor(rightOffset(1)), floor(rightOffset(2)), rightScale(1), rightScale(2));
 
 % Insert modified processing function at old position (slot) in the
 % pipeline, effectively replacing the slot:
