@@ -14,6 +14,7 @@
 %    AudioTunnel3DDemo       - Very sketchy demo on how to use OpenAL for 3D spatialized sound.
 %    AudioTunnel3DDemo2      - Another sketchy demo on how to use OpenAL for 3D spatialized sound.
 %    BasicAMAndMixScheduleDemo - Demonstrates basic use of sound schedules, volume controls, amplitude modulation and audio mixing of multiple voices.
+%    BasicSoundChannelHoppingDemo - Demonstrates how to access individual channels of a multi-channel soundcard.
 %    BasicSoundInputDemo     - Demonstrate basic usage of PsychPortAudio() for sound capture.
 %    BasicSoundOutputDemo    - Demonstrate basic usage of PsychPortAudio() for sound playback.
 %    BasicSoundPhaseShiftDemo - Demonstrate playback a live phase-shifted sine tone.
