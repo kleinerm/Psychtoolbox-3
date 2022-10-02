@@ -604,13 +604,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             noInterop = 0;
 
             % Disable Direct-To-Display mode, it is buggy as hell, at least
-            % on macOS 10.15.7 with AMD Radeon Pro 560. Not that it works
-            % much better with this hack, it is only a bit better. At the
-            % same time, this hack supposedly adds one frame of extra
-            % latency, but our measurements show that even without it,
-            % there is one frame of extra latency, contrary to what the
-            % docs wrt. Direct-to-Display mode say. Broken stuff all
-            % around on the iToys operating system:
+            % as tested on macOS 10.15.7 and 12.6 with AMD Radeon Pro 560.
+            % Not that it works much better with this hack, it is only a
+            % bit better. At the same time, this hack supposedly adds one
+            % frame of extra latency, but our measurements show that even
+            % without it, there is one frame of extra latency, contrary to
+            % what the docs wrt. Direct-to-Display mode say. Broken stuff
+            % all around on the iToys operating system:
             flags = mor(flags, 2);
         else
             flags = mor(flags, 1);
