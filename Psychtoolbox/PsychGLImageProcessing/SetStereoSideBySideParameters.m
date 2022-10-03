@@ -46,6 +46,9 @@ function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, 
 % 03-Dec-2012 mk   Written.
 % 22-Jul-2021 mk   Add optional override 'shaders' parameter.
 % 01-Oct-2022 mk   Add optional 'offsetUnit' parameter to allow offsets in pixels.
+% 02-Oct-2022 mk   Add RemapMouse() support for 'LeftView' and 'RightView'.
+
+global ptb_geometry_inverseWarpMap;
 
 % Test if a windowhandle is provided...
 if nargin < 1
@@ -160,6 +163,25 @@ blittercfg = sprintf('Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f', floor(ri
 % pipeline, effectively replacing the slot:
 posstring = sprintf('InsertAt%iShader', slot);
 Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', shaderid, glsl, blittercfg);
+
+% Now we need to define suitable inverse mappings for RemapMouse():
+
+% Get true framebuffer size of window and build identity mapping:
+[wr, hr] = Screen('WindowSize', win, 1);
+[xg, yg] = meshgrid(0:wr-1, 0:hr-1);
+
+% Reset window global modulo parameter:
+ptb_geometry_inverseWarpMap{win}.mx = wr;
+
+% Assign left view inverse mapping of mouse position:
+curmap(:,:,1) = (xg - leftOffset(1)) * 1 / leftScale(1);
+curmap(:,:,2) = (yg - leftOffset(2)) * 1 / leftScale(2);
+ptb_geometry_inverseWarpMap{win}.('LeftView') = int16(curmap);
+
+% Assign right view inverse mapping of mouse position:
+curmap(:,:,1) = (xg - rightOffset(1)) * 1 / rightScale(1);
+curmap(:,:,2) = (yg - rightOffset(2)) * 1 / rightScale(2);
+ptb_geometry_inverseWarpMap{win}.('RightView') = int16(curmap);
 
 % Done.
 return;
