@@ -3662,7 +3662,7 @@ if leftLRFlip || leftUDFlip
     [xg,yg] = meshgrid(hv, vv);
     curmap(:,:,1) = xg;
     curmap(:,:,2) = yg;
-    ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
+    ptb_geometry_inverseWarpMap{win}.('LeftView') = int16(curmap);
 end
 
 if winfo.StereoMode > 0
@@ -3703,7 +3703,7 @@ if winfo.StereoMode > 0
         [xg,yg] = meshgrid(hv, vv);
         curmap(:,:,1) = xg;
         curmap(:,:,2) = yg;
-        ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
+        ptb_geometry_inverseWarpMap{win}.('RightView') = int16(curmap);
     end
 end
 
