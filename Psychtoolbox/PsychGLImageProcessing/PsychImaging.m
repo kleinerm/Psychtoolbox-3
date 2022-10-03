@@ -2118,7 +2118,7 @@ if strcmpi(cmd, 'OpenWindow')
                 % Check if rotation angle is -90, +90, -270, +270, ... degrees,
                 % ie. the image is effectively tilted by 90 degrees clockwise
                 % or counter-clockwise:
-                if (round(rotAngle / 90) == (rotAngle / 90)) && (mod(round(rotAngle / 90), 2) > 0)
+                if ismember(stereomode, [0]) && (round(rotAngle / 90) == (rotAngle / 90)) && (mod(round(rotAngle / 90), 2) > 0)
                     % Yes. This is classic panel rotation. Exchange width and
                     % height of clientRect, so it is "rotated" accordingly and
                     % the various scaling and centering strategies will
