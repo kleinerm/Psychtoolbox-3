@@ -49,6 +49,7 @@ function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, 
 % 02-Oct-2022 mk   Add RemapMouse() support for 'LeftView' and 'RightView'.
 
 global ptb_geometry_inverseWarpMap;
+persistent initial_inverseWarpMap;
 
 % Test if a windowhandle is provided...
 if nargin < 1
@@ -62,7 +63,7 @@ end
 
 winfo = Screen('GetWindowInfo', win);
 if ~ismember(winfo.StereoMode, [4,5])
-    % No sidy-by-side mode -> No operation.
+    % No side-by-side mode -> No operation.
     fprintf('SetStereoSideBySideParameters: Info: Provided onscreen window is not switched to side-by-side stereo mode. Call ignored.\n');
     return;
 end
@@ -166,6 +167,15 @@ Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', shaderid, glsl, 
 
 % Now we need to define suitable inverse mappings for RemapMouse():
 
+% If we don't have a backup copy of the initial ptb_geometry_inverseWarpMap for
+% this win'dow - after PsychImaging('OpenWindow') and before our first invocation,
+% then create one as a baseline, so successive invocations of this function always
+% start with the same baseline, instead of compounding results from multiple calls:
+if isempty(initial_inverseWarpMap) || isempty(initial_inverseWarpMap{win})
+    % Initial call, make internal backup for successive calls:
+    initial_inverseWarpMap{win} = ptb_geometry_inverseWarpMap{win};
+end
+
 % Get true framebuffer size of window and build identity mapping:
 [wr, hr] = Screen('WindowSize', win, 1);
 [xg, yg] = meshgrid(0:wr-1, 0:hr-1);
@@ -176,12 +186,39 @@ ptb_geometry_inverseWarpMap{win}.mx = wr;
 % Assign left view inverse mapping of mouse position:
 curmap(:,:,1) = (xg - leftOffset(1)) * 1 / leftScale(1);
 curmap(:,:,2) = (yg - leftOffset(2)) * 1 / leftScale(2);
-ptb_geometry_inverseWarpMap{win}.('LeftView') = int16(curmap);
+if ~isfield(initial_inverseWarpMap{win}, 'LeftView')
+    ptb_geometry_inverseWarpMap{win}.('LeftView') = int16(curmap);
+else
+    prevmap = initial_inverseWarpMap{win}.('LeftView');
+    ptb_geometry_inverseWarpMap{win}.('LeftView') = int16(remap(prevmap, curmap));
+end
 
 % Assign right view inverse mapping of mouse position:
 curmap(:,:,1) = (xg - rightOffset(1)) * 1 / rightScale(1);
 curmap(:,:,2) = (yg - rightOffset(2)) * 1 / rightScale(2);
-ptb_geometry_inverseWarpMap{win}.('RightView') = int16(curmap);
+if ~isfield(initial_inverseWarpMap{win}, 'RightView')
+    ptb_geometry_inverseWarpMap{win}.('RightView') = int16(curmap);
+else
+    prevmap = initial_inverseWarpMap{win}.('RightView');
+    ptb_geometry_inverseWarpMap{win}.('RightView') = int16(remap(prevmap, curmap));
+end
 
-% Done.
-return;
+end
+
+function newmap = remap(prevmap, curmap)
+    newmap = nan(size(curmap));
+    curmap = round(curmap + 1);
+    curmap = max(curmap, 1);
+    curmap(:,:,1) = min(curmap(:,:,1), size(prevmap, 2));
+    curmap(:,:,2) = min(curmap(:,:,2), size(prevmap, 1));
+    ym = size(curmap, 1);
+    xm = size(curmap, 2);
+    for y = 1:ym
+        for x = 1:xm
+            xl = curmap(y, x, 1);
+            yl = curmap(y, x, 2);
+            newmap(y, x, 1) = prevmap(yl, xl, 1);
+            newmap(y, x, 2) = prevmap(yl, xl, 2);
+        end
+    end
+end
