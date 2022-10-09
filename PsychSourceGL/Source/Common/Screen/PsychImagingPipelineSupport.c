@@ -2224,20 +2224,19 @@ psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
 {
     PsychFBO *fbo;
 
-    if (!(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks)) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychGetPipelineExportTexture: No kPsychNeedFinalizedFBOSinks! Skipped.\n");
+    // Nothing to query if imaging pipeline is off or only used for fast offscreen window support:
+    if (windowRecord->imagingMode == 0 || windowRecord->imagingMode == kPsychNeedFastOffscreenWindows) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychGetPipelineExportTexture: Imaging pipeline not fully enabled, so not usable! Skipped.\n");
+
         return(FALSE);
     }
 
+    // The PsychFBO* for finalizedFBO's are always valid and point to something valid:
     fbo = windowRecord->fboTable[windowRecord->finalizedFBO[0]];
 
     *leftglHandle = (int) fbo->coltexid;
-    if (windowRecord->stereomode & kPsychDualStreamStereo) {
-        *rightglHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid;
-    }
-    else {
-        *rightglHandle = 0;
-    }
+    *rightglHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid;
 
     *glTextureTarget = (int) fbo->textarget;
     *format = (int) fbo->format;

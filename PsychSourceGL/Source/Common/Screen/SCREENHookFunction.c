@@ -151,7 +151,7 @@ static char synopsisString[] =
     "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures');\n"
     "Get the OpenGL handles of the backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
     "For the meaning of return values see 'SetDisplayBufferTextures' above.\n"
-    "This only works if imagingMode flag kPsychNeedFinalizedFBOSinks is set or stereoMode 12 is active, which implicitely sets that flag.\n"
+    "This only works if the imaging pipeline is active.\n"
     "This query function works both with internally generated and maintained backing textures and externally injected/maintained ones.\n"
     "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
     "the textures for sampling/reading from them is appropriate, modifying them in any way is forbidden.\n"
