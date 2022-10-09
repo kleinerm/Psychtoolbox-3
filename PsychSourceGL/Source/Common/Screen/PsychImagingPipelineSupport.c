@@ -727,20 +727,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         // The right-view channel is represented by a slave window and its associated context. We
         // create a framebuffer object and attach it to finalizedFBO[1]. This way, the final left view
         // stimulus image gets blitted directly into the system framebuffer for this window, but the
-        // right view stimulus gets blitted into our real finalizedFBO[1]. PsychPreflipOperations() will
-        // perform a last blitcopy operation at the end of pipeline processing, where it copies the content
+        // right view stimulus gets blitted into the finalizedFBO[1]. PsychPreflipOperations() will
+        // perform a last blit-copy operation at the end of pipeline processing, where it copies the content
         // of finalizedFBO[1] into the real system framebuffer for the onscreen window which represents the
-        // user visible right view.
+        // user visible right view. It switches to the OpenGL context for the right view slave window before
+        // the blit, so blitting finalizedFBO[1] into the system framebuffer blits into the slave windows /
+        // right view windows back buffer. This bounce buffer trick works, because the OpenGL contexts of
+        // both windows share resources, ie. OpenGL textures, framebuffer objects etc., and thereby finalizedFBO
+        // content.
         //
-        // In dual window output mode, we may only have one merged/composited stereo view or even only
-        // a single monoscopic view, but we still distribute that view to both finalizedFBO's aka different
-        // onscreen windows backbuffers, possibly with separate output formatting / postprocessing.
+        // In dual window output mode, as opposed to dual window stereo mode, we only have one single monoscopic view,
+        // which we want to copy to the secondary slave window, as a copy/clone/mirror image. However, we need to
+        // switch to finalizedFBO[0] as bounce buffer in this case, as the whole imaging pipeline - configured for
+        // mono/single-stream processing - blits the final image into finalizedFBO[0]:
         if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
             // Failed!
             PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
         }
 
-        windowRecord->finalizedFBO[1]=fbocount;
+        windowRecord->finalizedFBO[((windowRecord->stereomode == kPsychDualWindowStereo) ? 1 : 0)] = fbocount;
         fbocount++;
     }
 
@@ -1153,11 +1158,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         fbocount++;
     }
 
-    // If dualwindow output is requested and preConversionFBO[1] isn't assigned yet,
-    // we set it to the same FBO as preConversionFBO[0], so the image data of our one
-    // single image buffer is distributed to both output pipes for output conversion and
-    // display:
-    if ((imagingmode & kPsychNeedDualWindowOutput) && (windowRecord->preConversionFBO[1] == -1)) {
+    // If dualwindow output is requested and preConversionFBO[1] isn't assigned yet, or is the system fb,
+    // then we set it to the same FBO as preConversionFBO[0], so the image data of our one single image
+    // buffer is distributed to both output pipes for output conversion and display:
+    if ((imagingmode & kPsychNeedDualWindowOutput) && (windowRecord->preConversionFBO[1] <= 0)) {
         windowRecord->preConversionFBO[1] = windowRecord->preConversionFBO[0];
     }
 

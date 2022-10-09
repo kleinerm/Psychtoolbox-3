@@ -2368,9 +2368,9 @@ if strcmpi(cmd, 'OpenWindow')
             fprintf('PsychImaging: WARNING! These are mutually exclusive! Will choose stereomode 10 instead of mirroring.\n');
         end
 
-        if stereomode == 1
+        if ~ismember(stereomode, [0, 2:10])
             sca;
-            error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
+            error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable stereomode %i! This is not supported.', stereomode);
         end
 
         % Extract optional 2nd parameter - The window rectangle of the slave
@@ -5127,33 +5127,6 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 end
 % --- End of GPU based mirroring of left half of onscreen window to right half requested? ---
-
-% --- GPU based mirroring of onscreen window to secondary display head requested? ---
-if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
-    % Yes: We need to replicate the framebuffer of the master onscreen
-    % window to the slave windows framebuffer.
-
-    % What we do: We use the right finalizer blit chain to copy the
-    % contents of the master window's system backbuffer (which is bound
-    % during execution of the right finalizer blit chain) to the
-    % colorbuffer texture of the special finalizedFBO[1] - the shadow
-    % framebuffer FBO of the slave window. Once we did this, the processing
-    % code of kPsychNeedDualWindowOutput in Screens
-    % PsychPreFlipOperations() routine will take care of the rest -->
-    % Blitting that FBO's and its texture to the system backbuffer of the
-    % slave window, thereby cloning the master windows framebuffer to the
-    % slave windows framebuffer:
-    % TODO FIXME: We assume that texture handle '1' denotes the color
-    % attachment texture of finalizedFBO[1]. This is true if this is the
-    % first opened onscreen window (ie., 99% of the time). If that
-    % assumption doesn't hold, we will guess the wrong texture handle and
-    % bad things will happen!
-    [w, h] = Screen('WindowSize', win, 1);
-    myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
-    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
-    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
-end
-% --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
 
 % --- Datapixx in use? ---
 if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))

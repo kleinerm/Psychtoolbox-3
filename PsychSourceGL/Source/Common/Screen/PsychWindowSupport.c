@@ -6044,7 +6044,11 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 // texture with the final stimulus image for slaveWindow into finalizedFBO[0], which is just a pseudo-FBO representing
                 // the system framebuffer - and therefore the backbuffer of slaveWindow.
                 // -> This is a bit dirty and convoluted, but its the most efficient procedure for this special case.
-                PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL);
+                if (stereo_mode == kPsychDualWindowStereo) {
+                    PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL);
+                } else {
+                    PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL);
+                }
 
                 // Paranoia mode: A dual-window display configuration must swap both display windows in
                 // close sync with each other and the vertical retraces of their respective display heads. Due
