@@ -1178,7 +1178,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             // can directly hook our finalizedFBO's sinks into the original source drawBufferFBO's and thereby
             // to their OpenGL FBO's as already allocated & setup above in stage 1 setup:
             windowRecord->finalizedFBO[0] = windowRecord->drawBufferFBO[0];
-            windowRecord->finalizedFBO[1] = windowRecord->drawBufferFBO[1];
+            windowRecord->finalizedFBO[1] = (windowRecord->drawBufferFBO[1] >= 0) ? windowRecord->drawBufferFBO[1] : windowRecord->finalizedFBO[1];
 
             // Disable MSAA flag which signals the sink should provide or expect MSAA textures, as no MSAA used:
             imagingmode &= ~kPsychSinkIsMSAACapable;
@@ -1204,7 +1204,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
                 // framebuffer aka drawBufferFBO's and thereby to their OpenGL FBO's as already allocated
                 // and setup above in stage 1 setup:
                 windowRecord->finalizedFBO[0] = windowRecord->drawBufferFBO[0];
-                windowRecord->finalizedFBO[1] = windowRecord->drawBufferFBO[1];
+                windowRecord->finalizedFBO[1] = (windowRecord->drawBufferFBO[1] >= 0) ? windowRecord->drawBufferFBO[1] : windowRecord->finalizedFBO[1];
 
                 // Disable MSAA flag which signals the sink should provide or expect MSAA textures if no MSAA used:
                 if (multiSample <= 0)

@@ -4216,6 +4216,19 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
         // Take post-swap request line:
         line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+    }   // Following else-if reached if an external display backend is in use on the primary onscreen window.
+    else if (windowRecord->slaveWindow && (windowRecord->imagingMode & kPsychNeedDualWindowOutput)) {
+        // This onscreen window uses an external display backend, e.g., Vulkan, for stimulus presentation,
+        // but also has a secondary slave window for visual feedback, e.g., to the experimenter, attached
+        // and enabled for visual stimulus mirroring/cloning to the OpenGL slave window. At this point, the
+        // slave windows OpenGL backbuffer already contains the to be shown mirror/clone image, and the
+        // main stimulus display will have started stimulus presentation, so all that's left to do is to
+        // perform the OpenGL bufferswap to also show the same stimulus on the feedback slave window.
+        // Do the minimum amount of operations to trigger the OpenGL bufferswap + workarounds sometimes needed:
+        PsychSetGLContext(windowRecord->slaveWindow);
+        PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+        PsychLockedTouchFramebufferIfNeeded(windowRecord->slaveWindow);
+        PsychSetGLContext(windowRecord);
     }
 
     // Take postswap request timestamp:
@@ -5947,7 +5960,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         // Process each of the (up to two) streams:
         for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychFrameSequentialStereo ||
                                     stereo_mode == kPsychDualWindowStereo || stereo_mode == kPsychDualStreamStereo ||
-                                    (imagingMode & kPsychNeedDualWindowOutput)) ? 2 : 1); viewid++) {
+                                    ((imagingMode & kPsychNeedDualWindowOutput) && !(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks))) ? 2 : 1); viewid++) {
 
             // Select final drawbuffer if our target is the system framebuffer:
             if (windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid == 0) {
