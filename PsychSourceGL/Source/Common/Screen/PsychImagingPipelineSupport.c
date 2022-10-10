@@ -1853,7 +1853,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
         return(FALSE);
     }
 
-    if (viewid > 0 && !(windowRecord->stereomode & kPsychDualStreamStereo)) {
+    if (viewid > 0 && !(windowRecord->stereomode == kPsychDualStreamStereo)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: Tried to setup right eye buffer in a purely monoscopic configuration! Skipped.\n");
         return(FALSE);
     }
@@ -2116,7 +2116,7 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFBO);
     glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFBO);
 
-    for (viewid = 0; viewid < ((windowRecord->stereomode & kPsychDualStreamStereo) ? 2 : 1) && (fborc == GL_FRAMEBUFFER_COMPLETE_EXT); viewid++) {
+    for (viewid = 0; viewid < ((windowRecord->stereomode == kPsychDualStreamStereo) ? 2 : 1) && (fborc == GL_FRAMEBUFFER_COMPLETE_EXT); viewid++) {
         // Are finalizedFBO and drawBufferFBO using the same backing PsychFBO? If yes,
         // and they are incompatible, then unshare them, fail if this fails:
         if (!PsychUnshareFinalizedFBOIfNeeded(windowRecord, viewid, format, width, height)) {
