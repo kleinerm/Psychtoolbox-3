@@ -6056,11 +6056,20 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 // blit chain (which was setup in SCREENOpenWindow.c). We blit from windowRecords finalizedFBO[1] - which is a color
                 // texture with the final stimulus image for slaveWindow into finalizedFBO[0], which is just a pseudo-FBO representing
                 // the system framebuffer - and therefore the backbuffer of slaveWindow.
-                // -> This is a bit dirty and convoluted, but its the most efficient procedure for this special case.
+                // Note that for kPsychNeedDualWindowOutput instead of kPsychDualWindowStereo, we need to invert the source vs. target,
+                // ie. blit into finalizedFBO[1] instead of [0].
+                //
+                // -> This is a bit dirty and convoluted, but it is the most efficient procedure for this special case.
                 if (stereo_mode == kPsychDualWindowStereo) {
                     PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL);
                 } else {
+                    // We must make sure to blit to the true system framebuffer / OpenGL backbuffer, regardless what other
+                    // mappings are set up in finalizedFBO[1], so enforce a OpenGL FBO id of zero == System framebuffer during
+                    // the blit, and then restore to whatever it was before after the blit:
+                    GLuint oldfbo = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid;
+                    windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid = 0;
                     PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL);
+                    windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid = oldfbo;
                 }
 
                 // Paranoia mode: A dual-window display configuration must swap both display windows in
