@@ -4047,13 +4047,10 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
-    int error, myinterval;
+    int error, myinterval = -1000;
 
     // Enable rendering context of window:
     PsychSetGLContext(windowRecord);
-
-    // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
-    windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
 
     // Sync counter available means desktop compositor via NetWM in use, so disable actual
     // vsync for the copy-swap from onscreen window backbuffer to redirection surface Pixmap:
@@ -4070,6 +4067,10 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
         if (error) {
             if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval > 0) ? "enable" : "disable");
         }
+        else {
+            // Assume success unless proven otherwise later:
+            myinterval = swapInterval;
+        }
     }
 
     // If Mesa query is supported, double-check if the system accepted our settings:
@@ -4081,6 +4082,10 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
             if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting [Req %i != Actual %i])!\n\n", (swapInterval > 0) ? "enable" : "disable", swapInterval, myinterval);
         }
     }
+
+    if (myinterval != -1000)
+        // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
+        windowRecord->vSynced = (myinterval > 0) ? TRUE : FALSE;
 
     return;
 }
