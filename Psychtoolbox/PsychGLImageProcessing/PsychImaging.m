@@ -2951,7 +2951,6 @@ if ~isempty(find(mystrcmp(reqs, 'DualWindowStereo')))
     % Yes: Must use stereomode 10.
     stereoMode = 10;
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedDualWindowOutput);
 end
 
 % Does usercode or internal code request a stereomode?
