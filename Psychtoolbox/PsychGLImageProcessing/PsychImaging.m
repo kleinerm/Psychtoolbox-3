@@ -1903,6 +1903,19 @@ if strcmpi(cmd, 'OpenWindow')
         specialFlags = varargin{9};
     end
 
+    % Display mirroring to separate slave window requested?
+    if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
+        % Yes. Try to disable vsync for OpenGL bufferswaps on that "mirror" window, as
+        % we don't want it to throttle the main stimulus presentation to the potentially
+        % lower video refresh rate or drifting video refresh cycle of the "mirror" display,
+        % as high performance and proper timing on the subject stimulus display is way more
+        % important than a bit of tearing on what is basically just an experimenter monitor:
+        if isempty(specialFlags)
+            specialFlags = 0;
+        end
+        specialFlags = mor(specialFlags, kPsychSkipSecondaryVsyncForFlip);
+    end
+
     if nargin < 11 || isempty(varargin{10})
         clientRect = [];
     else
@@ -2363,12 +2376,7 @@ if strcmpi(cmd, 'OpenWindow')
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of a valid secondary screen "slavescreen"!');
         end
 
-        if stereomode == 10
-            fprintf('PsychImaging: WARNING! You simultaneously requested display mirroring to 2nd output head and dual display stereomode 10.\n');
-            fprintf('PsychImaging: WARNING! These are mutually exclusive! Will choose stereomode 10 instead of mirroring.\n');
-        end
-
-        if ~ismember(stereomode, [0, 2:10])
+        if ~ismember(stereomode, [0, 2:9])
             sca;
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable stereomode %i! This is not supported.', stereomode);
         end

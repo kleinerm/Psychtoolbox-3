@@ -3816,13 +3816,17 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         if (windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce)
             sync_to_vbl = false;
 
-        if (vbl_synclevel==2) {
+        if ((vbl_synclevel == 2) || (windowRecord->specialflags & kPsychSkipSecondaryVsyncForFlip)) {
             // We are requested to flip immediately, instead of syncing to VBL. Disable VBL-Sync.
-            PsychOSSetVBLSyncLevel(windowRecord, 0);
+            if (vbl_synclevel == 2)
+                PsychOSSetVBLSyncLevel(windowRecord, 0);
+
             // Disable also for a slave window, if any. Unsupported for async flips.
-            if (windowRecord->slaveWindow && PsychIsMasterThread()) PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
+            if (windowRecord->slaveWindow && (windowRecord->slaveWindow->vSynced) && PsychIsMasterThread())
+                PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
         }
-        else {
+
+        if (vbl_synclevel != 2) {
             // The horror of Apple OS/X: Do a redundant call to enable vsync on the async
             // glswapcontext for async flips despite vsync is already enabled on that context.
             // Otherwise vsync will fail -- Bug found on 10.4.11:
@@ -4226,6 +4230,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // perform the OpenGL bufferswap to also show the same stimulus on the feedback slave window.
         // Do the minimum amount of operations to trigger the OpenGL bufferswap + workarounds sometimes needed:
         PsychSetGLContext(windowRecord->slaveWindow);
+
+        // Disable vsync for swaps on slaveWindow if requested by specialflags, unless vsync already disabled:
+        if ((windowRecord->specialflags & kPsychSkipSecondaryVsyncForFlip) && (windowRecord->slaveWindow->vSynced) && PsychIsMasterThread())
+            PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
+
         PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
         PsychLockedTouchFramebufferIfNeeded(windowRecord->slaveWindow);
         PsychSetGLContext(windowRecord);
