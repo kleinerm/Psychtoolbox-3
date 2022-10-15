@@ -6053,8 +6053,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         // Restore modelview matrix:
         glPopMatrix();
 
-        // In dual-window stereomode or dual-window output mode, we need to copy the finalizedFBO[1] into the backbuffer of
-        // the slave-window:
+        // In dual-window stereomode or dual-window output mode, we need to copy the finalizedFBO[1] (Stereo) or
+        // finalizedFBO[0] (dual-window output) into the backbuffer of the slave-window:
         if (stereo_mode == kPsychDualWindowStereo || (imagingMode & kPsychNeedDualWindowOutput)) {
             if (windowRecord->slaveWindow == NULL) {
                 if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Skipping master->slave blit operation in dual-window stereo mode or output mode...\n");
@@ -6077,7 +6077,11 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                     // the blit, and then restore to whatever it was before after the blit:
                     GLuint oldfbo = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid;
                     windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid = 0;
-                    PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL);
+                    if (PsychIsHookChainOperational(windowRecord->slaveWindow, kPsychMirrorWindowBlit))
+                        PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychMirrorWindowBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL);
+                    else
+                        PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL);
+
                     windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid = oldfbo;
                 }
 
