@@ -2384,12 +2384,20 @@ if strcmpi(cmd, 'OpenWindow')
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the display should get mirrored:
         slavewinrect = reqs{rows, 4};
-        if isempty(slavewinrect), slavewinrect = []; end
+        if ~isempty(slavewinrect)
+            slavewinflags = kPsychGUIWindow;
+        else
+            slavewinflags = [];
+        end
 
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
-        % chain properly:
-        slavewin = Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput);
+        % chain properly. Suppress sync tests and verbose output during open:
+        oldverbose = Screen('Preference', 'Verbosity', 1);
+        oldskip = Screen('Preference', 'SkipSyncTests', 2);
+        slavewin = Screen('OpenWindow', slavescreenid, 30, slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput, slavewinflags);
+        Screen('Preference', 'SkipSyncTests', oldskip);
+        Screen('Preference', 'Verbosity', oldverbose);
     end
 
     % Dualwindow output requested? [Essentially the same as display
