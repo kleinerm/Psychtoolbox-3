@@ -4558,6 +4558,18 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
     return;
 }
 
+static void resetTexUnit(void)
+{
+    glDisable(GL_TEXTURE_1D);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_TEXTURE_3D);
+    glDisable(GL_TEXTURE_RECTANGLE_EXT);
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+}
+
 psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
     psych_bool rc = TRUE;
@@ -4565,6 +4577,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     GLenum glerr;
     char* pstrpos = NULL;
     int texunit, texid;
+    psych_bool needTexPopAttrib = FALSE;
 
     // Select proper blitter function:
 
@@ -4597,11 +4610,19 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
     // TODO: Common setup code for texturing, filtering, alpha blending, z-test and such...
 
+    // If any texture setup is used, store previous state on attrib stack, disable everything
+    // to avoid interference by current, potentially incompatible, settings:
+    if (strstr(hookfunc->pString1, "TEXTURE") != NULL) {
+        needTexPopAttrib = TRUE;
+        glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT);
+    }
+
     // Setup code for 1D textures:
     pstrpos = hookfunc->pString1;
     while ((pstrpos=strstr(pstrpos, "TEXTURE1D"))) {
         if (2==sscanf(pstrpos, "TEXTURE1D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_1D);
             glBindTexture(GL_TEXTURE_1D, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_1D target of texunit %i\n", texid, texunit);
@@ -4614,6 +4635,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     while ((pstrpos=strstr(pstrpos, "TEXTURE2D"))) {
         if (2==sscanf(pstrpos, "TEXTURE2D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_2D);
             glBindTexture(GL_TEXTURE_2D, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_2D target of texunit %i\n", texid, texunit);
@@ -4626,6 +4648,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     while ((pstrpos=strstr(pstrpos, "TEXTURERECT2D"))) {
         if (2==sscanf(pstrpos, "TEXTURERECT2D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_RECTANGLE_EXT);
             glBindTexture(GL_TEXTURE_RECTANGLE_EXT, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_RECTANGLE_EXT target of texunit %i\n", texid, texunit);
@@ -4638,6 +4661,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     while ((pstrpos=strstr(pstrpos, "TEXTURE3D"))) {
         if (2==sscanf(pstrpos, "TEXTURE3D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_3D);
             glBindTexture(GL_TEXTURE_3D, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_3D target of texunit %i\n", texid, texunit);
@@ -4685,49 +4709,9 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
     // TODO: Common teardown code for texturing, filtering and such...
 
-    // Teardown code for 1D textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURE1D"))) {
-        if (2==sscanf(pstrpos, "TEXTURE1D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_1D, 0);
-            glDisable(GL_TEXTURE_1D);
-        }
-        pstrpos++;
-    }
-
-    // Teardown code for 2D textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURE2D"))) {
-        if (2==sscanf(pstrpos, "TEXTURE2D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glDisable(GL_TEXTURE_2D);
-        }
-        pstrpos++;
-    }
-
-    // Teardown code for 2D rectangle textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURERECT2D"))) {
-        if (2==sscanf(pstrpos, "TEXTURERECT2D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
-            glDisable(GL_TEXTURE_RECTANGLE_EXT);
-        }
-        pstrpos++;
-    }
-
-    // Teardown code for 3D textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURE3D"))) {
-        if (2==sscanf(pstrpos, "TEXTURE3D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_3D, 0);
-            glDisable(GL_TEXTURE_3D);
-        }
-        pstrpos++;
-    }
+    // Teardown code for textures:
+    if (needTexPopAttrib)
+        glPopAttrib();
 
     glActiveTextureARB(GL_TEXTURE0_ARB);
 
