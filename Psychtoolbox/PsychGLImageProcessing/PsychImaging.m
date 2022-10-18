@@ -1255,7 +1255,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   This function only works for monoscopic displays and single-window stereo
 %   modes (steremode 2 - 9 and some PsychImaging modes), it can not be used with
-%   with frame-sequential or dual-window stereo display modes. This because it
+%   frame-sequential or dual-window / dual-stream stereo display modes, as it
 %   internally uses the machinery for stereomode 10 with a few modifications to
 %   get its job done, so obviously neither dual-window mode 10 nor any similar
 %   mode can be used without interference.
@@ -5308,12 +5308,28 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
 
     % Overlay for mirror window requested?
     if reqs{rows, 6} == 1
+        % Get texture target type of the finalizedFBO's in use, as currently the
+        % imaging pipelines 'Builtin:IdentityBlit' builtin function will always
+        % generate texture coordinates for blitting which are suitable only for
+        % that texture target. Iow. Our overlay window overlaywin must use a
+        % FBO backing texture of the same texture target, or things will go sideways:
+        [~, ~, ttarget] = Screen('HookFunction', win, 'GetDisplayBufferTextures');
+
         % Create Offscreen window for the overlay. It has the same size as
         % the onscreen window, and the same pixeldepth, but a completely black
         % background with alpha value zero -- fully transparent by default.
         % The specialflags 32 setting protects the overlay offscreen window
         % from accidental batch-deletion by usercode calling Screen('Close'):
-        overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [], [], 32);
+        if ttarget == GL.TEXTURE_2D
+            % Need a GL.TEXTURE_2D backing texture:
+            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [], [], 32 + 1);
+            samplerstring = 'TEXTURE2D';
+        else
+            % Need a GL.TEXTURE_RECTANGLE backing texture:
+            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [], [], 32);
+            samplerstring = 'TEXTURERECT2D';
+        end
+
         ptb_MirrorOverlayWindows(win) = overlaywin;
 
         % Retrieve low-level OpenGL texture handle to the window:
@@ -5324,7 +5340,7 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
         % overlay only occludes the mirrored image where the overlay has a non-zero alpha:
         Screen('Hookfunction', slavewin, 'AppendMFunction', 'MirrorWindowBlit', 'Setup Alphatest for Overlay', 'glAlphaFunc(516, 0.0); glEnable(3008);');
         Screen('Hookfunction', slavewin, 'AppendBuiltin', 'MirrorWindowBlit', 'Builtin:IdentityBlit', ...
-               sprintf('TEXTURERECT2D(0)=%i:OvrSize:%i:%i', overlaytex, sw, sh));
+               sprintf('%s(0)=%i:OvrSize:%i:%i', samplerstring, overlaytex, sw, sh));
         Screen('Hookfunction', slavewin, 'AppendMFunction', 'MirrorWindowBlit', 'Teardown Alphatest for Overlay', 'glDisable(3008);');
     end
 end
