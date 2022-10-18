@@ -5322,11 +5322,11 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
         % from accidental batch-deletion by usercode calling Screen('Close'):
         if ttarget == GL.TEXTURE_2D
             % Need a GL.TEXTURE_2D backing texture:
-            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [], [], 32 + 1);
+            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 w h], [], 32 + 1);
             samplerstring = 'TEXTURE2D';
         else
             % Need a GL.TEXTURE_RECTANGLE backing texture:
-            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [], [], 32);
+            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 w h], [], 32);
             samplerstring = 'TEXTURERECT2D';
         end
 
