@@ -3622,7 +3622,22 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
   GLubyte* MonochromeTexture::invertBitmap ( const FT_Bitmap& bitmap,
 					     int* width, int* height )
   {
-    *width = nearestPowerCeil( bitmap.width );
+    // *width must not only be a power-of-two, but also an integral multiple of
+    // 8 texels. We achieve this by always feeding at least 8 into nearestPowerCeil().
+    // The multiple-of-8 constraint is needed as workaround for a bug in Mesa OpenGL
+    // drivers, present in all Mesa versions from at least October 2010 to October 2022,
+    // where Mesa misconverts GL_BITMAP textures with a width that isn't a multiple of
+    // 8 texels. This hits us with very small text sizes and narrow glyps, e.g., l or !
+    // Culprit is the lack of any row pitch handling in extract_uint_indexes() GL_BITMAP
+    // path. Reference: https://gitlab.freedesktop.org/mesa/mesa/-/blame/main/src/mesa/main/pack.c#L277
+    // GL-Spec says each new row of texels row must start with GL_UNPACK_ALIGNMENT bytes
+    // alignment, ie. in our case at a new byte boundary == 8 bit boundary. The wrongly
+    // tight packing in extract_uint_indexes() without any byte-alignment screws up for
+    // any texture with other than 8 pixels = 8 bits = 1 Byte row alignment... Other
+    // GL_BITMAP handling routines got this right, e.g., the one year older _mesa_expand_bitmap() in
+    // https://gitlab.freedesktop.org/mesa/mesa/-/blame/main/src/mesa/main/image.c#L385
+    // so somebody must have had a bad day...
+    *width = nearestPowerCeil( (bitmap.width > 8) ? bitmap.width : 8 );
     *height = nearestPowerCeil( bitmap.rows );
 
     // MK: Alloc at least 128 Bytes to workaround potential gfx-driver out-of-bounds
