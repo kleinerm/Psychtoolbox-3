@@ -44,7 +44,8 @@ static libusb_context *ctx = NULL;
 int ConfigureDevice(libusb_device_handle* dev, int configIdx);
 
 // Perform device control transfer on USB device:
-int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
+int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest,
+                              psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData, unsigned int timeOutMSecs)
 {
     int rc;
     libusb_device_handle* dev = (libusb_device_handle*) devRecord->device;
@@ -52,9 +53,7 @@ int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmReq
     if (dev == NULL)
         PsychErrorExitMsg(PsychError_internal, "libusb_device_handle* device points to NULL device!");
 
-    // Send the data across the USB bus by executing the device control request. Return status code.
-    // We use a timeout value of 10000 msecs, aka 10 seconds for request to complete:
-    rc = libusb_control_transfer(dev, bmRequestType, bRequest, wValue, wIndex, (unsigned char*) pData, wLength, 10000);
+    rc = libusb_control_transfer(dev, bmRequestType, bRequest, wValue, wIndex, (unsigned char*) pData, wLength, timeOutMSecs);
 
     // Return value is either number of transmitted bytes, or a negative error code.
     if (rc < 0)
