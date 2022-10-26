@@ -160,13 +160,7 @@ typedef struct PsychUSBSetupSpec_Struct PsychUSBSetupSpec;
 // Structure to keep track of a generic USB device:
 struct PsychUSBDeviceRecord_Struct {
     int valid;                          // 0 = Unused/Free device record, 1 = Active device record.
-
-#if PSYCH_SYSTEM == PSYCH_OSX
-    IOUSBDeviceInterface182** device;   // Actual low-level device specific pointer for OS/X.
-#else
-    // Linux & Windows stuff:
-    void* device;                       // libusb device handle for other os'es.
-#endif
+    void* device;                       // libusb device handle.
 };
 
 typedef struct PsychUSBDeviceRecord_Struct PsychUSBDeviceRecord;

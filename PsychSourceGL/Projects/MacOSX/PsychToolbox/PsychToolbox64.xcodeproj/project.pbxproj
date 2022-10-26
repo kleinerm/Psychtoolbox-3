@@ -840,7 +840,6 @@
 		83CBD6820BC02323007CB68C /* glew.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD6730BC02323007CB68C /* glew.c */; settings = {COMPILER_FLAGS = "-x c"; }; };
 		83CBD6840BC02323007CB68C /* moglcore.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD67A0BC02323007CB68C /* moglcore.c */; };
 		83CBD6F90BC02F0E007CB68C /* mogl_rebinder.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */; settings = {COMPILER_FLAGS = "-x c"; }; };
-		83CC360C0F63046B00EBA5E7 /* PsychHIDGenericUSBSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */; };
 		83D42C2F1417FE9700C83ED1 /* SCREENGetFlipInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D42C2E1417FE9700C83ED1 /* SCREENGetFlipInfo.c */; };
 		83D42C301417FE9700C83ED1 /* SCREENGetFlipInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D42C2E1417FE9700C83ED1 /* SCREENGetFlipInfo.c */; };
 		83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */; };
@@ -1001,7 +1000,6 @@
 		F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
 		F089BCFE0AD42DF500663D86 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
 		F111E6580AD4BDD60090A83E /* libHIDUtilities-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */; };
-		F13E93500F53421E007D7EA0 /* PsychHIDGenericUSBSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */; };
 		F14A27AF0AD48A2A00BFB68F /* MachGetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95011D04E446B9007A7274 /* MachGetPriorityMex.c */; };
 		F14A27B00AD48A2A00BFB68F /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
 		F14A27B10AD48A2A00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2439,7 +2437,6 @@
 		F074321A0AD465B400602397 /* MachSetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachSetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F089BD090AD42DF500663D86 /* Screen.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Screen.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libHIDUtilities-Intel.a"; sourceTree = "<group>"; };
-		F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDGenericUSBSupport.c; path = ../../../Source/OSX/PsychHID/PsychHIDGenericUSBSupport.c; sourceTree = SOURCE_ROOT; };
 		F14A27C20AD48A2A00BFB68F /* MachGetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachGetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A27FD0AD48C1200BFB68F /* PsychHID.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychHID.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A28450AD48DDF00BFB68F /* Eyelink.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Eyelink.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3661,7 +3658,6 @@
 				F16C715E0F86999500A8BE72 /* PsychHIDOpenUSBDevice.c */,
 				F1BCA5ED0F8676BD00EABA6F /* PsychHIDUSBControlTransfer.c */,
 				833A179F13DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c */,
-				F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */,
 				CF566E6807F7D2FC00D4957A /* RegisterProject.h */,
 				CF566E6907F7D2FC00D4957A /* RegisterProject.c */,
 				CF566E7307F7D2FC00D4957A /* PsychHID.h */,
@@ -6942,7 +6938,6 @@
 			files = (
 				2FEBA8FE098990F500F4165F /* mexversion.c in Sources */,
 				2FEBA8FF098990F600F4165F /* MiniBox.c in Sources */,
-				F13E93500F53421E007D7EA0 /* PsychHIDGenericUSBSupport.c in Sources */,
 				2FEBA900098990F700F4165F /* MODULEVersion.c in Sources */,
 				2FEBA901098990F700F4165F /* ProjectTable.c in Sources */,
 				2FEBA902098990F800F4165F /* PsychAuthors.c in Sources */,
@@ -7679,7 +7674,6 @@
 				8325CED30CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */,
 				8325CED60CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */,
 				83AD4CF20DC51739002E1DF7 /* PsychCellGlue.c in Sources */,
-				83CC360C0F63046B00EBA5E7 /* PsychHIDGenericUSBSupport.c in Sources */,
 				8310AC490F87C222004AAE79 /* PsychHIDCloseUSBDevice.c in Sources */,
 				8310AC4A0F87C237004AAE79 /* PsychHIDOpenUSBDevice.c in Sources */,
 				833910EA190C8CB50096DDE9 /* PsychScriptingGlue.c in Sources */,

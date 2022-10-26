@@ -27,7 +27,9 @@ static char synopsisString[] =  "Tries to open and initialize a generic USB devi
                                 "'configurationId' optional: Set USB device configuration to given value. By "
                                 "default, configuration zero is chosen. Changing the configuration id is only "
                                 "possible if the device isn't in use already, and not under control of an operating "
-                                "system device driver. A value of -1 would skip changing the configuration.\n";
+                                "system device driver. A value of -1 would skip changing the configuration.\n"
+                                "A call with supported = PsychHID('OpenUSBDevice', -1, -1); will returns USB low-level "
+                                "support status: 1 = Supported, 0 = Not supported, e.g., due to missing libusb-1 library.\n";
 static char seeAlsoString[] =   "";
 
 PsychError PSYCHHIDOpenUSBDevice(void) 
@@ -51,6 +53,12 @@ PsychError PSYCHHIDOpenUSBDevice(void)
     PsychCopyInIntegerArg(1, TRUE, &vendorID);
     PsychCopyInIntegerArg(2, TRUE, &deviceID);
 
+    // Query if USB low-level access is actually supported?
+    if (vendorID == -1 && deviceID == -1) {
+        PsychCopyOutDoubleArg(1, FALSE, (double) PsychHIDOSOpenUSBDevice(NULL, NULL, NULL));
+        return(PsychError_none);
+    }
+
     // Try to get free slot in internal device bank: This will error-exit if no capacity left.
     usbDev = PsychHIDGetFreeUSBDeviceSlot(&usbHandle);
 
@@ -70,7 +78,6 @@ PsychError PSYCHHIDOpenUSBDevice(void)
     // Try to open the device. This will init the device structure properly and
     // also set the valid flag to "active/open" if open succeeds:
     if (!PsychHIDOSOpenUSBDevice(usbDev, &errcode, &deviceSpec)) {
-        // MK TODO: We don't set or use 'errcode' yet.
         PsychErrorExitMsg(PsychError_user, "Failed to open the specified type of generic USB device. Make sure it is plugged in or not already open.");
     }
 
