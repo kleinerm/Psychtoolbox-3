@@ -57,11 +57,8 @@ int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmReq
     rc = libusb_control_transfer(dev, bmRequestType, bRequest, wValue, wIndex, (unsigned char*) pData, wLength, 10000);
 
     // Return value is either number of transmitted bytes, or a negative error code.
-    // We map any non-error return to zero, as on OS/X:
-    if (rc >= 0) return(0);
-
-    // Failure! Map to verbose message:
-    // TODO...
+    if (rc < 0)
+        printf("PsychHID-ERROR: USB control transfer failed: %s - %s.\n", libusb_error_name(rc), libusb_strerror(rc));
 
     return (rc);
 }
@@ -126,7 +123,12 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
             }
         #endif
 
-        libusb_init(&ctx);
+        rc = libusb_init(&ctx);
+        if (rc) {
+            *errorcode = rc;
+            printf("PTB-ERROR: Could not initialize libusb-1 low-level USB access library: %s - %s.\n", libusb_error_name(rc), libusb_strerror(rc));
+            return(FALSE);
+        }
 
         // Set level of verbosity. Use new api since libusb version 1.0.22:
         #if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000106)
@@ -139,7 +141,6 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
     dev = libusb_open_device_with_vid_pid(ctx, usbVendor, usbProduct);
     if (dev) {
         // Got it!
-        deviceFound = TRUE;
 
         // Increment refcount of libusb users:
         ctx_refcount++;
@@ -155,12 +156,14 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
             PsychHIDOSCloseUSBDevice(devRecord);
 
             *errorcode = rc;
-            printf("PsychHID-ERROR: Unable to configure USB device during Open for configuration id %i.\n", spec->configurationID);
+            printf("PsychHID-ERROR: Unable to configure USB device during Open for configuration id %i: %s - %s.\n", spec->configurationID, libusb_error_name(rc), libusb_strerror(rc));
+
             return(FALSE);
         }
 
         // Set errorcode to success:
-        *errorcode = 0;
+        *errorcode = LIBUSB_SUCCESS;
+        deviceFound = TRUE;
     }
     else {
         // No matching device found. NULL-out the record, we're done.
@@ -168,7 +171,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
         // state of the record upon entering this function.
         devRecord->device = NULL;
         devRecord->valid = 0;
-        *errorcode = -1;
+        *errorcode = LIBUSB_ERROR_NO_DEVICE;
     }
 
     if (ctx_refcount == 0) {
@@ -190,7 +193,7 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     int rc;
 
     // A configIdx == -1 means: Skip configuration.
-    if (configIdx == -1) return(0);
+    if (configIdx == -1) return(LIBUSB_SUCCESS);
 
     // Get device pointer for handle:
     usbdev = libusb_get_device(dev);
@@ -202,13 +205,13 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     numConfig = deviceDesc.bNumConfigurations;
 
     if (rc || (numConfig == 0)) {
-        printf("PsychHID: USB ConfigureDevice: ERROR! Error getting number of configurations or no configurations available at all (err = %d)\n", rc);
+        printf("PsychHID: USB ConfigureDevice: ERROR! Error getting number of device configurations, or no configurations available at all (err = %d)\n", rc);
         return(rc);
     }
 
     if (configIdx < 0 || configIdx >= (int) numConfig) {
         printf("PsychHID: USB ConfigureDevice: ERROR! Provided configuration index %i outside support range 0 - %i for this device!\n", configIdx, (int) numConfig);
-        return(-1);
+        return(LIBUSB_ERROR_INVALID_PARAM);
     }
 
     // Get the configuration descriptor for index 'configIdx':
@@ -231,7 +234,7 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     }
 
     // If current value is already identical to requested value, we're done:
-    if (current_bConfigurationValue == bConfigurationValue) return(0);
+    if (current_bConfigurationValue == bConfigurationValue) return(LIBUSB_SUCCESS);
 
     // Set the device's configuration. The configuration value is found in
     // the bConfigurationValue field of the configuration descriptor
@@ -242,5 +245,5 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     }
 
     // Return success:
-    return(0);
+    return(LIBUSB_SUCCESS);
 }

@@ -21,7 +21,7 @@ static char useString[] = "PsychHID('CloseUSBDevice' [, usbHandle])";
 //                                                      1
 static char synopsisString[] =  "Closes a generic USB device specified by 'usbHandle'. "
                                 "Closes all generic USB devices if 'usbHandle' is omitted. ";
-static char seeAlsoString[] =   "";
+static char seeAlsoString[] =   "OpenUSBDevice";
 
 PsychError PSYCHHIDCloseUSBDevice(void)
 {

@@ -28,9 +28,9 @@ static char synopsisString[] =  "Tries to open and initialize a generic USB devi
                                 "default, configuration zero is chosen. Changing the configuration id is only "
                                 "possible if the device isn't in use already, and not under control of an operating "
                                 "system device driver. A value of -1 would skip changing the configuration.\n"
-                                "A call with supported = PsychHID('OpenUSBDevice', -1, -1); will returns USB low-level "
+                                "A call with supported = PsychHID('OpenUSBDevice', -1, -1); returns USB low-level "
                                 "support status: 1 = Supported, 0 = Not supported, e.g., due to missing libusb-1 library.\n";
-static char seeAlsoString[] =   "";
+static char seeAlsoString[] =   "CloseUSBDevice USBControlTransfer";
 
 PsychError PSYCHHIDOpenUSBDevice(void) 
 {

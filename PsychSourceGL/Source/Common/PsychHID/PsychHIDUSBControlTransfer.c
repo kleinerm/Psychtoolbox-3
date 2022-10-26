@@ -17,10 +17,12 @@
 
 #include "PsychHID.h"
 
-static char useString[] = "outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, inData)";
-//                                                                  1          2              3         4       5       6        7
+static char useString[] = "[outData, count] = PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, inData)";
+//                          1        2                                       1          2              3         4       5       6        7
 static char synopsisString[] =  "Communicates with a USB device via the control endpoint, aka control transfer.\n"
-                                "The results of out-transfers are returned in return argument 'outData' as a uint8 array.\n"
+                                "The results of out-transfers are returned in return argument 'outData' as a uint8 array. "
+                                "In case of an in-transfer, 'outData' does not exist, and 'count' will be the sole return argument.\n"
+                                "The actual number of bytes transfered in any direction is returned in return argument 'count'.\n"
                                 "'usbHandle' is the handle of the USB device to control. 'bmRequestType' is the type of "
                                 "reqest: If bit 7 is set, this defines a transfer from device to host and 'outData' will be "
                                 "filled with at most 'wLength' bytes received from the device. Otherwise it defines a transfer "
@@ -31,7 +33,7 @@ static char synopsisString[] =  "Communicates with a USB device via the control 
                                 "data to return at most on a out-transfer, or the amount of data provided for an in-transfer "
                                 "in the optional uint8 vector 'inData'. 'inData' must have at least as many elements as the "
                                 "value of 'wLength'! ";
-static char seeAlsoString[] =   "";
+static char seeAlsoString[] =   "OpenUSBDevice";
 
 PsychError PSYCHHIDUSBControlTransfer(void) 
 {
@@ -49,7 +51,7 @@ PsychError PSYCHHIDUSBControlTransfer(void)
     // Make sure the correct number of input arguments is supplied:
     PsychErrorExit(PsychRequireNumInputArgs(6));
     PsychErrorExit(PsychCapNumInputArgs(7));
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
 
     // Copy all input values. The input data is interpreted as a byte array:
     PsychCopyInIntegerArg(1, TRUE, &usbHandle);
@@ -91,8 +93,11 @@ PsychError PSYCHHIDUSBControlTransfer(void)
     }
 
     // Make the actual control transfer request:
-    if ((err = PsychHIDOSControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint8) bRequest, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer)) != 0)
+    if ((err = PsychHIDOSControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint8) bRequest, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer)) < 0)
         PsychErrorExitMsg(PsychError_system, "The USB Control transfer failed.");
 
-    return PsychError_none;
+    // Return err - the number of actually transfered bytes:
+    PsychCopyOutDoubleArg((bmRequestType & USB_OUTTRANSFER) ? 2 : 1, FALSE, (double) err);
+
+    return(PsychError_none);
 }
