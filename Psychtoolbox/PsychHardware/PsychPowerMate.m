@@ -106,7 +106,8 @@ function varargout = PsychPowerMate(cmd, varargin)
 % PsychPowerMate('SetBrightness', handle, level);
 % -- Change brightness of the LED of the PowerMate specified by 'handle'
 % to 'level'. Level can be between 0 and 255. Note: This does not currently
-% work on MS-Windows.
+% work on MS-Windows. On macOS you need a 3rd party (e.g., HomeBrew) installed
+% libusb-1.0.dylib, otherwise the function will error-out.
 %
 % Note: Currently 'handle' is ignored, so you can not select which one
 % of multiple PowerMate's would get its brightness set and this only
@@ -194,6 +195,7 @@ function varargout = PsychPowerMate(cmd, varargin)
 %                  knob motion in the background via our improved keyboard queues,
 %                  which can now track valuator changes and values, and thereby knob
 %                  movement and positions.
+% 25-Oct-2022  mk  Add check and warning if USB control transfers unsupported on macOS.
 
 persistent turnval;
 persistent buttonval;
@@ -365,9 +367,13 @@ if strcmpi(cmd, 'SetBrightness')
     error('Brightness level missing or invalid.');
   end
 
-  % Changing parameters is done via USB control transfers,
-  % so open the USB device, then issue a control transfer,
-  % then close it again.
+  % Changing parameters is done via USB control transfers, so open the USB
+  % device, then issue a control transfer, then close it again. Check if
+  % USB low-level access is supported:
+  if ~PsychHID('OpenUSBDevice', -1, -1)
+      warning('libusb-1.0 is not available on this system, therefore the ''SetBrightness'' function will not work.');
+  end
+
   %
   % Currently we can't select among multiple instances of
   % the same type of device. Iow. the 'handle' is useless,
