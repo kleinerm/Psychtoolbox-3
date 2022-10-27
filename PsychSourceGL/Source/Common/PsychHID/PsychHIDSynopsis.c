@@ -63,8 +63,8 @@ const char** InitializeSynopsis(void)
     synopsis[i++] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID [, configurationId=0])";
     synopsis[i++] = "PsychHID('CloseUSBDevice' [, usbHandle])";
     synopsis[i++] = "[recData, count] = PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength [, outData][, timeOutMSecs=10000])";
-    synopsis[i++] = "[count, recData] = PsychHID('USBBulkTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";
-    synopsis[i++] = "[count, recData] = PsychHID('USBInterruptTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";
+    synopsis[i++] = "[countOrRecData] = PsychHID('USBBulkTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";
+    synopsis[i++] = "[countOrRecData] = PsychHID('USBInterruptTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";
 
     synopsis[i++] = NULL;  // this tells PsychDisplayPsychHIDSynopsis where to stop
     if (i > MAX_SYNOPSIS_STRINGS) {
