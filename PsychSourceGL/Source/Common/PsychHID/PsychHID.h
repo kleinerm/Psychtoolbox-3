@@ -199,6 +199,9 @@ PsychError PSYCHHIDGiveMeReports(void);                 // PsychHIDGiveMeReports
 PsychError PSYCHHIDOpenUSBDevice(void);                 // PSYCHHIDOpenUSBDevice.c
 PsychError PSYCHHIDCloseUSBDevice(void);                // PSYCHHIDCloseUSBDevice.c
 PsychError PSYCHHIDUSBControlTransfer(void);            // PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDUSBBulkTransfer(void);               // PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDUSBInterruptTransfer(void);          // PSYCHHIDUSBControlTransfer.c
+
 PsychError PSYCHHIDKeyboardHelper(void);                // PSYCHHIDKeyboardHelper.c
 
 // Internal function protototypes:
@@ -247,6 +250,8 @@ psych_bool  PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorc
 void        PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
 int         PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest,
                                       psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData, unsigned int timeOutMSecs);
+int         PsychHIDOSBulkTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs);
+int         PsychHIDOSInterruptTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs);
 
 // These must be defined for each OS in their own PsychHIDStandardInterfaces.c:
 #ifdef __cplusplus

@@ -246,3 +246,37 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     // Return success:
     return(LIBUSB_SUCCESS);
 }
+
+int PsychHIDOSBulkTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs)
+{
+    int rc;
+    libusb_device_handle* dev = (libusb_device_handle*) devRecord->device;
+
+    if (dev == NULL)
+        PsychErrorExitMsg(PsychError_internal, "libusb_device_handle* device points to NULL device!");
+
+    rc = libusb_bulk_transfer(dev, (unsigned char) endPoint, (unsigned char*) buffer, length, count, timeOutMSecs);
+
+    // Return value is either 0 on success, or a negative error code.
+    if (rc < 0)
+        printf("PsychHID-ERROR: USB bulk transfer failed: %s - %s.\n", libusb_error_name(rc), libusb_strerror(rc));
+
+    return (rc);
+}
+
+int PsychHIDOSInterruptTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs)
+{
+    int rc;
+    libusb_device_handle* dev = (libusb_device_handle*) devRecord->device;
+
+    if (dev == NULL)
+        PsychErrorExitMsg(PsychError_internal, "libusb_device_handle* device points to NULL device!");
+
+    rc = libusb_interrupt_transfer(dev, (unsigned char) endPoint, (unsigned char*) buffer, length, count, timeOutMSecs);
+
+    // Return value is either 0 on success, or a negative error code.
+    if (rc < 0)
+        printf("PsychHID-ERROR: USB interrupt transfer failed: %s - %s.\n", libusb_error_name(rc), libusb_strerror(rc));
+
+    return (rc);
+}
