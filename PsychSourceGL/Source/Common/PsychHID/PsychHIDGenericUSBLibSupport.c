@@ -33,6 +33,17 @@
 // *after* include's for dinput.h !!
 #include <libusb.h>
 
+// Define simple replacement for libusb_error_name() when building against
+// old libusb versions older than v1.0.9:
+#if !defined(LIBUSB_API_VERSION)
+static const char* libusb_error_name(int errcode)
+{
+    static char errcodestr[11];
+    sprintf(errcodestr, "Error %i", errcode);
+    return(errcodestr);
+}
+#endif
+
 #if PSYCH_SYSTEM == PSYCH_OSX
 extern int libusb_init(libusb_context **ctx) __attribute__((weak_import));
 #endif
@@ -209,7 +220,7 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     }
 
     if (configIdx < 0 || configIdx >= (int) numConfig) {
-        printf("PsychHID: USB ConfigureDevice: ERROR! Provided configuration index %i outside support range 0 - %i for this device!\n", configIdx, (int) numConfig);
+        printf("PsychHID: USB ConfigureDevice: ERROR! Provided configuration index %i outside support range 0 - %i for this device!\n", configIdx, (int) numConfig - 1);
         return(LIBUSB_ERROR_INVALID_PARAM);
     }
 
