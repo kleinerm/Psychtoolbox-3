@@ -395,7 +395,7 @@ if IsOctave
         end
 
         if ((octavemajorv >= 5) || (octavemajorv == 4 && octaveminorv >= 4)) && IsLinux
-            % Octave-4.4 and Octave-5 can share the same mex files in the Octave-5 folder on Linux:
+            % Octave-4.4, 5.x, 6.x and Octave-7.x can share the same mex files in the Octave-5 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave5'];
         elseif ismember(octavemajorv, [3,4]) && IsLinux
             % Octave-3 and Octave-4.0/4.2 can share the same mex files in the Octave-3 folder on Linux:
@@ -463,13 +463,13 @@ if IsOctave
 
     if  (IsOSX && (~ismember(octavemajorv, [6,7]))) || ...
         (IsWin && (octavemajorv ~= 6 || ~ismember(octaveminorv, [1,2,3,4]))) || ...
-        (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 6)))
+        (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 7)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything from 4.4 to 6.4 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, or 6.x series.\n');
-            fprintf('WARNING: You can get Psychtoolbox for other or more recent versions of Octave from NeuroDebian.\n');
+            % On Linux everything from 4.4 to at least 7.2 is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x or 7.x series.\n');
+            fprintf('WARNING: You can get Psychtoolbox for other, or more recent, versions of Octave from NeuroDebian.\n');
         elseif IsOSX
             fprintf('WARNING: only using Octave 6 or Octave 7 with this version of Psychtoolbox.\n');
         else
@@ -523,7 +523,7 @@ if IsOctave
         % Failed! Either screwed setup of path or missing runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        if ismember(octavemajorv, [3,4,5,6]) && IsLinux
+        if ismember(octavemajorv, [3,4,5,6,7]) && IsLinux
             fprintf('ERROR: Make sure to have the ''liboctave-dev'' package installed, otherwise symlinks\n');
             fprintf('ERROR: from liboctinterp.so to the liboctinterp library of your Octave installation\n');
             fprintf('ERROR: might by missing, causing our mex files to fail to load with linker errors.\n');
