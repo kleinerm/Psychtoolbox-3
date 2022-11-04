@@ -547,7 +547,7 @@ end
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd' && ...
-   needPreventDrmModifiers == 0
+   needPreventDrmModifiers == 0 && ~IsARM
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -657,7 +657,7 @@ if noautoaddgpu > 0 || needPreventDrmModifiers
 end
 
 if multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
+   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd' && ~IsARM
   % Done writing the file:
   fclose(fid);
 else
@@ -735,7 +735,8 @@ else
     % values for the gpu driving that single X-Screen.
     WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, [], [], []);
 
-    if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
+    if ismember('y', depth30bpp) || ismember('0', depth30bpp) || strcmp(xdriver, 'nvidia') || ...
+       (strcmp(xdriver, 'modesetting') && IsARM)
       fprintf(fid, 'Section "Screen"\n');
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
@@ -824,6 +825,14 @@ function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, use
       useuxa = 'sna';
     end
     fprintf(fid, '  Option      "AccelMethod" "%s"\n', useuxa);
+  end
+
+  % RaspberryPi with VideoCore4 needs AccelMethod override to glamor, because
+  % RaspberryPi OS 11, as of late 2022, disables glamor, and thereby any
+  % hardware acceleration for OpenGL on VideoCore4 to conserve RAM, something
+  % that doesn't fly with our use case:
+  if strcmp(xdriver, 'modesetting') && IsARM
+    fprintf(fid, '  Option      "AccelMethod" "glamor"\n');
   end
 
   if strcmp(xdriver, 'ati') && primehacks
