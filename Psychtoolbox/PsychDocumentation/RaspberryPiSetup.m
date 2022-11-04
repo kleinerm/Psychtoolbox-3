@@ -10,7 +10,7 @@
 % Psychtoolbox as provided directly by us via DownloadPsychtoolbox et al., even
 % on 64-Bit processors. Whatever is the most recent stable Raspbian + GNU/Octave
 % is what PTB will support, with some jiggle room, as we do not keep close track
-% of development an updates to Raspbian. Raspbian itself also provides versions
+% of development and updates to Raspbian. Raspbian itself also provides versions
 % of Psychtoolbox, installable via "sudo apt install octave-psychtoolbox-3", and
 % 64-Bit versions of Raspbian would ship such packages as 64-Bit packages. Other
 % Linux distributions for RaspberryPi, like Ubuntu for RaspberryPi, will also
@@ -22,8 +22,8 @@
 % beta releases, as the Linux distributions usually ship whatever PTB was the most
 % recent version at a time sometime before the distributions was released. Those
 % packages do not get updates after initial distribution release, not even bug
-% fixes. E.g., Raspbian at early 2021 ships some Psychtoolbox 3.0.15 variant,
-% whereas PTB betas are now at version 3.0.17 or later.
+% fixes. E.g., Raspbian at late 2022 ships some Psychtoolbox 3.0.17 variant,
+% whereas PTB betas are now at version 3.0.19 or later.
 %
 %
 % The RaspberryPi 2B is tested for compatibility with Psychtoolbox. The test system
@@ -116,23 +116,12 @@
 %
 %   3. Switch from the firmware kms video driver to the proper fully open-source kms
 %      video driver. For this, edit the file /boot/config.txt - the section at the end,
-%      then reboot. The section should look like this on a RaspberryPi 4 / 400:
+%      then reboot. The section should look like this on a RaspberryPi 1 / 2 / 3 / 4 / 400:
 %
-%      [pi4]
-%      # Enable DRM VC4 V3D driver on top of the dispmanx display stack
-%      dtoverlay=vc4-kms-v3d-pi4
+%      dtoverlay=vc4-kms-v3d
 %      max_framebuffers=2
-%      gpu_mem=256
 %
-%      [all]
-%      gpu_mem=256
-%
-%      You could increase gpu_mem to numbers larger than 256 MB if you run into
-%      graphics performance trouble or other glitches. Important for proper visual
-%      stimulation with proper timing and reliability is that the dtoverlay parameter is
-%      set to vc4-kms-v3d-pi4 instead of vc4-fkms-v3d.
-%
-%      On a RaspberryPi 2 or 3, the dtoverlay parameter should be vc4-kms-v3d instead
+%      It is important that the dtoverlay parameter should be vc4-kms-v3d instead
 %      of vc4-fkms-v3d.
 %
 %   4. On the RaspberryPi 4 / 400 with editions of Raspbian / RaspberryPi OS older than
@@ -143,6 +132,18 @@
 %      angrily about "pageflipping not being used for flips", visual stimulation timing
 %      will be grossly wrong, and you will observe massive tearing artifacts, flicker and
 %      other stimulus anomalies.
+%
+%      On the RaspberryPi 1/2/3, you must disable use of xcompmgr to avoid tearing and
+%      bad visual timing:
+%
+%      In a terminal type: sudo raspi-config
+%      Navigate to Advanced Options > Compositor > xcompmgr composition manager
+%      Choose No
+%      Reboot the Raspberry Pi.
+%
+%      Also run XOrgConfCreator, and XOrgConfSelector to install a custom
+%      xorg.conf file, which will work around a current limitation in Raspbian,
+%      as of November 2022. Logout and login again, or reboot the RaspberryPi.
 %
 %   With all setup steps performed properly, and a reboot for good measure, visual
 %   stimulation should work very well, with robust, trustworthy and sub-millisecond
