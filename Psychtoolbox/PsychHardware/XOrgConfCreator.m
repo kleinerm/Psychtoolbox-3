@@ -51,11 +51,17 @@ if nargin < 1 || isempty(expertmode)
 end
 
 % Which X-Server version is in use?
+xversion = [0, 0, 0];
 [rc, text] = system('xdpyinfo | grep ''X.Org version''');
 if rc == 0
   xversion = sscanf (text, 'X.Org version: %d.%d.%d');
 else
-  xversion = [0, 0, 0];
+  % No xdpyinfo installed by default, e.g., on RaspberryPi OS, or failed?
+  % Try again at old traditional xorg log location:
+  [rc, text] = system('grep ''X.Org X Server '' /var/log/Xorg.0.log');
+  if rc == 0
+    xversion = sscanf (text, 'X.Org X Server %d.%d.%d');
+  end
 end
 
 fprintf('Detected X-Server version %i.%i.%i\n', xversion(1), xversion(2), xversion(3));
