@@ -552,17 +552,6 @@ function varargout = PsychVRHMD(cmd, varargin)
 % This allows probing video outputs to find the one which feeds the HMD.
 %
 %
-% [headToEyeShiftv, headToEyeShiftMatrix] = PsychVRHMD('GetEyeShiftVector', hmd, eye);
-% - Retrieve 3D translation vector [tx, ty, tz] that defines the 3D position of the given
-% eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
-% reference frame. This is needed to translate a global head pose into a eye
-% pose, e.g., to translate the output of PsychOculusVR('GetEyePose') into actual
-% tracked/predicted eye locations for stereo rendering.
-%
-% In addition to the 'headToEyeShiftv' vector, a corresponding 4x4 translation
-% matrix is also returned in 'headToEyeShiftMatrix' for convenience.
-%
-%
 % [projL, projR] = PsychVRHMD('GetStaticRenderParameters', hmd [, clipNear=0.01][, clipFar=10000.0]);
 % - Retrieve parameters needed to setup the intrinsic parameters of the virtual
 % camera for scene rendering.
