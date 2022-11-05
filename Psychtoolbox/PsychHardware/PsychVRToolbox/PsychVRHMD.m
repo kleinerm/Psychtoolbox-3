@@ -73,7 +73,8 @@ function varargout = PsychVRHMD(cmd, varargin)
 % so stimulus display may change slightly for the same HMD hardware and user-code,
 % compared to older Psychtoolbox-3 releases. This change was crucial to accomodate the
 % rather different imaging properties of the Oculus Rift CV1 and possible other future
-% HMD's.
+% HMD's. Note: This requirement is currently ignored with the standard OpenXR backend,
+% as the OpenXR runtimes decide by themselves what is best here.
 %
 % 'FastResponse' = Try to switch images with minimal delay and fast
 % pixel switching time. This will enable OLED panel overdrive processing
@@ -465,11 +466,11 @@ function varargout = PsychVRHMD(cmd, varargin)
 % updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
 % good default field of view and that will be used. The field of view may be
 % dependent on the settings in the HMD user profile of the currently selected
-% user.
+% user. Note: Ignored with the standard OpenXR backend.
 %
 % 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
 % at the center of distortion. Defaults to 1.0 if omitted. Lower values can
-% improve performance, at lower quality.
+% improve performance, at lower quality. Note: Ignored with the standard OpenXR backend.
 %
 %
 % PsychVRHMD('SetBasicQuality', hmd, basicQuality);
