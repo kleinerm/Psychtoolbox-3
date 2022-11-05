@@ -153,8 +153,6 @@ typedef struct PsychOpenXRDevice {
     XrSpace                             handPoseSpace[2];
     psych_bool                          isTracking;
     XrViewConfigurationType             viewType;
-    XrExtent2Di                         texSize[2];
-    XrFovf                              xrFov[2];
     XrViewState                         viewState;
     XrView                              view[2];
     XrCompositionLayerProjectionView    projView[2];
@@ -287,7 +285,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "";
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
-    synopsis[i++] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    synopsis[i++] = "[width, height, recMSAASamples, maxMSAASamples, maxWidth, maxHeight] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye);";
     synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
@@ -1681,19 +1679,7 @@ void PsychOpenXRStop(int handle)
 
     // Mark tracking as stopped:
     openxr->isTracking = FALSE;
-/*
-    // Initialize eye poses to an identity mapping, where both eyes
-    // just stare straight ahead from the origin. All values need to
-    // be zero - provided by memset zero init below - except
-    // for the w component of the Orientation quaternion.
-    // This provides proper head-locking of frames submitted to the XR
-    // compositor if rendering without head tracking is in use, e.g., for
-    // standard 2D stereo rendering, movie playback etc., or for (ab)use
-    // of the HMD as a "strapped onto the head" mono- or stereo-monitor:
-    memset(openxr->view, 0, 2 * sizeof(openxr->view[0]));
-    openxr->view[0].pose.orientation.w = 1;
-    openxr->view[1].pose.orientation.w = 1;
-*/
+
     // Need to start presenterThread if this is the first Present operation:
     if ((openxr->multiThreaded) && (openxr->presenterThread == (psych_thread) NULL)) {
         // Create and startup thread:
@@ -1955,17 +1941,6 @@ PsychError PSYCHOPENXROpen(void)
         printf("PsychOpenXRCore-INFO: Product: \"%s\" - [VendorId: 0x%x]\n", availableSystems[deviceIndex].systemName, availableSystems[deviceIndex].vendorId);
         printf("PsychOpenXRCore-INFO: ----------------------------------------------------------------------------------\n");
     }
-
-    // Initialize eye poses to an identity mapping, where both eyes
-    // just stare straight ahead from the origin. All values need to
-    // be zero - provided by zero init of the openxr struct - except
-    // for the w component of the Orientation quaternion.
-    // This provides proper head-locking of frames submitted to the VR
-    // compositor if rendering without head tracking is in use, e.g., for
-    // standard 2D stereo rendering, movie playback etc., or for (ab)use
-    // of the HMD as a "strapped onto the head" mono- or stereo-monitor:
-    // TODO   openxr->view[0].pose.orientation.w = 1;
-    //    openxr->view[1].pose.orientation.w = 1;
 
     // Assign multi-threading mode:
     openxr->multiThreaded = (psych_bool) multiThreaded;
@@ -3018,47 +2993,34 @@ PsychError PSYCHOPENXRGetInputState(void)
     return(PsychError_none);
 }
 
-// TODO: All the fov and pixelsPerDisplay info is not used by OpenXR at all atm.
 PsychError PSYCHOPENXRGetFovTextureSize(void)
 {
-    static char useString[] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
-    //                          1      2       3               4        5         6          7                                                      1          2      3                       4
+    static char useString[] = "[width, height, recMSAASamples, maxMSAASamples, maxWidth, maxHeight] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye);";
+    //                          1      2       3               4               5         6                                                 1          2
     static char synopsisString[] =
     "Return recommended size of client renderbuffers for OpenXR device 'openxrPtr'.\n"
     "'eye' which eye to provide the size for: 0 = Left, 1 = Right.\n"
-    "'fov' Optional field of view in degrees, from line of sight: [leftdeg, rightdeg, updeg, downdeg]. "
-    "If 'fov' is omitted, the OpenXR runtime will be asked for a good default field of view and that "
-    "will be used. The field of view may be dependent on the settings in the OpenXR user profile of the "
-    "currently selected user.\n"
-    "'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels at the center "
-    "of distortion. Defaults to 1.0 if omitted. Lower values can improve performance, at lower quality.\n"
-    "\n"
     "Return values are 'width' for recommended width of framebuffer in pixels and 'height' for "
-    "recommended height of framebuffer in pixels. 'fovPort' is the field of view in degrees "
-    "finally used for calculation of 'width' x 'height'.\n"
-    "'maxWidth' and 'maxHeight' are the maximum width and height of the framebuffer in pixels, "
-    "as supported by the runtime.\n"
+    "recommended height of framebuffer in pixels.\n"
     "'recMSAASamples' is the recommended number of samples per pixel for MSAA anti-aliasing, where "
     "a value greater than one means to use MSAA. 'maxMSAASamples' is the maximum MSAA sample count "
-    "supported by the runtime.\n";
+    "supported by the runtime.\n"
+    "'maxWidth' and 'maxHeight' are the maximum width and height of the framebuffer in pixels, "
+    "as supported by the runtime.\n";
     static char seeAlsoString[] = "";
 
     XrResult result;
     int handle, eyeIndex;
-    int n, m, p;
-    PsychOpenXRDevice *openxr;
-    double *fov;
-    double pixelsPerDisplay;
-    double *outFov;
     uint32_t vc;
+    PsychOpenXRDevice *openxr;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(7));
-    PsychErrorExit(PsychCapNumInputArgs(4));
+    PsychErrorExit(PsychCapNumOutputArgs(6));
+    PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
@@ -3071,26 +3033,6 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     // Get eye index - left = 0, right = 1:
     PsychCopyInIntegerArg(2, kPsychArgRequired, &eyeIndex);
     if (eyeIndex < 0 || eyeIndex > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
-
-    // Get optional field of view in degrees in left,right,up,down direction from line of sight:
-    if (PsychAllocInDoubleMatArg(3, kPsychArgOptional, &n, &m, &p, &fov)) {
-        // Validate and assign:
-        if (n * m * p != 4) PsychErrorExitMsg(PsychError_user, "Invalid 'fov' specified. Must be a 4-component vector of form [leftdeg, rightdeg, updeg, downdeg].");
-
-        openxr->xrFov[eyeIndex].angleLeft  = (float) deg2rad(fov[0]);
-        openxr->xrFov[eyeIndex].angleRight = (float) deg2rad(fov[1]);
-        openxr->xrFov[eyeIndex].angleUp    = (float) deg2rad(fov[2]);
-        openxr->xrFov[eyeIndex].angleDown  = (float) deg2rad(fov[3]);
-    }
-    else {
-        // None specified: Ask the runtime for good defaults.
-        // TODO openxr->xrFov[eyeIndex] = maybe useful XR_EPIC_view_configuration_fov -> Put in next chain of xrEnumerateViewConfigurationViews return structs ? Recommends based on users IPD - user adaptive!
-    }
-
-    // Get optional pixelsPerDisplay parameter:
-    pixelsPerDisplay = 1.0;
-    PsychCopyInDoubleArg(4, kPsychArgOptional, &pixelsPerDisplay);
-    if (pixelsPerDisplay <= 0.0) PsychErrorExitMsg(PsychError_user, "Invalid 'pixelsPerDisplay' specified. Must be greater than zero.");
 
     result = xrEnumerateViewConfigurationViews(xrInstance, openxr->systemId, openxr->viewType, 0, &vc, NULL);
     if (!resultOK(result) || (vc < eyeIndex + 1)) {
@@ -3123,9 +3065,7 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
         PsychErrorExitMsg(PsychError_system, "View enumeration II for selected view configuration failed.");
     }
 
-    // Ask the api for optimal texture size, aka the size of the client draw buffer:
-    openxr->texSize[eyeIndex].width = views[eyeIndex].recommendedImageRectWidth;
-    openxr->texSize[eyeIndex].height = views[eyeIndex].recommendedImageRectHeight;
+    // Ask the api for optimal texture parameters:
     openxr->maxWidth = views[eyeIndex].maxImageRectWidth;
     openxr->maxHeight = views[eyeIndex].maxImageRectHeight;
     openxr->recSamples = views[eyeIndex].recommendedSwapchainSampleCount;
@@ -3134,21 +3074,14 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     free(views);
 
     // Return recommended width and height and MSAA samples of drawBuffer:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->texSize[eyeIndex].width);
-    PsychCopyOutDoubleArg(2, kPsychArgOptional, openxr->texSize[eyeIndex].height);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, views[eyeIndex].recommendedImageRectWidth);
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, views[eyeIndex].recommendedImageRectHeight);
     PsychCopyOutDoubleArg(3, kPsychArgOptional, openxr->recSamples);
 
-    // FoV port used:
-    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 4, 1, 1, &outFov);
-    outFov[0] = rad2deg(openxr->xrFov[eyeIndex].angleLeft);
-    outFov[1] = rad2deg(openxr->xrFov[eyeIndex].angleRight);
-    outFov[2] = rad2deg(openxr->xrFov[eyeIndex].angleUp);
-    outFov[3] = rad2deg(openxr->xrFov[eyeIndex].angleDown);
-
     // Return maximum width and height and MSAA samples of drawBuffer:
+    PsychCopyOutDoubleArg(4, kPsychArgOptional, openxr->maxSamples);
     PsychCopyOutDoubleArg(5, kPsychArgOptional, openxr->maxWidth);
     PsychCopyOutDoubleArg(6, kPsychArgOptional, openxr->maxHeight);
-    PsychCopyOutDoubleArg(7, kPsychArgOptional, openxr->maxSamples);
 
     return(PsychError_none);
 }
@@ -3761,7 +3694,6 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
 
     // Pose and FoV init defaults:
     openxr->projView[eyeIndex].pose = identityPose;
-    openxr->projView[eyeIndex].fov = openxr->xrFov[eyeIndex];
 
     // Setup the static projectionLayer we use for fully tracked 3D OpenGL rendering:
     openxr->projectionLayer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
@@ -4332,8 +4264,6 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         layer0.Viewport[1].Pos.y = 0;
         layer0.Viewport[1].Size.w = openxr->textureWidth;
         layer0.Viewport[1].Size.h = openxr->textureHeight;
-        layer0.Fov[0] = openxr->xrFov[0];
-        layer0.Fov[1] = openxr->xrFov[1];
         layer0.RenderPose[0] = openxr->view[0];
         layer0.RenderPose[1] = openxr->view[1];
         layer0.SensorSampleTime = openxr->sensorSampleTime;
