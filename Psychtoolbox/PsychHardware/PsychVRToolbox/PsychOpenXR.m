@@ -463,10 +463,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 % sensor calibration, possibly guided by some OpenXR GUI control application.
 %
 %
-% [adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOpenXR('GetPerformanceStats', hmd);
-% - Return global and per-frame performance statistics for the given 'hmd'.
-%
-%
 % PsychOpenXR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
@@ -564,21 +560,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 % - Set how the user can dismiss the "Health and safety warning display".
 % Deprecated: This function does nothing. It just exists for (backwards)
 % compatibility with PsychVRHMD.
-%
-%
-% PsychOpenXR('SetHUDState', hmd, mode);
-% - Set mode of operation for the builtin head up display (HUD) for performance
-% information. The HUD is automatically displayed and updated by the VR compositor
-% if enabled, and can be in one of the following selectable 'mode's:
-%
-% 0 = Head up display HUD off ie. invisible.
-% 1 = HUD shows performance summary.
-% 2 = HUD shows latency timing.
-% 3 = HUD shows application render timing.
-% 4 = HUD shows VR compositor render timing.
-% 5 = HUD shows Version information of different components.
-% 6 = HUD shows Asynchronous time warp (ASW) stats.
-% Higher numbers may do something useful in the future.
 %
 %
 % [bufferSize, imagingFlags, stereoMode] = PsychOpenXR('GetClientRenderingParameters', hmd);
@@ -1020,17 +1001,6 @@ if strcmpi(cmd, 'TrackingOriginType')
   return;
 end
 
-if strcmpi(cmd, 'GetPerformanceStats')
-  myhmd = varargin{1};
-  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:GetPerformanceStats: Specified handle does not correspond to an open HMD!');
-  end
-
-  [varargout{1}, varargout{2}, varargout{3}, varargout{4}] = PsychOpenXRCore('GetPerformanceStats', myhmd.handle);
-
-  return;
-end
-
 if strcmpi(cmd, 'Supported')
   % Check if the OpenXR runtime 1+ is supported and active on this
   % installation, so it can be used to open connections to real HMDs,
@@ -1144,23 +1114,6 @@ if strcmpi(cmd, 'SetHSWDisplayDismiss')
   else
     hmd{myhmd.handle}.hswdismiss = varargin{2};
   end
-
-  return;
-end
-
-if strcmpi(cmd, 'SetHUDState')
-  myhmd = varargin{1};
-
-  if ~PsychOpenXR('IsOpen', myhmd)
-    error('PsychOpenXR:SetHUDState: Specified handle does not correspond to an open HMD!');
-  end
-
-  % Method of dismissing HSW display:
-  if length(varargin) < 2 || isempty(varargin{2})
-    error('PsychOpenXR:SetHUDState: Required mode argument missing!');
-  end
-
-  PsychOpenXRCore('SetHUDState', myhmd.handle, varargin{2});
 
   return;
 end
@@ -1414,7 +1367,7 @@ if strcmpi(cmd, 'SetTimeWarp')
   end
 
   % SetTimeWarp determined use of GPU accelerated 2D texture sampling
-  % warp on the Rift DK1/DK2 with old v0.5 SDK. On the 1.0 SDK we no
+  % warp on the Oculus Rift DK1/DK2 with old OculusVR v0.5 SDK. On OpenXR we no
   % longer have any programmatic control over timewarping,so leave this
   % in place as dummy.
 
@@ -1431,7 +1384,7 @@ if strcmpi(cmd, 'SetLowPersistence')
   end
 
   % SetLowPersistence defined the use of low persistence mode on the Rift DK2 with
-  % the Oculus v0.5 SDK and the original PsychOculusVR driver. We don't have control
+  % the OculusVR v0.5 SDK and the original PsychOculusVR driver. We don't have control
   % over this on OpenXR, so for backwards compatibility, always return constant old
   % setting "Always low persistence":
   varargout{1} = 1;
@@ -1508,14 +1461,6 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   if isempty(oldShieldingLevel)
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
-  end
-
-  % HUD display requested?
-  if ~isempty(strfind(basicRequirements, 'HUD='))
-    % Yes. Set it: TODO REMOVE?
-    hudmodestring = basicRequirements(strfind(basicRequirements, 'HUD='):end);
-    mode = sscanf(hudmodestring, 'HUD=%i');
-    PsychOpenXR('SetHUDState', myhmd, mode);
   end
 
   % Use low precision timestamps if usercode requests them, because they can be

@@ -68,12 +68,10 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("EndFrameRender", &PSYCHOPENXREndFrameRender));
     PsychErrorExit(PsychRegister("PresentFrame", &PSYCHOPENXRPresentFrame));
     PsychErrorExit(PsychRegister("Verbosity", &PSYCHOPENXRVerbosity));
-    PsychErrorExit(PsychRegister("SetHUDState", &PSYCHOPENXRSetHUDState));
     PsychErrorExit(PsychRegister("VRAreaBoundary", &PSYCHOPENXRVRAreaBoundary));
     PsychErrorExit(PsychRegister("TestVRBoundary", &PSYCHOPENXRTestVRBoundary));
     PsychErrorExit(PsychRegister("TestVRBoundaryPoint", &PSYCHOPENXRTestVRBoundaryPoint));
     PsychErrorExit(PsychRegister("TrackingOriginType", &PSYCHOPENXRTrackingOriginType));
-    PsychErrorExit(PsychRegister("GetPerformanceStats", &PSYCHOPENXRGetPerformanceStats));
     PsychErrorExit(PsychRegister("HapticPulse", &PSYCHOPENXRHapticPulse));
     PsychErrorExit(PsychRegister("FloatsProperty", &PSYCHOPENXRFloatsProperty));
     PsychErrorExit(PsychRegister("FloatProperty", &PSYCHOPENXRFloatProperty));
