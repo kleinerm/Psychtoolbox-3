@@ -278,11 +278,11 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
     synopsis[i++] = "[width, height, recMSAASamples, maxMSAASamples, maxWidth, maxHeight] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye);";
-    synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
+    synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
-    synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOpenXRCore('PresentFrame', openxrPtr [, doTimestamp=0][, when=0]);";
+    synopsis[i++] = "tPredictedOnset = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0][, doTimestamp=0]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -2831,8 +2831,8 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
 
 PsychError PSYCHOPENXRCreateAndStartSession(void)
 {
-    static char useString[] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
-    //                          1                                                                1          2              3              4               5             6               7
+    static char useString[] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
+    //                         1                                                               1          2              3              4               5             6               7
     static char synopsisString[] =
     "Create, initialize and start XR session for OpenXR device 'openxrPtr'.\n"
     "The following parameters are needed to setup OpenGL <=> OpenXR interop. They "
@@ -3880,7 +3880,7 @@ PsychError PSYCHOPENXREndFrameRender(void)
 // and directly from PSYCHOPENXRPresentFrame when userspace wants to present new content.
 static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTextures, psych_bool inInit)
 {
-    int eyeIndex, rc;
+    int eyeIndex;
     psych_bool success = TRUE;
     double tPredictedOnset = 0;
     XrResult result;
@@ -3949,147 +3949,6 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         goto present_fail;
     }
 
-/*
-    // Is this a present with updated visual content - called from "userspace" runtime?
-    if (commitTextures) {
-        // Free capacity in swapchains?
-        while ((openxr->needSubmit >= openxr->textureSwapChainLength - 1) &&
-               (!openxr->isTracking) && (openxr->presenterThread != (psych_thread) NULL)) {
-            // No, and the presenterThread is running and should make free space soon. Wait for it to do its job:
-            if ((rc = PsychWaitCondition(&(openxr->presentedSignal), &(openxr->presenterLock)))) {
-                // Failed: Log it in a hopefully not too unsafe way:
-                printf("PsychOpenXRCore-ERROR: Waitcondition on presentedSignal trigger failed  [%s].\n", strerror(rc));
-            }
-        }
-
-        // Commit current target textures to chain:
-        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
-            if (OVR_FAILURE(ovr_CommitTextureSwapChain(openxr->hmd, openxr->textureSwapChain[eyeIndex]))) {
-                success = FALSE;
-                ovr_GetLastErrorInfo(&errorInfo);
-                if (verbosity > 0)
-                    printf("PsychOpenXRCore-ERROR: eye %i ovr_CommitTextureSwapChain() failed: %s\n", eyeIndex, errorInfo.ErrorString);
-            }
-        }
-
-        if (!success)
-            goto present_fail;
-
-        // Mark the need for a ovr_SubmitFrame() call before we can commit textures again:
-        openxr->needSubmit++;
-    }
-
-    // printf("PresentExecute-2 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
-
-    // Always submit updated textures when called from presenter thread. If called
-    // from usercode 'PresentFrame' only submit if the usercode is in full charge,
-    // ie. HMD head tracking is active and driving render timing in a fast closed loop:
-    if (inInit || !commitTextures || openxr->isTracking || (openxr->presenterThread == (psych_thread) NULL)) {
-        // If HMD tracking is disabled then set sensorSampleTime to "now" - reasonable:
-        if (!openxr->isTracking)
-            openxr->sensorSampleTime = ovr_GetTimeInSeconds();
-
-        // Setup layer headers:
-        layer0.Header.Type = ovrLayerType_EyeFov;
-        layer0.Header.Flags = ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
-
-        // Use head locked layer if head tracking is disabled, so our frames stay in a fixed
-        // position wrt. the HMD - the HMD simply acts as a strapped on mono- or stereo monitor:
-        layer0.Header.Flags |= ((!openxr->isTracking) ? ovrLayerFlag_HeadLocked : 0);
-
-        layer0.ColorTexture[0] = openxr->textureSwapChain[0];
-        layer0.ColorTexture[1] = (openxr->isStereo) ? openxr->textureSwapChain[1] : NULL;
-        layer0.Viewport[0].Pos.x = 0;
-        layer0.Viewport[0].Pos.y = 0;
-        layer0.Viewport[0].Size.w = openxr->textureWidth;
-        layer0.Viewport[0].Size.h = openxr->textureHeight;
-        layer0.Viewport[1].Pos.x = 0;
-        layer0.Viewport[1].Pos.y = 0;
-        layer0.Viewport[1].Size.w = openxr->textureWidth;
-        layer0.Viewport[1].Size.h = openxr->textureHeight;
-        layer0.RenderPose[0] = openxr->view[0];
-        layer0.RenderPose[1] = openxr->view[1];
-        layer0.SensorSampleTime = openxr->sensorSampleTime;
-
-        tPredictedOnset = ovr_GetPredictedDisplayTime(openxr->hmd, openxr->frameIndex);
-        if (verbosity > 3)
-            printf("PRESENT[%i]: Last %f, Next %f, dT = %f msecs\n", commitTextures, openxr->lastPresentExecTime, tPredictedOnset, 1000 * (tPredictedOnset - openxr->lastPresentExecTime));
-
-        // Submit frame to compositor for display at earliest possible time:
-        result = ovr_SubmitFrame(openxr->hmd, openxr->frameIndex, NULL, layers, 1);
-        if (OVR_FAILURE(result)) {
-            success = FALSE;
-            ovr_GetLastErrorInfo(&errorInfo);
-            if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: ovr_SubmitFrame() failed: %s\n", errorInfo.ErrorString);
-        }
-        else {
-            // Update onset time again after successful submit:
-            tPredictedOnset = ovr_GetPredictedDisplayTime(openxr->hmd, openxr->frameIndex);
-
-            // Record frameIndex at which new visual content will be committed:
-            if (openxr->perfStats.FrameStatsCount > 0) {
-                openxr->commitFrameIndex = openxr->perfStats.FrameStats[0].AppFrameIndex + 1;
-            }
-
-            openxr->frameIndex++;
-            if (openxr->needSubmit > 0)
-                openxr->needSubmit--;
-        }
-
-        if (result == ovrSuccess_NotVisible) {
-            // Submitted frame does not display - a no-op submit:
-            if (verbosity > 3)
-                printf("PsychOpenXRCore:WARNING: Frame %i not presented to HMD. HMD removed from subjects head? [Time %f]\n",
-                       openxr->frameIndex, tPredictedOnset);
-        }
-
-        // Update the lastPresentExecTime timestamp:
-        openxr->lastPresentExecTime = tPredictedOnset;
-
-        // printf("PresentExecute-3 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
-        if (success) {
-            double tDeadline;
-
-            // Retrieve performance stats, mostly for our timestamping:
-            tDeadline = ovr_GetTimeInSeconds() + 0.005;
-            do {
-                result = ovr_GetPerfStats(openxr->hmd, &openxr->perfStats);
-                if (OVR_FAILURE(result)) {
-                    ovr_GetLastErrorInfo(&errorInfo);
-                    if (verbosity > 0)
-                        printf("PsychOpenXRCore-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
-                }
-                else if ((verbosity > 3) && (openxr->perfStats.FrameStatsCount > 0)) {
-                    printf("PsychOpenXRCore: DEBUG: Oldest AppFrameIndex %i vs. commitFrameIndex %i\n",
-                           openxr->perfStats.FrameStats[openxr->perfStats.FrameStatsCount-1].AppFrameIndex,
-                           openxr->commitFrameIndex);
-                }
-
-                if (openxr->perfStats.FrameStatsCount < 1)
-                    PsychYieldIntervalSeconds(0.001);
-            } while ((openxr->frameIndex > 0) && (ovr_GetTimeInSeconds() < tDeadline) &&
-                     ((openxr->perfStats.FrameStatsCount < 1) || (openxr->perfStats.FrameStats[openxr->perfStats.FrameStatsCount-1].AppFrameIndex < openxr->commitFrameIndex)));
-
-            if (verbosity > 3) {
-                printf("\nPsychOpenXRCore: [%f msecs headroom] DEBUG: FrameStatsCount=%i, AnyFrameStatsDropped=%i\n",
-                       1000 * (tDeadline - ovr_GetTimeInSeconds()), openxr->perfStats.FrameStatsCount,
-                       (int) openxr->perfStats.AnyFrameStatsDropped);
-            }
-
-            // Are we running on the presenterThread?
-            if (!commitTextures && openxr->perfStats.FrameStatsCount) {
-                // Yes. Signal end of a new submitFrame -> timestamping cycle to main-thread:
-                if ((rc = PsychSignalCondition(&(openxr->presentedSignal)))) {
-                    printf("PsychOpenXRCore-ERROR: PsychSignalCondition() trigger operation failed  [%s].\n", strerror(rc));
-                }
-            }
-        }
-    }
-
-    // printf("PresentExecute-4 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
-    */
-
 present_out:
 present_fail:
 
@@ -4153,8 +4012,8 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
 // TODO
 PsychError PSYCHOPENXRPresentFrame(void)
 {
-    static char useString[] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOpenXRCore('PresentFrame', openxrPtr [, doTimestamp=0][, when=0]);";
-    //                          1            2                3                                                      1            2                3
+    static char useString[] = "tPredictedOnset = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0][, doTimestamp=0]);";
+    //                         1                                                 1            2         3
     static char synopsisString[] =
     "Present last rendered frame to OpenXR HMD device 'openxrPtr'.\n\n"
     "This will commit the current set of 2D textures with new rendered content "
@@ -4163,48 +4022,20 @@ PsychError PSYCHOPENXRPresentFrame(void)
     "render targets for the next rendering cycle.\n\n"
     "You usually won't call this function yourself, but Screen('Flip') "
     "will call it automatically for you at the appropriate moment.\n\n"
-    "Returns a 'frameTiming' struct with information about the presentation "
-    "timing for this presentation cycle.\n\n"
-    "'doTimestamp' If set to 1, perform timestamping of stimulus onset on the HMD, "
-    "or at least try to estimate such onset time. If set to 0, do nothing timestamping-wise.\n\n"
     "'when' If provided, defines the target presentation time, as provided by Screen('Flip', win, when); "
     "a value of zero, or omission, means to present as soon as possible.\n\n"
-    "'frameTiming' is an array of structs, where each struct contains presentation "
-    "timing and performance info for one presented frame, with the most recently "
-    "presented frame in frameTiming(1), older ones at higher indices if the script "
-    "falls behind the compositor in Screen('Flip')ping frames in time for the HMD.\n"
-    "If successful timestamping happened, 'referenceFrameIndex' will be the index into "
-    "the 'frameTiming' array to the struct which corresponds to the just presented frame, "
-    "otherwise zero is returned.\n\n"
-    "'tPredictedOnset' is another predicted onset time for the just presented frame, based on "
-    "very cheap and fast time-stamping which may be much less reliable though.\n\n"
-    "The following fields are currently supported in each struct of 'frameTiming':\n\n"
-    "HmdVsyncIndex: Vsync counter of the HMD, increments at each refresh.\n"
-    "AppFrameIndex: Running count of 'Flip'ped frames. Increments at each Screen('Flip').\n"
-    "HMDTime: Time in the HMDs time base in seconds.\n"
-    "GetSecsTime: Time in Psychtoolbox standard GetSecs timebase\n"
-    "AppMotionToPhotonLatency: Latency between frame submission (or last head tracker query) "
-    "and presentation of the associated frame.\n"
-    "RecentSensorSampleTime: Baseline for AppMotionToPhotonLatency, if app can keep up with compositor.\n"
-    "StimulusOnsetTime: Estimated visual stimulus onset time for the frame - the mid-point of scanout!\n"
-    "VBlankTime: Screen('Flip') vblTime equivalent.\n"
-    "AppQueueAheadTime: How much ahead the application has to queue a frame for presentation. In some sense "
-    "a measure of compositor lag. 0 msecs = No lag, presenting at next VBLANK boundary. 1 refresh duration = "
-    "1 frame lag, etc.\n\n"
+    "'doTimestamp' If set to 1, perform timestamping of stimulus onset on the HMD, "
+    "or at least try to estimate such onset time. If set to 0, do nothing.\n\n"
+
+    "Return values:\n"
     "'tPredictedOnset' Predicted onset time for the just submitted frame, according to compositor.\n"
     "\n\n";
     static char seeAlsoString[] = "EndFrameRender";
 
-    PsychGenericScriptType *frameT;
-    const char *FieldNames[] = {"HmdVsyncIndex", "AppFrameIndex", "HMDTime", "GetSecsTime", "AppMotionToPhotonLatency",
-                                "RecentSensorSampleTime", "StimulusOnsetTime", "VBlankTime", "AppQueueAheadTime" };
-    const int FieldCount = 9;
-
-    int handle, rc;
-    int doTimestamp = 0;
-    int referenceFrameIndex = -1;
-    double tNow, tHMD, tStimOnset, tVBL, tPredictedOnset;
+    int handle;
+    int doTimestamp;
     double tWhen;
+    double tPredictedOnset;
     PsychOpenXRDevice *openxr;
 
     // All sub functions should have these two lines:
@@ -4212,7 +4043,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -4223,12 +4054,14 @@ PsychError PSYCHOPENXRPresentFrame(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Get optional timestamping flag:
-    PsychCopyInIntegerArg(2, kPsychArgOptional, &doTimestamp);
-
     // Get optional presentation target time:
     tWhen = 0;
-    PsychCopyInDoubleArg(3, kPsychArgOptional, &tWhen);
+    PsychCopyInDoubleArg(2, kPsychArgOptional, &tWhen);
+
+    // Get optional timestamping flag:
+    doTimestamp = 0;
+    PsychCopyInIntegerArg(3, kPsychArgOptional, &doTimestamp);
+
 /*
     // Single-threaded operation, all done on this thread?
     if (!openxr->multiThreaded) {
@@ -4242,6 +4075,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
         }
     }
 */
+
     // Execute the present operation with the presenterThread locked out.
     // Invalidate any scheduledPresentExecTime after such a Present:
     PsychLockMutex(&(openxr->presenterLock));
@@ -4256,93 +4090,13 @@ PsychError PSYCHOPENXRPresentFrame(void)
     if ((tPredictedOnset == 0) && (verbosity > 4))
         printf("PsychOpenXRCore-INFO: Present of new frame to VR compositor skipped.\n");
 
-    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-    tHMD = tNow;
-
-    if (doTimestamp) {
-        /*
-        int i;
-        uint32_t timestampedFrameIndex = 0;
-
-        PsychLockMutex(&(openxr->presenterLock));
-        while (timestampedFrameIndex == 0) {
-            for (i = openxr->perfStats.FrameStatsCount - 1; i >= 0; i--) {
-                if (openxr->perfStats.FrameStats[i].AppFrameIndex >= openxr->commitFrameIndex) {
-                    timestampedFrameIndex = openxr->perfStats.FrameStats[i].AppFrameIndex;
-                    referenceFrameIndex = i;
-                    break;
-                }
-            }
-
-            if (timestampedFrameIndex == 0) {
-                if (openxr->presenterThread != (psych_thread) NULL) {
-                    // Multi-Threaded: Wait efficiently for signalling of new frame submitted by presenter thread:
-                    if ((rc = PsychWaitCondition(&(openxr->presentedSignal), &(openxr->presenterLock)))) {
-                        // Failed: Log it in a hopefully not too unsafe way:
-                        printf("PsychOpenXRCore-ERROR: Waitcondition II on presentedSignal trigger failed  [%s].\n", strerror(rc));
-                    }
-                }
-                else {
-                    // Not multi-threaded. If we ain't got no result yet, we won't
-                    // get any in the future:
-                    break;
-                }
-            }
-        }
-
-        if (openxr->perfStats.FrameStatsCount > 0) {
-            PsychAllocOutStructArray(1, kPsychArgOptional, openxr->perfStats.FrameStatsCount, FieldCount, FieldNames, &frameT);
-            for (i = 0; i < openxr->perfStats.FrameStatsCount; i++) {
-                // HMD Vsync counter:
-                PsychSetStructArrayDoubleElement("HmdVsyncIndex", i, openxr->perfStats.FrameStats[i].HmdVsyncIndex, frameT);
-
-                // Our sbc counter:
-                PsychSetStructArrayDoubleElement("AppFrameIndex", i, openxr->perfStats.FrameStats[i].AppFrameIndex, frameT);
-
-                // Clock-Sync PTB timebase vs. OpenXR timebase:
-                PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-                tHMD = ovr_GetTimeInSeconds();
-                PsychSetStructArrayDoubleElement("HMDTime", i, tHMD, frameT);
-                PsychSetStructArrayDoubleElement("GetSecsTime", i, tNow, frameT);
-
-                // Time between openxr->sensorSampleTime and visual onset (video frame midpoint of scanout):
-                PsychSetStructArrayDoubleElement("AppMotionToPhotonLatency", i, openxr->perfStats.FrameStats[i].AppMotionToPhotonLatency, frameT);
-                PsychSetStructArrayDoubleElement("RecentSensorSampleTime", i, openxr->sensorSampleTime, frameT);
-
-                // Compute absolute stimulus onset (mid-point), remap to PTB GetSecs time:
-                tStimOnset = (tNow - tHMD)  + openxr->sensorSampleTime + openxr->perfStats.FrameStats[i].AppMotionToPhotonLatency;
-                PsychSetStructArrayDoubleElement("StimulusOnsetTime", i, tStimOnset, frameT);
-
-                // Compute virtual start of VBLANK time as stimulus onset - half a HMD video refresh duration:
-                tVBL = tStimOnset - 0.5 * openxr->frameDuration;
-                PsychSetStructArrayDoubleElement("VBlankTime", i, tVBL, frameT);
-
-                // Queue ahead for application. Citation from the v 1.16 SDK docs:
-                // "Amount of queue-ahead in seconds provided to the app based on performance and overlap of CPU & GPU utilization
-                // A value of 0.0 would mean the CPU & GPU workload is being completed in 1 frame's worth of time, while
-                // 11 ms (on the CV1) of queue ahead would indicate that the app's CPU workload for the next frame is
-                // overlapping the app's GPU workload for the current frame."
-                PsychSetStructArrayDoubleElement("AppQueueAheadTime", i, openxr->perfStats.FrameStats[i].AppQueueAheadTime, frameT);
-            }
-        }
-
-        PsychUnlockMutex(&(openxr->presenterLock));
-        */
-    }
-    else {
-        // Return empty 'frameTiming' info struct array, so our calling scripting environment does not bomb out:
-        PsychAllocOutStructArray(1, kPsychArgOptional, 0, FieldCount, FieldNames, &frameT);
-    }
-
     // Copy out predicted onset time for the just emitted frame, or -1 on failure, or 0 on skipped:
     if (tPredictedOnset > 0) {
         // TODO: May not be neccessary anymore under OpenXR? Or wrong?
-        tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * openxr->frameDuration;
+        tPredictedOnset = tPredictedOnset - 0.5 * openxr->frameDuration;
     }
 
-    PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
-
-    PsychCopyOutDoubleArg(3, kPsychArgOptional, (double) referenceFrameIndex + 1);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, tPredictedOnset);
 
     return(PsychError_none);
 }
