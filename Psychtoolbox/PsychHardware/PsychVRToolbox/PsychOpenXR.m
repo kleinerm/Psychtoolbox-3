@@ -141,60 +141,23 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % [isVisible, playAreaBounds, OuterAreaBounds] = PsychOpenXR('VRAreaBoundary', hmd [, requestVisible]);
 % - Request visualization of the VR play area boundary for 'hmd' and returns its
-% current extents.
+% current extents. This is not supported by OpenXR, therefore the function does
+% nothing, but return backwards compatible dummy values.
 %
 % 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
-% request showing the markers.
-% The driver can not prevent the boundaries to be visualized if some external
-% setting asks for their visibility. It can cancel its own request for visibility
-% though via 'requestVisible' setting 0.
+% request showing the markers. This parameter is accepted, but ignored.
 %
 % Returns in 'isVisible' the current visibility status of the VR area boundaries.
+% This driver always returns 0 for false / invisible.
 %
 % 'playAreaBounds' is a 3-by-n matrix defining the play area boundaries. Each
 % column represents the [x;y;z] coordinates of one 3D definition point. Connecting
 % successive points by line segments defines the boundary, as projected onto the
 % floor. Points are listed in clock-wise direction. An empty return argument means
-% that the play area is so far undefined.
+% that the play area is so far undefined. This driver always returns empty.
 %
 % 'OuterAreaBounds' defines the outer area boundaries in the same way as
-% 'playAreaBounds'.
-%
-%
-% [isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOpenXR('TestVRBoundary', hmd, trackedDeviceType, boundaryType);
-% - Return if a tracked device of type 'trackedDeviceType' and associated with 'hmd' is
-% colliding with VR area boundaries of 'boundaryType'. This needs the requested devices
-% to be online, and the boundaries set up properly, in order to provide meaningful results.
-%
-% 'trackedDeviceType' is a bit-mask (sum) of the following possible constants:
-% OVR.TrackedDevice_HMD = The HMD headset itself,
-% OVR.TrackedDevice_LTouch = Left touch controller / left hand.
-% OVR.TrackedDevice_RTouch = Right touch controller / right hand.
-% OVR.TrackedDevice_Touch = Any/Both of left and right touch controllers.
-% OVR.TrackedDevice_Object0 - OVR.TrackedDevice_Object3 = Tracked objects 0 - 3.
-% OVR.TrackedDevice_All = All connected tracked devices.
-%
-% 'boundaryType' 0 = Play area, 1 = Outer boundary.
-%
-% Return values:
-% 'isTriggering' 1 if collision is imminent, 0 otherwise.
-% 'closestDistance' Distance to closest point on boundary.
-% 'closestPointxyz' [x;y;z] 3D position of closest point on the boundary.
-% 'surfaceNormal' [nx;ny;nz] 3D surface normal of closest point.
-%
-%
-% [isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOpenXR('TestVRBoundaryPoint', hmd, pointxyz, boundaryType);
-% - Return if a 3D point 'pointxyz' is colliding with VR area boundaries of 'boundaryType'
-% on device 'hmd'. This needs the boundaries set up properly, in order to provide meaningful
-% results.
-%
-% 'pointxyz' = [x,y,z] 3D point position vector.
-% 'boundaryType' 0 = Play area, 1 = Outer boundary.
-%
-% 'isTriggering' 1 if 'pointxyz' is colliding / close, 0 otherwise.
-% 'closestDistance' Distance to closest point on boundary.
-% 'closestPointxyz' [x;y;z] 3D position of closest point on the boundary.
-% 'surfaceNormal' [nx;ny;nz] 3D surface normal of closest point.
+% 'playAreaBounds'. This driver always returns empty.
 %
 %
 % input = PsychOpenXR('GetInputState', hmd, controllerType);
@@ -441,11 +404,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 %              absolute camera pose instead of the inverse matrix.
 %
 %
-% trackers = PsychOpenXR('GetTrackersState', hmd);
-% - Return a struct array with infos about all connected tracking cameras/sensors
-% for 'hmd'.
-%
-%
 % oldType = PsychOpenXR('TrackingOriginType', hmd [, newType]);
 % - Specify the type of tracking origin for OpenXR device 'hmd'.
 % This returns the current type of tracking origin in 'oldType'.
@@ -479,31 +437,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % PsychOpenXR('SetBasicQuality', hmd, basicQuality);
 % - Set basic level of quality vs. required GPU performance.
-%
-%
-% oldValues = PsychOpenXR('FloatsProperty', hmd, property [, newValues]);
-% - Get current values 'oldValues' and optionally set new values 'newValues'
-% for a floating point array property with name 'property' on 'hmd'.
-%
-% 'property' name strings are defined under OVR.KEY_XXX. As of SDK version 1.11,
-% the following floats properties exist:
-% OVR.KEY_PLAYER_HEIGHT = [Height] of subject in meters.
-% OVR.KEY_EYE_HEIGHT = [Height] of eyes of subject above ground in meters.
-% OVR.KEY_NECK_TO_EYE_DISTANCE = [horizontal, vertical] neck to eye distance in meters.
-% OVR.KEY_EYE_TO_NOSE_DISTANCE = [horizontal, vertical] eye to nose distance in meters.
-%
-%
-% oldString = PsychOpenXR('StringProperty', hmd, property [, defaultString][, newString]);
-% - Get current string 'oldString' and optionally set new string 'newString'
-% for a string property with name 'property' on 'hmd'. If the property does not
-% exist yet or does not have a string value assigned, optionally return 'defaultString'.
-%
-% 'property' name strings are defined under OVR.KEY_XXX. As of SDK version 1.11,
-% the following string properties exist:
-% OVR.KEY_USER = User name.
-% OVR.KEY_NAME = Name.
-% OVR.KEY_GENDER = Gender 'Male', 'Female', or 'Unknown'.
-% OVR.KEY_DEFAULT_GENDER = 'Unknown'.
 %
 %
 % oldSetting = PsychOpenXR('SetFastResponse', hmd [, enable]);
@@ -878,16 +811,16 @@ if strcmpi(cmd, 'GetEyePose')
   return;
 end
 
-if strcmpi(cmd, 'GetTrackersState')
-  myhmd = varargin{1};
-  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:GetTrackersState: Specified handle does not correspond to an open HMD!');
-  end
-
-  varargout{1} = PsychOpenXRCore('GetTrackersState', myhmd.handle);
-
-  return;
-end
+%if strcmpi(cmd, 'GetTrackersState')
+%  myhmd = varargin{1};
+%  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+%    error('PsychOpenXR:GetTrackersState: Specified handle does not correspond to an open HMD!');
+%  end
+%
+%  varargout{1} = PsychOpenXRCore('GetTrackersState', myhmd.handle);
+%
+%  return;
+%end
 
 if strcmpi(cmd, 'GetInputState')
   % Get and validate handle - fast path open coded:
@@ -934,55 +867,14 @@ if strcmpi(cmd, 'HapticPulse')
   return;
 end
 
-if strcmpi(cmd, 'TestVRBoundary')
-  myhmd = varargin{1};
-  if ~PsychOpenXR('IsOpen', myhmd)
-    error('TestVRBoundary: Passed in handle does not refer to a valid and open HMD.');
-  end
-
-  [varargout{1}, varargout{2}, varargout{3}, varargout{4}] = PsychOpenXRCore('TestVRBoundary', myhmd.handle, varargin{2:end});
-  return;
-end
-
-if strcmpi(cmd, 'TestVRBoundaryPoint')
-  myhmd = varargin{1};
-  if ~PsychOpenXR('IsOpen', myhmd)
-    error('TestVRBoundaryPoint: Passed in handle does not refer to a valid and open HMD.');
-  end
-
-  [varargout{1}, varargout{2}, varargout{3}, varargout{4}] = PsychOpenXRCore('TestVRBoundaryPoint', myhmd.handle, varargin{2:end});
-  return;
-end
-
 if strcmpi(cmd, 'VRAreaBoundary')
   myhmd = varargin{1};
   if ~PsychOpenXR('IsOpen', myhmd)
     error('VRAreaBoundary: Passed in handle does not refer to a valid and open HMD.');
   end
 
-  % Return no-op values for now:
+  % Return no-op values for this unsupported, but mandated by PsychVRHMD(), function:
   [varargout{1}, varargout{2}, varargout{3}] = deal(0, [], []);
-  %[varargout{1}, varargout{2}, varargout{3}] = PsychOpenXRCore('VRAreaBoundary', myhmd.handle, varargin{2:end});
-  return;
-end
-
-if strcmpi(cmd, 'FloatsProperty')
-  myhmd = varargin{1};
-  if ~PsychOpenXR('IsOpen', myhmd)
-    error('FloatsProperty: Passed in handle does not refer to a valid and open HMD.');
-  end
-
-  varargout{1} = PsychOpenXRCore('FloatsProperty', myhmd.handle, varargin{2:end});
-  return;
-end
-
-if strcmpi(cmd, 'StringProperty')
-  myhmd = varargin{1};
-  if ~PsychOpenXR('IsOpen', myhmd)
-    error('StringProperty: Passed in handle does not refer to a valid and open HMD.');
-  end
-
-  varargout{1} = PsychOpenXRCore('StringProperty', myhmd.handle, varargin{2:end});
   return;
 end
 
