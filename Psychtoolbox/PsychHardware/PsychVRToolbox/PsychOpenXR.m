@@ -576,11 +576,7 @@ if cmd == 1
   handle = varargin{1};
   tWhen = varargin{2};
 
-  t1 = GetSecs;
-
-  [frameTiming, predictedOnset, refFrameIndex] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
-
-  t2 = GetSecs;
+  predictedOnset = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen, hmd{handle}.doTimestamp);
 
   % PresentFrame successfull and not skipped?
   if predictedOnset > 0
@@ -606,24 +602,9 @@ if cmd == 1
       Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
   end
 
-  t3 = GetSecs;
+  % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
+  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
 
-  if hmd{handle}.doTimestamp
-    % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
-    if refFrameIndex > 0
-      Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(refFrameIndex).VBlankTime, frameTiming(refFrameIndex).StimulusOnsetTime);
-    else
-      fprintf('Warning: No proper timestamp, faking it with predictedOnset.\n\n');
-      Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
-    end
-  else
-    % Use made up values for timestamps of 'Flip':
-    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
-  end
-  t4 = GetSecs;
-
-  %fprintf('Present %f ms, Get/Set %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
   return;
 end
 
