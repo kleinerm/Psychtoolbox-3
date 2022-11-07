@@ -551,9 +551,20 @@ if cmd == 0
   t2 = GetSecs;
 
   % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
-  % Skip the OpenGL bufferswap for the onscreen window completely, ergo also skip
-  % timestamping and allow timestamp injection from us instead:
-  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  if hmd{handle}.debugDisplay
+    % Debug output of compositor mirror texture into PTB onscreen window requested.
+    % - Ask to skip flip's regular OpenGL swap completion timestamping, but instead
+    %   to accept future injected timestamps from us.
+    %
+    % - Ask to disable vsync of the OpenGL bufferswap for display of the mirror texture
+    %   in the onscreen window. We don't want to get swap-throttled to the refresh rate
+    %   of the operator desktop GUI display.
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  else
+    % Skip the OpenGL bufferswap for the onscreen window completely, ergo also skip
+    % timestamping and allow timestamp injection from us instead:
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  end
 
   t3 = GetSecs;
 
@@ -599,11 +610,43 @@ if cmd == 1
 
       % Attach them as new backing textures, detach the previously bound ones, so they
       % are ready for submission to the VR compositor:
-      Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+      [mirrorTex(1), mirrorTex(2), mirrorTexTarget, ~, ~, width, height] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
   end
 
   % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
+
+  % Debug output requested?
+  if hmd{handle}.debugDisplay && predictedOnset > 0
+    % Yes. Render into onscreen windows viewport:
+    glMatrixMode(GL.PROJECTION);
+    glPushMatrix;
+    glLoadIdentity;
+    gluOrtho2D(0, width, 0, height);
+    glEnable(mirrorTexTarget);
+    owinrect = Screen('GlobalRect', hmd{handle}.win);
+
+    for i=0:1
+      glViewport(i * RectWidth(owinrect) / 2, 0, RectWidth(owinrect) / 2, RectHeight(owinrect));
+      glBindTexture(mirrorTexTarget, mirrorTex(i+1));
+      glBegin(GL.QUADS);
+      glColor4f(1,1,1,1);
+      glTexCoord2f(0,0);
+      glVertex2i(0,0);
+      glTexCoord2f(1,0);
+      glVertex2i(width,0);
+      glTexCoord2f(1,1);
+      glVertex2i(width,height);
+      glTexCoord2f(0,1);
+      glVertex2i(0,height);
+      glEnd();
+    end
+
+    glDisable(mirrorTexTarget);
+    glBindTexture(mirrorTexTarget, 0);
+    glPopMatrix;
+    glMatrixMode(GL.MODELVIEW);
+  end
 
   return;
 end
@@ -1296,9 +1339,8 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
   [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1);
 
-  % Debug display of HMD output into onscreen window requested? TODO: Drop or implement differently?
-  % if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
-  if isempty(oldShieldingLevel)
+  % Debug display of HMD output into onscreen window requested?
+  if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
   end
@@ -1645,7 +1687,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Debug display of HMD output into onscreen window requested?
   if ~isempty(strfind(hmd{handle}.basicRequirements, 'DebugDisplay'))
-    % TODO Not supported by OpenXR yet.
+    hmd{handle}.debugDisplay = 1;
+  else
+    hmd{handle}.debugDisplay = 0;
   end
 
   % Need to call the PsychOpenXR(0) callback at each Screen('Flip') to get the
