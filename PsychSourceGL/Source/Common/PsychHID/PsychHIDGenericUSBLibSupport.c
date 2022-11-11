@@ -172,10 +172,13 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
             return(FALSE);
         }
 
-        // On supported platforms, otherwise does nothing: Enable automatic detaching of
-        // kernel drivers when a specific interface is claimed, and reattaching of formerly
-        // detached kernel drivers when the interface is released again:
-        libusb_set_auto_detach_kernel_driver(dev, 1);
+        // LIBUSB_API_VERSION introduced in v1.0.18, following function requires 1.0.16+
+        #ifdef LIBUSB_API_VERSION
+            // On supported platforms, otherwise does nothing: Enable automatic detaching of
+            // kernel drivers when a specific interface is claimed, and reattaching of formerly
+            // detached kernel drivers when the interface is released again:
+            libusb_set_auto_detach_kernel_driver(dev, 1);
+        #endif
 
         // Set errorcode to success:
         *errorcode = LIBUSB_SUCCESS;
