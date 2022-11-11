@@ -114,6 +114,9 @@ PsychError PSYCHHIDUSBBulkTransfer(void)
     static char useString[] = "[countOrRecData] = PsychHID('USBBulkTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";
     //                          1                                             1          2         3         4          5
     static char synopsisString[] =  "Performs a synchronous USB bulk transfer.\n"
+                                    "The function will automatically claim interface #0 to enable this transfer, unless "
+                                    "you call PsychHID('USBClaimInterface', usbHandle, interfaceId) first to claim a "
+                                    "different interface 'interfaceId' for accessing the wanted endPoint.\n"
                                     "The results of in-transfers are returned in 'countOrRecData' as an uint8() row vector. "
                                     "The amount of actually received data can be less than the requested 'length'. "
                                     "In case of an out-transfer, 'countOrRecData' reports the amount of actual data sent.\n"
@@ -125,7 +128,7 @@ PsychError PSYCHHIDUSBBulkTransfer(void)
                                     "'outData' is a uint8() data vector to send. It will be ignored for in-transfers.\n"
                                     "'timeOutMSecs' is an optional timeout for the operation, in milliseconds. Default is 10000 msecs. "
                                     "A value of zero means to never time out, but wait indefinitely for transfer completion.\n";
-    static char seeAlsoString[] =   "OpenUSBDevice USBControlTransfer USBInterruptTransfer";
+    static char seeAlsoString[] =   "OpenUSBDevice USBClaimInterface USBControlTransfer USBInterruptTransfer";
 
     PsychUSBDeviceRecord *dev;
     int usbHandle, endPoint, length, count;
@@ -198,6 +201,9 @@ PsychError PSYCHHIDUSBInterruptTransfer(void)
     static char useString[] = "[countOrRecData] = PsychHID('USBInterruptTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";
     //                          1                                                  1          2         3         4          5
     static char synopsisString[] =  "Performs a synchronous USB interrupt transfer.\n"
+                                    "The function will automatically claim interface #0 to enable this transfer, unless "
+                                    "you call PsychHID('USBClaimInterface', usbHandle, interfaceId) first to claim a "
+                                    "different interface 'interfaceId' for accessing the wanted endPoint.\n"
                                     "The results of in-transfers are returned in 'countOrRecData' as an uint8() row vector. "
                                     "The amount of actually received data can be less than the requested 'length'. "
                                     "In case of an out-transfer, 'countOrRecData' reports the amount of actual data sent.\n"
@@ -209,7 +215,7 @@ PsychError PSYCHHIDUSBInterruptTransfer(void)
                                     "'outData' is a uint8() data vector to send. It will be ignored for in-transfers.\n"
                                     "'timeOutMSecs' is an optional timeout for the operation, in milliseconds. Default is 10000 msecs. "
                                     "A value of zero means to never time out, but wait indefinitely for transfer completion.\n";
-    static char seeAlsoString[] =   "OpenUSBDevice USBControlTransfer USBBulkTransfer";
+    static char seeAlsoString[] =   "OpenUSBDevice USBClaimInterface USBControlTransfer USBBulkTransfer";
 
     PsychUSBDeviceRecord *dev;
     int usbHandle, endPoint, length, count;
@@ -276,3 +282,43 @@ PsychError PSYCHHIDUSBInterruptTransfer(void)
 
     return(PsychError_none);
 }
+
+PsychError PSYCHHIDUSBClaimInterface(void)
+{
+    static char useString[] = "PsychHID('USBClaimInterface', usbHandle, interfaceId)";
+    //                                                       1          2
+    static char synopsisString[] =  "Claim a USB interface.\n"
+                                    "The function will try to detach kernel drivers potentially attached to "
+                                    "the interface already. If a data transfer operation on an endpoint is "
+                                    "requested before a specific interface has been claimed by calling this "
+                                    "function, e.g., an USBBulkTransfer or USBInterruptTransfer is attempted, "
+                                    "then interface number 0 will automatically first be claimed by default.\n\n"
+                                    "'usbHandle' is the handle of the USB device to claim an interface from.\n"
+                                    "'interfaceId' is the bInterfaceNumber of the interface to claim.\n";
+    static char seeAlsoString[] =   "OpenUSBDevice USBControlTransfer USBBulkTransfer USBInterruptTransfer";
+
+    PsychUSBDeviceRecord *dev;
+    int usbHandle, interfaceId;
+
+    // Setup the help features.
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return PsychError_none; }
+
+    // Make sure the correct number of input arguments is supplied:
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(0));
+
+    PsychCopyInIntegerArg(1, TRUE, &usbHandle);
+    PsychCopyInIntegerArg(2, TRUE, &interfaceId);
+
+    // Get 'dev'icerecord for handle: This will error-out if no such device open:
+    dev = PsychHIDGetUSBDevice(usbHandle);
+
+    // Try to claim interface:
+    if (PsychHIDOSClaimInterface(dev, interfaceId) < 0)
+        PsychErrorExitMsg(PsychError_system, "Claiming the USB interface failed.");
+
+    return(PsychError_none);
+}
+

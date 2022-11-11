@@ -62,6 +62,7 @@ const char** InitializeSynopsis(void)
     synopsis[i++] = "\n\nSupport for access to generic USB devices: See 'help ColorCal2' for one usage example:\n\n";
     synopsis[i++] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID [, configurationId=0])";
     synopsis[i++] = "PsychHID('CloseUSBDevice' [, usbHandle])";
+    synopsis[i++] = "PsychHID('USBClaimInterface', usbHandle, interfaceId)";
     synopsis[i++] = "[recData, count] = PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength [, outData][, timeOutMSecs=10000])";
     synopsis[i++] = "[countOrRecData] = PsychHID('USBBulkTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";
     synopsis[i++] = "[countOrRecData] = PsychHID('USBInterruptTransfer', usbHandle, endPoint, length [, outData][, timeOutMSecs=10000])";

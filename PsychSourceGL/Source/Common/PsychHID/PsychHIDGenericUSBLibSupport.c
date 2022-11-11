@@ -158,6 +158,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
         // Success! Assign device interface and mark device record as active/open/valid:
         devRecord->device = (void*) dev;
         devRecord->valid = 1;
+        devRecord->firstClaimedInterface = -1;
 
         // Configure device
         rc = ConfigureDevice(dev, spec->configurationID);
@@ -170,6 +171,11 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 
             return(FALSE);
         }
+
+        // On supported platforms, otherwise does nothing: Enable automatic detaching of
+        // kernel drivers when a specific interface is claimed, and reattaching of formerly
+        // detached kernel drivers when the interface is released again:
+        libusb_set_auto_detach_kernel_driver(dev, 1);
 
         // Set errorcode to success:
         *errorcode = LIBUSB_SUCCESS;
@@ -266,6 +272,11 @@ int PsychHIDOSBulkTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint
     if (dev == NULL)
         PsychErrorExitMsg(PsychError_internal, "libusb_device_handle* device points to NULL device!");
 
+    // If no interface was claimed by user script yet, try to claim interface #0 to enable this transfer:
+    if ((devRecord->firstClaimedInterface < 0) && ((rc = PsychHIDOSClaimInterface(devRecord, 0)) < 0))
+        return (rc);
+
+    // Execute bulk transfer:
     rc = libusb_bulk_transfer(dev, (unsigned char) endPoint, (unsigned char*) buffer, length, count, timeOutMSecs);
 
     // Return value is either 0 on success, or a negative error code.
@@ -283,6 +294,11 @@ int PsychHIDOSInterruptTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 end
     if (dev == NULL)
         PsychErrorExitMsg(PsychError_internal, "libusb_device_handle* device points to NULL device!");
 
+    // If no interface was claimed by user script yet, try to claim interface #0 to enable this transfer:
+    if ((devRecord->firstClaimedInterface < 0) && ((rc = PsychHIDOSClaimInterface(devRecord, 0)) < 0))
+        return (rc);
+
+    // Execute interrupt transfer:
     rc = libusb_interrupt_transfer(dev, (unsigned char) endPoint, (unsigned char*) buffer, length, count, timeOutMSecs);
 
     // Return value is either 0 on success, or a negative error code.
@@ -291,3 +307,26 @@ int PsychHIDOSInterruptTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 end
 
     return (rc);
 }
+
+int PsychHIDOSClaimInterface(PsychUSBDeviceRecord* devRecord, int interfaceId)
+{
+    int rc;
+    libusb_device_handle* dev = (libusb_device_handle*) devRecord->device;
+
+    if (dev == NULL)
+        PsychErrorExitMsg(PsychError_internal, "libusb_device_handle* device points to NULL device!");
+
+    // Try to claim interface interfaceId:
+    rc = libusb_claim_interface(dev, interfaceId);
+
+    // Return value is either 0 on success, or a negative error code.
+    if (rc < 0) {
+        printf("PsychHID-ERROR: Claiming USB interface %i failed: %s - %s.\n", interfaceId, libusb_error_name(rc), libusb_strerror(rc));
+    } else if (devRecord->firstClaimedInterface < 0) {
+        // If no interface was claimed yet, record this as the first claimed interface:
+        devRecord->firstClaimedInterface = interfaceId;
+    }
+
+    return (rc);
+}
+

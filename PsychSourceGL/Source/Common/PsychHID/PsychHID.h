@@ -160,6 +160,7 @@ typedef struct PsychUSBSetupSpec_Struct PsychUSBSetupSpec;
 // Structure to keep track of a generic USB device:
 struct PsychUSBDeviceRecord_Struct {
     int valid;                          // 0 = Unused/Free device record, 1 = Active device record.
+    int firstClaimedInterface;          // -1 = No interface claimed yet. Otherwise number of 1st claimed interface.
     void* device;                       // libusb device handle.
 };
 
@@ -201,6 +202,7 @@ PsychError PSYCHHIDCloseUSBDevice(void);                // PSYCHHIDCloseUSBDevic
 PsychError PSYCHHIDUSBControlTransfer(void);            // PSYCHHIDUSBControlTransfer.c
 PsychError PSYCHHIDUSBBulkTransfer(void);               // PSYCHHIDUSBControlTransfer.c
 PsychError PSYCHHIDUSBInterruptTransfer(void);          // PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDUSBClaimInterface(void);             // PSYCHHIDUSBControlTransfer.c
 
 PsychError PSYCHHIDKeyboardHelper(void);                // PSYCHHIDKeyboardHelper.c
 
@@ -252,6 +254,7 @@ int         PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uin
                                       psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData, unsigned int timeOutMSecs);
 int         PsychHIDOSBulkTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs);
 int         PsychHIDOSInterruptTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs);
+int         PsychHIDOSClaimInterface(PsychUSBDeviceRecord* devRecord, int interfaceId);
 
 // These must be defined for each OS in their own PsychHIDStandardInterfaces.c:
 #ifdef __cplusplus

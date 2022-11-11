@@ -74,6 +74,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("USBControlTransfer", &PSYCHHIDUSBControlTransfer));
     PsychErrorExit(PsychRegister("USBBulkTransfer", &PSYCHHIDUSBBulkTransfer));
     PsychErrorExit(PsychRegister("USBInterruptTransfer", &PSYCHHIDUSBInterruptTransfer));
+    PsychErrorExit(PsychRegister("USBClaimInterface", &PSYCHHIDUSBClaimInterface));
 
     PsychSetModuleAuthorByInitials("awi");
     PsychSetModuleAuthorByInitials("dgp");
