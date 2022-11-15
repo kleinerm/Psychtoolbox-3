@@ -900,10 +900,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     hdrInfo = PsychVulkanCore('GetHDRProperties', vwin);
     gpuIndex = hdrInfo.GPUIndex;
 
-    % Mesa open-source Vulkan drivers of Mesa version < 22.3.0 in use for fullscreen direct display mode and
+    % Mesa open-source Vulkan drivers of Mesa version < 22.2.4 in use for fullscreen direct display mode and
     % target video output windowRect doesn't have top-left corner at (0,0)?
     if isFullscreen && any(windowRect(1:2)) && ismember(devs(gpuIndex).DriverId, [3, 6, 13, 18:20, 22:23]) && ...
-       (devs(gpuIndex).DriverVersionRaw < bitshift (22, 22) + bitshift (3, 12) + 0)
+       (devs(gpuIndex).DriverVersionRaw < bitshift (22, 22) + bitshift (2, 12) + 4)
         % Yes. At least as of Mesa version 22.3-devel and earlier (tested Mesa 22.3-git, 22.0.5, 21.2.6),
         % these drivers have an internal caching bug in their WSI, where in direct display mode they will
         % fail on any run after the first run in a session (vkQueuePresent() fails with VK_ERROR_SURFACE_LOST),
@@ -913,8 +913,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % from the first session, which leads to omitting a required drmModeSetCrtc() full modeset on first
         % present -> Boom!
         %
-        % The bug has been diagnosed and fixed by myself and will be part of Mesa 22.3.0, but won't backport further
-        % than Mesa 22.2.4 the very earliest, so we need a workaround for at least Debian 11, Ubuntu 20.04-LTS
+        % The bug has been diagnosed and fixed by myself and will be part of Mesa 22.2.4 and later, but won't
+        % get backported further, so we need a workaround for at least Debian 11, Ubuntu 20.04-LTS
         % and Ubuntu 22.04.1-LTS, Ubuntu 22.10 and possibly also Ubuntu 22.04.2-LTS.
         %
         % The workaround is a full driver shutdown -> VKInstance destruction -> Stale cache reset -> Ok:
@@ -922,7 +922,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         fprintf('PsychVulkan-WARNING: Need to enable full-driver-shutdown workaround for buggy Mesa Vulkan driver!\n');
         fprintf('PsychVulkan-WARNING: This could cause problems on multi-window Vulkan configurations and is a bad hack!\n');
         fprintf('PsychVulkan-WARNING: Windows placed in the origin (0,0) of their respective X-Screen are not affected.\n');
-        fprintf('PsychVulkan-WARNING: Please upgrade to Mesa version 22.3.0 or later to get rid of this hack.\n');
+        fprintf('PsychVulkan-WARNING: Please upgrade to Mesa version 22.2.4 or later to get rid of this hack.\n');
     else
         vulkan{win}.needsMesaDDMWa = 0;
     end
