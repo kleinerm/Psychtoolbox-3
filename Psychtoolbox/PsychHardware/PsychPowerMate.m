@@ -105,7 +105,8 @@ function varargout = PsychPowerMate(cmd, varargin)
 %
 % PsychPowerMate('SetBrightness', handle, level);
 % -- Change brightness of the LED of the PowerMate specified by 'handle'
-% to 'level'. Level can be between 0 and 255.
+% to 'level'. Level can be between 0 and 255. 'handle' is currently ignored
+% on Linux.
 %
 %
 % [button, dialPos] = PsychPowerMate('Get', handle);
@@ -363,7 +364,19 @@ if strcmpi(cmd, 'SetBrightness')
   end
 
   level = min(255, max(0, varargin{2}));
-  PsychHID('SetReport', varargin{1}, 2, 0, uint8(level));
+
+  if IsLinux
+    % Linux: Do it old school, because the passed in handle is not a HID device
+    % handle, but a handle XINPUT devices or similar:
+    usbHandle = PsychHID('OpenUSBDevice', hex2dec ('077d'), hex2dec ('0410'));
+    PsychHID('USBControlTransfer', usbHandle, hex2dec ('41'), 1, 1, level, 0);
+    PsychHID('CloseUSBDevice', usbHandle);
+  else
+    % Windows, macOS: HID out report instead of USB control transfers, because it
+    % respects the device handle and works cross-platform:
+    PsychHID('SetReport', varargin{1}, 2, 0, uint8(level));
+  end
+
   return;
 end
 
