@@ -1309,21 +1309,50 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   The 'MirrorDisplayToSingleSplitWindow' task may be a bit more efficient than
 %   'MirrorDisplayTo2ndOutputHead', but it requires either use of a modern Linux
 %   distribution like Ubuntu 22.04-LTS with X-Server 21, and some configuration
-%   with XOrgConfCreator, or the use of two display devices of identical model from
-%   the same vendor, set to exactly the same video mode (resolution and refresh rate),
-%   and identical video connections, so the video refresh cycles of both the stimulus
-%   presentation display, and the experimenter feedback mirror display are perfectly
-%   synchronized with each other. Otherwise timing and performance will be less than
-%   optimal! If you can't meet these conditions then the ''MirrorDisplayTo2ndOutputHead'
+%   with XOrgConfCreator, or the use of two display devices of identical
+%   model from the same vendor, set to exactly the same video mode
+%   (resolution and refresh rate), and identical video connections, so the
+%   video refresh cycles of both the stimulus presentation display, and the
+%   experimenter feedback mirror display are perfectly synchronized with
+%   each other. Otherwise timing and performance will be less than optimal!
+%   If you can't meet these conditions then the 'MirrorDisplayTo2ndOutputHead'
 %   task is the better choice, at expense of higher gpu load.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayToSingleSplitWindow' [, useOverlay=0]);
+%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayToSingleSplitWindow' [, useOverlay=0][, mirrorDestination]);
 %
 %   Optionally you can set the 'useOverlay' flag to 1, to request use of an
 %   overlay window on top of the mirrored stimulus. The function ...
 %   overlaywin = PsychImaging('GetMirrorOverlayWindow', win);
 %   ... will return a window handle overlaywin for a given onscreen window win,
 %   and you can then use overlaywin for drawing content into that overlay.
+%
+%   Optionally you can provide the 'mirrorDestination' parameter to specify
+%   where the mirror image should go within the onscreen window, and which
+%   size it has. By default, the mirror image will fill out the right half
+%   of the onscreen window, an appropriate choice if your mirror display
+%   monitor has the same resolution as the stimulus display monitor and
+%   both are arranged side-by-side in a dual-display setup. For different
+%   monitor arrangements, e.g., triple-display setups or similar, of for
+%   different selected mirror monitor resolutions, a future Psychtoolbox
+%   release may also select a proper location and size for the mirror
+%   image. But for now, if your mirror monitor has a different resolution
+%   than the stimulus monitor, you need to manually specify the mirror
+%   monitors resolution, ie. width x height in pixels as mirrorDestination
+%   parameter, a two-component row vector of form [width, height]., so the
+%   mirror image can get appropriately scaled to the resolution of the
+%   mirror monitor. On Linux you will also need to use the SetResolution()
+%   function to set a horizontal resolution that is twice the horizontal
+%   resolution of your stimulus monitor(s). E.g., if your stimulus monitor
+%   is 2560x1440 resolution and your mirror monitor is 1280x1024 pixels,
+%   and both are attached to Psychtoolbox screen 1 (aka X-Screen 1), you'd
+%   have to call SetResolution(1, 2*2560, 1440); before 'OpenWindow', and
+%   specify 'mirrorDestination' as [1280, 1024]. A setup with three
+%   monitors, two stimulus monitors next to each other at 2560x1440 pixels
+%   each, plus one mirror monitor of 1280x1024 right to the both stimulus
+%   monitors would instead require a call to
+%   SetResolution(1, 2 * (2560 + 2560), 1440). Note that setups which
+%   require specification of 'mirrorDestination' may not work at all at the
+%   moment on systems other than Linux.
 %
 %   Optionally, if you don't need the imaging pipeline and don't need the overlay
 %   for experimenter feedback, ie. you let 'useOverlay' = 0, you can add ...
@@ -5237,10 +5266,45 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
         ow = w / 2;
     end
 
+    % Setup scaling (and location tbd. in the future) of mirror target region,
+    % width default of full scaling to half width right half of window for mirror image:
+    sfx = 1;
+    sfy = 1;
+
+    % Get optional region spec for mirror target region:
+    mirrordst = reqs{rows, 4};
+    if ~isempty(mirrordst)
+        % Parameter specified as non-default: Valid format?
+
+        % Currently we only accept numeric row-vectors:
+        if isnumeric(mirrordst) && isreal(mirrordst) && isrow(mirrordst)
+            % Of length two elements for [width, height] of the mirror region:
+            if length(mirrordst) == 2
+                % width and height must be at least 1 pixel:
+                if any(mirrordst < 1)
+                    sca;
+                    error('PsychImaging: MirrorDisplayToSingleSplitWindow: Invalid mirrorDestination parameter [width, height] vector, width or height < 1 pixel!');
+                end
+
+                % Extract width x height:
+                dstw = mirrordst(1);
+                dsth = mirrordst(2);
+            else
+                sca;
+                error('PsychImaging: MirrorDisplayToSingleSplitWindow: Invalid mirrorDestination parameter provided: Not a two element [width, height] vector!');
+            end
+        else
+            sca;
+            error('PsychImaging: MirrorDisplayToSingleSplitWindow: Invalid mirrorDestination parameter provided: Not a numeric row vector!');
+        end
+
+        % Compute scaling factors from stimulus image to mirror region:
+        sfx = dstw / w;
+        sfy = dsth / h;
+    end
+
     % Attach blit command sequence to finalizer chain:
-    myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', ow, h, w, h);
-    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorSplitWindowToSplitWindow', myblitstring);
-    Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
+    blitstring = sprintf('glPixelZoom(%f, %f); glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144); ', sfx, sfy, ow, h * sfy, w, h);
 
     % Overlay for mirror window requested?
     if reqs{rows, 3} == 1
@@ -5266,19 +5330,18 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
 
         % Build blitter command string: We use a glCopyPixels() from the overlaywin
         % overlayfbo as read framebuffer, to the active draw framebuffer. glCopyPixels
-        % allows alpha testing or blending, whereas glBlitFramebuffer would not:
-        blitstring = sprintf(['rfbo = glGetIntegerv(36010); glBindFramebufferEXT(36008, %i); ' ...
-                             'glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144); ' ...
-                             'glBindFramebufferEXT(36008, rfbo);'], overlayfbo, ow, h, w, h);
-
-        % Append blitter command for a one-to-one blit of the overlay window
-        % texture to the right half of the onscreen window, where the mirrored
-        % stimulus image resides. We need to enable alpha testing, so the overlay
-        % only occludes the mirrored image where the overlay has a non-zero alpha:
-        Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Setup Alphatest for Mirror-Overlay', 'glAlphaFunc(516, 0.0); glEnable(3008);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Blit the Mirror-Overlay', blitstring);
-        Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Teardown Alphatest for Mirror-Overlay', 'glDisable(3008);');
+        % allows alpha testing or blending, whereas glBlitFramebuffer would not. Then
+        % enable alpha testing around the blit, so all overlay pixels with non-zero
+        % alpha overwrite the mirror image pixels:
+        blitstring = [blitstring sprintf(['glAlphaFunc(516, 0.0); glEnable(3008); rfbo = glGetIntegerv(36010); ' ...
+                     'glBindFramebufferEXT(36008, %i); glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144); ' ...
+                     'glBindFramebufferEXT(36008, rfbo); glDisable(3008); glPixelZoom(1, 1);'], overlayfbo, ow, h * sfy, w, h)];
+    else
+        blitstring = [blitstring 'glPixelZoom(1, 1);'];
     end
+
+    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorDisplayToSingleSplitWindow', blitstring);
+    Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 end
 % --- End of GPU based mirroring of left half of onscreen window to right half requested? ---
 
