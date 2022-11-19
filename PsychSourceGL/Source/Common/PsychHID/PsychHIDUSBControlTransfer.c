@@ -161,8 +161,9 @@ PsychError PSYCHHIDUSBBulkTransfer(void)
             PsychErrorExitMsg(PsychError_user, "Argument length must be > 0 for an in-transfer command!");
         }
 
-        // Allocate temporary receive buffer for max expected amount of length bytes:
-        buffer = PsychMallocTemp(length);
+        // Allocate temporary receive buffer for max expected amount of length bytes,
+        // plus 1 byte to compensate for bug in libusb 1.0.26 windows hid backend:
+        buffer = PsychMallocTemp(length + 1);
     }
     else {
         // Get the mandatory outData buffer with data to send:
@@ -182,6 +183,11 @@ PsychError PSYCHHIDUSBBulkTransfer(void)
 
     // Return arg 1 is either the received data buffer, or number of sent out bytes:
     if (endPoint & USB_INTRANSFER) {
+        // Workaround for off-by-one bug in libusb <= v1.0.26 MS-Windows/hid backend,
+        // as that one can return a buffer with one byte too much, a 0 postfix byte.
+        if (count > length)
+            count = length;
+
         // Allocate return buffer of sufficient size for count received bytes:
         PsychAllocOutUnsignedByteMatArg(1, FALSE, 1, count, 1, &outBuffer);
 
@@ -248,8 +254,9 @@ PsychError PSYCHHIDUSBInterruptTransfer(void)
             PsychErrorExitMsg(PsychError_user, "Argument length must be > 0 for an in-transfer command!");
         }
 
-        // Allocate temporary receive buffer for max expected amount of length bytes:
-        buffer = PsychMallocTemp(length);
+        // Allocate temporary receive buffer for max expected amount of length bytes,
+        // plus 1 byte to compensate for bug in libusb 1.0.26 windows hid backend:
+        buffer = PsychMallocTemp(length + 1);
     }
     else {
         // Get the mandatory outData buffer with data to send:
@@ -269,6 +276,11 @@ PsychError PSYCHHIDUSBInterruptTransfer(void)
 
     // Return arg 1 is either the received data buffer, or number of sent out bytes:
     if (endPoint & USB_INTRANSFER) {
+        // Workaround for off-by-one bug in libusb <= v1.0.26 MS-Windows/hid backend,
+        // as that one can return a buffer with one byte too much, a 0 postfix byte.
+        if (count > length)
+            count = length;
+
         // Allocate return buffer of sufficient size for count received bytes:
         PsychAllocOutUnsignedByteMatArg(1, FALSE, 1, count, 1, &outBuffer);
 
