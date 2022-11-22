@@ -542,42 +542,8 @@ end
 
 % Fast-Path function 'EndFrameRender' - Queues new frames to Compositor:
 if cmd == 0
-  handle = varargin{1};
-
-  t1 = GetSecs;
-
   % Submit/Commit just unbound textures to texture swap-chains:
-  PsychOpenXRCore('EndFrameRender', hmd{handle}.handle);
-  t2 = GetSecs;
-
-  % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
-  if hmd{handle}.debugDisplay
-    % Debug output of compositor mirror texture into PTB onscreen window requested.
-    % - Ask to skip flip's regular OpenGL swap completion timestamping, but instead
-    %   to accept future injected timestamps from us.
-    %
-    % - Ask to disable vsync of the OpenGL bufferswap for display of the mirror texture
-    %   in the onscreen window. We don't want to get swap-throttled to the refresh rate
-    %   of the operator desktop GUI display.
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
-  else
-    % Skip the OpenGL bufferswap for the onscreen window completely, ergo also skip
-    % timestamping and allow timestamp injection from us instead:
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
-  end
-
-  t3 = GetSecs;
-
-  %fprintf('EndFrameRender: %f ms, SetNext/Flags %f ms ... \n', 1000 * (t2 - t1), 1000 * (t3 - t2));
-
-  % If usercode requests a dontsync flag > 0 in Screen('Flip', window, when, dontclear, dontsync)
-  % then switch to low precision/reliability timestamping, otherwise use timestampHighPrecision setting:
-  if (varargin{3} > 0)
-    hmd{handle}.doTimestamp = 0;
-  else
-    hmd{handle}.doTimestamp = hmd{handle}.timestampHighPrecision;
-  end
-
+  PsychOpenXRCore('EndFrameRender', hmd{varargin{1}}.handle);
   return;
 end
 
@@ -587,7 +553,11 @@ if cmd == 1
   handle = varargin{1};
   tWhen = varargin{2};
 
-  predictedOnset = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen, hmd{handle}.doTimestamp);
+  % Present and timestamp:
+  predictedOnset = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen, 1);
+
+  % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
+  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
 
   % PresentFrame successfull and not skipped?
   if predictedOnset > 0
@@ -600,52 +570,41 @@ if cmd == 1
         texRight = [];
       end
 
-      if texLeft < 0
-        texLeft = [];
-      end
-
-      if texRight < 0
-        texRight = [];
-      end
-
       % Attach them as new backing textures, detach the previously bound ones, so they
       % are ready for submission to the VR compositor:
       [mirrorTex(1), mirrorTex(2), mirrorTexTarget, ~, ~, width, height] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
-  end
 
-  % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
-  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
+      % Debug output requested?
+      if hmd{handle}.debugDisplay
+        % Yes. Render into onscreen windows viewport:
+        glMatrixMode(GL.PROJECTION);
+        glPushMatrix;
+        glLoadIdentity;
+        gluOrtho2D(0, width, 0, height);
+        glEnable(mirrorTexTarget);
+        owinrect = Screen('GlobalRect', hmd{handle}.win);
 
-  % Debug output requested?
-  if hmd{handle}.debugDisplay && predictedOnset > 0
-    % Yes. Render into onscreen windows viewport:
-    glMatrixMode(GL.PROJECTION);
-    glPushMatrix;
-    glLoadIdentity;
-    gluOrtho2D(0, width, 0, height);
-    glEnable(mirrorTexTarget);
-    owinrect = Screen('GlobalRect', hmd{handle}.win);
+        for i=0:1
+          glViewport(i * RectWidth(owinrect) / 2, 0, RectWidth(owinrect) / 2, RectHeight(owinrect));
+          glBindTexture(mirrorTexTarget, mirrorTex(i+1));
+          glBegin(GL.QUADS);
+          glColor4f(1,1,1,1);
+          glTexCoord2f(0,0);
+          glVertex2i(0,0);
+          glTexCoord2f(1,0);
+          glVertex2i(width,0);
+          glTexCoord2f(1,1);
+          glVertex2i(width,height);
+          glTexCoord2f(0,1);
+          glVertex2i(0,height);
+          glEnd();
+        end
 
-    for i=0:1
-      glViewport(i * RectWidth(owinrect) / 2, 0, RectWidth(owinrect) / 2, RectHeight(owinrect));
-      glBindTexture(mirrorTexTarget, mirrorTex(i+1));
-      glBegin(GL.QUADS);
-      glColor4f(1,1,1,1);
-      glTexCoord2f(0,0);
-      glVertex2i(0,0);
-      glTexCoord2f(1,0);
-      glVertex2i(width,0);
-      glTexCoord2f(1,1);
-      glVertex2i(width,height);
-      glTexCoord2f(0,1);
-      glVertex2i(0,height);
-      glEnd();
-    end
-
-    glDisable(mirrorTexTarget);
-    glBindTexture(mirrorTexTarget, 0);
-    glPopMatrix;
-    glMatrixMode(GL.MODELVIEW);
+        glDisable(mirrorTexTarget);
+        glBindTexture(mirrorTexTarget, 0);
+        glPopMatrix;
+        glMatrixMode(GL.MODELVIEW);
+      end
   end
 
   return;
@@ -1150,10 +1109,6 @@ if strcmpi(cmd, 'Open')
     evalin('caller','global OVR');
   end
 
-  % High precision (and potentially high overhead) timestamping by default:
-  % TODO FIXME Use low precision timestamping to avoid one cause of hangs atm.
-  newhmd.timestampHighPrecision = 0;
-
   % Store in internal array:
   hmd{handle} = newhmd;
 
@@ -1343,12 +1298,6 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
-  end
-
-  % Use low precision timestamps if usercode requests them, because they can be
-  % computed with much lower overhead: TODO REMOVE?
-  if ~isempty(strfind(basicRequirements, 'FastLowPrecisionTimestamps'))
-    hmd{myhmd.handle}.timestampHighPrecision = 0;
   end
 
   return;
@@ -1685,25 +1634,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % are cleared to black:
   Screen('FillRect', win, clearcolor);
 
-  % Debug display of HMD output into onscreen window requested?
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'DebugDisplay'))
-    hmd{handle}.debugDisplay = 1;
-  else
-    hmd{handle}.debugDisplay = 0;
-  end
-
-  % Need to call the PsychOpenXR(0) callback at each Screen('Flip') to get the
-  % imaging pipelines post-processed final output frames for left/right eye and commit
-  % them to the VR-Compositors texture swap-chain(s), then setting up new target textures
-  % as buffers for next cycle. This happens at the end of preflip operations, as part of
+  % Need to call the PsychOpenXR(0) callback at each Screen('Flip') to get the imaging
+  % pipelines post-processed final output frames for left/right eye and commit them to
+  % the XR-Compositors texture swap-chain(s), then setting up new target textures as
+  % buffers for next cycle. This happens at the end of preflip operations, as part of
   % the implicit 'DrawingFinished':
   cmdString = sprintf('PsychOpenXR(0, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', handle);
   if winfo.StereoMode > 0
-    % In stereo mode we also need to detach the left eye texture as commit prep:
-    %detachCmd = 'glFramebufferTexture2D(36160, 36064, 3553, 0, 0);';
-    %Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OpenXR left texture detach Operation', detachCmd);
-    %Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
-
     % In stereo mode, use right finalizer chain for right texture detach and both textures commit, as it executes last:
     Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OpenXR Stereo commit Operation', cmdString);
     Screen('Hookfunction', win, 'Enable', 'RightFinalizerBlitChain');
@@ -1713,23 +1650,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
   end
 
-  % Need to call the PsychOpenXR(1) callback at each Screen('Flip') to submit the
-  % output frames to the VR-Compositor for presentation on the HMD asap. This gets
-  % called immediately before an OpenGL bufferswap (if any) + timestamping + validation
-  % will happen, iow. at t >= tWhen for Screen('Flip', win, tWhen);
-  % It is supposed to block until image presentation on the HMD has happened, and to
-  % inject proper Present timestamps for 'Flip':
-  % TODO FIXME: Nope, change of strategy: We set the kPsychSkipWaitForFlipOnce flag in
-  % 'EndFrameRender', so PreSwapbuffersOperations does not wait until tWhen, but executes
-  % immediately. We pass in the tWhen timestamp to this fast-path callback, which will pass
-  % it on to 'PresentFrame', and then it is the job of the PsychOpenXRCore drivers thread
-  % to wait until the right moment to submit the new frame to the VR compositor. This allows
-  % to use a single-threaded presentation model, where the single thread busy-waits until the
-  % right point in time. We retain the ability to 'Flip' as fast as possible for closed-loop
-  % tracked VR presentation, and the ability to do timed open-loop presentation with 'tWhen'
-  % target times, and avoid all the multi-threading misery the OpenXR runtime brings to us.
-  % Downside is the inability to avoid the sandclock warning if usercode truly does not execute
-  % any Flip's for more than a second, but this has to do as a stepping stone for now:
+  % Need to call the PsychOpenXR(1) callback at each Screen('Flip') to submit the output
+  % frames to the VR-Compositor for presentation on the HMD. This gets called before an
+  % OpenGL bufferswap (if any) + timestamping + validation will happen. It is supposed to
+  % block until image presentation on the HMD has happened, and to inject proper Present
+  % timestamps for 'Flip':
+  % The kPsychSkipWaitForFlipOnce flag is set, so PreSwapbuffersOperations executes
+  % immediately. We pass the tWhen timestamp to this fast-path callback, which will pass
+  % it on to 'PresentFrame', and then on to the OpenXR runtime and OpenXR compositor to
+  % present the image at the proper target time tWhen:
   cmdString = sprintf('PsychOpenXR(1, %i, IMAGINGPIPE_FLIPTWHEN);', handle);
   Screen('Hookfunction', win, 'AppendMFunction', 'PreSwapbuffersOperations', 'OpenXR Present Operation', cmdString);
   Screen('Hookfunction', win, 'Enable', 'PreSwapbuffersOperations');
@@ -1750,6 +1679,25 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown window callback into PsychOpenXR driver.', sprintf('PsychOpenXR(''Close'', %i);', handle));
     end
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
+  end
+
+  % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
+  % Debug display of HMD output into onscreen window requested?
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'DebugDisplay'))
+    % Debug output of compositor mirror texture into PTB onscreen window requested.
+    % - Ask to skip flip's regular OpenGL swap completion timestamping, but instead
+    %   to accept future injected timestamps from us.
+    %
+    % - Ask to disable vsync of the OpenGL bufferswap for display of the mirror texture
+    %   in the onscreen window. We don't want to get swap-throttled to the refresh rate
+    %   of the operator desktop GUI display.
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychDontAutoResetOneshotFlags + kPsychSkipWaitForFlipOnce + kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+    hmd{handle}.debugDisplay = 1;
+  else
+    % Skip the OpenGL bufferswap for the onscreen window completely, ergo also skip
+    % timestamping and allow timestamp injection from us instead:
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychDontAutoResetOneshotFlags + kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+    hmd{handle}.debugDisplay = 0;
   end
 
   % Query set of currently connected controllers:
