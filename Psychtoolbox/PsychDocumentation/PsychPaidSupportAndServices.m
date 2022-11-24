@@ -113,12 +113,16 @@ if exist('mininag', 'var') && (mininag > 0)
     fprintf('\n\n');
 
     if mininag == 1
-        % Advertise our user survey 2022:
-        fprintf('ADDITIONAL NEWS: The Psychtoolbox user survey 2022 is underway!\n');
+        % Advertise our end of year discounted sale and user survey 2022:
+        fprintf('ADDITIONAL NEWS: Psychtoolbox discounted memberships and user survey 2022!\n');
         fprintf('\n');
-        fprintf('In recent years the Psychtoolbox Team has worked hard to improve Psychtoolbox itself and its services.\n');
-        fprintf('We kindly ask you to fill out this survey, so that we can better understand the needs and wishes of our\n');
-        fprintf('community. Your answers will greatly help us to shape the future of Psychtoolbox.\n');
+        fprintf('For a limited time, starting 24th November 2022, we offer paid support memberships\n');
+        fprintf('at a substantially discounted price! For the announcement, go to the following link:\n');
+        fprintf('\n');
+        fprintf('https://psychtoolbox.discourse.group/t/get-support-memberships-for-99-euros-tax-only-limited-offer/4712\n');
+        fprintf('\n');
+        fprintf('We also kindly ask you to fill out our user survey, so that we can better understand the needs\n');
+        fprintf('and wishes of our community. Your answers will greatly help us to shape the future of Psychtoolbox.\n');
         fprintf('\n');
         fprintf('The survey is conducted by our host for all commercial services and matters, the\n');
         fprintf('“Medical Innovations Incubator GmbH, Tuebingen, Germany”.\n');
