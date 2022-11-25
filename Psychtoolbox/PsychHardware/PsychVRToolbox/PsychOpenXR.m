@@ -1299,9 +1299,16 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
   % compositor. This way we will do the MSAA whenever we can for maximum
   % efficiency, but fallback to slow Screen MSAA if needed to fulfill the
   % user codes wishes - "quality first", at the expense of an extra framebuffer
-  % copy for MSAA resolve between drawBufferFBOs and finalizedFBOs:
+  % copy for MSAA resolve between drawBufferFBOs and finalizedFBOs. If
+  % 'DebugDisplay' mode for mirroring of HMD content to the onscreen window
+  % is requested then we also always fallback to Screen() MSAA, instead of
+  % using OpenXR MSAA, because the image mirroring code can not cope with
+  % MSAA finalizedFBO's / color attachment textures, ie. glBlitFramebuffer
+  % fails. Using the fallback costs performance, but makes mirroring work
+  % all times:
   if (hmd{myhmd.handle}.maxMSAASamples > 1) && (hmd{myhmd.handle}.requestedScreenMSAASamples > 0) && ...
-     (hmd{myhmd.handle}.requestedScreenMSAASamples <= hmd{myhmd.handle}.maxMSAASamples)
+     (hmd{myhmd.handle}.requestedScreenMSAASamples <= hmd{myhmd.handle}.maxMSAASamples) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicRequirements, 'DebugDisplay'))
     imagingMode = mor(imagingMode, kPsychSinkIsMSAACapable);
   end
 
