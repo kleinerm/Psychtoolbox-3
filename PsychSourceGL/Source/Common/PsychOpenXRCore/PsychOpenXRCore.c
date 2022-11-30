@@ -206,7 +206,7 @@ static psych_bool initialized = FALSE;
 static char errorString[XR_MAX_RESULT_STRING_SIZE];
 
 static void* PresenterThreadMain(void* psychOpenXRDeviceToCast);
-static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTextures, psych_bool onlyCommit);
+static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit);
 
 // XR_EXT_debug_utils for runtime debug output:
 PFN_xrCreateDebugUtilsMessengerEXT pxrCreateDebugUtilsMessengerEXT = NULL;
@@ -1429,6 +1429,9 @@ static psych_bool processXREvents(XrInstance pollInstance)
                             // synchronize and keep synchronized with the runtime:
                             openxr->sessionActive = TRUE;
                             openxr->needFrameLoop = TRUE;
+
+                            // PresentExecute() the first time on the main thread to sync us up:
+                            PresentExecute(openxr, TRUE);
                         }
 
                         break;
@@ -1710,7 +1713,7 @@ void PsychOpenXRClose(int handle)
         openxr->closing = FALSE;
 
         // PresentExecute() a last time on the main thread:
-        PresentExecute(openxr, FALSE, FALSE);
+        PresentExecute(openxr, FALSE);
 
         // Destroy/Release texture swap chains to XR compositor:
         if (openxr->textureSwapChain[0]) {
@@ -3878,7 +3881,7 @@ PsychError PSYCHOPENXREndFrameRender(void)
 // Must be called with the presenterLock locked!
 // Called by idle presenterThread to keep VR compositor timeout handling from kicking in,
 // and directly from PSYCHOPENXRPresentFrame when userspace wants to present new content.
-static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTextures, psych_bool inInit)
+static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 {
     int eyeIndex;
     psych_bool success = TRUE;
@@ -3889,6 +3892,46 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
     if (!openxr->needFrameLoop) {
         success = TRUE;
         goto present_out;
+    }
+
+    if (!inInit) {
+        // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
+        // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as zero:
+        XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : 0;
+
+        // If targetDisplayTime is invalid (== 0) or earlier than earliest next possible display time predictedDisplayTime,
+        // then set it to earliest possible display time:
+        if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
+            targetDisplayTime = openxr->frameState.predictedDisplayTime;
+
+        // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
+        locateXRViews(openxr, targetDisplayTime);
+
+        // Prepare frameEndInfo, assign desired optimal targetDisplayTime. Compositor should present at the earliest
+        // possible time no earlier than targetDisplayTime:
+        XrFrameEndInfo frameEndInfo = {
+            .type = XR_TYPE_FRAME_END_INFO,
+            .next = NULL,
+            .displayTime = targetDisplayTime,
+            .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+            .layerCount = (openxr->frameState.shouldRender) ? openxr->submitLayersCount : 0,
+            .layers = openxr->submitLayers
+        };
+
+        // Update pose and FoV for projection views:
+        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+            openxr->projView[eyeIndex].pose = openxr->view[eyeIndex].pose;
+            openxr->projView[eyeIndex].fov = openxr->view[eyeIndex].fov;
+        }
+
+        result = xrEndFrame(openxr->hmd, &frameEndInfo);
+        if (!resultOK(result)) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to xrEndFrame: %s\n", errorString);
+
+            success = FALSE;
+            goto present_fail;
+        }
     }
 
     // Do the frame present cycle:
@@ -3993,44 +4036,6 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         goto present_fail;
     }
 
-    // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
-    // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as zero:
-    XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : 0;
-
-    // If targetDisplayTime is invalid (== 0) or earlier than earliest next possible display time predictedDisplayTime,
-    // then set it to earliest possible display time:
-    if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
-        targetDisplayTime = openxr->frameState.predictedDisplayTime;
-
-    // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
-    locateXRViews(openxr, targetDisplayTime);
-
-    // Prepare frameEndInfo, assign desired optimal targetDisplayTime. Compositor should present at the earliest
-    // possible time no earlier than targetDisplayTime:
-    XrFrameEndInfo frameEndInfo = {
-        .type = XR_TYPE_FRAME_END_INFO,
-        .next = NULL,
-        .displayTime = targetDisplayTime,
-        .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-        .layerCount = (openxr->frameState.shouldRender) ? openxr->submitLayersCount : 0,
-        .layers = openxr->submitLayers
-    };
-
-    // Update pose and FoV for projection views:
-    for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
-        openxr->projView[eyeIndex].pose = openxr->view[eyeIndex].pose;
-        openxr->projView[eyeIndex].fov = openxr->view[eyeIndex].fov;
-    }
-
-    result = xrEndFrame(openxr->hmd, &frameEndInfo);
-    if (!resultOK(result)) {
-        if (verbosity > 0)
-            printf("PsychOpenXRCore-ERROR: Failed to xrEndFrame: %s\n", errorString);
-
-        success = FALSE;
-        goto present_fail;
-    }
-
 present_out:
 present_fail:
 
@@ -4076,7 +4081,7 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
         // Our purpose is to prevent timeouts by executing ovr_SubmitFrame() at least once per
         // HMD refresh interval / compositor duty cycle, with the old/current frame content in
         // the swapchains.
-        if ((PresentExecute(openxr, FALSE, FALSE) < 0) && verbosity > 0) {
+        if ((PresentExecute(openxr, FALSE) < 0) && verbosity > 0) {
             fprintf(stderr, "PsychOpenXRCore-ERROR: In PresenterThreadMain(): PresentExecute() for timeout prevention failed!\n");
         }
 
@@ -4144,7 +4149,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     PsychLockMutex(&(openxr->presenterLock));
 
     openxr->targetPresentTime = tWhen;
-    tPredictedOnset = PresentExecute(openxr, TRUE, FALSE);
+    tPredictedOnset = PresentExecute(openxr, FALSE);
     tPredictedFutureOnset = openxr->frameState.predictedDisplayTime;
     // Invalidate targetPresentTime after present:
     openxr->targetPresentTime = -DBL_MAX;
