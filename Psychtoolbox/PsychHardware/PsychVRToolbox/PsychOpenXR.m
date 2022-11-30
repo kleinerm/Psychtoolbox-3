@@ -1697,6 +1697,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
   end
 
+  % Do "real" first connected controller query:
+  hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
+
   % Query set of currently connected controllers:
   if strcmpi(hmd{handle}.subtype, 'Oculus')
     % On at least the Oculus XR runtime on MS-Windows, we need this
@@ -1717,9 +1720,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       WaitSecs(0.5);
     end
   end
-
-  % Do "real" first connected controller query:
-  hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
 
   % Return success result code 1:
   varargout{1} = 1;
