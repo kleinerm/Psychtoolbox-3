@@ -170,7 +170,7 @@ typedef struct PsychOpenXRDevice {
     double                              frameDuration;
     double                              sensorSampleTime;
     double                              lastPresentExecTime;
-    double                              scheduledPresentExecTime;
+    double                              targetPresentTime;
     double                              VRtimeoutSecs;
 
     XrAction                            triggerValueAction[2];      // 1D
@@ -201,7 +201,7 @@ static unsigned int devicecount = 0;
 XrSystemProperties availableSystems[MAX_PSYCH_OPENXR_DEVS];
 static int numAvailableDevices = 0;
 
-static int verbosity = 100;
+static int verbosity = 3;
 static psych_bool initialized = FALSE;
 static char errorString[XR_MAX_RESULT_STRING_SIZE];
 
@@ -282,7 +282,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
-    synopsis[i++] = "tPredictedOnset = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0][, doTimestamp=0]);";
+    synopsis[i++] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -3908,13 +3908,81 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         success = FALSE;
         goto present_fail;
     }
-    else {
-        // Mark frame as not skipped, ie. greater than zero timestamp:
-        tPredictedOnset = XrTimeToPsychTime(openxr->frameState.predictedDisplayTime);
-    }
 
-    // Enforce view[] update with proper fov, pose:
-    locateXRViews(openxr, openxr->frameState.predictedDisplayTime);
+    // xrWaitFrame success. openxr->frameState.predictedDisplayTime contains the earliest predicted
+    // display time of the next to-be-submitted (via xrEndFrame) frame, assuming xrEndFrame
+    // would happen almost immediately, and no overload or other glitches. Our working assumption
+    // here is that if we performed our blocking xrWaitFrame immediately after the xrEndFrame
+    // which submitted our latest stimulus frame, ie. back-to-back, then xrWaitFrame would block
+    // until our just submitted stimulus frame was latched and composited by the compositor into
+    // the system framebuffer for the HMD at the right time to hit the requested targetDisplayTime
+    // as well as possible, the pageflip was executed and signalled complete by the OS to the
+    // compositor, and that the flip completion timestamp for our just-submitted stimulus image was
+    // used for calculating frameState.predictedDisplayTime for the next to-be-submitted frame.
+    // This all assumes back-to-back operation and no other parallel running XR apps on the HMD,
+    // and is as good as it gets, given OpenXR does not provide explicit api for querying true
+    // presentation time of a past submitted frame.
+    //
+    // Another reasonable assumption of ours is that the predictedDisplayTime of this next frame
+    // is exactly one HMD video refresh duration later than the defined display onset time of our
+    // just submitted/waited on frame, ie. we get the stimulus onset timestamp of our past submitted
+    // frame by subtracting one refresh duration from predictedDisplayTime. Why? Lets see what the
+    // compositor has to work with:
+    //
+    // The compositor gets the most recent vblank/pageflip completion timestamp tLastFlip of its latest
+    // compose+present cycle as a starting point from the OS. This is the time when active scanout to the
+    // HMD panel started for the previous image tLastFlip. The earliest possible new submitted frame by
+    // us could get latched + composited + submitted to the OS via a pageflip request during the ongoing
+    // refresh cycle interval [tLastFlip; tLastFlip + videoRefreshDuration] if the stimulus image is
+    // simple enough / system cpu/gpu load low enough etc. to make it before the next vblank. Its earliest
+    // start of scanout to the HMD panel would be tScanout = tLastFlip + videoRefreshDuration. A HMD that
+    // would immediately display every updated stimulus pixel would therefore have
+    // predictedDisplayTime = tScanout + 0.5 * videoRefreshDuration, because the OpenXR
+    // spec defines predictedDisplayTime not as "the top-left" pixel updating to the new frame content,
+    // but the mid-point of the display updating, ie. the center of the display. This happens earliest
+    // at half a refresh cycle after start of scanout tScanout.
+    //
+    // However, in reality, unless a high-perf OLED panel is used, predictedDisplayTime will be further delayed to:
+    // predictedDisplayTime = tScanout + 0.5 * videoRefreshDuration + HMDdelay.
+    // HMDdelay will depend on the specific model, technology and specs of the HMD or other XR display
+    // device. It could be a few msecs pixel switching time on a LCD panel, specific to panel model.
+    // It could be that, but hidden by some scanning backlight / rolling shutter mechanism, where the
+    // backlight illumination onset trails the scanout position/time by some predicted pixel switching
+    // delay for avoidance of artifacts.
+    // It could also be that the HMD has a global shutter, e.g., a blinking backlight, which will
+    // only flash the new image for a short exposure time of a millisecond or two after the whole
+    // LCD panel matrix has stabilized to the new image, ie. all pixels seem to update at once, typically
+    // during the vblank period at end of scanout.
+    //
+    // Whatever the panel tech is, LCD (slow) or OLED (fast), no shutter, rolling shutter (scanning backlight)
+    // or global shutter (blinking backlight), we can summarize the compositors optimistic prediction as
+    //
+    // predictedDisplayTime = tScanout + delay, with delay being the unknown sum of delay = 0.5 * videoRefreshDuration + HMDdelay.
+    //
+    // With tScanout = tLastFlip + videoRefreshDuration, we finally get
+    //
+    // predictedDisplayTime = tLastFlip + videoRefreshDuration + delay.
+    //
+    // But we actually want the display time of our just-submitted-and-waited-on frame, which would be
+    //
+    // tPredictedOnset = tLastFlip + delay
+    //
+    // with tScanout being when it was presumably pageflipped and started scanning out to the HMD,
+    // and the same HMD specific, but unknown to us, 'delay' between start of scanout and defined
+    // image onset (mid-point of image) according to OpenXR spec applied.
+    //
+    // Iow. we have predictedDisplayTime = tLastFlip + videoRefreshDuration + delay from xrWaitFrame(),
+    // but want tPredictedOnset = tLastFlip + delay. We don't know tLastFlip or delay, only the compositor
+    // does. Comparing both terms and substituting one into the other shows us that:
+    //
+    // tPredictedOnset = predictedDisplayTime - videoRefreshDuration
+    //
+    // With both right-hand terms known to us, we can get the wanted tPredictedOnset. Or at least
+    // this is our best guess/approximation at/of the right value, given no explicit OpenXR api or
+    // extension to get what we want directly and with absolut certainty and precision.
+
+    // Mark frame as not skipped, ie. set tPredictedOnset to greater than zero timestamp:
+    tPredictedOnset = XrTimeToPsychTime(openxr->frameState.predictedDisplayTime) - openxr->frameDuration;
 
     result = xrBeginFrame(openxr->hmd, NULL);
     if (!resultOK(result)) {
@@ -3925,10 +3993,24 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         goto present_fail;
     }
 
+    // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
+    // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as zero:
+    XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : 0;
+
+    // If targetDisplayTime is invalid (== 0) or earlier than earliest next possible display time predictedDisplayTime,
+    // then set it to earliest possible display time:
+    if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
+        targetDisplayTime = openxr->frameState.predictedDisplayTime;
+
+    // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
+    locateXRViews(openxr, targetDisplayTime);
+
+    // Prepare frameEndInfo, assign desired optimal targetDisplayTime. Compositor should present at the earliest
+    // possible time no earlier than targetDisplayTime:
     XrFrameEndInfo frameEndInfo = {
         .type = XR_TYPE_FRAME_END_INFO,
         .next = NULL,
-        .displayTime = openxr->frameState.predictedDisplayTime,
+        .displayTime = targetDisplayTime,
         .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
         .layerCount = (openxr->frameState.shouldRender) ? openxr->submitLayersCount : 0,
         .layers = openxr->submitLayers
@@ -4009,33 +4091,33 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
     return(NULL);
 }
 
-// TODO
 PsychError PSYCHOPENXRPresentFrame(void)
 {
-    static char useString[] = "tPredictedOnset = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0][, doTimestamp=0]);";
-    //                         1                                                 1            2         3
+    static char useString[] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
+    //                          1                2                      3                                                 1            2
     static char synopsisString[] =
     "Present last rendered frame to OpenXR HMD device 'openxrPtr'.\n\n"
     "This will commit the current set of 2D textures with new rendered content "
-    "to the texture swapchains, for consumption by the VR runtime/compositor. "
-    "The swapchains will advance, providing new unused image textures as new "
-    "render targets for the next rendering cycle.\n\n"
-    "You usually won't call this function yourself, but Screen('Flip') "
-    "will call it automatically for you at the appropriate moment.\n\n"
+    "to the texture swapchains, for consumption by the XR runtime/compositor, "
+    "and a present is requested to the compositor. The swapchains will advance, "
+    "providing new unused image textures as new render targets for the next cycle.\n\n"
+    "You usually won't call this function yourself, but Screen('Flip') will call it "
+    "automatically for you at the appropriate moment.\n\n"
     "'when' If provided, defines the target presentation time, as provided by Screen('Flip', win, when); "
-    "a value of zero, or omission, means to present as soon as possible.\n\n"
-    "'doTimestamp' If set to 1, perform timestamping of stimulus onset on the HMD, "
-    "or at least try to estimate such onset time. If set to 0, do nothing.\n\n"
-
+    "A value of zero, or omission, means to present as soon as possible. The earliest possibility for such "
+    "an immediate present would be the 'tPredictedFutureOnset' time from the preceeding 'PresentFrame' call.\n"
+    "\n"
     "Return values:\n"
-    "'tPredictedOnset' Predicted onset time for the just submitted frame, according to compositor.\n"
+    "'tPredictedOnset' Predicted onset time for the just submitted frame, according to compositor, as "
+    "Screen('Flip') return value. A value of 0 means the frame present was skipped. A value of -1 means "
+    "presentation failure.\n"
+    "'tPredictedFutureOnset' Predicted best-case onset time for the next/future submitted frame, according to compositor.\n"
+    "'tDebugFlipTime' Assumed pageflip/start-of-scanout time for the just submitted frame, only applicable to special debug setups!\n"
     "\n\n";
     static char seeAlsoString[] = "EndFrameRender";
 
     int handle;
-    int doTimestamp;
-    double tWhen;
-    double tPredictedOnset;
+    double tWhen, tPredictedOnset, tPredictedFutureOnset;
     PsychOpenXRDevice *openxr;
 
     // All sub functions should have these two lines:
@@ -4043,8 +4125,8 @@ PsychError PSYCHOPENXRPresentFrame(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -4058,30 +4140,15 @@ PsychError PSYCHOPENXRPresentFrame(void)
     tWhen = 0;
     PsychCopyInDoubleArg(2, kPsychArgOptional, &tWhen);
 
-    // Get optional timestamping flag:
-    doTimestamp = 0;
-    PsychCopyInIntegerArg(3, kPsychArgOptional, &doTimestamp);
-
-/*
-    // Single-threaded operation, all done on this thread?
-    if (!openxr->multiThreaded) {
-        // Yes. Go into a check -> submit -> check loop until target time is
-        // exceeded, then present an updated frame:
-        while ((tPredictedOnset = ovr_GetPredictedDisplayTime(openxr->hmd, openxr->frameIndex)) < tWhen + openxr->frameDuration / 2) {
-            if (verbosity > 4)
-                printf("PsychOpenXRCore:PresentFrame-DEBUG: In busy-present-wait loop: pred %f < %f tWhen\n",
-                       tPredictedOnset, tWhen);
-            PresentExecute(openxr, FALSE, FALSE);
-        }
-    }
-*/
-
-    // Execute the present operation with the presenterThread locked out.
-    // Invalidate any scheduledPresentExecTime after such a Present:
+    // Execute the present operation with a potentially running presenterThread locked out:
     PsychLockMutex(&(openxr->presenterLock));
-    openxr->scheduledPresentExecTime = tWhen;
+
+    openxr->targetPresentTime = tWhen;
     tPredictedOnset = PresentExecute(openxr, TRUE, FALSE);
-    openxr->scheduledPresentExecTime = -DBL_MAX;
+    tPredictedFutureOnset = openxr->frameState.predictedDisplayTime;
+    // Invalidate targetPresentTime after present:
+    openxr->targetPresentTime = -DBL_MAX;
+
     PsychUnlockMutex(&(openxr->presenterLock));
 
     if ((tPredictedOnset < 0) && (verbosity > 0))
@@ -4090,13 +4157,17 @@ PsychError PSYCHOPENXRPresentFrame(void)
     if ((tPredictedOnset == 0) && (verbosity > 4))
         printf("PsychOpenXRCore-INFO: Present of new frame to VR compositor skipped.\n");
 
-    // Copy out predicted onset time for the just emitted frame, or -1 on failure, or 0 on skipped:
-    if (tPredictedOnset > 0) {
-        // TODO: May not be neccessary anymore under OpenXR? Or wrong?
-        tPredictedOnset = tPredictedOnset - 0.5 * openxr->frameDuration;
-    }
-
+    // Return our best estimate of visual stimulus onset time-point at centr of XR display:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, tPredictedOnset);
+
+    // Return "best case scenario" predicted stimulus onset for the next/future presented frame:
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedFutureOnset);
+
+    // Return debug timestamp of assumed start of scanout to display for a zero-latency (e.g., OLED)
+    // display without any shutter, global, rolling or otherwise. Mostly only useful for debugging
+    // and testing the driver and OpenXR runtime in artifical test scenarios, e.g., when outputting
+    // to a regular display monitor or special debug configuration:
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, (tPredictedOnset > 0) ? (tPredictedOnset - 0.5 * openxr->frameDuration) : tPredictedOnset);
 
     return(PsychError_none);
 }
