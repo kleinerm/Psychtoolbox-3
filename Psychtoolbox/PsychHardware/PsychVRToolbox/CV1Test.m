@@ -1,5 +1,5 @@
-function res = CV1Test(useRTbox)
-% res = CV1Test([useRTbox=0]) - A timing test script for HMDs by use of a photometer.
+function res = CV1Test(waitframes, useRTbox)
+% res = CV1Test([waitframes=90][, useRTbox=0]) - A timing test script for HMDs by use of a photometer.
 %
 % Needs the RTBox, and a photo-diode or such, e.g., a ColorCal-II,
 % connected to the TTL trigger input.
@@ -13,29 +13,28 @@ function res = CV1Test(useRTbox)
 % between white flashes.
 %
 
-if nargin < 1 || isempty(useRTbox)
+if nargin < 2 || isempty(useRTbox)
     useRTbox = 0;
 end
 
-waitframes = 90;
+if nargin < 1 || isempty(waitframes)
+    waitframes = 90;
+end
 
 % Setup unified keymapping and unit color range:
 PsychDefaultSetup(2);
 
 % Select screen with highest id as Oculus output display:
 screenid = max(Screen('Screens'));
-%PsychDebugWindowConfiguration([],0.75);
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 % Setup the HMD to act as a regular "monoscopic" display monitor
 % by displaying the same image to both eyes:
-% PsychDebugWindowConfiguration; hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
+% hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
 hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic');
-PsychOculusVR1('Verbosity', 3);
-Screen('Preference','Verbosity', 3);
 
 [win, rect] = PsychImaging('OpenWindow', screenid);
-ifi = Screen('GetFlipInterval', win);
+ifi = Screen('GetFlipInterval', win)
 
 % Render one view for each eye in stereoscopic mode, in an animation loop:
 res.vbl = [];
@@ -73,7 +72,7 @@ while ~KbCheck
     %tBase = WaitSecs(0.5);
     res.tBase(end+1) = tBase;
     Screen('FillRect', win, 1);
-    res.vbl(end+1) = Screen('Flip', win, tBase + (waitframes - 0.5) * ifi);
+    res.vbl(end+1) = Screen('Flip', win, tBase + waitframes * ifi);
 
     % Measure real onset time:
     if useRTbox
@@ -108,7 +107,7 @@ while ~KbCheck
 end
 
 % Backup save for safety:
-save('OculusTimingResults.mat', 'res', '-V6');
+save('VRTimingResults.mat', 'res', '-V6');
 
 sca;
 
