@@ -33,10 +33,11 @@ PsychImaging('PrepareConfiguration');
 % hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
 hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic');
 
-[win, rect] = PsychImaging('OpenWindow', screenid);
+[win, rect] = PsychImaging('OpenWindow', screenid, [1 0 0]);
 ifi = Screen('GetFlipInterval', win)
 
 % Render one view for each eye in stereoscopic mode, in an animation loop:
+res.getsecs = [];
 res.vbl = [];
 res.failFlag = [];
 res.tBase = [];
@@ -64,15 +65,23 @@ if useRTbox
         IOPort ('ConfigureSerialport', res.boxinfo.handle, 'BlockingBackgroundRead=1 StartBackgroundRead=1');
     end
 end
-
+tBase = GetSecs;
+de = waitframes * ifi
 while ~KbCheck
     Screen('FillRect', win, 0);
+    WaitSecs('UntilTime', tBase + (waitframes + 3) * ifi);
+    GetClicks;
+    %Beeper;
+    tic;
+    res.getsecs(end+1) = GetSecs;
     tBase = Screen('Flip', win);
-    %Screen('Flip', win);
-    %tBase = WaitSecs(0.5);
-    res.tBase(end+1) = tBase;
+    d1 = toc
+    res.tBase(end+1) = tBase
     Screen('FillRect', win, 1);
-    res.vbl(end+1) = Screen('Flip', win, tBase + waitframes * ifi);
+    tic;
+    res.vbl(end+1) = Screen('Flip', win, tBase + waitframes * ifi)
+    d2 = toc
+    %Beeper(600);
 
     % Measure real onset time:
     if useRTbox
@@ -108,7 +117,7 @@ end
 
 % Backup save for safety:
 save('VRTimingResults.mat', 'res', '-V6');
-
+KbStrokeWait;
 sca;
 
 close all;
