@@ -177,7 +177,9 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
             // On supported platforms, otherwise does nothing: Enable automatic detaching of
             // kernel drivers when a specific interface is claimed, and reattaching of formerly
             // detached kernel drivers when the interface is released again:
-            libusb_set_auto_detach_kernel_driver(dev, 1);
+            rc = libusb_set_auto_detach_kernel_driver(dev, 1);
+            if ((rc != LIBUSB_SUCCESS) && (rc != LIBUSB_ERROR_NOT_SUPPORTED))
+                printf("PsychHID-ERROR: Unable to enable automatic detaching of kernel drivers: %s - %s.\n", libusb_error_name(rc), libusb_strerror(rc));
         #endif
 
         // Set errorcode to success:
@@ -325,6 +327,31 @@ int PsychHIDOSClaimInterface(PsychUSBDeviceRecord* devRecord, int interfaceId)
     // Return value is either 0 on success, or a negative error code.
     if (rc < 0) {
         printf("PsychHID-ERROR: Claiming USB interface %i failed: %s - %s.\n", interfaceId, libusb_error_name(rc), libusb_strerror(rc));
+
+        // Busy? Could mean a kernel driver or a userspace driver/app is claiming/blocking the interface. Let's see:
+        if (rc == LIBUSB_ERROR_BUSY) {
+            rc = libusb_kernel_driver_active(dev, interfaceId);
+            switch (rc) {
+                case 0: // No kernel driver active -> Userspace software claimed device?
+                    printf("PsychHID-ERROR: Interface %i does not have any kernel drivers attached. Check if some other application is using the device already.\n",
+                           interfaceId);
+                break;
+
+                case 1: // Kernel driver active -> Auto-detach failed?
+                    printf("PsychHID-ERROR: Interface %i does have a kernel driver attached, and auto-detach failed! Try to manually disable/detach that kernel driver.\n",
+                           interfaceId);
+                break;
+
+                case LIBUSB_ERROR_NOT_SUPPORTED: // Query not supported. Nothing to do here, no point in making noise.
+                break;
+
+                default:
+                    printf("PsychHID-ERROR: Unable to detect status of kernel drivers on interface %i: %s - %s.\n", interfaceId, libusb_error_name(rc), libusb_strerror(rc));
+            }
+
+            // Restore error code for claim interface:
+            rc = LIBUSB_ERROR_BUSY;
+        }
     } else if (devRecord->firstClaimedInterface < 0) {
         // If no interface was claimed yet, record this as the first claimed interface:
         devRecord->firstClaimedInterface = interfaceId;
