@@ -3904,9 +3904,6 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
             targetDisplayTime = openxr->frameState.predictedDisplayTime;
 
-        // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
-        locateXRViews(openxr, targetDisplayTime);
-
         // Prepare frameEndInfo, assign desired optimal targetDisplayTime. Compositor should present at the earliest
         // possible time no earlier than targetDisplayTime:
         XrFrameEndInfo frameEndInfo = {
@@ -3917,6 +3914,10 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
             .layerCount = (openxr->frameState.shouldRender) ? openxr->submitLayersCount : 0,
             .layers = openxr->submitLayers
         };
+
+        // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
+        // TODO Only needed for full 3D mode, but even then likely redundant due to call in 'GetTrackingState'?
+        locateXRViews(openxr, targetDisplayTime);
 
         // Update pose and FoV for projection views:
         for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
@@ -4150,7 +4151,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
 
     openxr->targetPresentTime = tWhen;
     tPredictedOnset = PresentExecute(openxr, FALSE);
-    tPredictedFutureOnset = openxr->frameState.predictedDisplayTime;
+    tPredictedFutureOnset = XrTimeToPsychTime(openxr->frameState.predictedDisplayTime);
     // Invalidate targetPresentTime after present:
     openxr->targetPresentTime = -DBL_MAX;
 
