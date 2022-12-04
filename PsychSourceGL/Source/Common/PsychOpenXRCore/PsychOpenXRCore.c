@@ -3915,14 +3915,19 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
             .layers = openxr->submitLayers
         };
 
-        // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
-        // TODO Only needed for full 3D mode, but even then likely redundant due to call in 'GetTrackingState'?
-        locateXRViews(openxr, targetDisplayTime);
+        if (openxr->use3DMode) {
+            // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
+            // TODO: Likely redundant call here, due to locateXRViews() call in 'GetTrackingState',
+            // as part of PsychVRHMD('PrepareRender') at start of each full 3D rendering cycle.
+            // Takes about 0.2 - 0.5 msecs typical, but sometimes up to 5 msecs on Monado+darlene,
+            // so worth optimizing away when not strictly needed.
+            locateXRViews(openxr, targetDisplayTime);
 
-        // Update pose and FoV for projection views:
-        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
-            openxr->projView[eyeIndex].pose = openxr->view[eyeIndex].pose;
-            openxr->projView[eyeIndex].fov = openxr->view[eyeIndex].fov;
+            // Update pose and FoV for projection views:
+            for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+                openxr->projView[eyeIndex].pose = openxr->view[eyeIndex].pose;
+                openxr->projView[eyeIndex].fov = openxr->view[eyeIndex].fov;
+            }
         }
 
         result = xrEndFrame(openxr->hmd, &frameEndInfo);
