@@ -1693,8 +1693,9 @@ void PsychOpenXRStop(int handle)
 // TODO
 void PsychOpenXRClose(int handle)
 {
-    int rc;
+    int rc, eyeIndex;
     PsychOpenXRDevice* openxr = PsychGetXR(handle, TRUE);
+
     if (openxr) {
         // presenterThread shutdown: Ask thread to terminate, wait for thread termination, cleanup and release the thread:
         PsychLockMutex(&(openxr->presenterLock));
@@ -1711,6 +1712,14 @@ void PsychOpenXRClose(int handle)
         // Ok, thread is dead. Mark it as such:
         openxr->presenterThread = (psych_thread) NULL;
         openxr->closing = FALSE;
+
+        // Release image to swapchain before final PresentExecute():
+        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+            if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
+                if (verbosity > 0)
+                    printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
+            }
+        }
 
         // PresentExecute() a last time on the main thread:
         PresentExecute(openxr, FALSE);
