@@ -324,6 +324,93 @@ int PsychHIDOSClaimInterface(PsychUSBDeviceRecord* devRecord, int interfaceId)
     // Try to claim interface interfaceId:
     rc = libusb_claim_interface(dev, interfaceId);
 
+    #ifdef LIBUSB_API_VERSION
+    if (rc == LIBUSB_ERROR_BUSY) {
+        // Disable auto-detach of kernel drivers on claim interface, maybe this will go better then:
+        rc = libusb_set_auto_detach_kernel_driver(dev, 0);
+        if ((rc != LIBUSB_SUCCESS) && (rc != LIBUSB_ERROR_NOT_SUPPORTED)) {
+            printf("PsychHID-ERROR: Unable to disable automatic detaching of kernel drivers: %s - %s.\n", libusb_error_name(rc), libusb_strerror(rc));
+            rc = LIBUSB_ERROR_BUSY;
+        }
+        else {
+            if (libusb_kernel_driver_active(dev, interfaceId) == 1)
+                printf("PsychHID-WARNING: Non-usbfs kernel driver attached to interface %i after libusb_claim_interface() with auto-detach?!? This spells trouble!\n",
+                       interfaceId);
+
+            if (libusb_kernel_driver_active(dev, interfaceId) == 0) {
+                printf("PsychHID-WARNING: No kernel driver attached, or usbfs kernel driver attached, to interface %i after libusb_claim_interface() with auto-detach!\n",
+                       interfaceId);
+                printf("PsychHID-WARNING: This is known to happen if the calling (user) script has a certain bug. Specifically if the\n");
+                printf("PsychHID-WARNING: script called PsychHID('USBControlTransfer', ...) on an USB endpoint other than endpoint zero,\n");
+                printf("PsychHID-WARNING: or directly on a interface, *and* it didn't first manually claim the USB interface (associated with\n");
+                printf("PsychHID-WARNING: that endpoint if any), as required by USB spec, and the associated interface did not have a kernel\n");
+                printf("PsychHID-WARNING: driver attached already. At least the Linux kernel (maybe also other operating systems?) would try\n");
+                printf("PsychHID-WARNING: to fix/workaround this mistake by auto-claiming the interface. This may work for the control transfer,\n");
+                printf("PsychHID-WARNING: but it can cause successive failure, if the script afterwards claims the same interface manually via\n");
+                printf("PsychHID-WARNING: PsychHID('USBClaimInterface', ...), or indirectly via attempting a bulk-/interrupt-/iso-transfer.\n");
+                printf("PsychHID-WARNING: I will try to fix this problem now, which may or may not work to keep your script going. We'll see...\n");
+                printf("PsychHID-WARNING: However, please fix the offending user script properly by explicitely claiming the proper interface\n");
+                printf("PsychHID-WARNING: before issuing a control transfer to such a non-zero endpoint or to an interface directly.\n");
+                printf("PsychHID-WARNING: Note: bmRequestType bits 0-4 select the recipient, wIndex defines the endpoint address or interface.\n");
+            }
+
+            // Try to manually detach driver other than usbfs, if any. This is unlikely to work if the auto-detach
+            // failed already, but let us try it anyway. There are no known cases where this helps, but also none
+            // where it would make things worse, iow. it is useless at worst, but who knows, maybe there is some
+            // special edge case where it would actually help? Courage!
+            rc = libusb_detach_kernel_driver(dev, interfaceId);
+            if ((rc != 0) && (rc != LIBUSB_ERROR_NOT_FOUND))
+                printf("PsychHID-WARNING: Could not manually detach non-usbfs kernel driver from interface %i, this will probably go badly! %s - %s.\n",
+                       interfaceId, libusb_error_name(rc), libusb_strerror(rc));
+
+            // Retry to claim interface interfaceId, this time without auto-detaching driver:
+            // This can work in a scenario where the Linux kernel itself has auto-claimed the interface interfaceId
+            // on our behalf and attached the usbfs kernel driver to it, but without libusb noticing this, ie. an
+            // "accounting error", where libusb's view of the world is mismatched to the actual reality in the kernel.
+            //
+            // Such a scenario can happen if a USB control transfer from/to an endpoint other than EP 0 was attempted by a
+            // deficient/buggy user-script without claiming the associated interface, as required, or a control transfer
+            // from/to an interface was attempted without claiming the interface, and all this was done on a
+            // interface without any kernel driver attached, as the Linux kernel would try to work around the
+            // deficient user-script by auto-claiming that interface on our behalf, but "behind libusb's back", with the
+            // result that such scripts with their USB control transfers would work in many cases, but claiming the
+            // affected (already auto-claimed) interface would fail due to libusb accounting mismatch. E.g., such an
+            // error case would be a control transfer to non-zero endpoint (wrong wrong wrong!), fixed by the kernel,
+            // (cfe. https://elixir.bootlin.com/linux/v5.15.81/source/drivers/usb/core/devio.c#L817 checkintf() function
+            // for Linux 5.15 as shipping in Ubuntu 20.04.5-LTS or Ubuntu 22.04-LTS for the auto-claiming, triggered by
+            // libusb_submit_transfer() -> proc_do_submiturb() when detecting a non-standard control transfer endpoint
+            // by the logic in https://elixir.bootlin.com/linux/v5.15.81/source/drivers/usb/core/devio.c#L1627 and
+            // https://elixir.bootlin.com/linux/v5.15.81/source/drivers/usb/core/devio.c#L1660 ie. the called subroutine
+            // check_ctrlrecip() at the bottom: https://elixir.bootlin.com/linux/v5.15.81/source/drivers/usb/core/devio.c#L884 )
+            //
+            // ... now working, but then followed by a bulk or interrupt transfer trying to claim the interface, or explicit
+            // claiming of the interface -> Accounting mismatch makes libusb_claim_interface() in auto-detach-kernel-driver
+            // mode fail, as it asks the kernel to detach any kernel driver except usbfs, and the kernel would error
+            // reject that request due to the already bound (on our behalf, behind our back, as part of auto-claim)
+            // usbfs driver. Cfe. libusb would use the autodetach ioctl(), as implemented in proc_disconnect_claim()
+            // at https://elixir.bootlin.com/linux/v5.15.81/source/drivers/usb/core/devio.c#L2439 , specifically the
+            // "if ((dc.flags & USBDEVFS_DISCONNECT_CLAIM_EXCEPT_DRIVER) ...) return -EBUSY;" path will trigger in
+            // such a case due to bound usbfs kernel driver.
+            //
+            // Repeating libusb_claim_interace() with auto-detach-kernel-driver disabled, will just try to claim the
+            // interface again via a standard claim interface ioctl(). That will succeed as a "no-op success return" as
+            // the kernel knows the interface is already claimed for us, so reports success. Cfe. Linux 5.15 claimintf(),
+            // at https://elixir.bootlin.com/linux/v5.15.81/source/drivers/usb/core/devio.c#L758 "if (testbit...) return 0"...
+            //
+            // This will cause libusb to be pleased and update its accounting to match reality and all is good.
+            // However, in cases where a different kernel driver than usbfs was attached during the erroneous USB
+            // control transfer, the kernel could not fix this automagically and the USB control transfer would fail
+            // with LIBUSB_ERROR_IO, so this only helps in a limited number of cases. But no harm trying, and our
+            // diagnostic code above should be able to give some warning that points to the broken user script and
+            // a potential way to fix it:
+            rc = libusb_claim_interface(dev, interfaceId);
+
+            // Reenable driver auto-detach for future claim interface invocations:
+            libusb_set_auto_detach_kernel_driver(dev, 1);
+        }
+    }
+    #endif
+
     // Return value is either 0 on success, or a negative error code.
     if (rc < 0) {
         printf("PsychHID-ERROR: Claiming USB interface %i failed: %s - %s.\n", interfaceId, libusb_error_name(rc), libusb_strerror(rc));

@@ -30,19 +30,24 @@ static char synopsisString[] =  "Communicates with a USB device via the control 
                                 "a uint8() vector of at least 'wLength' bytes for out-transfers, but all bytes beyond the first "
                                 "'wLength' bytes will be ignored.\n"
                                 "The actual number of bytes transfered in any direction is returned in return argument 'count'.\n"
+                                "Please note that for control transfers where an endpoint (2) or interface (1) is the recipient, ie. where "
+                                "ismember(bitand(bmRequestType, 0x1f), [1, 2]), the interface (or associated interface of the endpoint) "
+                                "must be explicitely claimed via PsychHID('USBClaimInterface', usbHandle, interface); before calling the "
+                                "control transfer. Interface number (1) or endpoint address (2) are specified in 'wIndex'. The only exception "
+                                "from this rule is endpoint 0, or control transfers to other targets, e.g., the device itself.\n"
                                 "'usbHandle' is the handle of the USB device to control.\n"
                                 "'bmRequestType' is the type of request, an 8 bit bit-mask: If bit 7 is set, this defines an in-transfer "
                                 "from device to host and 'recData' will be filled with at most 'wLength' bytes received from the device. "
                                 "Otherwise it defines a transfer from host to device and at most 'wLength' bytes will be transferred from "
                                 "'outData' to the device.\n"
-                                "'bRequest' is the request id.\n"
-                                "'wValue' and 'wIndex' are device- and request specific values.\n"
+                                "'bRequest' is the 8 bit range request id.\n"
+                                "'wValue' and 'wIndex' are device- and request specific values in the 16 bit range 0 - 65535.\n"
                                 "'wLength' is the amount of data to return at most on an in-transfer, or the amount of data to send at "
                                 "most for an out-transfer in the optional uint8 vector 'outData'. 'outData' must have at least as many "
                                 "elements as the value of 'wLength'!\n"
                                 "'timeOutMSecs' is an optional timeout for the operation, in milliseconds. Default is 10000 msecs. "
                                 "A value of zero means to never time out, but wait indefinitely.\n";
-static char seeAlsoString[] =   "OpenUSBDevice USBBulkTransfer USBInterruptTransfer";
+static char seeAlsoString[] =   "OpenUSBDevice USBClaimInterface USBBulkTransfer USBInterruptTransfer";
 
 PsychError PSYCHHIDUSBControlTransfer(void)
 {
