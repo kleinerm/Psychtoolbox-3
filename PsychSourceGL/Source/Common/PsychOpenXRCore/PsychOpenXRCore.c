@@ -3906,12 +3906,12 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
     if (!inInit) {
         // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
         // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as zero:
-        XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : 0;
+        XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : 1;
 
         // If targetDisplayTime is invalid (== 0) or earlier than earliest next possible display time predictedDisplayTime,
         // then set it to earliest possible display time:
-        if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
-            targetDisplayTime = openxr->frameState.predictedDisplayTime;
+//        if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
+//            targetDisplayTime = openxr->frameState.predictedDisplayTime;
 
         // Prepare frameEndInfo, assign desired optimal targetDisplayTime. Compositor should present at the earliest
         // possible time no earlier than targetDisplayTime:
@@ -3947,6 +3947,10 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
             success = FALSE;
             goto present_fail;
         }
+
+        // Wait until we are almost at the time of stimulus onset, so the following xrWaitFrame()
+        // has a fleeting chance of waiting/syncing to the correct display refresh cycle:
+        //PsychWaitUntilSeconds(XrTimeToPsychTime(targetDisplayTime) - openxr->frameDuration);
     }
 
     // Do the frame present cycle:
