@@ -555,6 +555,8 @@ if cmd == 1
 
   % Present and timestamp:
   [predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
+  [predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
+  predictedOnset = hmd{handle}.predictedFutureOnset; % Testing on MonadoXR shows this is the right(est) timestamp, iow. without subtraction.
 
   % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);

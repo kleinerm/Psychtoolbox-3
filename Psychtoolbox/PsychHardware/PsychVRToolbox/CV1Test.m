@@ -65,23 +65,64 @@ if useRTbox
         IOPort ('ConfigureSerialport', res.boxinfo.handle, 'BlockingBackgroundRead=1 StartBackgroundRead=1');
     end
 end
-tBase = GetSecs;
+
+isBad = 0;
+KbReleaseWait;
+tBase = GetSecs + 4;
 de = waitframes * ifi
+for pass=0:1
+    tBase = Screen('Flip', win);
+    tactual = tBase;
+    t1 = GetSecs;
+    for i=1:90
+        Screen('FillRect', win, 0);
+        DrawFormattedText(win, num2str(i), 'center', 'center', 1);
+        tic;
+        if pass == 0
+            dt = i * de;
+            tWhen = tBase + dt;
+        else
+            tWhen = tactual + de;
+        end
+
+        tactual = Screen('Flip', win, tWhen);
+        fprintf('After flip delay %f secs : Frame %i reported %f vs. requested %f. Delta %f msecs: ', toc, i, tactual, tWhen, 1000 * (tactual - tWhen));
+        if abs(tactual - tWhen) > 1.2 * ifi
+            fprintf('BAD!');
+            isBad = isBad + 1;
+        end
+        fprintf('\n');
+
+        if KbCheck
+            break;
+        end
+    end
+
+    t2 = GetSecs;
+    fps = i / (t2 - t1)
+    WaitSecs(1);
+end
+%KbStrokeWait;
+sca;
+
+if isBad > 0
+    fprintf('\nBAD timing in %i trials.\n', isBad);
+else
+    fprintf('\nALL GOOD.\n');
+end
+
+return;
+
+tBase = GetSecs;
+
 while ~KbCheck
     Screen('FillRect', win, 0);
-    WaitSecs('UntilTime', tBase + (waitframes + 3) * ifi);
-    GetClicks;
-    %Beeper;
-    tic;
+%    WaitSecs('UntilTime', tBase + (waitframes + 5) * ifi);
     res.getsecs(end+1) = GetSecs;
-    tBase = Screen('Flip', win);
-    d1 = toc
-    res.tBase(end+1) = tBase
+    tBase = Screen('Flip', win, tBase + (waitframes + 5) * ifi);
+    res.tBase(end+1) = tBase;
     Screen('FillRect', win, 1);
-    tic;
-    res.vbl(end+1) = Screen('Flip', win, tBase + waitframes * ifi)
-    d2 = toc
-    %Beeper(600);
+    res.vbl(end+1) = Screen('Flip', win, tBase + waitframes * ifi);
 
     % Measure real onset time:
     if useRTbox
@@ -116,8 +157,8 @@ while ~KbCheck
 end
 
 % Backup save for safety:
-save('VRTimingResults.mat', 'res', '-V6');
-KbStrokeWait;
+%save('VRTimingResults.mat', 'res', '-V6');
+%KbStrokeWait;
 sca;
 
 close all;

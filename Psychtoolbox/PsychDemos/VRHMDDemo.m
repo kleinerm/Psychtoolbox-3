@@ -86,5 +86,6 @@ sca;
 
 close all;
 plot(1000 * diff(vbl));
+fps = 1 / mean(diff(vbl))
 
 end
