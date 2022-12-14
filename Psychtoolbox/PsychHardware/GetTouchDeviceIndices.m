@@ -8,12 +8,6 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % Also returns corresponding productNames for the devices and detailed
 % info in the allInfo struct-array.
 %
-% OS X: ___________________________________________________________________
-%
-% This function currently returns nothing, as OSX does not support touch
-% screens in a meaningful way as far as we know. And Psychtoolbox for OSX
-% currently does not implement any special support for touchpads or such.
-%
 % LINUX: __________________________________________________________________
 %
 % GetTouchDeviceIndices allows selection of different types of touch devices
@@ -23,6 +17,17 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % only return indices of slave pointer devices. Often only 'slavePointer'
 % devices work properly or with full functionality for touch devices, that's
 % why typeOnly defaults to 'slavePointer' if the argument is omitted.
+%
+% Windows: ________________________________________________________________
+%
+% Basic device enumeration should work, but only true touchscreens are supported,
+% not touchpads.
+%
+% OS X: ___________________________________________________________________
+%
+% This function currently returns nothing, as OSX does not support touch
+% screens in a meaningful way as far as we know. And Psychtoolbox for OSX
+% currently does not implement any special support for touchpads or such.
 %
 % _________________________________________________________________________
 %

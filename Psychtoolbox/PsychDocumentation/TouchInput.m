@@ -1,8 +1,11 @@
 % TouchInput - Psychtoolbox support for touch input devices.
 %
-% Psychtoolbox currently supports touch input devices like
+% Psychtoolbox currently best supports touch input devices like
 % touchscreens and touchpads on Linux with the classic X11
 % X-Display system, ie. when running under a classic X-Server.
+%
+% More basic/limited/inflexible support is also available for Microsoft
+% Windows 10 and later.
 %
 % The way you use such devices to get touch input, is as follows:
 %

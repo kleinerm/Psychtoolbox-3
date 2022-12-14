@@ -21,8 +21,8 @@ function MultiTouchMinimalDemo(dev, screenId, verbose)
 % will be printed. This slows the processing down somewhat, as 'DrawText'
 % is more slow than most other drawing functions.
 %
-% This demo currently only works on Linux + X11 display system,
-% not on Linux + Wayland, not on other operating systems.
+% This demo currently works on Linux + X11 display system, not on Linux + Wayland.
+% It also works on MS-Windows 10 and later.
 %
 % For background info on capabilities and setup see "help TouchInput".
 %

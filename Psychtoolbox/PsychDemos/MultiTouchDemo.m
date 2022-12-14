@@ -30,8 +30,8 @@ function MultiTouchDemo(dev, screenId, verbose)
 % be distance for fingers or tools hovering over a touch surface, if that
 % surface provides that info.
 %
-% This demo currently only works on Linux + X11 display system,
-% not on Linux + Wayland, not on other operating systems.
+% This demo currently works on Linux + X11 display system, not on Linux + Wayland.
+% It also works on MS-Windows 10 and later.
 %
 % For background info on capabilities and setup see "help TouchInput".
 %
