@@ -413,7 +413,7 @@ static XrTime PsychTimeToXrTime(double refTime)
     #endif
 
     #if defined(XR_USE_PLATFORM_XLIB)
-    {
+    if (pxrConvertTimespecTimeToTimeKHR) {
         struct timespec ts;
 
         // Map CLOCK_MONOTONIC double time to CLOCK_MONOTONIC timespec time:
@@ -425,6 +425,10 @@ static XrTime PsychTimeToXrTime(double refTime)
             if (verbosity > 0)
                 printf("PsychOpenXRCore-ERROR: xrConvertTimespecTimeToTimeKHR() failed: %s\n", errorString);
         }
+    }
+    else {
+        // Fallback:
+        outTime = (int64_t) (refTime * 1e9);
     }
     #endif
 
@@ -452,7 +456,7 @@ static double XrTimeToPsychTime(XrTime xrTime)
     #endif
 
     #if defined(XR_USE_PLATFORM_XLIB)
-    {
+    if (pxrConvertTimeToTimespecTimeKHR) {
         struct timespec ts;
 
         // Map XrTime to CLOCK_MONOTONIC timespec time:
@@ -467,6 +471,11 @@ static double XrTimeToPsychTime(XrTime xrTime)
             // Map CLOCK_MONOTONIC to GetSecs time:
             outTime = PsychOSMonotonicToRefTime(outTime);
         }
+    }
+    else {
+        // Fallback:
+        outTime = ((double) xrTime) / 1e9;
+        outTime = PsychOSMonotonicToRefTime(outTime);
     }
     #endif
 
@@ -1258,10 +1267,12 @@ static psych_bool locateXRViews(PsychOpenXRDevice* openxr, XrTime predictionTime
     uint32_t viewCount = (openxr->viewType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) ? 2 : 1;
     if (!resultOK(xrLocateViews(openxr->hmd, &viewLocateInfo, &openxr->viewState, viewCount, &viewCount, openxr->view))) {
         if (verbosity > 0)
-            printf("PsychOpenXRCore-ERROR: Locating Xrviews via xrLocateViews() failed: %s\n", errorString);
+            printf("PsychOpenXRCore-ERROR: Locating Xrviews via xrLocateViews() for XrTime %ld failed: %s\n", predictionTime, errorString);
 
         return(FALSE);
     }
+    else if (verbosity > 4)
+        printf("PsychOpenXRCore-DEBUG: Locating Xrviews via xrLocateViews() for XrTime %ld success.\n", predictionTime);
 
     return(TRUE);
 }
@@ -1503,6 +1514,7 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     unsigned int i;
     XrResult result;
     psych_bool has_XR_FB_display_refresh_rate;
+    psych_bool has_XR_KHR_convert_timespec_time = FALSE;
 
     // Already initialized? No op then.
     if (initialized)
@@ -1541,12 +1553,10 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     if (!addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_OPENGL_ENABLE_EXTENSION_NAME) ||
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_DEBUG_UTILS_EXTENSION_NAME) ||
 
-        #if defined(XR_USE_PLATFORM_XLIB)
-        !addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME)
-        #endif
-
         #if defined(XR_USE_PLATFORM_WIN32)
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_WIN32_CONVERT_PERFORMANCE_COUNTER_TIME_EXTENSION_NAME)
+        #else
+        FALSE
         #endif
     ) {
         if (verbosity > 0)
@@ -1555,6 +1565,11 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
         free(instanceExtensions);
         goto instance_init_out;
     }
+
+    // On Linux at least with Valve's SteamVR OpenXR runtime we must do without XR_KHR_convert_timespec_time, so make this optional and have fallbacks:
+    #if defined(XR_USE_PLATFORM_XLIB)
+    has_XR_KHR_convert_timespec_time = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME);
+    #endif
 
     // The following extensions are optional. Therefore we don't care if adding them succeeds or not:
     addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME);
@@ -1636,8 +1651,17 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     #endif
 
     #if defined(XR_USE_PLATFORM_XLIB)
-        GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimespecTimeToTimeKHR);
-        GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimeToTimespecTimeKHR);
+        if (has_XR_KHR_convert_timespec_time) {
+            GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimespecTimeToTimeKHR);
+            GET_INSTANCE_PROC_ADDR(xrInstance, xrConvertTimeToTimespecTimeKHR);
+        }
+        else {
+            if (verbosity >= 3)
+                printf("PsychOpenXRCore-INFO: No support for XR_KHR_convert_timespec_time on device %i. Working around it.\n", numAvailableDevices);
+
+            pxrConvertTimespecTimeToTimeKHR = NULL;
+            pxrConvertTimeToTimespecTimeKHR = NULL;
+        }
     #endif
 
     // Perform initial XR hardware enumeration:
@@ -3905,13 +3929,13 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 
     if (!inInit) {
         // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
-        // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as zero:
+        // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as 1 (the smallest theoretically valid xrTime):
         XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : 1;
 
-        // If targetDisplayTime is invalid (== 0) or earlier than earliest next possible display time predictedDisplayTime,
-        // then set it to earliest possible display time:
-//        if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
-//            targetDisplayTime = openxr->frameState.predictedDisplayTime;
+        // If targetDisplayTime is earlier than earliest next possible display time predictedDisplayTime, then set it
+        // to earliest possible display time. This is crucial for xrEndFrame() to not fail completely under SteamVR:
+        if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
+            targetDisplayTime = openxr->frameState.predictedDisplayTime;
 
         // Prepare frameEndInfo, assign desired optimal targetDisplayTime. Compositor should present at the earliest
         // possible time no earlier than targetDisplayTime:
@@ -3942,7 +3966,8 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         result = xrEndFrame(openxr->hmd, &frameEndInfo);
         if (!resultOK(result)) {
             if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: Failed to xrEndFrame: %s\n", errorString);
+                printf("PsychOpenXRCore-ERROR: Failed to xrEndFrame for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %s\n",
+                       openxr->targetPresentTime, targetDisplayTime, errorString);
 
             success = FALSE;
             goto present_fail;
