@@ -1735,7 +1735,6 @@ void PsychOpenXRClose(int handle)
 
         // Ok, thread is dead. Mark it as such:
         openxr->presenterThread = (psych_thread) NULL;
-        openxr->closing = FALSE;
 
         // Release image to swapchain before final PresentExecute():
         for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
@@ -1747,6 +1746,27 @@ void PsychOpenXRClose(int handle)
 
         // PresentExecute() a last time on the main thread:
         PresentExecute(openxr, FALSE);
+
+        if (verbosity > 4)
+            printf("PsychOpenXRCore-DEBUG: xrRequestExitSession().\n");
+
+        if (!resultOK(xrRequestExitSession(openxr->hmd))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to xrRequestExitSession(): %s\n", errorString);
+        }
+
+        if (verbosity > 4)
+            printf("PsychOpenXRCore-DEBUG: Waiting for session shutdown to complete.\n");
+
+        while (!openxr->userExit && !openxr->lossPending) {
+            if (!processXREvents(xrInstance) && (verbosity > 0))
+                printf("PsychOpenXRCore-ERROR:Close: Failed to poll events!");
+        }
+
+        if (verbosity > 4)
+            printf("PsychOpenXRCore-DEBUG: Session shutdown completed.\n");
+
+        openxr->closing = FALSE;
 
         // Destroy/Release texture swap chains to XR compositor:
         if (openxr->textureSwapChain[0]) {
