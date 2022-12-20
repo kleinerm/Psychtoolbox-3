@@ -1745,6 +1745,7 @@ void PsychOpenXRClose(int handle)
         }
 
         // PresentExecute() a last time on the main thread:
+        openxr->frameState.shouldRender = FALSE;
         PresentExecute(openxr, FALSE);
 
         if (verbosity > 4)
@@ -1818,7 +1819,24 @@ void PsychOpenXRClose(int handle)
         debugMessenger = XR_NULL_HANDLE;
 
         if (xrInstance != XR_NULL_HANDLE) {
-            xrDestroyInstance(xrInstance);
+            // Only call xrDestroyInstance() if the OpenXR runtime is not Linux + SteamVR's OpenXR, because
+            // otherwise we hang until killed in xrDestroyInstance() due to a SteamVR bug present since at
+            // least January 2021 and unfixed by Valve as of December 2022 - Strong work!
+            // See: https://github.com/ValveSoftware/SteamVR-for-Linux/issues/422 for the bug report, and
+            // https://github.com/cmbruns/pyopenxr/pull/60 for a similar workaround in pyopenxr:
+            if ((PSYCH_SYSTEM != PSYCH_LINUX) || strcmp(instanceProperties.runtimeName, "SteamVR/OpenXR")) {
+                xrDestroyInstance(xrInstance);
+            }
+            else {
+                if (!dlopen("libopenxr_loader.so.1", RTLD_NOW | RTLD_NOLOAD | RTLD_NODELETE))
+                    printf("PsychOpenXRCore-ERROR: xrDestroyInstance() workaround via dlopen() trick failed: %s\n", dlerror());
+                else if (verbosity >= 2) {
+                    printf("PsychOpenXRCore-WARNING: Skipping xrDestroyInstance() to work around worst of SteamVR runtime shutdown bug.\n");
+                    printf("PsychOpenXRCore-WARNING: No good workaround exists. Driver will be dysfunctional for remainder of session.\n");
+                    printf("PsychOpenXRCore-WARNING: Octave/Matlab will likely crash when you quit it, so safe data first before quitting!\n");
+                }
+            }
+
             xrInstance = XR_NULL_HANDLE;
         }
 
