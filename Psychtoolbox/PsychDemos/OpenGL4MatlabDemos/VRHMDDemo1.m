@@ -1,4 +1,4 @@
-function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain, checkerboard)
+function VRHMDDemo1(multiSample, fountain, checkerboard, gpumeasure, debugView, doSeparateEyeRender)
 % VRHMDDemo1 -- Show 3D stereo display via MOGL OpenGL on a VR headset.
 %
 % This demo shows how to use Psychtoolbox PsychVRHMD() driver to display
@@ -8,9 +8,30 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain, checkerboard)
 % case in "Happy teapot land". Obviously, this demo will only work if you have
 % one of the supported HMDs connected to your machine.
 %
-% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=1][, fountain=1][, checkerboard=0]);
+% Usage: VRHMDDemo1([multiSample=4][, fountain=1][, checkerboard=0][, gpumeasure=0][, debugView=0][, doSeparateEyeRender]);
 %
 % Optional parameters:
+%
+% 'multiSample' if set to a non-zero value will enable multi-sample
+% anti-aliasing. Can increase quality, but also increases GPU load.
+%
+% 'fountain' if set to 1 will also emit a particle fountain from the nozzle
+% of the teapot. Nicer, but higher gpu load.
+%
+% 'checkerboard' if set to 1, show a checkerboard texture instead of the regular
+% teapot.
+%
+% 'gpumeasure' if set to 1 will use Screen's builtin functions for measurement of
+% gpu time spent on post-processing the VR images. This excludes actual 3D rendering,
+% as time spent between Screen('BeginOpenGL') and Screen('EndOpenGL') won't be measured.
+% Note that some VR runtimes have trouble with gpumeasure, as it clashes with their own
+% builtin measurement mechanisms, so gpumeasure may cause errors or error messages.
+% E.g., a major offender as of December 2022 is the SteamVR OpenXR runtime, which will
+% cause flooding of the console with OpenGL error messages - Reason unknown, but was not
+% resolvable in hours of work.
+%
+% 'debugView' if set to 1, also display the VR content in a Psychtoolbox onscreen
+% window. May impact performance!
 %
 % 'doSeparateEyeRender' if set to 1, perform per eye render passes in an optimized
 % order, as recommended by the HMD driver, and query the per eye camera matrices
@@ -19,12 +40,10 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain, checkerboard)
 % and render in a potentially non-optimized order. The latter is a bit simpler, but
 % potentially less accurate, causing additional motion artifacts. If the setting is
 % omitted then the underlying HMD driver will be asked for the optimal value.
-%
-% 'multiSample' if set to a non-zero value will enable multi-sample
-% anti-aliasing. Can increase quality but also increases GPU load.
-%
-% 'fountain' if set to 1 will also emit a particle fountain from the nozzle
-% of the teapot. Nicer, but higher gpu load.
+% Note that none of the modern VR runtimes supports a doSeparateEyeRender setting of 1
+% in any meaningful way. Only the - long dead - original OculusVR v0.5 runtime on the
+% old Oculus Rift DK1 and DK2 supported this for improved quality. The correct setting
+% therefore is always 0 on modern systems, and this is what will be chosen by default.
 %
 % Press any key to end the demo.
 %
@@ -44,20 +63,34 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain, checkerboard)
 % GL data structure needed for all OpenGL demos:
 global GL;
 
-if nargin < 1 || isempty(doSeparateEyeRender)
-  doSeparateEyeRender = [];
-end
-
-if nargin < 2 || isempty(multiSample)
+if nargin < 1 || isempty(multiSample)
   multiSample = 4;
 end
 
-if nargin < 3 || isempty(fountain)
+if nargin < 2 || isempty(fountain)
   fountain = 1;
 end
 
-if nargin < 4  || isempty(checkerboard)
+if nargin < 3  || isempty(checkerboard)
   checkerboard = 0;
+end
+
+if nargin < 4  || isempty(gpumeasure)
+  gpumeasure = 0;
+end
+
+if nargin < 5 || isempty(debugView)
+  debugView = 0;
+end
+
+if debugView
+  debugView = 'DebugDisplay';
+else
+  debugView = '';
+end
+
+if nargin < 6 || isempty(doSeparateEyeRender)
+  doSeparateEyeRender = [];
 end
 
 % Default setup:
@@ -73,7 +106,7 @@ try
 
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
-  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse DebugDisplay', 0);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', ['LowPersistence TimeWarp FastResponse ' debugView], 0);
   if isempty(hmd)
     fprintf('No VR-HMD available, giving up!\n');
     return;
@@ -298,6 +331,9 @@ try
   HideCursor(screenid);
   [xo, yo] = GetMouse(screenid);
 
+  % Only accept ESCape key for stopping this demo:
+  RestrictKeysForKbCheck(KbName('ESCAPE'));
+
   % Initial flip to sync us to VBL and get start timestamp:
   [vbl, onset] = Screen('Flip', win);
   tstart = vbl;
@@ -339,9 +375,11 @@ try
     % by the PsychGetPositionYawMatrix() helper function:
     state = PsychVRHMD('PrepareRender', hmd, globalHeadPose);
 
-    % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
+    % Optionally start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
-    gpumeasure = Screen('GetWindowInfo', win, 5);
+    if gpumeasure
+      gpumeasure = Screen('GetWindowInfo', win, 5);
+    end
 
     % We render the scene separately for each eye:
     for renderPass = 0:1
@@ -441,7 +479,7 @@ try
     % Head position tracked?
     if ~bitand(state.tracked, 2) && ~checkerboard
       % Nope, user out of cameras view frustum. Tell it like it is:
-      DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
+      %DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
     end
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
@@ -470,6 +508,8 @@ try
   end
 
   % Cleanup:
+  fprintf('Exiting display loop...\n');
+  RestrictKeysForKbCheck([]);
   Priority(0);
   ShowCursor(screenid);
   sca;
@@ -478,8 +518,12 @@ try
   fps = fcount / (vbl - tstart);
   gpudur = gpudur(1:fcount);
   fprintf('Average framerate was %f fps. Average GPU rendertime per frame = %f msec.\n', fps, 1000 * mean(gpudur));
-  plot(1000 * gpudur);
-  title('GPU processing time per frame [msecs]: (Often wrong on buggy OSX!)');
+
+  if gpumeasure
+      plot(1000 * gpudur);
+      title('GPU processing time per frame [msecs]:');
+  end
+
   figure;
   plot(1000 * diff(onset(1:fcount)));
   title('Time delta between presentation of frames [msecs]: ');
