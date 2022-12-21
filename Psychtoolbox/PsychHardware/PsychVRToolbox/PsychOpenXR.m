@@ -544,6 +544,15 @@ end
 if cmd == 0
   % Submit/Commit just unbound textures to texture swap-chains:
   PsychOpenXRCore('EndFrameRender', hmd{varargin{1}}.handle);
+
+  if hmd{varargin{1}}.steamXROpenGLWa
+    % SteamVR leaves our OpenGL context in a disabled state after
+    % 'EndFrameRender' aka xrReleaseSwapchainImages(), which would
+    % cause OpenGL errors. The following 'GetWindowInfo' forces our
+    % OpenGL context back on to resolve the problem:
+    Screen('GetWindowInfo', hmd{varargin{1}}.win);
+  end
+
   return;
 end
 
@@ -982,6 +991,15 @@ if strcmpi(cmd, 'Open')
   newhmd.hapticFeedbackSupported = 1;
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
+
+  % SteamVR OpenXR runtime needs a workaround for not properly
+  % managing its OpenGL context sometimes. So far confirmed to be
+  % needed on Linux with SteamVR 1.24.6. Status on Windows not yet known:
+  if IsLinux && strcmp(runtimeName, 'SteamVR/OpenXR')
+    newhmd.steamXROpenGLWa = 1;
+  else
+    newhmd.steamXROpenGLWa = 0;
+  end
 
   % TODO Technically 2nd argument varargin{2} would define this.
   newhmd.multiThreaded = 0;
