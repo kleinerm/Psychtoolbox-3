@@ -1828,13 +1828,18 @@ void PsychOpenXRClose(int handle)
                 xrDestroyInstance(xrInstance);
             }
             else {
-                if (!dlopen("libopenxr_loader.so.1", RTLD_NOW | RTLD_NOLOAD | RTLD_NODELETE))
-                    printf("PsychOpenXRCore-ERROR: xrDestroyInstance() workaround via dlopen() trick failed: %s\n", dlerror());
-                else if (verbosity >= 2) {
-                    printf("PsychOpenXRCore-WARNING: Skipping xrDestroyInstance() to work around worst of SteamVR runtime shutdown bug.\n");
-                    printf("PsychOpenXRCore-WARNING: No good workaround exists. Driver will be dysfunctional for remainder of session.\n");
-                    printf("PsychOpenXRCore-WARNING: Octave/Matlab will likely crash when you quit it, so safe data first before quitting!\n");
+                if (verbosity >= 2) {
+                    printf("PsychOpenXRCore-WARNING: Skipping xrDestroyInstance() to work around worst part of SteamVR runtime shutdown bug.\n");
+                    printf("PsychOpenXRCore-WARNING: No good workaround exists. The driver will be dysfunctional for the remainder of the session!\n");
+                    printf("PsychOpenXRCore-WARNING: Octave/Matlab will likely crash once you quit it, so save your data first before quitting!\n");
                 }
+
+                // Try to (re-)dlopen the OpenXR loader RTLD_NODELETE, so it can only get unloaded at host application exit time,
+                // iow. mayhem and crash is delayed to the end of the productive work session to ease the pain of the user a bit:
+                #if PSYCH_SYSTEM != PSYCH_WINDOWS
+                if (!dlopen("libopenxr_loader.so.1", RTLD_NOW | RTLD_NOLOAD | RTLD_NODELETE))
+                    printf("PsychOpenXRCore-ERROR: xrDestroyInstance() workaround via dlopen() trick failed - This will end badly! Save your data: %s\n", dlerror());
+                #endif
             }
 
             xrInstance = XR_NULL_HANDLE;
@@ -4009,6 +4014,10 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 
             success = FALSE;
             goto present_fail;
+        }
+        else if (verbosity > 6) {
+            printf("PsychOpenXRCore-INFO: xrEndFrame done for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %f secs ahead.\n",
+                   openxr->targetPresentTime, targetDisplayTime, XrTimeToPsychTime(targetDisplayTime) - XrTimeToPsychTime(openxr->frameState.predictedDisplayTime));
         }
 
         // Wait until we are almost at the time of stimulus onset, so the following xrWaitFrame()
