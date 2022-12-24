@@ -1487,6 +1487,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     use3DMode = 0;
   end
 
+  % SteamVR runtime on MS-Windows in 3D mode needs fp16 buffers for some
+  % absurd reason, most likely some bug in handling of projection layers.
+  % This workaround is not needed in 2D mode where quad layers are used.
+  % This at least as of December 2022 with SteamVR version 1.24.7, when using
+  % OculusVR as backend to drive Oculus devices. Not clear if also needed for
+  % other vendors HMDs. Go figure!
+  if IsWin && use3DMode && strcmpi(hmd{myhmd.handle}.modelName, 'SteamVR/OpenXR : oculus')
+    fprintf('PsychOpenXR-INFO: Using floating point textures for SteamVR runtime with Oculus devices in 3D mode on MS-Windows.\n');
+    fprintf('PsychOpenXR-INFO: This is a workaround for some SteamVR bug. It may cause reduced performance, sorry.\n');
+    floatFlag = 1;
+  end
+
   % Create and startup XR session, based on the Screen() OpenGL interop info in 'gli':
   gli = Screen('GetWindowInfo', win, 9);
 
