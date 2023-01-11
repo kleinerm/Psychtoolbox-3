@@ -1,7 +1,7 @@
 function varargout = PsychOpenXR(cmd, varargin)
 % PsychOpenXR - A high level driver for OpenXR supported XR hardware.
 %
-% Copyright (c) 2022 Mario Kleiner. Licensed to you under the MIT license.
+% Copyright (c) 2022-2023 Mario Kleiner. Licensed to you under the MIT license.
 % Our underlying PsychOpenXRCore mex driver builds against the Khronos OpenXR SDK public
 % headers, and links against the OpenXR open-source dynamic loader, to implement the
 % interface to a system-installed OpenXR runtime. These components are dual-licensed by
@@ -970,7 +970,7 @@ end
 if strcmpi(cmd, 'Open')
   if isempty(firsttime)
     firsttime = 1;
-    fprintf('Copyright (c) 2022 Mario Kleiner. Licensed to you under the MIT license.\n');
+    fprintf('Copyright (c) 2022-2023 Mario Kleiner. Licensed to you under the MIT license.\n');
     fprintf('Our underlying PsychOpenXRCore mex driver builds against the Khronos OpenXR SDK public\n');
     fprintf('headers, and links against the OpenXR open-source dynamic loader, to implement the\n');
     fprintf('interface to a system-installed OpenXR runtime. These components are dual-licensed by\n');
