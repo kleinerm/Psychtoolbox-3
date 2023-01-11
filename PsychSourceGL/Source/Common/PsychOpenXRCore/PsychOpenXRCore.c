@@ -17,7 +17,7 @@
  * The runtime must support OpenGL as rendering backend for XR content.
  *
  * The driver was initially derived from PsychOculusVRCore1.
- * Copyright (c) 2022 Mario Kleiner. Licensed to you under the MIT license:
+ * Copyright (c) 2022-2023 Mario Kleiner. Licensed to you under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -253,7 +253,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychOpenXRCore - A Psychtoolbox driver for OpenXR compatible VR/AR/MR/XR hardware.";
     synopsis[i++] = "This driver allows to use XR devices supported by a suitable OpenXR runtime of version 1 and higher.\n";
-    synopsis[i++] = "Copyright (c) 2022 Mario Kleiner.";
+    synopsis[i++] = "Copyright (c) 2022-2023 Mario Kleiner.";
     synopsis[i++] = "The PsychOpenXRCore driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.";
     synopsis[i++] = "";
@@ -1589,8 +1589,10 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     };
 
     XrApplicationInfo applicationInfo = {
-        .applicationName = PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME,
-        .applicationVersion = 1,
+        // applicationName must not contain / character, or the SteamVR runtime will screw up controller input, therefore we
+        // can not use the (more appropriate) PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME. Thanks Valve!
+        .applicationName = "Psychtoolbox",
+        .applicationVersion = 3,
         .engineName = "PsychOpenXRCore",
         .engineVersion = (PSYCHTOOLBOX_MAJOR_VERSION << 24 | PSYCHTOOLBOX_MINOR_VERSION << 16 | PSYCHTOOLBOX_POINT_VERSION),
         .apiVersion = XR_CURRENT_API_VERSION
