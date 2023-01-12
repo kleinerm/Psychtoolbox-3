@@ -1069,8 +1069,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
             { .action = openxr->thumbStick2DAction[0], .binding = trackpadPath[0] },
             { .action = openxr->thumbStick2DAction[1], .binding = trackpadPath[1] },
-            BBIND(OVR_Button_Back, "/user/hand/left/input/select/click"),
-            BBIND(OVR_Button_Back, "/user/hand/right/input/select/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/select/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/right/input/select/click"),
             BBIND(OVR_Button_LThumb, "/user/hand/left/input/trackpad/click"),
             BBIND(OVR_Button_RThumb, "/user/hand/right/input/trackpad/click"),
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
@@ -1164,8 +1164,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
             TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
             // Following don't work on Windows/OculusVR, but do on Linux/Monado
-            // BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
-            // BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+            // BBIND(OVR_Button_Enter, "/user/hand/left/input/system/click"),
+            // BBIND(OVR_Button_Enter, "/user/hand/right/input/system/click"),
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/oculus/go_controller", ARRAY_SIZE(oculusGoBinding), oculusGoBinding))
@@ -1203,8 +1203,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/thumbstick/touch"),
             TBIND(OVR_Touch_RThumb, "/user/hand/right/input/thumbstick/touch"),
             // Following don't work on Windows/OculusVR, but do on Linux/Monado
-            // BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
-            // BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+            // BBIND(OVR_Button_Enter, "/user/hand/left/input/system/click"),
+            // BBIND(OVR_Button_Enter, "/user/hand/right/input/system/click"),
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/valve/index_controller", ARRAY_SIZE(valveIndexBinding), valveIndexBinding))
