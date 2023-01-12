@@ -677,9 +677,13 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     xrStringToPath(xrInstance, "/user/gamepad/input/trigger_left/value", &triggerPath[2]);
     xrStringToPath(xrInstance, "/user/gamepad/input/trigger_right/value", &triggerPath[3]);
 
-    XrPath gripPath[2];
-    xrStringToPath(xrInstance, "/user/hand/left/input/squeeze", &gripPath[0]);
-    xrStringToPath(xrInstance, "/user/hand/right/input/squeeze", &gripPath[1]);
+    XrPath gripValuePath[2];
+    xrStringToPath(xrInstance, "/user/hand/left/input/squeeze/value", &gripValuePath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/squeeze/value", &gripValuePath[1]);
+
+    XrPath gripClickPath[2];
+    xrStringToPath(xrInstance, "/user/hand/left/input/squeeze/click", &gripClickPath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/squeeze/click", &gripClickPath[1]);
 
     XrPath trackpadPath[2];
     xrStringToPath(xrInstance, "/user/hand/left/input/trackpad", &trackpadPath[0]);
@@ -991,8 +995,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
         { .action = openxr->hapticAction, .binding = hapticPath[1] }, // Not Daydream
         { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] }, // Not simple or Daydream
         { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] }, // Not simple or Daydream
-        { .action = openxr->gripValueAction[0], .binding = gripPath[0] }, // Not simple or Daydream
-        { .action = openxr->gripValueAction[1], .binding = gripPath[1] }, // Not simple or Daydream
+        { .action = openxr->gripValueAction[0], .binding = gripValuePath[0] }, // Oculus Touch, Valve Index, TODO: HP mixed reality, HTC Vive Focus 3
+        { .action = openxr->gripValueAction[1], .binding = gripValuePath[1] }, // Oculus Touch, Valve Index, TODO: HP mixed reality, HTC Vive Focus 3
         { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] }, // Not simple or Daydream or Vive
         { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] }, // Not simple or Daydream or Vive
         { .action = openxr->thumbStick2DAction[2], .binding = trackpadPath[0] }, // Not simple or Daydream or Vive
@@ -1086,8 +1090,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             { .action = openxr->hapticAction, .binding = hapticPath[1] },
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
             { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
-            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
-            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripClickPath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripClickPath[1] },
             { .action = openxr->thumbStick2DAction[0], .binding = trackpadPath[0] },
             { .action = openxr->thumbStick2DAction[1], .binding = trackpadPath[1] },
             BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
@@ -1115,8 +1119,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             { .action = openxr->hapticAction, .binding = hapticPath[1] },
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
             { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
-            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
-            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripValuePath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripValuePath[1] },
             { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
             { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
             BBIND(OVR_Button_A, "/user/hand/right/input/a/click"),
@@ -1177,8 +1181,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             { .action = openxr->hapticAction, .binding = hapticPath[1] }, // Not Daydream
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
             { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
-            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
-            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripValuePath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripValuePath[1] },
             { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
             { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
             // Trackpad is mapped to Thumbstick2:
@@ -1216,8 +1220,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             { .action = openxr->hapticAction, .binding = hapticPath[1] },
             { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
             { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
-            { .action = openxr->gripValueAction[0], .binding = gripPath[0] },
-            { .action = openxr->gripValueAction[1], .binding = gripPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripClickPath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripClickPath[1] },
             { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
             { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
             // Trackpad is mapped to Thumbstick2:
