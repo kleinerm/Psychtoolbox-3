@@ -1733,9 +1733,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
 
   % Query set of currently connected controllers:
-  if strcmpi(hmd{handle}.subtype, 'Oculus')
-    % On at least the Oculus XR runtime on MS-Windows, we need this
-    % workaround, or 'Controllers' will not report connected controllers,
+  if strcmpi(hmd{handle}.subtype, 'Oculus') || strcmpi(hmd{handle}.subtype, 'SteamVR/OpenXR')
+    % On at least the Oculus XR runtime on MS-Windows, and SteamVR on Windows and Linux,
+    % we need this workaround, or 'Controllers' will not report connected controllers,
     % but only after multiple repeated queries. We don't want the 1st query
     % from a user-script to potentially fail, so lets do the failed queries
     % here already. Why? Nobody knows, but apparently somehow one needs to
@@ -1745,10 +1745,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % XR event processing. Also the wait of at least this duration and
     % multiple repetitions are crucial. Just the normal nightmares of
     % dealing with proprietary runtimes...
+    % SteamVR needs the extra 'Controllers' call below, or things will continue
+    % to fail.
+    %
     % TODO: Can something be done about this idiocy, in case we switch to
     % multi-threaded operations?
     for i = 1:3
       Screen('Flip', win);
+      hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
       WaitSecs(0.5);
     end
   end
