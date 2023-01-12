@@ -580,6 +580,42 @@ static psych_bool getActiveXRInteractionProfile(XrInstance xrInstance, PsychOpen
     return(TRUE);
 }
 
+static int getActiveControllers(XrInstance xrInstance, PsychOpenXRDevice *openxr)
+{
+    char profile[128];
+    int i, controllerTypes;
+
+    profile[0] = 0;
+    controllerTypes = 0;
+
+    for (i = 0; i < 4; i++) {
+        if (getActiveXRInteractionProfile(xrInstance, openxr, openxr->handPath[i], profile)) {
+            switch (i) {
+                case 0: // Left controller: OVR.ControllerType_LTouch
+                    controllerTypes |= 1;
+                    break;
+
+                case 1: // Right controller: OVR.ControllerType_RTouch
+                    controllerTypes |= 2;
+                    break;
+
+                case 2: // Gamepad / "XBox" controller: OVR.ControllerType_XBox
+                    controllerTypes |= 16;
+                    break;
+
+                case 3: // Controls on HMD, or remote control: OVR.ControllerType_Remote
+                    controllerTypes |= 4;
+                    break;
+            }
+
+            if (verbosity > 3)
+                printf("PsychOpenXRCore-INFO: Active interaction profile for [%i]: %s\n", i, profile);
+        }
+    }
+
+    return(controllerTypes);
+}
+
 static psych_bool suggestXRInteractionBindings(XrInstance xrInstance, const char* interactionProfile, uint32_t count, const XrActionSuggestedBinding* bindings)
 {
     XrPath interactionProfilePath;
@@ -1362,9 +1398,9 @@ static psych_bool processXREvents(XrInstance pollInstance)
                 XrEventDataInteractionProfileChanged* profileChangeEvent = (XrEventDataInteractionProfileChanged*) &event;
                 openxr = PsychGetXRForSession(profileChangeEvent->session);
 
-                if (verbosity > 1)
-                    printf("PsychOpenXRCore-WARNING: Event polling for instance %p, interaction profile changed for session %p! TODO HANDLE ME!\n", pollInstance, profileChangeEvent->session);
-
+                if (verbosity > 3)
+                    printf("PsychOpenXRCore-INFO: Event polling for instance %p, interaction profile changed for session %p! Active controllers now: %i\n",
+                           pollInstance, profileChangeEvent->session, getActiveControllers(pollInstance, openxr));
 
                 break;
             }
@@ -3138,10 +3174,8 @@ PsychError PSYCHOPENXRControllers(void)
     "\n";
     static char seeAlsoString[] = "GetInputState HapticPulse";
 
-    char profile[128];
-    int handle, i;
+    int handle;
     PsychOpenXRDevice *openxr;
-    int controllerTypes = 0;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3170,33 +3204,8 @@ PsychError PSYCHOPENXRControllers(void)
     if (!processXREvents(xrInstance) && (verbosity > 0))
         printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!");
 
-    for (i = 0; i < 4; i++) {
-        if (getActiveXRInteractionProfile(xrInstance, openxr, openxr->handPath[i], profile)) {
-            switch (i) {
-                case 0: // Left controller: OVR.ControllerType_LTouch
-                    controllerTypes |= 1;
-                    break;
-
-                case 1: // Right controller: OVR.ControllerType_RTouch
-                    controllerTypes |= 2;
-                    break;
-
-                case 2: // Gamepad / "XBox" controller: OVR.ControllerType_XBox
-                    controllerTypes |= 16;
-                    break;
-
-                case 3: // Controls on HMD, or remote control: OVR.ControllerType_Remote
-                    controllerTypes |= 4;
-                    break;
-            }
-
-            if (verbosity > 3)
-                printf("PsychOpenXRCore-INFO: Active interaction profile for [%i]: %s\n", i, profile);
-        }
-    }
-
     // Return controllerTypes mask:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, controllerTypes);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, getActiveControllers(xrInstance, openxr));
 
     return(PsychError_none);
 }
