@@ -185,6 +185,16 @@ typedef struct PsychOpenXRDevice {
 static XrInstance xrInstance = XR_NULL_HANDLE;
 static XrInstanceProperties instanceProperties;
 
+// Only in SDK's of late 2022, e.g., not in Ubuntu 20.04 SDK:
+#ifndef XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME
+#define XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME "XR_HTC_vive_focus3_controller_interaction"
+#endif
+
+// Supported instance extensions:
+static psych_bool has_XR_EXT_hp_mixed_reality_controller = FALSE;
+static psych_bool has_XR_HTC_vive_cosmos_controller_interaction = FALSE;
+static psych_bool has_XR_HTC_vive_focus3_controller_interaction = FALSE;
+
 // Shared debug messenger for the whole process:
 XrDebugUtilsMessengerEXT debugMessenger = XR_NULL_HANDLE;
 
@@ -995,8 +1005,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
         { .action = openxr->hapticAction, .binding = hapticPath[1] }, // Not Daydream
         { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] }, // Not simple or Daydream
         { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] }, // Not simple or Daydream
-        { .action = openxr->gripValueAction[0], .binding = gripValuePath[0] }, // Oculus Touch, Valve Index, TODO: HP mixed reality, HTC Vive Focus 3
-        { .action = openxr->gripValueAction[1], .binding = gripValuePath[1] }, // Oculus Touch, Valve Index, TODO: HP mixed reality, HTC Vive Focus 3
+        { .action = openxr->gripValueAction[0], .binding = gripValuePath[0] }, // Oculus Touch, Valve Index, HP mixed reality, HTC Vive Focus 3
+        { .action = openxr->gripValueAction[1], .binding = gripValuePath[1] }, // Oculus Touch, Valve Index, HP mixed reality, HTC Vive Focus 3
         { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] }, // Not simple or Daydream or Vive
         { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] }, // Not simple or Daydream or Vive
         { .action = openxr->thumbStick2DAction[2], .binding = trackpadPath[0] }, // Not simple or Daydream or Vive
@@ -1296,6 +1306,107 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_pro", ARRAY_SIZE(viveProBinding), viveProBinding))
+            return(FALSE);
+    }
+
+    // Suggest action bindings for XR_EXT_hp_mixed_reality_controller:
+    if (has_XR_EXT_hp_mixed_reality_controller) {
+        XrActionSuggestedBinding hpMRBinding[] = {
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] },
+            { .action = openxr->hapticAction, .binding = hapticPath[1] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripValuePath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripValuePath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
+            BBIND(OVR_Button_A, "/user/hand/right/input/a/click"),
+            BBIND(OVR_Button_B, "/user/hand/right/input/b/click"),
+            BBIND(OVR_Button_X, "/user/hand/left/input/x/click"),
+            BBIND(OVR_Button_Y, "/user/hand/left/input/y/click"),
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/thumbstick/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/thumbstick/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
+            BBIND(OVR_Button_Back, "/user/hand/right/input/menu/click"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/hp/mixed_reality_controller", ARRAY_SIZE(hpMRBinding), hpMRBinding))
+            return(FALSE);
+    }
+
+    // Suggest action bindings for XR_HTC_vive_cosmos_controller_interaction:
+    if (has_XR_HTC_vive_cosmos_controller_interaction) {
+        XrActionSuggestedBinding viveCosmosBinding[] = {
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] },
+            { .action = openxr->hapticAction, .binding = hapticPath[1] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripClickPath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripClickPath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
+            BBIND(OVR_Button_A, "/user/hand/right/input/a/click"),
+            BBIND(OVR_Button_B, "/user/hand/right/input/b/click"),
+            BBIND(OVR_Button_X, "/user/hand/left/input/x/click"),
+            BBIND(OVR_Button_Y, "/user/hand/left/input/y/click"),
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/thumbstick/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/thumbstick/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
+            BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+            // (Ab)use OVR_Button_Left and OVR_Button_Right for trigger click:
+            BBIND(OVR_Button_Left, "/user/hand/left/input/trigger/click"),
+            BBIND(OVR_Button_Right, "/user/hand/right/input/trigger/click"),
+            BBIND(OVR_Button_LShoulder, "/user/hand/left/input/shoulder/click"),
+            BBIND(OVR_Button_RShoulder, "/user/hand/right/input/shoulder/click"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/thumbstick/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/thumbstick/touch"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_cosmos_controller", ARRAY_SIZE(viveCosmosBinding), viveCosmosBinding))
+            return(FALSE);
+    }
+
+    // Suggest action bindings for XR_HTC_vive_focus3_controller_interaction:
+    if (has_XR_HTC_vive_focus3_controller_interaction) {
+        XrActionSuggestedBinding viveFocus3Binding[] = {
+            { .action = openxr->handPoseAction, .binding = aimPosePath[0] },
+            { .action = openxr->handPoseAction, .binding = aimPosePath[1] },
+            { .action = openxr->hapticAction, .binding = hapticPath[0] },
+            { .action = openxr->hapticAction, .binding = hapticPath[1] },
+            { .action = openxr->triggerValueAction[0], .binding = triggerPath[0] },
+            { .action = openxr->triggerValueAction[1], .binding = triggerPath[1] },
+            { .action = openxr->gripValueAction[0], .binding = gripValuePath[0] },
+            { .action = openxr->gripValueAction[1], .binding = gripValuePath[1] },
+            { .action = openxr->thumbStick2DAction[0], .binding = thumbStickPath[0] },
+            { .action = openxr->thumbStick2DAction[1], .binding = thumbStickPath[1] },
+            BBIND(OVR_Button_A, "/user/hand/right/input/a/click"),
+            BBIND(OVR_Button_B, "/user/hand/right/input/b/click"),
+            BBIND(OVR_Button_X, "/user/hand/left/input/x/click"),
+            BBIND(OVR_Button_Y, "/user/hand/left/input/y/click"),
+            BBIND(OVR_Button_LThumb, "/user/hand/left/input/thumbstick/click"),
+            BBIND(OVR_Button_RThumb, "/user/hand/right/input/thumbstick/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
+            BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
+            // (Ab)use OVR_Button_Left and OVR_Button_Right for trigger click:
+            BBIND(OVR_Button_Left, "/user/hand/left/input/trigger/click"),
+            BBIND(OVR_Button_Right, "/user/hand/right/input/trigger/click"),
+            // (Ab)use OVR_Button_LShoulder and OVR_Button_RShoulder for squeeze/grip click:
+            BBIND(OVR_Button_LShoulder, "/user/hand/left/input/squeeze/click"),
+            BBIND(OVR_Button_RShoulder, "/user/hand/right/input/squeeze/click"),
+
+            TBIND(OVR_Touch_LIndexTrigger, "/user/hand/left/input/trigger/touch"),
+            TBIND(OVR_Touch_RIndexTrigger, "/user/hand/right/input/trigger/touch"),
+            TBIND(OVR_Touch_LThumb, "/user/hand/left/input/thumbstick/touch"),
+            TBIND(OVR_Touch_RThumb, "/user/hand/right/input/thumbstick/touch"),
+            TBIND(OVR_Touch_LThumbRest, "/user/hand/left/input/thumbrest/touch"),
+            TBIND(OVR_Touch_RThumbRest, "/user/hand/right/input/thumbrest/touch"),
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_focus3_controller", ARRAY_SIZE(viveFocus3Binding), viveFocus3Binding))
             return(FALSE);
     }
 
@@ -1626,6 +1737,11 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     // The following extensions are optional. Therefore we don't care if adding them succeeds or not:
     addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_COMPOSITION_LAYER_DEPTH_EXTENSION_NAME);
     has_XR_FB_display_refresh_rate = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+
+    // Enable additional optional controller input extensions:
+    has_XR_EXT_hp_mixed_reality_controller = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_HP_MIXED_REALITY_CONTROLLER_EXTENSION_NAME);
+    has_XR_HTC_vive_cosmos_controller_interaction = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_HTC_VIVE_COSMOS_CONTROLLER_INTERACTION_EXTENSION_NAME);
+    has_XR_HTC_vive_focus3_controller_interaction = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
 
     // Done enumerating instance extensions:
     free(instanceExtensions);
