@@ -418,7 +418,7 @@ if hmdinfo.handTrackingSupported
   KbReleaseWait;
 
   % Realtime scheduling:
-  Priority(MaxPriority(win));
+  %Priority(MaxPriority(win));
 
   fcount = 0;
   globalPos = [0, 0, 3];
