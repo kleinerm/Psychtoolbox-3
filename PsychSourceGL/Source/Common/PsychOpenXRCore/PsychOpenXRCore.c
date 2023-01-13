@@ -1110,12 +1110,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             BBIND(OVR_Button_RThumb, "/user/hand/right/input/trackpad/click"),
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
             TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
-
-            // Following don't work on Windows+OculusVR, but do on Linux+Monado/SteamVR
-            #if PSYCH_SYSTEM == PSYCH_LINUX
-                BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
-                BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
-            #endif
+            BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
+            BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_controller", ARRAY_SIZE(viveBinding), viveBinding))
@@ -1176,12 +1172,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             BBIND(OVR_Button_Back, "/user/hand/right/input/back/click"),
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
             TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
-
-            // Following don't work on Windows+OculusVR, but do on Linux+Monado/SteamVR
-            #if PSYCH_SYSTEM == PSYCH_LINUX
-                BBIND(OVR_Button_Enter, "/user/hand/left/input/system/click"),
-                BBIND(OVR_Button_Enter, "/user/hand/right/input/system/click"),
-            #endif
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/system/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/right/input/system/click"),
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/oculus/go_controller", ARRAY_SIZE(oculusGoBinding), oculusGoBinding))
@@ -1218,12 +1210,8 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             TBIND(OVR_Touch_RIndexTrigger, "/user/hand/right/input/trigger/touch"),
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/thumbstick/touch"),
             TBIND(OVR_Touch_RThumb, "/user/hand/right/input/thumbstick/touch"),
-
-            // Following don't work on Windows+OculusVR, but do on Linux+Monado/SteamVR
-            #if PSYCH_SYSTEM == PSYCH_LINUX
-                BBIND(OVR_Button_Enter, "/user/hand/left/input/system/click"),
-                BBIND(OVR_Button_Enter, "/user/hand/right/input/system/click"),
-            #endif
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/system/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/right/input/system/click"),
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/valve/index_controller", ARRAY_SIZE(valveIndexBinding), valveIndexBinding))
@@ -1298,11 +1286,7 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
             BBIND(OVR_Button_VolDown, "/user/head/input/volume_down/click"),
             BBIND(OVR_Button_VolUp, "/user/head/input/volume_up/click"),
             BBIND(OVR_Button_MicMute, "/user/head/input/mute_mic/click"),
-
-            // Following don't work on Windows+OculusVR, but do on Linux+Monado/SteamVR
-            #if PSYCH_SYSTEM == PSYCH_LINUX
-                BBIND(OVR_Button_Home, "/user/head/input/system/click"),
-            #endif
+            BBIND(OVR_Button_Home, "/user/head/input/system/click"),
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_pro", ARRAY_SIZE(viveProBinding), viveProBinding))
