@@ -1956,44 +1956,49 @@ void PsychOpenXRClose(int handle)
         devicecount--;
     }
 
-    if (initialized && (devicecount == 0)) {
+    if (initialized && (devicecount == 0) && (xrInstance != XR_NULL_HANDLE)) {
         // Last HMD closed. Shutdown the runtime:
-        if (debugMessenger)
-            pxrDestroyDebugUtilsMessengerEXT(debugMessenger);
 
-        debugMessenger = XR_NULL_HANDLE;
+        // Only call xrDestroyInstance() if the OpenXR runtime is not Linux + SteamVR's OpenXR, because
+        // otherwise we hang until killed in xrDestroyInstance() due to a SteamVR bug present since at
+        // least January 2021 and unfixed by Valve as of December 2022 - Strong work!
+        // See: https://github.com/ValveSoftware/SteamVR-for-Linux/issues/422 for the bug report, and
+        // https://github.com/cmbruns/pyopenxr/pull/60 for a similar workaround in pyopenxr:
+        if ((PSYCH_SYSTEM != PSYCH_LINUX) || strcmp(instanceProperties.runtimeName, "SteamVR/OpenXR")) {
+            // Sane runtime: Perform full shutdown:
+            if (debugMessenger)
+                pxrDestroyDebugUtilsMessengerEXT(debugMessenger);
 
-        if (xrInstance != XR_NULL_HANDLE) {
-            // Only call xrDestroyInstance() if the OpenXR runtime is not Linux + SteamVR's OpenXR, because
-            // otherwise we hang until killed in xrDestroyInstance() due to a SteamVR bug present since at
-            // least January 2021 and unfixed by Valve as of December 2022 - Strong work!
-            // See: https://github.com/ValveSoftware/SteamVR-for-Linux/issues/422 for the bug report, and
-            // https://github.com/cmbruns/pyopenxr/pull/60 for a similar workaround in pyopenxr:
-            if ((PSYCH_SYSTEM != PSYCH_LINUX) || strcmp(instanceProperties.runtimeName, "SteamVR/OpenXR")) {
-                xrDestroyInstance(xrInstance);
-            }
-            else {
-                if (verbosity >= 2) {
-                    printf("PsychOpenXRCore-WARNING: Skipping xrDestroyInstance() to work around worst part of SteamVR runtime shutdown bug.\n");
-                    printf("PsychOpenXRCore-WARNING: No good workaround exists. The driver will be dysfunctional for the remainder of the session!\n");
-                    printf("PsychOpenXRCore-WARNING: Octave/Matlab will likely crash once you quit it, so save your data first before quitting!\n");
-                }
+            debugMessenger = XR_NULL_HANDLE;
 
-                // Try to (re-)dlopen the OpenXR loader RTLD_NODELETE, so it can only get unloaded at host application exit time,
-                // iow. mayhem and crash is delayed to the end of the productive work session to ease the pain of the user a bit:
-                #if PSYCH_SYSTEM != PSYCH_WINDOWS
-                if (!dlopen("libopenxr_loader.so.1", RTLD_NOW | RTLD_NOLOAD | RTLD_NODELETE))
-                    printf("PsychOpenXRCore-ERROR: xrDestroyInstance() workaround via dlopen() trick failed - This will end badly! Save your data: %s\n", dlerror());
-                #endif
-            }
-
+            xrDestroyInstance(xrInstance);
             xrInstance = XR_NULL_HANDLE;
+
+            instanceExtensionsEnabledCount = 0;
+            initialized = FALSE;
+
+            if (verbosity >= 4)
+                printf("PsychOpenXRCore-INFO: OpenXR runtime shutdown complete.\n");
         }
+        else {
+            // Buggy runtime: Keep xrInstance and associated state alive "as is":
+            if (verbosity >= 2) {
+                printf("PsychOpenXRCore-WARNING: Skipping xrDestroyInstance() to work around idiotic SteamVR runtime shutdown bug.\n");
+                printf("PsychOpenXRCore-WARNING: Octave/Matlab will likely crash once you quit it, so save your data first before quitting!\n");
+            }
 
-        instanceExtensionsEnabledCount = 0;
-        initialized = FALSE;
+            #if PSYCH_LANGUAGE == PSYCH_MATLAB
+            // Lock ourselves into host process memory:
+            mexLock();
+            #endif
 
-        if (verbosity >= 4) printf("PsychOpenXRCore-INFO: OpenXR runtime shutdown complete.\n");
+            // Try to (re-)dlopen the OpenXR loader RTLD_NODELETE, so it can only get unloaded at host application exit time,
+            // iow. mayhem and crash is delayed to the end of the productive work session to ease the pain of the user a bit:
+            #if PSYCH_SYSTEM != PSYCH_WINDOWS
+            if (!dlopen("libopenxr_loader.so.1", RTLD_NOW | RTLD_NOLOAD | RTLD_NODELETE))
+                printf("PsychOpenXRCore-ERROR: xrDestroyInstance() workaround via dlopen() trick failed - This will end badly! Save your data: %s\n", dlerror());
+            #endif
+        }
     }
 }
 
