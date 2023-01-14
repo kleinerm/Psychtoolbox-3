@@ -4100,7 +4100,7 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
     if (!inInit) {
         // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
         // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as 1 (the smallest theoretically valid xrTime):
-        XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : 1;
+        XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : PsychTimeToXrTime(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 
         // If targetDisplayTime is earlier than earliest next possible display time predictedDisplayTime, then set it
         // to earliest possible display time. This is crucial for xrEndFrame() to not fail completely under SteamVR:
