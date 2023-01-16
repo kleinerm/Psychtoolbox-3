@@ -170,6 +170,9 @@ typedef struct PsychOpenXRDevice {
     double                              VRtimeoutSecs;
 } PsychOpenXRDevice;
 
+// Set to TRUE if PsychOpenXRCoreShutDown() is executing:
+static psych_bool calledFromPsychOpenXRCoreShutDown = FALSE;
+
 // Shared XrInstance for the whole process:
 static XrInstance xrInstance = XR_NULL_HANDLE;
 static XrInstanceProperties instanceProperties;
@@ -1859,7 +1862,18 @@ void PsychOpenXRStop(int handle)
     return;
 }
 
-// TODO
+// Force exit of the Matlab/Octave/Python/... host application process, skipping all further destructors etc.:
+static void PsychOpenXRDoExit(void)
+{
+    fprintf(stderr, "PsychOpenXRCore(): Early _exit(0) process termination to work around SteamVR shutdown bug NOW!\n");
+
+    // Flush all output streams manually:
+    fflush(NULL);
+
+    // Return status code 0 == Success, do exit() without calling all the atexit() handlers etc.:
+    _exit(0);
+}
+
 void PsychOpenXRClose(int handle)
 {
     int rc, eyeIndex;
@@ -1982,22 +1996,26 @@ void PsychOpenXRClose(int handle)
         }
         else {
             // Buggy runtime: Keep xrInstance and associated state alive "as is":
-            if (verbosity >= 2) {
-                printf("PsychOpenXRCore-WARNING: Skipping xrDestroyInstance() to work around idiotic SteamVR runtime shutdown bug.\n");
-                printf("PsychOpenXRCore-WARNING: Octave/Matlab will likely crash once you quit it, so save your data first before quitting!\n");
+            if (!calledFromPsychOpenXRCoreShutDown) {
+                // First call, ie. first regular work session close-down/driver shutdown/"clear" attempt:
+                if (verbosity >= 2) {
+                    printf("PsychOpenXRCore-WARNING: Skipping driver shutdown, to work around xrDestroyInstance() \"hang-bug\" in proprietary SteamVR OpenXR runtime.\n");
+                    printf("PsychOpenXRCore-WARNING: See https://github.com/ValveSoftware/SteamVR-for-Linux/issues/422 for associated unresolved SteamVR issue, as of v1.24.7.\n");
+                    printf("PsychOpenXRCore-WARNING: " PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME " might malfunction when you quit it, although usually it is fine.\n");
+                }
+
+                #if PSYCH_LANGUAGE == PSYCH_MATLAB
+                // Lock ourselves into host process memory:
+                mexLock();
+                #endif
             }
-
-            #if PSYCH_LANGUAGE == PSYCH_MATLAB
-            // Lock ourselves into host process memory:
-            mexLock();
-            #endif
-
-            // Try to (re-)dlopen the OpenXR loader RTLD_NODELETE, so it can only get unloaded at host application exit time,
-            // iow. mayhem and crash is delayed to the end of the productive work session to ease the pain of the user a bit:
-            #if PSYCH_SYSTEM != PSYCH_WINDOWS
-            if (!dlopen("libopenxr_loader.so.1", RTLD_NOW | RTLD_NOLOAD | RTLD_NODELETE))
-                printf("PsychOpenXRCore-ERROR: xrDestroyInstance() workaround via dlopen() trick failed - This will end badly! Save your data: %s\n", dlerror());
-            #endif
+            else {
+                // Successive shutdown call during force-unload of driver during host application shutdown/exit.
+                // Register handler to force exit the host application process early during exit(), skipping all
+                // further destructors and - most importantly - further atexit() or similar registered cleanup
+                // functions - one of which is located in the SteamVR runtime and would cause a hard hang:
+                atexit(PsychOpenXRDoExit);
+            }
         }
     }
 }
@@ -2016,6 +2034,7 @@ void PsychOpenXRCoreInit(void) {
         availableSystems[handle].type = XR_TYPE_SYSTEM_PROPERTIES;
     }
 
+    calledFromPsychOpenXRCoreShutDown = FALSE;
     numAvailableDevices = 0;
     devicecount = 0;
     initialized = FALSE;
@@ -2023,6 +2042,9 @@ void PsychOpenXRCoreInit(void) {
 
 PsychError PsychOpenXRCoreShutDown(void) {
     int handle;
+
+    // Mark us as exiting:
+    calledFromPsychOpenXRCoreShutDown = TRUE;
 
     if (initialized) {
         for (handle = 0 ; handle < MAX_PSYCH_OPENXR_DEVS; handle++)
