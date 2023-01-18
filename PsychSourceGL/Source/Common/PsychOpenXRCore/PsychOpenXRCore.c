@@ -4107,7 +4107,6 @@ PsychError PSYCHOPENXREndFrameRender(void)
     return(PsychError_none);
 }
 
-// TODO
 // Execute VR present operation, possibly committing new content to the swapchains:
 // Must be called with the presenterLock locked!
 // Called by idle presenterThread to keep VR compositor timeout handling from kicking in,
@@ -4176,10 +4175,6 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
             printf("PsychOpenXRCore-INFO: xrEndFrame done for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %f secs ahead.\n",
                    openxr->targetPresentTime, targetDisplayTime, XrTimeToPsychTime(targetDisplayTime) - XrTimeToPsychTime(openxr->frameState.predictedDisplayTime));
         }
-
-        // Wait until we are almost at the time of stimulus onset, so the following xrWaitFrame()
-        // has a fleeting chance of waiting/syncing to the correct display refresh cycle:
-        //PsychWaitUntilSeconds(XrTimeToPsychTime(targetDisplayTime) - openxr->frameDuration);
     }
 
     // Do the frame present cycle:
@@ -4199,78 +4194,6 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         success = FALSE;
         goto present_fail;
     }
-
-    // xrWaitFrame success. openxr->frameState.predictedDisplayTime contains the earliest predicted
-    // display time of the next to-be-submitted (via xrEndFrame) frame, assuming xrEndFrame
-    // would happen almost immediately, and no overload or other glitches. Our working assumption
-    // here is that if we performed our blocking xrWaitFrame immediately after the xrEndFrame
-    // which submitted our latest stimulus frame, ie. back-to-back, then xrWaitFrame would block
-    // until our just submitted stimulus frame was latched and composited by the compositor into
-    // the system framebuffer for the HMD at the right time to hit the requested targetDisplayTime
-    // as well as possible, the pageflip was executed and signalled complete by the OS to the
-    // compositor, and that the flip completion timestamp for our just-submitted stimulus image was
-    // used for calculating frameState.predictedDisplayTime for the next to-be-submitted frame.
-    // This all assumes back-to-back operation and no other parallel running XR apps on the HMD,
-    // and is as good as it gets, given OpenXR does not provide explicit api for querying true
-    // presentation time of a past submitted frame.
-    //
-    // Another reasonable assumption of ours is that the predictedDisplayTime of this next frame
-    // is exactly one HMD video refresh duration later than the defined display onset time of our
-    // just submitted/waited on frame, ie. we get the stimulus onset timestamp of our past submitted
-    // frame by subtracting one refresh duration from predictedDisplayTime. Why? Lets see what the
-    // compositor has to work with:
-    //
-    // The compositor gets the most recent vblank/pageflip completion timestamp tLastFlip of its latest
-    // compose+present cycle as a starting point from the OS. This is the time when active scanout to the
-    // HMD panel started for the previous image tLastFlip. The earliest possible new submitted frame by
-    // us could get latched + composited + submitted to the OS via a pageflip request during the ongoing
-    // refresh cycle interval [tLastFlip; tLastFlip + videoRefreshDuration] if the stimulus image is
-    // simple enough / system cpu/gpu load low enough etc. to make it before the next vblank. Its earliest
-    // start of scanout to the HMD panel would be tScanout = tLastFlip + videoRefreshDuration. A HMD that
-    // would immediately display every updated stimulus pixel would therefore have
-    // predictedDisplayTime = tScanout + 0.5 * videoRefreshDuration, because the OpenXR
-    // spec defines predictedDisplayTime not as "the top-left" pixel updating to the new frame content,
-    // but the mid-point of the display updating, ie. the center of the display. This happens earliest
-    // at half a refresh cycle after start of scanout tScanout.
-    //
-    // However, in reality, unless a high-perf OLED panel is used, predictedDisplayTime will be further delayed to:
-    // predictedDisplayTime = tScanout + 0.5 * videoRefreshDuration + HMDdelay.
-    // HMDdelay will depend on the specific model, technology and specs of the HMD or other XR display
-    // device. It could be a few msecs pixel switching time on a LCD panel, specific to panel model.
-    // It could be that, but hidden by some scanning backlight / rolling shutter mechanism, where the
-    // backlight illumination onset trails the scanout position/time by some predicted pixel switching
-    // delay for avoidance of artifacts.
-    // It could also be that the HMD has a global shutter, e.g., a blinking backlight, which will
-    // only flash the new image for a short exposure time of a millisecond or two after the whole
-    // LCD panel matrix has stabilized to the new image, ie. all pixels seem to update at once, typically
-    // during the vblank period at end of scanout.
-    //
-    // Whatever the panel tech is, LCD (slow) or OLED (fast), no shutter, rolling shutter (scanning backlight)
-    // or global shutter (blinking backlight), we can summarize the compositors optimistic prediction as
-    //
-    // predictedDisplayTime = tScanout + delay, with delay being the unknown sum of delay = 0.5 * videoRefreshDuration + HMDdelay.
-    //
-    // With tScanout = tLastFlip + videoRefreshDuration, we finally get
-    //
-    // predictedDisplayTime = tLastFlip + videoRefreshDuration + delay.
-    //
-    // But we actually want the display time of our just-submitted-and-waited-on frame, which would be
-    //
-    // tPredictedOnset = tLastFlip + delay
-    //
-    // with tScanout being when it was presumably pageflipped and started scanning out to the HMD,
-    // and the same HMD specific, but unknown to us, 'delay' between start of scanout and defined
-    // image onset (mid-point of image) according to OpenXR spec applied.
-    //
-    // Iow. we have predictedDisplayTime = tLastFlip + videoRefreshDuration + delay from xrWaitFrame(),
-    // but want tPredictedOnset = tLastFlip + delay. We don't know tLastFlip or delay, only the compositor
-    // does. Comparing both terms and substituting one into the other shows us that:
-    //
-    // tPredictedOnset = predictedDisplayTime - videoRefreshDuration
-    //
-    // With both right-hand terms known to us, we can get the wanted tPredictedOnset. Or at least
-    // this is our best guess/approximation at/of the right value, given no explicit OpenXR api or
-    // extension to get what we want directly and with absolut certainty and precision.
 
     // Mark frame as not skipped, ie. set tPredictedOnset to greater than zero timestamp:
     tPredictedOnset = XrTimeToPsychTime(openxr->frameState.predictedDisplayTime) - openxr->frameDuration;
