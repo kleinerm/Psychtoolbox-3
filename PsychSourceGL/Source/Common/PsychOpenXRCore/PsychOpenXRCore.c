@@ -4147,15 +4147,18 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
             .layers = openxr->submitLayers
         };
 
+        // Enforce projView[] update with proper fov, pose in 3D head-tracked rendering mode:
         if (openxr->use3DMode) {
-            // Enforce view[] update with proper fov, pose for desired targetDisplayTime:
-            // TODO: Likely redundant call here, due to locateXRViews() call in 'GetTrackingState',
-            // as part of PsychVRHMD('PrepareRender') at start of each full 3D rendering cycle.
-            // Takes about 0.2 - 0.5 msecs typical, but sometimes up to 5 msecs on Monado+darlene,
-            // so worth optimizing away when not strictly needed.
-            locateXRViews(openxr, targetDisplayTime);
+            // Only do initial locateXRViews() if projView has not ever been updated, ie. an initialization call,
+            // so we don't feed garbage from openxr->view pose to projView pose, as runtimes don't like that.
+            // During normal operation, this would be redundant, due to locateXRViews() call in 'GetTrackingState',
+            // as part of PsychVRHMD('PrepareRender') at start of each full 3D rendering cycle. 0.2 - 0.5 msecs
+            // typical, but sometimes up to 5 msecs, so worth optimizing away when not strictly needed.
+            if (!memcmp(&openxr->projView[0].pose, &identityPose, sizeof(identityPose)) &&
+                !memcmp(&openxr->projView[1].pose, &identityPose, sizeof(identityPose)))
+                locateXRViews(openxr, targetDisplayTime);
 
-            // Update pose and FoV for projection views:
+            // Update pose and FoV for projection views by latching latest locateXRViews() result:
             for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
                 openxr->projView[eyeIndex].pose = openxr->view[eyeIndex].pose;
                 openxr->projView[eyeIndex].fov = openxr->view[eyeIndex].fov;
