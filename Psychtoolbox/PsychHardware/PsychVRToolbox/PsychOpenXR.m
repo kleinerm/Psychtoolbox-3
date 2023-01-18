@@ -564,8 +564,8 @@ if cmd == 1
 
   % Present and timestamp:
   [predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
-  [predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
-  predictedOnset = hmd{handle}.predictedFutureOnset; % Testing on MonadoXR shows this is the right(est) timestamp, iow. without subtraction.
+  %[predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
+  %predictedOnset = hmd{handle}.predictedFutureOnset; % Testing on MonadoXR shows this is the right(est) timestamp, iow. without subtraction.
 
   % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
@@ -987,10 +987,12 @@ if strcmpi(cmd, 'Open')
   newhmd.modelName = modelName;
   newhmd.separateEyePosesSupported = 0;
   newhmd.videoRefreshDuration = 0;
+  newhmd.win = [];
   newhmd.handTrackingSupported = 1;
   newhmd.hapticFeedbackSupported = 1;
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
+  newhmd.multiThreaded = 0;
 
   % SteamVR OpenXR runtime needs a workaround for not properly
   % managing its OpenGL context sometimes. So far confirmed to be
@@ -1000,9 +1002,6 @@ if strcmpi(cmd, 'Open')
   else
     newhmd.steamXROpenGLWa = 0;
   end
-
-  % TODO Technically 2nd argument varargin{2} would define this.
-  newhmd.multiThreaded = 0;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -1433,13 +1432,6 @@ if strcmpi(cmd, 'OpenWindowSetup')
   return;
 end
 
-if strcmpi(cmd, 'Start') || strcmpi(cmd, 'Stop')
-    % Make sure the 'Start' and 'Stop' commands, which are mandatory to support
-    % for backwards compatibility (see PsychVRHMD), do absolutely nothing in this
-    % driver.
-    return;
-end
-
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Must have global GL constants:
   if isempty(GL)
@@ -1514,7 +1506,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, openglContext, gli.OpenGLDrawable, ...
-                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, use3DMode);
+                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, use3DMode, hmd{handle}.multiThreaded);
 
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
   Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
@@ -1602,6 +1594,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   if (texwidth ~= width) || (texheight ~= height)
     sca;
+    fprintf('PsychOpenXR-ERROR: Backing texture size mismatch: %i x %i != %i x %i!\n', texwidth, texheight, width, height);
     error('Invalid Screen() backing textures required. Non-matching width x height.');
   end
 
@@ -1613,16 +1606,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % will be reduced, and overhead for an extra blit will have to be
       % paid. Warn about this:
       fprintf('PsychOpenXR-WARNING: OpenXR runtime does not support the requested Float16Display basic requirement. Working around it, but precision and performance will suffer.\n');
-  end
-
-  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
-    % 3D head tracked VR rendering task: Start tracking as a convenience:
-    PsychOpenXRCore('Start', handle);
-  else
-    % No 3D head tracked closed-loop mode: Kick off the presenter thread via
-    % this 'Start' -> 'Stop' sequence:
-    PsychOpenXRCore('Start', handle);
-    PsychOpenXRCore('Stop', handle);
   end
 
   % Make sure our OpenGL rendering context is bound for the window properly:
@@ -1755,6 +1738,28 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
       WaitSecs(0.5);
     end
+  end
+
+  % These Start / Start->Stop sequences have to go last, after all setup is
+  % done. They may start multi-threaded operation on some OpenXR runtimes if
+  % multiThreaded is true:
+  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
+    % 3D head tracked VR rendering task: Start tracking as a convenience:
+    PsychOpenXRCore('Start', handle);
+
+    % If permanent multi-threading is requested, then we need to kick it off via
+    % a stop->start sequence (Start->Stop kicked it off, final Start marks tracking
+    % as started, but won't disable threading anymore at multiThreaded setting 2:
+    if hmd{handle}.multiThreaded == 2
+      PsychOpenXRCore('Stop', handle);
+      PsychOpenXRCore('Start', handle);
+    end
+  else
+    % No 3D head tracked closed-loop mode: Kick off the presenter thread via
+    % this 'Start' -> 'Stop' sequence, if multi-threading is enabled or allowed,
+    % ie. multiThreaded > 0. For multiThreaded == 0, this will do nothing:
+    PsychOpenXRCore('Start', handle);
+    PsychOpenXRCore('Stop', handle);
   end
 
   % Return success result code 1:
