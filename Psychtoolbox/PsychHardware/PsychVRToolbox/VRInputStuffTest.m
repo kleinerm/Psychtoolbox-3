@@ -49,6 +49,9 @@ hmdinfo = PsychVRHMD('GetInfo', hmd);
 
 clc;
 
+% Mark our own tracking + rendering loop as stopped for initial section of test/demo:
+PsychVRHMD('Stop', hmd);
+
 if strcmpi(hmdinfo.subtype, 'Oculus-1')
     fprintf('Properties of our subject:\n\n');
     fprintf('Player height: %f\n', PsychOculusVR1('FloatProperty', hmd, OVR.KEY_PLAYER_HEIGHT));
@@ -434,6 +437,10 @@ if hmdinfo.handTrackingSupported
   end
 
   HideCursor(screenid);
+
+  % Mark our own tracking + rendering loop as started for remainder of test/demo,
+  % as from here on we do perform head tracking driven 3D rendering and presentation:
+  PsychVRHMD('Start', hmd);
 
   % Initial flip to sync us to VBL and get start timestamp:
   vbl = Screen('Flip', win);

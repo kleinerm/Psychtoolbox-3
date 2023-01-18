@@ -123,23 +123,25 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Our XR device record:
 typedef struct PsychOpenXRDevice {
     psych_bool                          opened;
-    psych_bool                          closing;
+    psych_bool                          threadTerminate;                // MT mutex.
     psych_bool                          needFrameLoop;
     psych_bool                          sessionActive;
     psych_bool                          lossPending;
     psych_bool                          userExit;
-    psych_bool                          multiThreaded;
+    int                                 multiThreaded;
     psych_thread                        presenterThread;
     psych_mutex                         presenterLock;
     psych_condition                     presentedSignal;
+    int                                 handle;
     XrSystemId                          systemId;
     XrSession                           hmd;
     XrSessionState                      state;
-    XrSwapchain                         textureSwapChain[2];
-    uint32_t                            textureSwapChainLength[2];
-    XrSwapchainImageOpenGLKHR*          textureSwapChainImages[2];
-    psych_bool                          isStereo;
-    psych_bool                          use3DMode;
+    XrSwapchain                         textureSwapChain[2];            // MT mutex.
+    uint32_t                            textureSwapChainLength[2];      // MT mutex.
+    XrSwapchainImageOpenGLKHR*          textureSwapChainImages[2];      // MT mutex.
+    unsigned int                        currentTextures[2];             // MT mutex.
+    psych_bool                          isStereo;                       // MT mutex iff made dynamic.
+    psych_bool                          use3DMode;                      // MT mutex iff made dynamic.
     int                                 textureWidth;
     int                                 textureHeight;
     int                                 maxWidth;
@@ -147,26 +149,24 @@ typedef struct PsychOpenXRDevice {
     int                                 recSamples;
     int                                 maxSamples;
     XrSpace                             handPoseSpace[2];
-    psych_bool                          isTracking;
+    psych_bool                          isTracking;                     // MT mutex.
     XrViewConfigurationType             viewType;
-    XrViewState                         viewState;
-    XrView                              view[2];
-    XrCompositionLayerProjectionView    projView[2];
+    XrViewState                         viewState;                      // MT mutex.
+    XrView                              view[2];                        // MT mutex.
+    XrCompositionLayerProjectionView    projView[2];                    // MT mutex.
     XrCompositionLayerQuad              quadViewLayer[2];
     XrSpace                             viewSpace;
     XrSpace                             worldSpace;
     XrPosef                             originPoseInPreviousSpace;
     XrCompositionLayerProjection        projectionLayer;
-    const XrCompositionLayerBaseHeader* submitLayers[2];
-    uint32_t                            submitLayersCount;
-    uint32_t                            frameIndex;
-    int                                 commitFrameIndex;
-    XrFrameState                        frameState;
-    int                                 needSubmit;
+    const XrCompositionLayerBaseHeader* submitLayers[2];                // MT mutex iff made dynamic.
+    uint32_t                            submitLayersCount;              // MT mutex iff made dynamic.
+    XrFrameState                        frameState;                     // Read by both threads, but not mutex protectable.
+    XrTime                              predictedDisplayTime;           // MT mutex protected copy of frameState.predictedDisplayTime
     double                              frameDuration;
     double                              sensorSampleTime;
-    double                              lastPresentExecTime;
-    double                              targetPresentTime;
+    double                              targetPresentTime;              // MT mutex.
+    double                              tPredictedOnset;                // MT mutex.
     double                              VRtimeoutSecs;
 } PsychOpenXRDevice;
 
@@ -205,7 +205,14 @@ static int numAvailableDevices = 0;
 
 static int verbosity = 3;
 static psych_bool initialized = FALSE;
-static char errorString[XR_MAX_RESULT_STRING_SIZE];
+
+// Our errorString buffer needs to use thread local storage (TLS), so declare it
+// in a compiler specific way:
+#ifdef _MSC_VER
+static __declspec(thread) char errorString[XR_MAX_RESULT_STRING_SIZE];
+#else
+static __thread char errorString[XR_MAX_RESULT_STRING_SIZE];
+#endif
 
 static void* PresenterThreadMain(void* psychOpenXRDeviceToCast);
 static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit);
@@ -276,12 +283,12 @@ void InitializeSynopsis(void)
     synopsis[i++] = "";
     synopsis[i++] = "oldVerbosity = PsychOpenXRCore('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOpenXRCore('GetCount');";
-    synopsis[i++] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0][, multiThreaded=0]);";
+    synopsis[i++] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOpenXRCore('Close' [, openxrPtr]);";
     synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
     //synopsis[i++] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
-    //synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
-    //synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
+    synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
+    synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
     synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
     synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
@@ -291,7 +298,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
     synopsis[i++] = "[width, height, recMSAASamples, maxMSAASamples, maxWidth, maxHeight] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye);";
-    synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
+    synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
@@ -346,6 +353,58 @@ PsychOpenXRDevice* PsychGetXRForSession(XrSession sess)
             return(&(openxrdevices[handle]));
 
     return(NULL);
+}
+
+// Is openxr instance currently operating in multi-threaded presenter thread mode?
+static psych_bool isMultithreaded(PsychOpenXRDevice *openxr)
+{
+    return(openxr->multiThreaded && (openxr->presenterThread != (psych_thread) NULL));
+}
+
+static void PsychOpenXRStopPresenterThread(PsychOpenXRDevice *openxr)
+{
+    // presenterThread shutdown, if any: Ask thread to terminate, wait for thread
+    // termination, cleanup and release the thread:
+    if (openxr->presenterThread != (psych_thread) NULL) {
+        PsychLockMutex(&(openxr->presenterLock));
+        openxr->threadTerminate = TRUE;
+        PsychUnlockMutex(&(openxr->presenterLock));
+
+        if (verbosity > 5)
+            printf("PsychOpenXRCore-DEBUG: Waiting (join()ing) for helper thread on device with handle %i to finish up. If this doesn't happen quickly, you'll have to kill %s...\n",
+                   openxr->handle, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
+
+        PsychDeleteThread(&(openxr->presenterThread));
+        openxr->presenterThread = (psych_thread) NULL;
+
+        if (verbosity > 3)
+            printf("PsychOpenXRCore-INFO: Stopped asynchronous XR presenter thread on device with handle %i.\n", openxr->handle);
+    }
+
+    openxr->threadTerminate = FALSE;
+}
+
+static psych_bool PsychOpenXRStartPresenterThread(PsychOpenXRDevice *openxr)
+{
+    int rc;
+
+    // Start presenterThread if multi-threading allowed and not yet running:
+    if ((openxr->multiThreaded) && (openxr->presenterThread == (psych_thread) NULL)) {
+        // Create and startup thread, with targetPresentTime invalidated for startup:
+        openxr->targetPresentTime = DBL_MAX;
+        openxr->threadTerminate = FALSE;
+
+        if ((rc = PsychCreateThread(&(openxr->presenterThread), NULL, PresenterThreadMain, (void*) openxr))) {
+            openxr->presenterThread = (psych_thread) NULL;
+            printf("PsychOpenXRCore-ERROR: Could not create internal presenterThread on device with handle %i [%s].\n", openxr->handle, strerror(rc));
+            return(FALSE);
+        }
+        else if (verbosity > 3) {
+            printf("PsychOpenXRCore-INFO: Started asynchronous XR presenter thread on device with handle %i.\n", openxr->handle);
+        }
+    }
+
+    return(TRUE);
 }
 
 static psych_bool resultOK(XrResult result)
@@ -1831,37 +1890,6 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     }
 }
 
-// TODO
-void PsychOpenXRStop(int handle)
-{
-    int rc;
-    PsychOpenXRDevice* openxr;
-    openxr = PsychGetXR(handle, TRUE);
-    if (NULL == openxr || !openxr->isTracking) return;
-
-    if (verbosity >= 4) printf("PsychOpenXRCore-INFO: Tracking stopped on device with handle %i.\n", handle);
-
-    PsychLockMutex(&(openxr->presenterLock));
-
-    // Mark tracking as stopped:
-    openxr->isTracking = FALSE;
-
-    // Need to start presenterThread if this is the first Present operation:
-    if ((openxr->multiThreaded) && (openxr->presenterThread == (psych_thread) NULL)) {
-        // Create and startup thread:
-        if ((rc = PsychCreateThread(&(openxr->presenterThread), NULL, PresenterThreadMain, (void*) openxr))) {
-            PsychUnlockMutex(&(openxr->presenterLock));
-            openxr->presenterThread = (psych_thread) NULL;
-            printf("PsychOpenXRCore-ERROR: Could not create internal presenterThread  [%s].\n", strerror(rc));
-            PsychErrorExitMsg(PsychError_system, "Insufficient system resources for thread creation as part of XR compositor init!");
-        }
-    }
-
-    PsychUnlockMutex(&(openxr->presenterLock));
-
-    return;
-}
-
 // Force exit of the Matlab/Octave/Python/... host application process, skipping all further destructors etc.:
 static void PsychOpenXRDoExit(void)
 {
@@ -1877,79 +1905,69 @@ static void PsychOpenXRDoExit(void)
 void PsychOpenXRClose(int handle)
 {
     int rc, eyeIndex;
+    static psych_bool hasHadSession = FALSE;
     PsychOpenXRDevice* openxr = PsychGetXR(handle, TRUE);
 
     if (openxr) {
-        // presenterThread shutdown: Ask thread to terminate, wait for thread termination, cleanup and release the thread:
-        PsychLockMutex(&(openxr->presenterLock));
-        openxr->closing = TRUE;
-        PsychUnlockMutex(&(openxr->presenterLock));
+        // Stop potentially running multi-threaded presentation mode, if active:
+        PsychOpenXRStopPresenterThread(openxr);
 
-        if (openxr->presenterThread != (psych_thread) NULL) {
-            if (verbosity > 5)
-                printf("PTB-DEBUG: Waiting (join()ing) for helper thread of HMD %p to finish up. If this doesn't happen quickly, you'll have to kill Octave...\n", openxr);
-
-            PsychDeleteThread(&(openxr->presenterThread));
-        }
-
-        // Ok, thread is dead. Mark it as such:
-        openxr->presenterThread = (psych_thread) NULL;
-
-        // Release image to swapchain before final PresentExecute():
-        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
-            if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
-                if (verbosity > 0)
-                    printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
+        if (openxr->hmd) {
+            // Release image to swapchain before final PresentExecute():
+            for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+                if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
+                    if (verbosity > 0)
+                        printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
+                }
             }
-        }
 
-        // PresentExecute() a last time on the main thread:
-        openxr->frameState.shouldRender = FALSE;
-        PresentExecute(openxr, FALSE);
+            // PresentExecute() a last time on the main thread:
+            openxr->frameState.shouldRender = FALSE;
+            openxr->targetPresentTime = PsychGetAdjustedPrecisionTimerSeconds(NULL) - 10;
+            PresentExecute(openxr, FALSE);
 
-        if (verbosity > 4)
-            printf("PsychOpenXRCore-DEBUG: xrRequestExitSession().\n");
+            if (verbosity > 4)
+                printf("PsychOpenXRCore-DEBUG: xrRequestExitSession().\n");
 
-        if (!resultOK(xrRequestExitSession(openxr->hmd))) {
-            if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: Failed to xrRequestExitSession(): %s\n", errorString);
-        }
+            if (!resultOK(xrRequestExitSession(openxr->hmd))) {
+                if (verbosity > 0)
+                    printf("PsychOpenXRCore-ERROR: Failed to xrRequestExitSession(): %s\n", errorString);
+            }
 
-        if (verbosity > 4)
-            printf("PsychOpenXRCore-DEBUG: Waiting for session shutdown to complete.\n");
+            if (verbosity > 4)
+                printf("PsychOpenXRCore-DEBUG: Waiting for session shutdown to complete.\n");
 
-        while (!openxr->userExit && !openxr->lossPending) {
-            if (!processXREvents(xrInstance) && (verbosity > 0))
-                printf("PsychOpenXRCore-ERROR:Close: Failed to poll events!");
-        }
+            while (!openxr->userExit && !openxr->lossPending) {
+                if (!processXREvents(xrInstance) && (verbosity > 0))
+                    printf("PsychOpenXRCore-ERROR:Close: Failed to poll events!");
+            }
 
-        if (verbosity > 4)
-            printf("PsychOpenXRCore-DEBUG: Session shutdown completed.\n");
+            if (verbosity > 4)
+                printf("PsychOpenXRCore-DEBUG: Session shutdown completed.\n");
 
-        openxr->closing = FALSE;
+            // Destroy/Release texture swap chains to XR compositor:
+            if (openxr->textureSwapChain[0]) {
+                xrDestroySwapchain(openxr->textureSwapChain[0]);
+                openxr->textureSwapChain[0] = XR_NULL_HANDLE;
 
-        // Destroy/Release texture swap chains to XR compositor:
-        if (openxr->textureSwapChain[0]) {
-            xrDestroySwapchain(openxr->textureSwapChain[0]);
-            openxr->textureSwapChain[0] = XR_NULL_HANDLE;
+                free(openxr->textureSwapChainImages[0]);
+                openxr->textureSwapChainImages[0] = NULL;
+                openxr->textureSwapChainLength[0] = 0;
+            }
 
-            free(openxr->textureSwapChainImages[0]);
-            openxr->textureSwapChainImages[0] = NULL;
-            openxr->textureSwapChainLength[0] = 0;
-        }
+            if (openxr->isStereo && openxr->textureSwapChain[1]) {
+                xrDestroySwapchain(openxr->textureSwapChain[1]);
+                openxr->textureSwapChain[1] = XR_NULL_HANDLE;
 
-        if (openxr->isStereo && openxr->textureSwapChain[1]) {
-            xrDestroySwapchain(openxr->textureSwapChain[1]);
-            openxr->textureSwapChain[1] = XR_NULL_HANDLE;
+                free(openxr->textureSwapChainImages[1]);
+                openxr->textureSwapChainImages[1] = NULL;
+                openxr->textureSwapChainLength[1] = 0;
+            }
 
-            free(openxr->textureSwapChainImages[1]);
-            openxr->textureSwapChainImages[1] = NULL;
-            openxr->textureSwapChainLength[1] = 0;
-        }
-
-        // Close the HMD aka XrSession:
-        if (openxr->hmd)
+            // Close the HMD aka XrSession:
             xrDestroySession(openxr->hmd);
+            hasHadSession = TRUE;
+        }
 
         openxr->hmd = XR_NULL_HANDLE;
         openxr->opened = FALSE;
@@ -1978,7 +1996,7 @@ void PsychOpenXRClose(int handle)
         // least January 2021 and unfixed by Valve as of December 2022 - Strong work!
         // See: https://github.com/ValveSoftware/SteamVR-for-Linux/issues/422 for the bug report, and
         // https://github.com/cmbruns/pyopenxr/pull/60 for a similar workaround in pyopenxr:
-        if ((PSYCH_SYSTEM != PSYCH_LINUX) || strcmp(instanceProperties.runtimeName, "SteamVR/OpenXR")) {
+        if ((PSYCH_SYSTEM != PSYCH_LINUX) || !hasHadSession || strcmp(instanceProperties.runtimeName, "SteamVR/OpenXR")) {
             // Sane runtime: Perform full shutdown:
             if (debugMessenger)
                 pxrDestroyDebugUtilsMessengerEXT(debugMessenger);
@@ -2102,19 +2120,17 @@ PsychError PSYCHOPENXRGetCount(void)
     return(PsychError_none);
 }
 
-// TODO
+
 PsychError PSYCHOPENXROpen(void)
 {
-    static char useString[] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0][, multiThreaded=0]);";
-    //                          1          2          3                                        1                2
+    static char useString[] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
+    //                          1          2          3                                        1
     static char synopsisString[] =
         "Open connection to OpenXR HMD, return a 'openxrPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the first detected "
         "HMD if 'deviceIndex' is omitted. Please note that currently only one single HMD "
         "is supported by OpenXR-1, so this 'deviceIndex' is redundant at the moment, given "
         "that zero is the only valid value.\n"
-        "'multiThreaded' if provided as non-zero value, will use an asynchronous presenter thread "
-        "to improve stimulus scheduling. Highly experimental: Does not work in many cases!\n"
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
         "'modelName' returns the model name string of the OpenXR device.\n"
         "'runtimeName' returns the name of the OpenXR runtime.\n";
@@ -2124,7 +2140,6 @@ PsychError PSYCHOPENXROpen(void)
     PsychOpenXRDevice* openxr;
     int deviceIndex = 0;
     int handle = 0;
-    int multiThreaded = 0;
     int rc;
 
     // All sub functions should have these two lines:
@@ -2133,7 +2148,7 @@ PsychError PSYCHOPENXROpen(void)
 
     // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(3));
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
@@ -2147,11 +2162,6 @@ PsychError PSYCHOPENXROpen(void)
     PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceIndex);
     if (deviceIndex < 0)
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater than or equal to zero.");
-
-    // Get optional multiThreaded arg:
-    PsychCopyInIntegerArg(2, kPsychArgOptional, &multiThreaded);
-    if ((multiThreaded != 0) && (multiThreaded != 1))
-        PsychErrorExitMsg(PsychError_user, "Invalid 'multiThreaded' flag provided. Must be 0 or 1.");
 
     if (-1 == enumerateXRDevices(xrInstance)) {
         if (verbosity >= 2)
@@ -2184,8 +2194,8 @@ PsychError PSYCHOPENXROpen(void)
         printf("PsychOpenXRCore-INFO: ----------------------------------------------------------------------------------\n");
     }
 
-    // Assign multi-threading mode:
-    openxr->multiThreaded = (psych_bool) multiThreaded;
+    // Assign multi-threading mode as "off" by default:
+    openxr->multiThreaded = 0;
 
     // Initialize the mutex lock:
     if ((rc = PsychInitMutex(&(openxr->presenterLock)))) {
@@ -2203,6 +2213,9 @@ PsychError PSYCHOPENXROpen(void)
 
     // Session state unknown/undefined for not yet created session:
     openxr->state = XR_SESSION_STATE_UNKNOWN;
+
+    // Assign user script handle:
+    openxr->handle = handle + 1;
 
     // Increment count of open devices:
     devicecount++;
@@ -2323,10 +2336,13 @@ PsychError PSYCHOPENXRTrackingOriginType(void)
 PsychError PSYCHOPENXRStart(void)
 {
     static char useString[] = "PsychOpenXRCore('Start', openxrPtr);";
-    //                                                     1
-    static char synopsisString[] =
-        "Start head orientation and position tracking operation on OpenXR device 'openxrPtr'.\n\n";
-    static char seeAlsoString[] = "Stop";
+    static char synopsisString[] = "Start user-script driven head orientation and position tracking operation on OpenXR device 'openxrPtr'.\n\n"
+                                   "The driver assumes that the user-script runs a tight/fast animation loop with appropriate calls to the "
+                                   "head tracking functions, to drive driver internal tracking state updates and inform the rendering. "
+                                   "Too slowly running user-script animation loops, stopped animation loops or loops avoiding the needed "
+                                   "calls to the 'GetTrackingState', ie., PsychVRHMD('PrepareRender'), function, may cause visual artifacts "
+                                   "in the HMD's presented imagery, e.g., judder and jerks.";
+    static char seeAlsoString[] = "Stop GetTrackingState";
 
     int handle;
     PsychOpenXRDevice *openxr;
@@ -2352,25 +2368,18 @@ PsychError PSYCHOPENXRStart(void)
         PsychErrorExitMsg(PsychError_user, "Tried to start tracking on HMD, but tracking already active.");
     }
 
+    // Shut down multi-threaded presentation mode, if dynamic switching was requested
+    // with mode 1. Skip shutdown in mode 2 for permanent multi-threaded presentation:
+    if (openxr->multiThreaded == 1)
+        PsychOpenXRStopPresenterThread(openxr);
+
     if (verbosity >= 4)
         printf("PsychOpenXRCore-INFO: Tracking started on device with handle %i.\n", handle);
 
-    // presenterThread shutdown: Ask thread to terminate, wait for thread termination, cleanup and release the thread:
+    // Mark tracking as started: Mutex protected, because a thread might be running:
     PsychLockMutex(&(openxr->presenterLock));
-    openxr->closing = TRUE;
-    PsychUnlockMutex(&(openxr->presenterLock));
-
-    if (openxr->presenterThread != (psych_thread) NULL) {
-        if (verbosity > 5)
-            printf("PTB-DEBUG: Waiting (join()ing) for helper thread of HMD %p to finish up. If this doesn't happen quickly, you'll have to kill Octave...\n", openxr);
-
-        PsychDeleteThread(&(openxr->presenterThread));
-    }
-
-    // Ok, thread is dead. Mark it as such:
-    openxr->presenterThread = (psych_thread) NULL;
-    openxr->closing = FALSE;
     openxr->isTracking = TRUE;
+    PsychUnlockMutex(&(openxr->presenterLock));
 
     // Tracking is running.
     return(PsychError_none);
@@ -2379,15 +2388,20 @@ PsychError PSYCHOPENXRStart(void)
 PsychError PSYCHOPENXRStop(void)
 {
     static char useString[] = "PsychOpenXRCore('Stop', openxrPtr);";
-    static char synopsisString[] =
-        "Stop head tracking operation on OpenXR device 'openxrPtr'.\n\n";
-    static char seeAlsoString[] = "Start";
+    static char synopsisString[] = "Stop user-script driven head orientation and position tracking operation on OpenXR device 'openxrPtr'.\n\n"
+                                   "This signals that the user-scripts animation loop is (about to be) stopped, will run at low framerate, "
+                                   "and/or avoid calls to 'GetTrackingState', ie., PsychVRHMD('PrepareRender'). This means the script will "
+                                   "not take care of the processing needed to keep tracked 3D content displaying properly. The driver will "
+                                   "try to take care of needed steps itself to provide a stable picture in the HMD display in this case, "
+                                   "if possible, given the used hardware + OpenXR and operating system software setup. Results may vary...\n";
+    static char seeAlsoString[] = "Start GetTrackingState";
 
     int handle;
+    PsychOpenXRDevice* openxr;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(0));
@@ -2397,9 +2411,23 @@ PsychError PSYCHOPENXRStop(void)
     PsychOpenXRCheckInit(FALSE);
 
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, TRUE);
 
-    // Stop device:
-    PsychOpenXRStop(handle);
+    // No-Op return if already stopped:
+    if (!openxr->isTracking)
+        return(PsychError_none);
+
+    // Mark tracking as stopped: Mutex protected, because a thread might already be running:
+    PsychLockMutex(&(openxr->presenterLock));
+    openxr->isTracking = FALSE;
+    PsychUnlockMutex(&(openxr->presenterLock));
+
+    // Launch thread if allowed:
+    if (!PsychOpenXRStartPresenterThread(openxr))
+        PsychErrorExitMsg(PsychError_system, "Insufficient system resources for thread creation.");
+
+    if (verbosity >= 4)
+        printf("PsychOpenXRCore-INFO: Tracking stopped on device with handle %i.\n", handle);
 
     return(PsychError_none);
 }
@@ -2461,10 +2489,10 @@ PsychError PSYCHOPENXRGetTrackingState(void)
 
     int handle, i;
     PsychOpenXRDevice *openxr;
-    double predictionTime;
     XrTime xrPredictionTime;
     PsychGenericScriptType *outMat;
     double *v;
+    double predictionTime = DBL_MAX;
     int StatusFlags = 0;
 
     // All sub functions should have these two lines:
@@ -2483,26 +2511,38 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Get optional target time for predicted tracking state. Default to the
-    // predicted state for the predicted mid-point of the next video frame:
-    if (PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime)) {
+    // Get optional predictionTime:
+    PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime);
+
+    // Lock protect openxr->predictedDisplayTime and locateXRViews() and return of
+    // all views[] info and viewState info below:
+    PsychLockMutex(&(openxr->presenterLock));
+
+    // Got optional target time for predicted tracking state? Default to the
+    // predicted state for the predicted display time of the next frame:
+    if (predictionTime != DBL_MAX) {
         xrPredictionTime = PsychTimeToXrTime(predictionTime);
     }
     else {
-        xrPredictionTime = openxr->frameState.predictedDisplayTime;
+        xrPredictionTime = openxr->predictedDisplayTime;
         predictionTime = XrTimeToPsychTime(xrPredictionTime);
     }
 
     // Do the actual eye pose / view update from tracking + prediction:
     // Also updates openxr->viewState with its status flags.
-    PsychLockMutex(&(openxr->presenterLock));
     locateXRViews(openxr, xrPredictionTime);
-    syncXRActions(openxr);
-    PsychUnlockMutex(&(openxr->presenterLock));
 
     // Print out tracking status:
-    if (verbosity >= 4)
+    if (verbosity > 4)
         printf("PsychOpenXRCore-INFO: Tracking state predicted for device %i at time %f. Status = %i\n", handle, predictionTime, openxr->viewState.viewStateFlags);
+
+    // TODO: All these functions for returning data to the userscript can fail, and would
+    // leave our mutex lock in a desolate (== locked) state, screwing up error handling big
+    // time. Also it would be better to not call them, as they do memory allocations, which
+    // could take a tad more time than we want while the mutex is locked. In practice, failure
+    // of the functions and long delays are unlikely, mostly only in case of massive out-of-memory
+    // situations, in which we are screwed anyway. But yeah, it would be conceptually better to
+    // drop the mutex already after locateXRViews -- which requires substantial refactoring though...
 
     PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount1, FieldNames1, &status);
 
@@ -2585,6 +2625,13 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     v[5] = openxr->view[1].pose.orientation.z;
     v[6] = openxr->view[1].pose.orientation.w;
     PsychSetStructArrayNativeElement("EyePoseRight", 0, outMat, status);
+
+    // We can unlock here, because only (HMD) display related state is shared with
+    // a potentially running parallel presentation thread:
+    PsychUnlockMutex(&(openxr->presenterLock));
+
+    // Update tracking and input state from non-HMD controllers etc.:
+    syncXRActions(openxr);
 
     // Now the tracking info from the OpenXR touch controllers 0 and 1 for left
     // and right hand, in a separate struct array:
@@ -2793,9 +2840,7 @@ PsychError PSYCHOPENXRGetInputState(void)
     PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount, FieldNames, &status);
 
     // Session has XR input focus, so try to get input state:
-    PsychLockMutex(&(openxr->presenterLock));
     syncXRActions(openxr);
-    PsychUnlockMutex(&(openxr->presenterLock));
 
     // All input states updated by syncXRActions(). Query current values:
 
@@ -3082,8 +3127,8 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
 
 PsychError PSYCHOPENXRCreateAndStartSession(void)
 {
-    static char useString[] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
-    //                         1                                                               1          2              3              4               5             6               7
+    static char useString[] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded);";
+    //                         1                                                               1          2              3              4               5             6               7          8
     static char synopsisString[] =
     "Create, initialize and start XR session for OpenXR device 'openxrPtr'.\n"
     "The following parameters are needed to setup OpenGL <=> OpenXR interop. They "
@@ -3100,6 +3145,9 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     "Linux/X11/GLX, zero (unused) on Windows.\n"
     "'use3DMode' must be 0 if pure monoscopic or stereoscopic rendering is requested, or 1 "
     "to request full 3D perspective correct rendering, e.g., for 3D scenes via OpenGL.\n"
+    "'multiThreaded' if provided as non-zero value, will use an asynchronous presenter thread "
+    "to try to improve stimulus presentation scheduling. A zero value means to not use such a thread, "
+    "1 on demand, and 2 permanently for the duration of the whole session.\n"
     "\n"
     "Returns the following information:\n"
     "'videoRefreshDuration' Video refresh duration in seconds of the XR display device if "
@@ -3111,6 +3159,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     int i;
     int handle;
     int use3DMode;
+    int multiThreaded;
     float displayRefreshRate;
     void* deviceContext;
     void* openGLContext;
@@ -3125,8 +3174,8 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(7));
-    PsychErrorExit(PsychRequireNumInputArgs(7));
+    PsychErrorExit(PsychCapNumInputArgs(8));
+    PsychErrorExit(PsychRequireNumInputArgs(8));
 
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
@@ -3166,6 +3215,14 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
         PsychErrorExitMsg(PsychError_user, "Invalid use3DMode flag specified. Must be 0 (no) or 1 (yes).");
 
     openxr->use3DMode = (psych_bool) use3DMode;
+
+    // Get mandatory multiThreaded flag:
+    PsychCopyInIntegerArg(8, kPsychArgRequired, &multiThreaded);
+    if ((multiThreaded < 0) || (multiThreaded > 2))
+        PsychErrorExitMsg(PsychError_user, "Invalid 'multiThreaded' flag provided. Must be 0, 1 or 2.");
+
+    // Assign multi-threading mode:
+    openxr->multiThreaded = multiThreaded;
 
     // Linux X11/GLX/XLib specific setup of OpenGL interop:
     #ifdef XR_USE_PLATFORM_XLIB
@@ -3341,9 +3398,7 @@ PsychError PSYCHOPENXRControllers(void)
     if (!processXREvents(xrInstance) && (verbosity > 0))
         printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!");
 
-    PsychLockMutex(&(openxr->presenterLock));
     syncXRActions(openxr);
-    PsychUnlockMutex(&(openxr->presenterLock));
 
     if (!processXREvents(xrInstance) && (verbosity > 0))
         printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!");
@@ -3708,6 +3763,54 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     return(PsychError_none);
 }
 
+static XrResult acquireTextureHandles(PsychOpenXRDevice *openxr)
+{
+    XrResult result;
+    uint32_t texIndex;
+    int eyeIndex;
+
+    for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+        // Assume failure until a proper result is assigned:
+        openxr->currentTextures[eyeIndex] = 0;
+
+        // Acquire next texture handle:
+        XrSwapchainImageAcquireInfo acquireInfo = {
+            .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO,
+            .next = NULL
+        };
+
+        result = xrAcquireSwapchainImage(openxr->textureSwapChain[eyeIndex], &acquireInfo, &texIndex);
+        if (!resultOK(result)) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to acquire next swapchain image for eye %i: %s\n", eyeIndex, errorString);
+
+            return(result);
+        }
+
+        // Wait for its availability for up to 1 second = 1e9 nsecs:
+        XrSwapchainImageWaitInfo waitTexInfo = {
+            .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
+            .next = NULL,
+            .timeout = 1e9
+        };
+
+        result = xrWaitSwapchainImage(openxr->textureSwapChain[eyeIndex], &waitTexInfo);
+        if (!resultOK(result)) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to wait for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
+
+            return(result);
+        }
+
+        if ((result == XR_TIMEOUT_EXPIRED) && (verbosity > 1))
+            printf("PsychOpenXRCore-WARNING: Timed out waiting for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
+
+        // Latch latest acquired and ready textures for consumption:
+        openxr->currentTextures[eyeIndex] = openxr->textureSwapChainImages[eyeIndex][texIndex].image;
+    }
+
+    return(result);
+}
 
 PsychError PSYCHOPENXRGetNextTextureHandle(void)
 {
@@ -3720,10 +3823,10 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
     "to which the next VR frame should be rendered. Returns -1 if busy.\n";
     static char seeAlsoString[] = "CreateRenderTextureChain";
 
-    XrResult result;
     int handle, eyeIndex;
-    uint32_t texIndex;
+    double texHandle;
     PsychOpenXRDevice *openxr;
+    XrResult result;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -3749,47 +3852,30 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
     if (eyeIndex > 0 && !(openxr->isStereo))
         PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0, as mono display mode is selected.");
 
-    // Get next free/non-busy buffer for this eyes texture swap chain:
+    if (isMultithreaded(openxr)) {
+        result = XR_SUCCESS;
+    }
+    else {
+        // Left or mono eye triggers actual XR processing:
+        if (eyeIndex == 0) {
+            // Get next free/non-busy buffer for this eyes texture swap chain:
+            result = acquireTextureHandles(openxr);
+        }
+        else {
+            result = XR_SUCCESS;
+        }
+    }
+
     PsychLockMutex(&(openxr->presenterLock));
-
-    // Acquire next texture handle:
-    XrSwapchainImageAcquireInfo acquireInfo = {
-        .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO,
-        .next = NULL
-    };
-
-    if (!resultOK(xrAcquireSwapchainImage(openxr->textureSwapChain[eyeIndex], &acquireInfo, &texIndex))) {
-        PsychUnlockMutex(&(openxr->presenterLock));
-
-        if (verbosity > 0)
-            printf("PsychOpenXRCore-ERROR: Failed to acquire next swapchain image for eye %i: %s\n", eyeIndex, errorString);
-    }
-
-    // Wait for its availability for up to 1 second = 1e9 nsecs:
-    XrSwapchainImageWaitInfo waitTexInfo = {
-        .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
-        .next = NULL,
-        .timeout = 1e9
-    };
-
-    result = xrWaitSwapchainImage(openxr->textureSwapChain[eyeIndex], &waitTexInfo);
-    if (!resultOK(result)) {
-        PsychUnlockMutex(&(openxr->presenterLock));
-
-        if (verbosity > 0)
-            printf("PsychOpenXRCore-ERROR: Failed to wait for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
-    }
-
+    texHandle = (double) openxr->currentTextures[eyeIndex];
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // Return texture object handle:
-    if (result == XR_SUCCESS)
-        PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->textureSwapChainImages[eyeIndex][texIndex].image);
+    if ((result == XR_SUCCESS) && (texHandle > 0)) {
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, texHandle);
+    }
     else {
         PsychCopyOutDoubleArg(1, kPsychArgOptional, -1);
-
-        if ((result == XR_TIMEOUT_EXPIRED) && (verbosity > 1))
-            printf("PsychOpenXRCore-WARNING: Timed out waiting for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
     }
 
     return(PsychError_none);
@@ -3940,7 +4026,8 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
 
     int handle;
     PsychOpenXRDevice *openxr;
-    double M[4][4];
+    double ML[4][4];
+    double MR[4][4];
     int i, j;
     double clip_near, clip_far;
     double *outM;
@@ -3970,7 +4057,8 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     PsychCopyInDoubleArg(3, kPsychArgOptional, &clip_far);
 
     // Make sure our views field of view .fov is well defined:
-    locateXRViews(openxr, openxr->frameState.predictedDisplayTime);
+    PsychLockMutex(&(openxr->presenterLock));
+    locateXRViews(openxr, openxr->predictedDisplayTime);
 
     if (verbosity > 4) {
         int eyeIndex;
@@ -3982,19 +4070,23 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
         }
     }
 
+    // Build left / right projection matrices:
+    buildProjectionMatrix(ML, openxr->view[0].fov, clip_near, clip_far);
+    buildProjectionMatrix(MR, openxr->view[1].fov, clip_near, clip_far);
+
+    PsychUnlockMutex(&(openxr->presenterLock));
+
     // Return left projection matrix as return argument 1:
-    buildProjectionMatrix(M, openxr->view[0].fov, clip_near, clip_far);
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
-            *(outM++) = M[j][i];
+            *(outM++) = ML[j][i];
 
     // Return right projection matrix as return argument 2:
-    buildProjectionMatrix(M, openxr->view[1].fov, clip_near, clip_far);
     PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
-            *(outM++) = M[j][i];
+            *(outM++) = MR[j][i];
 
     return(PsychError_none);
 }
@@ -4074,12 +4166,17 @@ PsychError PSYCHOPENXREndFrameRender(void)
     if (!processXREvents(xrInstance) && (verbosity > 0))
         printf("PsychOpenXRCore-ERROR:EndFrameRender: Failed to poll events, or session state reports error abort!");
 
-    if (verbosity > 3)
+    if (verbosity > 4)
         printf("PsychOpenXRCore-INFO:EndFrameRender: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
                openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
 
     // If frame loop is supposed to be inactive, skip the xrReleaseSwapchainImage calls:
     if (!openxr->needFrameLoop)
+        return(PsychError_none);
+
+    // During active multi-threaded presentation, there's nothing to do here, as
+    // the presenterThread takes care of releasing swapchain images:
+    if (isMultithreaded(openxr))
         return(PsychError_none);
 
     // Get eye:
@@ -4126,15 +4223,16 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 
     if (!inInit) {
         // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
-        // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as 1 (the smallest theoretically valid xrTime):
-        XrTime targetDisplayTime = (openxr->targetPresentTime > 0) ? PsychTimeToXrTime(openxr->targetPresentTime) : PsychTimeToXrTime(PsychGetAdjustedPrecisionTimerSeconds(NULL));
+        // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as now:
+        XrTime targetDisplayTime = (openxr->targetPresentTime < DBL_MAX) ? PsychTimeToXrTime(openxr->targetPresentTime) : PsychTimeToXrTime(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 
-        PsychWaitUntilSeconds(openxr->targetPresentTime);
+        if (openxr->targetPresentTime < DBL_MAX)
+            PsychWaitUntilSeconds(openxr->targetPresentTime);
 
         // If targetDisplayTime is earlier than earliest next possible display time predictedDisplayTime, then set it
         // to earliest possible display time. This is crucial for xrEndFrame() to not fail completely under SteamVR:
-        if (targetDisplayTime < openxr->frameState.predictedDisplayTime)
-            targetDisplayTime = openxr->frameState.predictedDisplayTime;
+        if (targetDisplayTime < openxr->predictedDisplayTime)
+            targetDisplayTime = openxr->predictedDisplayTime;
 
         // Prepare frameEndInfo, assign desired optimal targetDisplayTime. Compositor should present at the earliest
         // possible time no earlier than targetDisplayTime:
@@ -4176,7 +4274,7 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         }
         else if (verbosity > 6) {
             printf("PsychOpenXRCore-INFO: xrEndFrame done for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %f secs ahead.\n",
-                   openxr->targetPresentTime, targetDisplayTime, XrTimeToPsychTime(targetDisplayTime) - XrTimeToPsychTime(openxr->frameState.predictedDisplayTime));
+                   openxr->targetPresentTime, targetDisplayTime, XrTimeToPsychTime(targetDisplayTime) - XrTimeToPsychTime(openxr->predictedDisplayTime));
         }
     }
 
@@ -4198,8 +4296,12 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         goto present_fail;
     }
 
+    // Latch new predictedDisplayTime for all consumers:
+    openxr->predictedDisplayTime = openxr->frameState.predictedDisplayTime;
+
     // Mark frame as not skipped, ie. set tPredictedOnset to greater than zero timestamp:
-    tPredictedOnset = XrTimeToPsychTime(openxr->frameState.predictedDisplayTime) - openxr->frameDuration;
+    // TODO FIXME Rethink!!! This is certainly wrong!!!
+    tPredictedOnset = XrTimeToPsychTime(openxr->predictedDisplayTime) - openxr->frameDuration;
 
     result = xrBeginFrame(openxr->hmd, NULL);
     if (!resultOK(result)) {
@@ -4213,7 +4315,179 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 present_out:
 present_fail:
 
+    openxr->tPredictedOnset = tPredictedOnset;
     return(success ? tPredictedOnset : -1);
+}
+
+static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
+{
+    XrResult result;
+    int eyeIndex;
+    psych_bool latched = FALSE;
+    psych_bool success = TRUE;
+    double targetPresentTime = openxr->targetPresentTime;
+
+    // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
+    // to absolute XrTime targetDisplayTime. Otherwise select next possible predicted display time:
+    XrTime targetDisplayTime = (targetPresentTime < DBL_MAX) ? PsychTimeToXrTime(targetPresentTime) : openxr->predictedDisplayTime;
+
+    // Target display time for next stimulus frame reached or exceeded?
+    if ((targetPresentTime < DBL_MAX) && (openxr->predictedDisplayTime >= targetDisplayTime)) {
+        // Next xrEndFrame() submitted frame is predicted to display at or after targetDisplayTime,
+        // time to latch our new content for targetDisplayTime. Release new stimulus images to
+        // swapchain before xrEndFrame() submission:
+        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+            if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
+                if (verbosity > 0)
+                    fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
+            }
+        }
+
+        // Mark "new frame latched":
+        latched = TRUE;
+
+        // Invalidate target time as it is used up:
+        openxr->targetPresentTime = DBL_MAX;
+
+        // Assign predictedDisplayTime for the just latched frame as onset timestamps:
+        // Must be done here, before xrWaitFrame below would update predictedDisplayTime!
+        openxr->tPredictedOnset = XrTimeToPsychTime(openxr->predictedDisplayTime);
+    }
+
+    // Prepare frameEndInfo, with next possible display time:
+    XrFrameEndInfo frameEndInfo = {
+        .type = XR_TYPE_FRAME_END_INFO,
+        .next = NULL,
+        // TODO: Could pass targetDisplayTime iff it is not more than maybe < 1 msec earlier than predictedDisplayTime?
+        // Might give compositors with async reprojection, time/space-warp etc. more accurate data for their algorithms.
+        // Problem: SteamVR chokes if more than maybe a millisecond in the past, so current predictedDisplayTime is the
+        // safe choice.
+        .displayTime = openxr->predictedDisplayTime,
+        .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+        .layerCount = (openxr->frameState.shouldRender) ? openxr->submitLayersCount : 0,
+        .layers = openxr->submitLayers
+    };
+
+    // Enforce projView[] update with proper fov, pose in 3D head-tracked rendering mode:
+    if (openxr->use3DMode) {
+        // Only do initial locateXRViews() if projView has not ever been updated, ie. an initialization call,
+        // so we don't feed garbage from openxr->view pose to projView pose, as runtimes don't like that.
+        //
+        // Or if the user script has marked its own tracking + rendering loop as paused, or not using head
+        // tracking, e.g., for conventional 3D rendering without input from head tracker, so we need to do
+        // the job of keeping projView pose up to date wrt. target display time, so the views stay locked
+        // to the viewers head, like quadViewLayers do.
+        //
+        // During normal operation, this would be redundant, due to the locateXRViews() call in 'GetTrackingState',
+        // as part of PsychVRHMD('PrepareRender') at start of each full 3D rendering cycle. This takes 0.2 - 0.5
+        // msecs typical, but sometimes up to 5 msecs, so worth optimizing away when not strictly needed.
+        if (!openxr->isTracking ||
+            (!memcmp(&openxr->projView[0].pose, &identityPose, sizeof(identityPose)) &&
+            !memcmp(&openxr->projView[1].pose, &identityPose, sizeof(identityPose))))
+            locateXRViews(openxr, frameEndInfo.displayTime);
+
+        // Update pose and FoV for projection views by latching latest locateXRViews() result:
+        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+            openxr->projView[eyeIndex].pose = openxr->view[eyeIndex].pose;
+            openxr->projView[eyeIndex].fov = openxr->view[eyeIndex].fov;
+        }
+    }
+
+    // Submit most recently released swapchain images:
+    result = xrEndFrame(openxr->hmd, &frameEndInfo);
+    if (!resultOK(result)) {
+        if (verbosity > 0) {
+            if (latched)
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %s\n",
+                        targetPresentTime, targetDisplayTime, errorString);
+            else
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame in idle-loop for displayTime %ld [xrTime units]: %s\n",
+                        frameEndInfo.displayTime, errorString);
+        }
+
+        // Mark as failed:
+        success = FALSE;
+    }
+    else if (verbosity > 6) {
+        fprintf(stderr, "PsychOpenXRCore-INFO:PresentCycle(): xrEndFrame done for predicted onset time %ld xrTime units: %f %s\n",
+                frameEndInfo.displayTime, latched ? (XrTimeToPsychTime(frameEndInfo.displayTime) - XrTimeToPsychTime(targetDisplayTime)) : 1,
+                latched ? "secs after targetDisplayTime. Frame latched!" : ".");
+    }
+
+    // After releasing/latching most recent stimuli to swapchain and xrEndFrame
+    // submitting them to the XR compositor, acquire new swapchain images for next
+    // render cycle of our client on the main thread:
+    if (latched) {
+        // Set returned onset timestamp to -1 for failure or 0 for skipped present:
+        if (!success)
+            openxr->tPredictedOnset = -1;
+        else if (frameEndInfo.layerCount == 0)
+            openxr->tPredictedOnset = 0;
+
+        result = acquireTextureHandles(openxr);
+        if (!resultOK(result)) {
+            if (verbosity > 0)
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to acquireTextureHandles(): %s\n", errorString);
+
+            success = FALSE;
+        }
+    }
+
+    // Start next frame present cycle:
+    openxr->frameState.type = XR_TYPE_FRAME_STATE;
+    openxr->frameState.next = NULL;
+
+    XrFrameWaitInfo frameWaitInfo = {
+        .type = XR_TYPE_FRAME_WAIT_INFO,
+        .next = NULL
+    };
+
+    // Wait for next compositor sync, with lock dropped:
+    PsychUnlockMutex(&(openxr->presenterLock));
+
+    result = xrWaitFrame(openxr->hmd, &frameWaitInfo, &openxr->frameState);
+    if (!resultOK(result)) {
+        if (verbosity > 0)
+            fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrWaitFrame: %s\n", errorString);
+
+        success = FALSE;
+        goto presentcycle_fail;
+    }
+
+    PsychLockMutex(&(openxr->presenterLock));
+
+    // Latch new predictedDisplayTime for all consumers under mutex protection:
+    openxr->predictedDisplayTime = openxr->frameState.predictedDisplayTime;
+
+    PsychUnlockMutex(&(openxr->presenterLock));
+
+    // New frame latched?
+    if (latched) {
+        // Signal latching of new stimulus frame for presentation to main thread,
+        // important to do this after acquiring new texture handles and waiting
+        // for their availability. Also important that we do this after xrWaitFrame
+        // has synced us up to the XR compositor work cycle, so the waiting main
+        // thread resumes its rendering work at just the right time to be optimally
+        // in phase with the compositor. This makes a big difference for performance!
+        PsychSignalCondition(&(openxr->presentedSignal));
+    }
+
+    // Give main-thread some time to do stuff without us holding the mutex:
+    PsychYieldIntervalSeconds(0.5 * openxr->frameDuration);
+
+    result = xrBeginFrame(openxr->hmd, NULL);
+    if (!resultOK(result)) {
+        if (verbosity > 0)
+            fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrBeginFrame: %s\n", errorString);
+
+        success = FALSE;
+    }
+
+    presentcycle_fail:
+
+    PsychLockMutex(&(openxr->presenterLock));
+
+    return(success);
 }
 
 static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
@@ -4224,49 +4498,26 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("PsychOpenXRCorePresenterThread");
 
-    // VR compositor timeout prevention loop: Repeats infinitely, well, not infinitely,
-    // but until we receive a shutdown request and terminate ourselves...
-    while (TRUE) {
-        // Try to lock, block until available if not available:
-        if ((rc = PsychLockMutex(&(openxr->presenterLock)))) {
-            // This could potentially kill the runtime, as we're printing from outside the main interpreter thread.
-            // Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
-            // wreak havoc -- maybe it goes to the system log, which should be safer...
-            fprintf(stderr, "PsychOpenXRCore-ERROR: In PresenterThreadMain(): First mutex_lock in init failed  [%s].\n", strerror(rc));
-            return(NULL);
-        }
+    // Try to lock, block until available if not available:
+    if ((rc = PsychLockMutex(&(openxr->presenterLock)))) {
+        // A regular printf() would be no-opped, as we try printing from outside the main interpreter thread.
+        // Use fprintf(stderr, ...) instead of the overloaded printf() (aka mexPrintf()):
+        fprintf(stderr, "PsychOpenXRCore-ERROR: In PresenterThreadMain(): First mutex_lock in init failed  [%s].\n", strerror(rc));
+        return(NULL);
+    }
 
-        // Shall we terminate? If so break out of our main loop:
-        if (openxr->closing) {
-            PsychUnlockMutex(&(openxr->presenterLock));
-            break;
-        }
-
-        // Non-tracked presentation mode for pure monoscopic or stereoscopic presentation
-        // without use of head tracking - The HMD is just used as a strapped on stereo or
-        // mono monitor, not in a closed-loop setup. Subject will just sit on a chair and
-        // likely not move the head much at all. Here we expect that usercode may pass
-        // target presentation times 'when' into the Screen('Flip', window, when, ...);
-        // command to ask for stimulus presentation in the (potentially far) future, ie.,
-        // more than a HMD video refresh duration into the future. We want to prevent the
-        // compositor timeout mechanisms and performance optimizations like Asynchronous space
-        // warp (ASW) to trigger, as that would totally disrupt the intended experiment timing.
-        //
-        // Our purpose is to prevent timeouts by executing ovr_SubmitFrame() at least once per
-        // HMD refresh interval / compositor duty cycle, with the old/current frame content in
-        // the swapchains.
-        if ((PresentExecute(openxr, FALSE) < 0) && verbosity > 0) {
-            fprintf(stderr, "PsychOpenXRCore-ERROR: In PresenterThreadMain(): PresentExecute() for timeout prevention failed!\n");
-        }
-
-        // Unlock and sleep for a frameDuration:
-        PsychUnlockMutex(&(openxr->presenterLock));
-        PsychYieldIntervalSeconds(openxr->frameDuration);
-
-        // Next dispatch loop iteration...
+    // VR compositor timeout prevention loop: Repeats infinitely, until we receive a
+    // shutdown request and terminate ourselves. PresentCycle() will execute once per
+    // XR compositor work cycle. Each cycle it goes to sleep in xrWaitFrame, with the
+    // presenterLock temporarily dropped, syncing up to the compositor:
+    while (!openxr->threadTerminate) {
+        if (!PresentCycle(openxr) && (verbosity > 0))
+            fprintf(stderr, "PsychOpenXRCore-ERROR: In PresenterThreadMain(): PresentCycle() failed!\n");
     }
 
     // Exit path from thread at thread termination. Go and die peacefully...
+    PsychUnlockMutex(&(openxr->presenterLock));
+
     return(NULL);
 }
 
@@ -4295,8 +4546,9 @@ PsychError PSYCHOPENXRPresentFrame(void)
     "\n\n";
     static char seeAlsoString[] = "EndFrameRender";
 
+    int rc;
     int handle;
-    double tWhen, tPredictedOnset, tPredictedFutureOnset;
+    double tNow, tWhen, tPredictedOnset, tPredictedFutureOnset;
     PsychOpenXRDevice *openxr;
 
     // All sub functions should have these two lines:
@@ -4315,20 +4567,44 @@ PsychError PSYCHOPENXRPresentFrame(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Get optional presentation target time:
+    // Get optional presentation target time and clamp it to be never more than
+    // 10 seconds in the past, to simplify timing code in the present operations
+    // and thread:
     tWhen = 0;
     PsychCopyInDoubleArg(2, kPsychArgOptional, &tWhen);
+    tNow = PsychGetAdjustedPrecisionTimerSeconds(NULL);
+    if (tWhen < tNow - 10.0)
+        tWhen = tNow - 10.0;
 
-    // Execute the present operation with a potentially running presenterThread locked out:
-    PsychLockMutex(&(openxr->presenterLock));
+    if (isMultithreaded(openxr)) {
+        // Background parallel presenter thread will latch our new rendered frame at the
+        // proper time to target visual onset at targetPresentTime, so lock the lock and
+        // latch the time:
+        PsychLockMutex(&(openxr->presenterLock));
+        openxr->targetPresentTime = tWhen;
 
-    openxr->targetPresentTime = tWhen;
-    tPredictedOnset = PresentExecute(openxr, FALSE);
-    tPredictedFutureOnset = XrTimeToPsychTime(openxr->frameState.predictedDisplayTime);
-    // Invalidate targetPresentTime after present:
-    openxr->targetPresentTime = -DBL_MAX;
+        // Wait for signal of present completion:
+        while (openxr->targetPresentTime != DBL_MAX)
+            if ((rc = PsychWaitCondition(&(openxr->presentedSignal), &(openxr->presenterLock)))) {
+                printf("PsychOpenXRCore-ERROR: Waitcondition on presentedSignal trigger failed  [%s].\n", strerror(rc));
+            }
 
-    PsychUnlockMutex(&(openxr->presenterLock));
+        // Retrieve estimated stimulus onset time:
+        tPredictedOnset = openxr->tPredictedOnset;
+
+        // Retrieve best-guess future stimulus onset time for future frame / Flip:
+        tPredictedFutureOnset = XrTimeToPsychTime(openxr->predictedDisplayTime);
+
+        PsychUnlockMutex(&(openxr->presenterLock));
+    }
+    else {
+        // Define targetPresentTime and execute present on this main thread:
+        openxr->targetPresentTime = tWhen;
+        tPredictedOnset = PresentExecute(openxr, FALSE);
+        tPredictedFutureOnset = XrTimeToPsychTime(openxr->predictedDisplayTime);
+        // Invalidate targetPresentTime after present:
+        openxr->targetPresentTime = DBL_MAX;
+    }
 
     if ((tPredictedOnset < 0) && (verbosity > 0))
         printf("PsychOpenXRCore-ERROR: Failed to present new frame to VR compositor.\n");
@@ -4346,6 +4622,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     // display without any shutter, global, rolling or otherwise. Mostly only useful for debugging
     // and testing the driver and OpenXR runtime in artifical test scenarios, e.g., when outputting
     // to a regular display monitor or special debug configuration:
+    // TODO Remove as pointless?
     PsychCopyOutDoubleArg(3, kPsychArgOptional, (tPredictedOnset > 0) ? (tPredictedOnset - 0.5 * openxr->frameDuration) : tPredictedOnset);
 
     return(PsychError_none);
@@ -4379,9 +4656,9 @@ PsychError PSYCHOPENXRGetEyePose(void)
 
     int handle, renderPass, eye;
     PsychOpenXRDevice *openxr;
-    double *outM;
-    double predictionTime;
     XrTime xrPredictionTime;
+    double *outM;
+    double predictionTime = DBL_MAX;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4403,21 +4680,26 @@ PsychError PSYCHOPENXRGetEyePose(void)
     PsychCopyInIntegerArg(2, kPsychArgRequired, &renderPass);
     if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
 
-    // Get optional target time for predicted tracking state. Default to the
-    // predicted state for the predicted mid-point of the next video frame:
-    if (PsychCopyInDoubleArg(3, kPsychArgOptional, &predictionTime)) {
-        xrPredictionTime = PsychTimeToXrTime(predictionTime);
-    }
-    else {
-        xrPredictionTime = openxr->frameState.predictedDisplayTime;
-        predictionTime = XrTimeToPsychTime(xrPredictionTime);
-    }
-
     // Get eye pose for the renderPass. OpenXR does not provide advantages for seprate render passes,
     // so renderPass to eye mapping is meaningless for quality, and we just set arbitrarily eye = renderPass:
     eye = renderPass;
 
+    // Get optional predictionTime:
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &predictionTime);
+
+    // Lock protect openxr->predictedDisplayTime read, and locateXRViews():
     PsychLockMutex(&(openxr->presenterLock));
+
+    // Got optional target time for predicted tracking state? Default to the
+    // predicted display time of the next video frame:
+    if (predictionTime != DBL_MAX) {
+        xrPredictionTime = PsychTimeToXrTime(predictionTime);
+    }
+    else {
+        xrPredictionTime = openxr->predictedDisplayTime;
+        predictionTime = XrTimeToPsychTime(xrPredictionTime);
+    }
+
     locateXRViews(openxr, xrPredictionTime);
     PsychUnlockMutex(&(openxr->presenterLock));
 

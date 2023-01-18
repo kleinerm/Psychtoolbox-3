@@ -45,7 +45,7 @@ PsychImaging('PrepareConfiguration');
 if ~stereoscopic
   % Setup the HMD to act as a regular "monoscopic" display monitor
   % by displaying the same image to both eyes:
-  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse DebugDisplay', [], [], deviceindex);
+  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse ', [], [], deviceindex);
 else
   % Setup for stereoscopic presentation:
   PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'LowPersistence FastResponse', [], [], deviceindex);
@@ -76,7 +76,7 @@ while ~KbCheck
       Screen('TextSize', win, 100);
       DrawFormattedText(win, sprintf('HELLO\nWORLD!\n%i', eye), 'center', 'center', [0 1 0]);
     end
-    Screen('FillOval', win, [1 0 0], CenterRect([0 0 10 10], rect));
+    Screen('FillOval', win, [mod(GetSecs, 1) 0 0], CenterRect([0 0 10 10], rect));
   end
   vbl(end+1) = Screen('Flip', win);
 end
