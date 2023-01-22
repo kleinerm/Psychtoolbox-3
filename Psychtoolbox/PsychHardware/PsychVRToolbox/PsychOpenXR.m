@@ -827,6 +827,45 @@ if strcmpi(cmd, 'HapticPulse')
   return;
 end
 
+if strcmpi(cmd, 'Start')
+  % Get and validate handle - fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOpenXR:Start: Specified handle does not correspond to an open HMD!');
+  end
+
+  % Use of multi-threading only in stopped 3D mode?
+  if hmd{myhmd.handle}.multiThreaded == 1
+    % Stop thread:
+    PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 0);
+  end
+
+  % Mark userscript driven tracking as active:
+  PsychOpenXRCore('Start', hmd{myhmd.handle}.handle);
+
+  return;
+end
+
+if strcmpi(cmd, 'Stop')
+  % Get and validate handle - fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOpenXR:Stop: Specified handle does not correspond to an open HMD!');
+  end
+
+  % Use of multi-threading only needed in stopped 3D mode?
+  if (hmd{myhmd.handle}.multiThreaded == 1) && hmd{myhmd.handle}.use3DMode && ...
+     PsychOpenXRCore('NeedLocateForProjectionLayers', hmd{myhmd.handle}.handle)
+    % Start thread:
+    PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 1);
+  end
+
+  % Mark userscript driven tracking as inactive:
+  PsychOpenXRCore('Stop', hmd{myhmd.handle}.handle);
+
+  return;
+end
+
 if strcmpi(cmd, 'VRAreaBoundary')
   myhmd = varargin{1};
   if ~PsychOpenXR('IsOpen', myhmd)
@@ -992,6 +1031,8 @@ if strcmpi(cmd, 'Open')
   newhmd.hapticFeedbackSupported = 1;
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
+
+  % Default to multiThreaded off:
   newhmd.multiThreaded = 0;
 
   % SteamVR OpenXR runtime needs a workaround for not properly
@@ -1001,6 +1042,20 @@ if strcmpi(cmd, 'Open')
     newhmd.steamXROpenGLWa = 1;
   else
     newhmd.steamXROpenGLWa = 0;
+  end
+
+  % Monado OpenXR runtime does not need frequent tracking to keep
+  % projection layers stable and free of jitter/jerk/timeout warnings.
+  if ~isempty(strfind(runtimeName, 'Monado')) %#ok<STREMP>
+    % Monado or similar advanced: No need for this - Shaves off some
+    % millisecond from a multi-threaded / not client-tracked loop and gives
+    % extra visual stability:
+    PsychOpenXRCore('NeedLocateForProjectionLayers', handle, 0);
+  else
+    % Less advanced: Need tracking update, and multi-threading if the
+    % client does not use active fast tracking:
+    PsychOpenXRCore('NeedLocateForProjectionLayers', handle, 1);
+    newhmd.multiThreaded = 1;
   end
 
   % Default autoclose flag to "no autoclose":
@@ -1173,9 +1228,6 @@ if strcmpi(cmd, 'Close')
 end
 
 if strcmpi(cmd, 'IsHMDOutput')
-  myhmd = varargin{1}; %#ok<NASGU>
-  scanout = varargin{2};
-
   % This does not make much sense on OpenXR, as that runtime only supports direct
   % output mode, ie. an output completely separate from the regular desktop and
   % windowing system display space.
@@ -1463,7 +1515,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Create texture swap chains to provide textures to be used for
   % frame submission to the VR compositor:
-  if ~isempty(strfind(hmd{myhmd.handle}.basicRequirements, 'Float16Display'))
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'Float16Display'))
     % Linear RGBA16F half-float textures as target framebuffers:
     floatFlag = 1;
   else
@@ -1471,12 +1523,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     floatFlag = 0;
   end
 
-  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, '3D'))
+  if ~isempty(strfind(hmd{handle}.basicTask, '3D'))
     % 3D rendering task:
-    use3DMode = 1;
+    hmd{handle}.use3DMode = 1;
   else
     % No 3D rendering, just monoscopic or stereoscopic display of stimuli:
-    use3DMode = 0;
+    hmd{handle}.use3DMode = 0;
   end
 
   % SteamVR runtime on MS-Windows in 3D mode needs fp16 buffers for some
@@ -1485,7 +1537,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % This at least as of December 2022 with SteamVR version 1.24.7, when using
   % OculusVR as backend to drive Oculus devices. Not clear if also needed for
   % other vendors HMDs. Go figure!
-  if IsWin && use3DMode && strcmpi(hmd{myhmd.handle}.modelName, 'SteamVR/OpenXR : oculus')
+  if IsWin && hmd{handle}.use3DMode && strcmpi(hmd{handle}.modelName, 'SteamVR/OpenXR : oculus')
     fprintf('PsychOpenXR-INFO: Using floating point textures for SteamVR runtime with Oculus devices in 3D mode on MS-Windows.\n');
     fprintf('PsychOpenXR-INFO: This is a workaround for some SteamVR bug. It may cause reduced performance, sorry.\n');
     floatFlag = 1;
@@ -1506,7 +1558,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, openglContext, gli.OpenGLDrawable, ...
-                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, use3DMode, hmd{handle}.multiThreaded);
+                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, hmd{handle}.use3DMode, hmd{handle}.multiThreaded);
 
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
   Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
@@ -1730,9 +1782,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % dealing with proprietary runtimes...
     % SteamVR needs the extra 'Controllers' call below, or things will continue
     % to fail.
-    %
-    % TODO: Can something be done about this idiocy, in case we switch to
-    % multi-threaded operations?
     for i = 1:3
       Screen('Flip', win);
       hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
@@ -1740,26 +1789,25 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
   end
 
-  % These Start / Start->Stop sequences have to go last, after all setup is
-  % done. They may start multi-threaded operation on some OpenXR runtimes if
-  % multiThreaded is true:
-  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
+  % Set initial view layer type, depending if 3D perspective correct rendering
+  % or pure 2D mono-/stereo drawing is used:
+  if hmd{handle}.use3DMode
+    % 3D: Default to projection layers:
+    PsychOpenXRCore('ViewType', handle, 1);
+  else
+    % 2D: Default to quad view layers:
+    PsychOpenXRCore('ViewType', handle, 0);
+  end
+
+  % Tracked operation requested?
+  if ~isempty(strfind(hmd{handle}.basicTask, 'Tracked'))
     % 3D head tracked VR rendering task: Start tracking as a convenience:
     PsychOpenXRCore('Start', handle);
+  end
 
-    % If permanent multi-threading is requested, then we need to kick it off via
-    % a stop->start sequence (Start->Stop kicked it off, final Start marks tracking
-    % as started, but won't disable threading anymore at multiThreaded setting 2:
-    if hmd{handle}.multiThreaded == 2
-      PsychOpenXRCore('Stop', handle);
-      PsychOpenXRCore('Start', handle);
-    end
-  else
-    % No 3D head tracked closed-loop mode: Kick off the presenter thread via
-    % this 'Start' -> 'Stop' sequence, if multi-threading is enabled or allowed,
-    % ie. multiThreaded > 0. For multiThreaded == 0, this will do nothing:
-    PsychOpenXRCore('Start', handle);
-    PsychOpenXRCore('Stop', handle);
+  % Last step: Start presenter thread if always-on multi-threading is requested:
+  if hmd{handle}.multiThreaded == 2
+    PsychOpenXRCore('PresenterThreadEnable', handle, 1);
   end
 
   % Return success result code 1:

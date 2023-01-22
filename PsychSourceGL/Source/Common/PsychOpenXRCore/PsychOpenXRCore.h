@@ -78,6 +78,10 @@ PsychError PSYCHOPENXRPresentFrame(void);
 PsychError PSYCHOPENXRTrackingOriginType(void);
 PsychError PSYCHOPENXRHapticPulse(void);
 PsychError PSYCHOPENXRGetEyePose(void);
+PsychError PSYCHOPENXRViewType(void);
+PsychError PSYCHOPENXRView2DParameters(void);
+PsychError PSYCHOPENXRNeedLocateForProjectionLayers(void);
+PsychError PSYCHOPENXRPresenterThreadEnable(void);
 
 #ifdef __cplusplus
 }
