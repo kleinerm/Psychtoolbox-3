@@ -72,6 +72,10 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("CreateRenderTextureChain", &PSYCHOPENXRCreateRenderTextureChain));
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOPENXRGetNextTextureHandle));
     PsychErrorExit(PsychRegister("CreateAndStartSession", &PSYCHOPENXRCreateAndStartSession));
+    PsychErrorExit(PsychRegister("ViewType", &PSYCHOPENXRViewType));
+    PsychErrorExit(PsychRegister("View2DParameters", &PSYCHOPENXRView2DParameters));
+    PsychErrorExit(PsychRegister("NeedLocateForProjectionLayers", &PSYCHOPENXRNeedLocateForProjectionLayers));
+    PsychErrorExit(PsychRegister("PresenterThreadEnable", &PSYCHOPENXRPresenterThreadEnable));
     //PsychErrorExit(PsychRegister("GetEyePose", &PSYCHOPENXRGetEyePose));
     //PsychErrorExit(PsychRegister("GetTrackersState", &PSYCHOPENXRGetTrackersState));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));

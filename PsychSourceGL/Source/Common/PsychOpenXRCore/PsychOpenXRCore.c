@@ -150,6 +150,8 @@ typedef struct PsychOpenXRDevice {
     int                                 maxSamples;
     XrSpace                             handPoseSpace[2];
     psych_bool                          isTracking;                     // MT mutex.
+    psych_bool                          needLocate;                     // MT mutex.
+    int                                 viewLayerType;                  // MT mutex.
     XrViewConfigurationType             viewType;
     XrViewState                         viewState;                      // MT mutex.
     XrView                              view[2];                        // MT mutex.
@@ -287,6 +289,9 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOpenXRCore('Close' [, openxrPtr]);";
     synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
     //synopsis[i++] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
+    synopsis[i++] = "oldType = PsychOpenXRCore('ViewType', openxrPtr [, viewLayerType]);";
+    synopsis[i++] = "oldNeed = PsychOpenXRCore('NeedLocateForProjectionLayers', openxrPtr [, needLocate]);";
+    synopsis[i++] = "oldEnable = PsychOpenXRCore('PresenterThreadEnable', openxrPtr [, enableThread]);";
     synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
     synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
     synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
@@ -604,6 +609,23 @@ static int enumerateXRDevices(XrInstance instance) {
     numAvailableDevices++;
 
     return(numAvailableDevices);
+}
+
+static void PsychAssignSubmitLayers(PsychOpenXRDevice *openxr, int viewLayerType)
+{
+    if (viewLayerType == 1) {
+        // 3D perspective projected mode: Assign stereo projectionLayer:
+        openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->projectionLayer;
+        openxr->submitLayersCount = 1;
+    }
+    else {
+        // 2D mode: Assign the quadViewLayer(s) for mono or stereo 2D display:
+        openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[0];
+        openxr->submitLayers[1] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[1];
+        openxr->submitLayersCount = (openxr->isStereo) ? 2 : 1;
+    }
+
+    openxr->viewLayerType = viewLayerType;
 }
 
 static XrPath toXrPath(XrInstance xrInstance, const char* pathSpec)
@@ -2333,6 +2355,227 @@ PsychError PSYCHOPENXRTrackingOriginType(void)
     return(PsychError_none);
 }
 
+// TODO PsychOpenXRCore('View2DParameters', hmd, eye, [x,y,z], [w,h]);
+PsychError PSYCHOPENXRView2DParameters(void)
+{
+    static char useString[] = "oldParameters = PsychOpenXRCore('View2DParameters', openxrPtr [, viewParameters]);";
+    //                         1                                                      1            2
+    static char synopsisString[] =
+    "Query or assign 2D quad view parameters for OpenXR device 'openxrPtr'.\n\n"
+    "This returns the current settings in 'oldParameters'.\n"
+    "Optionally you can specify new settings in 'viewParameters'.\n"
+    "viewParameters must be:\n\n"
+    "\n";
+    static char seeAlsoString[] = "ViewType";
+
+    int handle;
+    int viewParameters;
+    PsychOpenXRDevice *openxr;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, FALSE);
+
+    // Query and return old setting:
+    // TODO PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->);
+
+    // New origin type provided?
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &viewParameters)) {
+        if (viewParameters < 0 || viewParameters > 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'viewParameters' for XXX TODO specified. Must be 0 or 1.");
+
+        PsychLockMutex(&(openxr->presenterLock));
+        // TODO openxr-> = viewParameters;
+        PsychUnlockMutex(&(openxr->presenterLock));
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOPENXRViewType(void)
+{
+    static char useString[] = "oldType = PsychOpenXRCore('ViewType', openxrPtr [, viewLayerType]);";
+    //                         1                                     1            2
+    static char synopsisString[] =
+    "Specify the type of view for OpenXR device 'openxrPtr'.\n"
+    "This returns the current type of view in 'oldType'. "
+    "Optionally you can specify a new view type as 'viewLayerType'. "
+    "viewLayerType must be either:\n"
+    "0 = Use a 2D monoscopic or stereoscopic view via OpenXR quad layers, "
+    "which supposedly stays stable for not actively tracked or slow "
+    "updating stimulus display on OpenXR conformant runtimes. Placing "
+    "these views properly for binocular / stereoscopic display and "
+    "perspective correct 3D rendering is your scripts responsibility. "
+    "Cfe. PsychOpenXRCore('View2DParameters') for setting these to non-"
+    "default values.\n"
+    "1 = Use a 3D perspective projected view via OpenXR projection layers. "
+    "These are auto-configured for good perspective correct 3D rendering, "
+    "but need an active track -> render -> present loop on some OpenXR runtimes "
+    "to work correctly, otherwise judder and jerks will occur in the display. "
+    "PsychOpenXRCore('GetTrackingState') drives this manually, usually called "
+    "via PsychVRHMD('PrepareRender').\n"
+    "\n";
+    static char seeAlsoString[] = "View2DParameters Start Stop GetTrackingState NeedLocateForProjectionLayers";
+
+    int handle;
+    int viewLayerType;
+    PsychOpenXRDevice *openxr;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, FALSE);
+
+    // Query and return old setting:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->viewLayerType);
+
+    // New origin type provided?
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &viewLayerType)) {
+        if (viewLayerType < 0 || viewLayerType > 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'viewLayerType' for specified. Must be 0 or 1.");
+
+        PsychLockMutex(&(openxr->presenterLock));
+        PsychAssignSubmitLayers(openxr, viewLayerType);
+        PsychUnlockMutex(&(openxr->presenterLock));
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOPENXRNeedLocateForProjectionLayers(void)
+{
+    static char useString[] = "oldNeed = PsychOpenXRCore('NeedLocateForProjectionLayers', openxrPtr [, needLocate]);";
+    //                         1                                                          1            2
+    static char synopsisString[] =
+    "Specify if projection layers need to be continuously updated by tracking for OpenXR device 'openxrPtr'.\n"
+    "This returns the current setting in 'oldNeed'. "
+    "Optionally you can specify a new setting as 'needLocate'. "
+    "needLocate must be either:\n"
+    "0 = Positioning of projection layers stays stable and fixed without a "
+    "constantly running tracking loop on high quality runtimes.\n"
+    "1 = Projection layers need a constantly running loop, or jitter, jerks, "
+    "wrong positioning or timeout warnings will happen. Note that if this "
+    "setting is needed, then also multi-threaded presentation must be active "
+    "whenever the user script does not engage in fast active tracking via "
+    "PsychOpenXRCore('GetTrackingState') calls, usually called implicitely "
+    "via PsychVRHMD('PrepareRender').\n"
+    "\n";
+    static char seeAlsoString[] = "Start Stop GetTrackingState PresenterThreadEnable";
+
+    int handle;
+    int needLocate;
+    PsychOpenXRDevice *openxr;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, FALSE);
+
+    // Query and return old setting:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->needLocate);
+
+    // New origin type provided?
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &needLocate)) {
+        if (needLocate < 0 || needLocate > 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'needLocate' for specified. Must be 0 or 1.");
+
+        PsychLockMutex(&(openxr->presenterLock));
+        openxr->needLocate = needLocate;
+        PsychUnlockMutex(&(openxr->presenterLock));
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOPENXRPresenterThreadEnable(void)
+{
+    static char useString[] = "oldEnable = PsychOpenXRCore('PresenterThreadEnable', openxrPtr [, enableThread]);";
+    //                         1                                                    1            2
+    static char synopsisString[] =
+    "Enable or disable asynchronous background presenter thread for OpenXR device 'openxrPtr'.\n"
+    "The thread is required on some OpenXR runtimes in some situations to provide stable "
+    "visual stimulation if a user script doesn't run an active tracking -> render -> present loop, "
+    "or runs the loop too slow / with pauses. It may also be needed for timed stimulus presentation, "
+    "or for half-way reasonable visual stimulus onset timestamping. This is all highly dependent "
+    "on the OpenXR runtime in use. If possible, the thread should be avoided for better performance.\n"
+    "This returns the current setting in 'oldEnable'. "
+    "Optionally you can specify a new setting as 'enableThread'. enableThread must be either:\n"
+    "0 = Disable thread, all operations are done synchronously, driven by the user script.\n"
+    "1 = Enable thread for driving the visual updating loop, independent of user script.\n"
+    "\n";
+    static char seeAlsoString[] = "Start Stop GetTrackingState NeedLocateForProjectionLayers";
+
+    int handle;
+    int enableThread;
+    PsychOpenXRDevice *openxr;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, FALSE);
+
+    // Query and return old setting:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (openxr->presenterThread != (psych_thread) NULL));
+
+    // New origin type provided?
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &enableThread)) {
+        if (enableThread < 0 || enableThread > 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'enableThread' for specified. Must be 0 or 1.");
+
+        if (enableThread)
+            PsychOpenXRStartPresenterThread(openxr);
+        else
+            PsychOpenXRStopPresenterThread(openxr);
+    }
+
+    return(PsychError_none);
+}
+
 PsychError PSYCHOPENXRStart(void)
 {
     static char useString[] = "PsychOpenXRCore('Start', openxrPtr);";
@@ -2367,11 +2610,6 @@ PsychError PSYCHOPENXRStart(void)
             printf("PsychOpenXRCore-ERROR: Tried to start tracking on device %i, but tracking is already started.\n", handle);
         PsychErrorExitMsg(PsychError_user, "Tried to start tracking on HMD, but tracking already active.");
     }
-
-    // Shut down multi-threaded presentation mode, if dynamic switching was requested
-    // with mode 1. Skip shutdown in mode 2 for permanent multi-threaded presentation:
-    if (openxr->multiThreaded == 1)
-        PsychOpenXRStopPresenterThread(openxr);
 
     if (verbosity >= 4)
         printf("PsychOpenXRCore-INFO: Tracking started on device with handle %i.\n", handle);
@@ -2421,10 +2659,6 @@ PsychError PSYCHOPENXRStop(void)
     PsychLockMutex(&(openxr->presenterLock));
     openxr->isTracking = FALSE;
     PsychUnlockMutex(&(openxr->presenterLock));
-
-    // Launch thread if allowed:
-    if (!PsychOpenXRStartPresenterThread(openxr))
-        PsychErrorExitMsg(PsychError_system, "Insufficient system resources for thread creation.");
 
     if (verbosity >= 4)
         printf("PsychOpenXRCore-INFO: Tracking stopped on device with handle %i.\n", handle);
@@ -3409,7 +3643,6 @@ PsychError PSYCHOPENXRControllers(void)
     return(PsychError_none);
 }
 
-
 PsychError PSYCHOPENXRCreateRenderTextureChain(void)
 {
     static char useString[] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
@@ -3736,17 +3969,7 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     openxr->projectionLayer.views = openxr->projView;
 
     // Setup initial assignments of actual layers to submit to the compositor for display:
-    if (openxr->use3DMode) {
-        // 3D perspective projected mode: Assign stereo projectionLayer as init state:
-        openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->projectionLayer;
-        openxr->submitLayersCount = 1;
-    }
-    else {
-        // 2D mode: Init state is to use the quadViewLayer(s) for mono or stereo 2D display:
-        openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[0];
-        openxr->submitLayers[1] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[1];
-        openxr->submitLayersCount = (openxr->isStereo) ? 2 : 1;
-    }
+    PsychAssignSubmitLayers(openxr, openxr->use3DMode ? 1 : 0);
 
     PsychUnlockMutex(&(openxr->presenterLock));
 
@@ -4245,16 +4468,23 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
             .layers = openxr->submitLayers
         };
 
-        // Enforce projView[] update with proper fov, pose in 3D head-tracked rendering mode:
-        if (openxr->use3DMode) {
+        // Enforce projView[] update with proper fov, pose if projectionLayers are in use atm.:
+        if (openxr->viewLayerType == 1) {
             // Only do initial locateXRViews() if projView has not ever been updated, ie. an initialization call,
             // so we don't feed garbage from openxr->view pose to projView pose, as runtimes don't like that.
-            // During normal operation, this would be redundant, due to locateXRViews() call in 'GetTrackingState',
-            // as part of PsychVRHMD('PrepareRender') at start of each full 3D rendering cycle. 0.2 - 0.5 msecs
-            // typical, but sometimes up to 5 msecs, so worth optimizing away when not strictly needed.
-            if (!memcmp(&openxr->projView[0].pose, &identityPose, sizeof(identityPose)) &&
-                !memcmp(&openxr->projView[1].pose, &identityPose, sizeof(identityPose)))
-                locateXRViews(openxr, targetDisplayTime);
+            //
+            // Or if the user script has marked its own tracking + rendering loop as paused, or not using head
+            // tracking, e.g., for conventional 3D rendering without input from head tracker, and we need to do
+            // the job of keeping projView pose up to date wrt. target display time, so the views stay locked
+            // to the viewers head, like quadViewLayers do.
+            //
+            // During normal operation, this would be redundant, due to the locateXRViews() call in 'GetTrackingState',
+            // as part of PsychVRHMD('PrepareRender') at start of each full 3D rendering cycle. This takes 0.2 - 0.5
+            // msecs typical, but sometimes up to 5 msecs, so worth optimizing away when not strictly needed.
+            if ((!openxr->isTracking && openxr->needLocate) ||
+                (!memcmp(&openxr->projView[0].pose, &identityPose, sizeof(identityPose)) &&
+                !memcmp(&openxr->projView[1].pose, &identityPose, sizeof(identityPose))))
+                locateXRViews(openxr, frameEndInfo.displayTime);
 
             // Update pose and FoV for projection views by latching latest locateXRViews() result:
             for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
@@ -4368,20 +4598,20 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
         .layers = openxr->submitLayers
     };
 
-    // Enforce projView[] update with proper fov, pose in 3D head-tracked rendering mode:
-    if (openxr->use3DMode) {
+    // Enforce projView[] update with proper fov, pose if projectionLayers are in use atm.:
+    if (openxr->viewLayerType == 1) {
         // Only do initial locateXRViews() if projView has not ever been updated, ie. an initialization call,
         // so we don't feed garbage from openxr->view pose to projView pose, as runtimes don't like that.
         //
         // Or if the user script has marked its own tracking + rendering loop as paused, or not using head
-        // tracking, e.g., for conventional 3D rendering without input from head tracker, so we need to do
+        // tracking, e.g., for conventional 3D rendering without input from head tracker, and we need to do
         // the job of keeping projView pose up to date wrt. target display time, so the views stay locked
         // to the viewers head, like quadViewLayers do.
         //
         // During normal operation, this would be redundant, due to the locateXRViews() call in 'GetTrackingState',
         // as part of PsychVRHMD('PrepareRender') at start of each full 3D rendering cycle. This takes 0.2 - 0.5
         // msecs typical, but sometimes up to 5 msecs, so worth optimizing away when not strictly needed.
-        if (!openxr->isTracking ||
+        if ((!openxr->isTracking && openxr->needLocate) ||
             (!memcmp(&openxr->projView[0].pose, &identityPose, sizeof(identityPose)) &&
             !memcmp(&openxr->projView[1].pose, &identityPose, sizeof(identityPose))))
             locateXRViews(openxr, frameEndInfo.displayTime);
