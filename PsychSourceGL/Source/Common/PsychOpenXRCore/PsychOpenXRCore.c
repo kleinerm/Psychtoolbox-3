@@ -399,14 +399,24 @@ static psych_bool PsychOpenXRStartPresenterThread(PsychOpenXRDevice *openxr)
         openxr->targetPresentTime = DBL_MAX;
         openxr->threadTerminate = FALSE;
 
+        PsychLockMutex(&(openxr->presenterLock));
+
         if ((rc = PsychCreateThread(&(openxr->presenterThread), NULL, PresenterThreadMain, (void*) openxr))) {
             openxr->presenterThread = (psych_thread) NULL;
             printf("PsychOpenXRCore-ERROR: Could not create internal presenterThread on device with handle %i [%s].\n", openxr->handle, strerror(rc));
+            PsychUnlockMutex(&(openxr->presenterLock));
             return(FALSE);
         }
         else if (verbosity > 3) {
             printf("PsychOpenXRCore-INFO: Started asynchronous XR presenter thread on device with handle %i.\n", openxr->handle);
         }
+
+        // Wait for thread to signal it has started:
+        if ((rc = PsychWaitCondition(&(openxr->presentedSignal), &(openxr->presenterLock)))) {
+            printf("PsychOpenXRCore-ERROR: Waitcondition on presentedSignal / thread startup failed  [%s].\n", strerror(rc));
+        }
+
+        PsychUnlockMutex(&(openxr->presenterLock));
     }
 
     return(TRUE);
@@ -4727,6 +4737,9 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
 
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("PsychOpenXRCorePresenterThread");
+
+    // Signal startup completed to main thread:
+    PsychSignalCondition(&(openxr->presentedSignal));
 
     // Try to lock, block until available if not available:
     if ((rc = PsychLockMutex(&(openxr->presenterLock)))) {
