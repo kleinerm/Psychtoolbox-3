@@ -1,24 +1,37 @@
-function res = VRInputStuffTest
-% VRInputStuffTest - Test input functionality related to VR devices.
+function res = VRInputStuffTest(withHapticFeedback)
+% VRInputStuffTest([withHapticFeedback=0]) - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
-% input. After any key press or controller button press, reports live state of
-% buttons, sensors, triggers etc. of connected controllers. Also exercises the
-% haptic feedback functionality if any of left and right touch controllers if
-% the A/B or X/Y buttons are pressed for low/high frequency rumble on right or
-% left touch controller. After a keypress or Home button press on the controller,
-% visualizes tracked hand position and orientation of hand controllers and allows
-% to do some nice visual effects based on trigger / grip button presses, thumbsticks
-% movement etc.
+% input. After any key press or controller button press, reports live state
+% of buttons, sensors, triggers etc. of connected controllers.
 %
-% Tested with XBox controller, Oculus remote, and the two Oculus touch controllers
-% of the Rift CV-1 on Windows-10 and Linux.
+% If the optional parameter 'withHapticFeedback' is set to 1, then also
+% exercises the haptic feedback functionality of any of the left and right
+% hand controllers, if the A/B or X/Y buttons are pressed for low/high
+% frequency rumble on right or left controller. Haptic feedback is not
+% exercised by default, as it empties the controllers batteries relatively
+% fast.
+%
+% After a keypress (or Enter/Back button press on the controller),
+% visualizes tracked hand position and orientation of hand controllers and
+% allows to do some nice visual effects based on trigger / grip button
+% presses, thumbsticks movement etc.
+%
+% Tested with XBox controller, Oculus remote, and the two Oculus touch
+% controllers of the Oculus Rift CV-1 on Windows-10 and Linux, with the
+% OculusVR v1 runtime on Windows, and with various OpenXR runtimes like
+% Monado, OculusVR, SteamVR.
 
 % Constants for use in VR applications:
 global OVR;
 
 % GL data structure needed for all OpenGL demos:
 global GL;
+
+% No testing of haptic feedback by default, as it sucks up batteries a lot:
+if nargin < 1 || isempty(withHapticFeedback)
+    withHapticFeedback = 0;
+end
 
 canary = onCleanup(@sca);
 
@@ -88,6 +101,11 @@ else
     controllerTypes = 0;
 end
 
+if hmdinfo.hapticFeedbackSupported && ~withHapticFeedback
+    hmdinfo.hapticFeedbackSupported = 0;
+    fprintf('\nHaptic feedback supported but disabled, to conserve battery life.\n');
+end
+
 % Fetch play area / guardian boundaries:
 [isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd);
 
@@ -116,7 +134,7 @@ while 1
     clc;
 
     % Show instructions in HMD on how to continue:
-    DrawFormattedText(win, 'Press BackSpace key on keyboard, or Enter-Button or\nBack-Button on controller', 'center', 'center', [1 1 0]);
+    DrawFormattedText(win, sprintf('Press BackSpace key on keyboard, or Enter-Button or\nBack-Button on controller\n\n\nTime: %f', GetSecs), 'center', 'center', [1 1 0]);
     Screen('Flip', win);
 
     [~, ~, keycode] = KbCheck(-1);
