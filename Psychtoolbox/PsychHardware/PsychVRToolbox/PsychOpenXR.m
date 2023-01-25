@@ -593,6 +593,10 @@ end
 if cmd == 2
   handle = varargin{1};
 
+  % Workaround for Oculus runtime on Windows, at least for NVidia gpu's, possibly others:
+  while glGetError()
+  end
+
   % Reattach old backing textures, so onscreen window can get properly destroyed:
   Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex);
   hmd{handle}.oldglLeftTex = [];
