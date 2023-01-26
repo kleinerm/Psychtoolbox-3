@@ -148,6 +148,7 @@ typedef struct PsychOpenXRDevice {
     int                                 maxHeight;
     int                                 recSamples;
     int                                 maxSamples;
+    int                                 numMSAASamples;
     XrSpace                             handPoseSpace[2];
     psych_bool                          isTracking;                     // MT mutex.
     psych_bool                          needLocate;                     // MT mutex.
@@ -170,6 +171,7 @@ typedef struct PsychOpenXRDevice {
     double                              targetPresentTime;              // MT mutex.
     double                              tPredictedOnset;                // MT mutex.
     double                              VRtimeoutSecs;
+    int                                 srcTexIds[2];
 } PsychOpenXRDevice;
 
 // Set to TRUE if PsychOpenXRCoreShutDown() is executing:
@@ -303,7 +305,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
     synopsis[i++] = "[width, height, recMSAASamples, maxMSAASamples, maxWidth, maxHeight] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye);";
-    synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded);";
+    synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded, srcTexIds);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr);";
@@ -3371,8 +3373,8 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
 
 PsychError PSYCHOPENXRCreateAndStartSession(void)
 {
-    static char useString[] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded);";
-    //                         1                                                               1          2              3              4               5             6               7          8
+    static char useString[] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded, srcTexIds);";
+    //                         1                                                               1          2              3              4               5             6               7          8              9
     static char synopsisString[] =
     "Create, initialize and start XR session for OpenXR device 'openxrPtr'.\n"
     "The following parameters are needed to setup OpenGL <=> OpenXR interop. They "
@@ -3392,6 +3394,10 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     "'multiThreaded' if provided as non-zero value, will use an asynchronous presenter thread "
     "to try to improve stimulus presentation scheduling. A zero value means to not use such a thread, "
     "1 on demand, and 2 permanently for the duration of the whole session.\n"
+    "'srcTexIds' Texture handles of the Screen() finalizedFBO backing textures, needed for some "
+    "workarounds for MS-Windows OpenXR runtime deficiencies in multi-threaded mode. Passing in "
+    "negative handles interprets the values as FBO handles for the corresponding FBOs, triggering "
+    "a slower fallback path that can only handle non-MSAA content, but is hopefully never needed.\n"
     "\n"
     "Returns the following information:\n"
     "'videoRefreshDuration' Video refresh duration in seconds of the XR display device if "
@@ -3400,7 +3406,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     static char seeAlsoString[] = "Open Close";
 
     XrResult result;
-    int i;
+    int i, numTexHandles;
     int handle;
     int use3DMode;
     int multiThreaded;
@@ -3410,6 +3416,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     void* openGLDrawable;
     void* openGLConfig;
     void* openGLVisualId;
+    int* srcTexIds;
     PsychOpenXRDevice *openxr;
 
     // All sub functions should have these two lines:
@@ -3418,8 +3425,8 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(8));
-    PsychErrorExit(PsychRequireNumInputArgs(8));
+    PsychErrorExit(PsychCapNumInputArgs(9));
+    PsychErrorExit(PsychRequireNumInputArgs(9));
 
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
@@ -3467,6 +3474,15 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Assign multi-threading mode:
     openxr->multiThreaded = multiThreaded;
+
+    // Get mandatory srcTexIds list:
+    PsychAllocInIntegerListArg(9, kPsychArgRequired, &numTexHandles, &srcTexIds);
+    if ((numTexHandles < 1) || (numTexHandles > 2))
+        PsychErrorExitMsg(PsychError_user, "Invalid 'srcTexIds' list provided. Must be a vector with integer handles of length 1 or 2.");
+
+    // Assign for use with certain workarounds:
+    openxr->srcTexIds[0] = srcTexIds[0];
+    openxr->srcTexIds[1] = srcTexIds[1];
 
     // Linux X11/GLX/XLib specific setup of OpenGL interop:
     #ifdef XR_USE_PLATFORM_XLIB
@@ -3907,6 +3923,7 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     // Assign total texture buffer width/height for the frame submission later on:
     openxr->textureWidth = width;
     openxr->textureHeight = height;
+    openxr->numMSAASamples = numMSAASamples;
 
     // Initialize views, projection views and quad views with what can be statically initialized:
 
