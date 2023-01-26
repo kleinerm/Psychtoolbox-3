@@ -306,7 +306,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
-    synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
+    synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr);";
     synopsis[i++] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
@@ -3996,6 +3996,23 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     return(PsychError_none);
 }
 
+static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
+{
+    XrResult res, outRes = XR_SUCCESS;
+    int eyeIndex;
+
+    // Release new stimulus images to swapchain before xrEndFrame() submission:
+    for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+        res = xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL);
+        if (!resultOK(res)) {
+            if (outRes == XR_SUCCESS)
+                outRes = res;
+        }
+    }
+
+    return(outRes);
+}
+
 static XrResult acquireTextureHandles(PsychOpenXRDevice *openxr)
 {
     XrResult result;
@@ -4366,19 +4383,16 @@ PsychError PSYCHOPENXRStartRender(void)
 
 PsychError PSYCHOPENXREndFrameRender(void)
 {
-    static char useString[] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
-    //                                                           1            2
+    static char useString[] = "PsychOpenXRCore('EndFrameRender', openxrPtr);";
+    //                                                           1
     static char synopsisString[] =
     "Mark end of a render cycle for a swapchain of an OpenXR HMD device 'openxrPtr'.\n\n"
-    "'eye' Eye for which currently used texture should be released to its swapchain: 0 = Left/Mono, 1 = Right. "
-    "If omitted, all current textures for all eyes are released.\n"
     "You usually won't call this function yourself, but Screen('Flip') will call it automatically "
     "for you at the appropriate moment.\n";
     static char seeAlsoString[] = "StartRender PresentFrame";
 
     int handle;
     PsychOpenXRDevice *openxr;
-    int eyeIndex = -1;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4386,7 +4400,7 @@ PsychError PSYCHOPENXREndFrameRender(void)
 
     // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(0));
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -4412,26 +4426,9 @@ PsychError PSYCHOPENXREndFrameRender(void)
     if (isMultithreaded(openxr))
         return(PsychError_none);
 
-    // Get eye:
-    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &eyeIndex)) {
-        if (eyeIndex < 0 || eyeIndex > 1)
-            PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
-
-        if (eyeIndex > 0 && !(openxr->isStereo))
-            PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0, as mono display mode is selected.");
-
-        if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
-            if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
-        }
-    }
-    else {
-        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
-            if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
-                if (verbosity > 0)
-                    printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
-            }
-        }
+    if (!resultOK(releaseTextureHandles(openxr))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to release current swapchain images: %s\n", errorString);
     }
 
     return(PsychError_none);
@@ -4574,13 +4571,10 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
     // Target display time for next stimulus frame reached or exceeded?
     if ((targetPresentTime < DBL_MAX) && (openxr->predictedDisplayTime >= targetDisplayTime)) {
         // Next xrEndFrame() submitted frame is predicted to display at or after targetDisplayTime,
-        // time to latch our new content for targetDisplayTime. Release new stimulus images to
-        // swapchain before xrEndFrame() submission:
-        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
-            if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
-                if (verbosity > 0)
-                    fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
-            }
+        // time to latch our new content for targetDisplayTime.
+        if (!resultOK(releaseTextureHandles(openxr))) {
+            if (verbosity > 0)
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to release current swapchain images: %s\n", errorString);
         }
 
         // Mark "new frame latched":
