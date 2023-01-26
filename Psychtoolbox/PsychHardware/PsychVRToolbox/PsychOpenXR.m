@@ -1561,14 +1561,25 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     openglContext = gli.OpenGLContextScreen;
   end
 
+  % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:
+  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight, fboIds(1), fboIds(2)] = Screen('Hookfunction', win, 'GetDisplayBufferTextures'); %#ok<NASGU> 
+
+  % Override fboIds with backing texture handles in production use:
+  if 1
+    fboIds = [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex];
+  else
+    % This triggers the slower FBO based glCopyTexSubImage2D() path, which
+    % can only handle non-MSAA content:
+    fboIds = -fboIds; %#ok<UNRCH>
+    warning('Slow MS-Windows fallback for copies triggered, which also can not handle native OpenXR MSAA.');
+  end
+
+  % Create and start OpenXR session:
   [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, openglContext, gli.OpenGLDrawable, ...
-                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, hmd{handle}.use3DMode, hmd{handle}.multiThreaded);
+                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, hmd{handle}.use3DMode, hmd{handle}.multiThreaded, fboIds);
 
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
   Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
-
-  % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:
-  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight] = Screen('Hookfunction', win, 'GetDisplayBufferTextures');
 
   % Validate texture internal formats. Ideally something supportable by XR runtime, but
   % if not, it will simply trigger fbo unsharing and a slight performance loss:
