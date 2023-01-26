@@ -38,8 +38,8 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[ret1, ret2, ...] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2, arg3, arg4);";
-//                                                                    1           2             3          4     5     6     7
+static char useString[] = "[ret1, ret2, ...] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2, ...);";
+//                                                                    1           2             3          4     5     ...
 static char synopsisString[] =
     "Manage Screen processing hook chains. Hook chains are a way to extend PTBs behaviour with plugins for generic processing or "
     "fast image processing. They should allow to interface PTB seamlessly with 3rd party special response collection devices or "
@@ -148,9 +148,10 @@ static char synopsisString[] =
     "'multiSample' The number of samples per texel. Must be 0 for single-sampled GL_TEXTURE_2D textures, > 0 for GL_TEXTURE_2D_MULTISAMPLE textures.\n"
     "'width' and 'height' Width and height of the output framebuffer (=texture) in pixels or texels.\n"
     "\n\n"
-    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures');\n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height, leftFboId, rightFboId] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures');\n"
     "Get the OpenGL handles of the backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
-    "For the meaning of return values see 'SetDisplayBufferTextures' above.\n"
+    "'leftFboId' and 'rightFboId' return the ids of the associated OpenGL framebuffer objects containing the 'leftglHandle' and 'rightglHandle' output textures.\n"
+    "For the meaning of other return values see 'SetDisplayBufferTextures' above.\n"
     "This only works if the imaging pipeline is active.\n"
     "This query function works both with internally generated and maintained backing textures and externally injected/maintained ones.\n"
     "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
@@ -258,6 +259,7 @@ PsychError SCREENHookFunction(void)
     char                        *cmdString, *hookString, *idString, *blitterString, *insertString;
     int                         cmd, slotid, flag1, whereloc = 0;
     int                         leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height;
+    int                         leftFboHandle, rightFboHandle;
     psych_int64                 flag64;
     double                      doubleptr;
     double                      shaderid, luttexid1 = 0;
@@ -273,7 +275,7 @@ PsychError SCREENHookFunction(void)
 
     PsychErrorExit(PsychCapNumInputArgs(12));
     PsychErrorExit(PsychRequireNumInputArgs(2));
-    PsychErrorExit(PsychCapNumOutputArgs(7));
+    PsychErrorExit(PsychCapNumOutputArgs(9));
 
     // Get the subcommand string:
     PsychAllocInCharArg(2, kPsychArgRequired, &cmdString);
@@ -470,7 +472,7 @@ PsychError SCREENHookFunction(void)
         break;
 
         case 14: // GetDisplayBufferTextures
-            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height) && (verbosity > 1))
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height, &leftFboHandle, &rightFboHandle) && (verbosity > 1))
                 printf("PTB-WARNING: Invalid HookFunction call to GetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
 
             PsychCopyOutDoubleArg(1, FALSE, leftglHandle);
@@ -480,11 +482,13 @@ PsychError SCREENHookFunction(void)
             PsychCopyOutDoubleArg(5, FALSE, multiSample);
             PsychCopyOutDoubleArg(6, FALSE, width);
             PsychCopyOutDoubleArg(7, FALSE, height);
+            PsychCopyOutDoubleArg(8, FALSE, leftFboHandle);
+            PsychCopyOutDoubleArg(9, FALSE, rightFboHandle);
         break;
 
         case 15: // SetDisplayBufferTextures
             // Get old values and return them:
-            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height) && (verbosity > 1))
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height, &leftFboHandle, &rightFboHandle) && (verbosity > 1))
                 printf("PTB-WARNING: Invalid HookFunction call to SetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
 
             PsychCopyOutDoubleArg(1, FALSE, leftglHandle);
@@ -608,7 +612,7 @@ PsychError SCREENHookFunction(void)
 
         case 19: // ImportDisplayBufferInteropMemory
             // Get old values for textures. Just to check if this operation is supported at all in the current imaging pipeline configuration:
-            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height) && (verbosity > 1))
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height, &leftFboHandle, &rightFboHandle) && (verbosity > 1))
                 printf("PTB-WARNING: Invalid HookFunction call to ImportDisplayBufferInteropMemory! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
 
             {

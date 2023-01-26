@@ -99,9 +99,9 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, int leftglHandle, int rightglHandle, int glTextureTarget, int format,
                                          int multiSample, int width, int height);
 
-// Get current OpenGL color renderbuffer attachment backing textures for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
+// Get current OpenGL color renderbuffer attachment backing textures and OpenGL FBO ids for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
 psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, int *leftglHandle, int *rightglHandle, int *glTextureTarget, int *format,
-                                         int *multiSample, int *width, int *height);
+                                         int *multiSample, int *width, int *height, int *leftFboHandle, int *rightFboHandle);
 
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_bool asRendertarget, int forImagingmode);

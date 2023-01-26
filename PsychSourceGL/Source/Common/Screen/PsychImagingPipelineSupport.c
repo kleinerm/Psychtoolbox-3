@@ -2231,12 +2231,12 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
 /* PsychGetPipelineExportTexture()
  *
  * Get current OpenGL color renderbuffer attachment backing textures for the PsychFBO's
- * of the finalizedFBO[0/1] output render buffers.
+ * of the finalizedFBO[0/1] output render buffers, and also the associated OpenGL FBO handles.
  *
  * Returns TRUE on success, FALSE on failure.
  */
 psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, int *leftglHandle, int *rightglHandle, int *glTextureTarget, int *format,
-                                         int *multiSample, int *width, int *height)
+                                         int *multiSample, int *width, int *height, int *leftFboHandle, int *rightFboHandle)
 {
     PsychFBO *fbo;
 
@@ -2253,7 +2253,8 @@ psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
 
     *leftglHandle = (int) fbo->coltexid;
     *rightglHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid;
-
+    *leftFboHandle = (int) fbo->fboid;
+    *rightFboHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid;
     *glTextureTarget = (int) fbo->textarget;
     *format = (int) fbo->format;
     *multiSample = (int) fbo->multisample;
