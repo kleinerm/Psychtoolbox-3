@@ -243,7 +243,7 @@ if onoctave == 0
         % https://github.com/KhronosGroup/OpenXR-SDK
         % installed side-by-side to the Psychtoolbox-3 folder, so that it
         % shares the same parent folder as Psychtoolbox-3.
-        mex -outdir ..\Projects\Windows\build -output PsychOpenXRCore -DPTBMODULE_PsychOpenXRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include\ -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib openxr_loader.lib
+        mex -outdir ..\Projects\Windows\build -output PsychOpenXRCore -DPTBMODULE_PsychOpenXRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include\ -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
         movefile(['..\Projects\Windows\build\PsychOpenXRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 else
@@ -498,7 +498,7 @@ else
         % installed side-by-side to the Psychtoolbox-3 folder, so that it
         % shares the same parent folder as Psychtoolbox-3.
         try
-            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib openxr_loader.lib
+            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
             movefile(['..\Projects\Windows\build\PsychOpenXRCore.' mexext], target);
         catch
             disp(psychlasterror);

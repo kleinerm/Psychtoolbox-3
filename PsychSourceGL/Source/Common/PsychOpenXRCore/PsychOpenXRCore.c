@@ -172,6 +172,10 @@ typedef struct PsychOpenXRDevice {
     double                              tPredictedOnset;                // MT mutex.
     double                              VRtimeoutSecs;
     int                                 srcTexIds[2];
+    #ifdef XR_USE_PLATFORM_WIN32
+    HDC                                 deviceContext;
+    HGLRC                               openGLContext;
+    #endif
 } PsychOpenXRDevice;
 
 // Set to TRUE if PsychOpenXRCoreShutDown() is executing:
@@ -3505,6 +3509,9 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
         .hDC = (HDC) deviceContext,
         .hGLRC = (HGLRC) openGLContext
     };
+
+    openxr->deviceContext = deviceContext;
+    openxr->openGLContext = openGLContext;
     #endif
 
     XrSessionCreateInfo sessionInfo = {
@@ -4017,6 +4024,64 @@ static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
 {
     XrResult res, outRes = XR_SUCCESS;
     int eyeIndex;
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (isMultithreaded(openxr)) {
+        typedef void (*PFNGLBINDFRAMEBUFFERPROC)(GLenum target, GLuint handle);
+        typedef void (*PFNGLCOPYIMAGESUBDATAPROC)(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth);
+        static PFNGLBINDFRAMEBUFFERPROC myglBindFramebuffer = NULL;
+        static PFNGLCOPYIMAGESUBDATAPROC myglCopyImageSubData = NULL;
+        
+        // Windows OpenXR runtimes usually use the OpenGL-DirectX/Direct3D interop extension WGL_NV_DX_interop, which
+        // has substantial limitations wrt. using the shared Direct3D resource (converted into a OpenGL GL_TEXTURE_2D
+        // texture handle) on multiple OpenGL contexts, which make sharing the texture across our OpenXR OpenGL work
+        // context and Screen's OpenGL contexts impossible, especially in the multi-threaded case. Both OculusVR and
+        // SteamVR have serious error cases!
+        // Therefore we don't let Screen's finalizedFBO's be backed by our xrSwapchain textures. Instead we keep them
+        // separate and perform a manual copy-blit here from Screen's currently bound finalizedFBO framebuffer to our
+        // interop texture.
+        HGLRC oldContext = wglGetCurrentContext();
+        if (oldContext != openxr->openGLContext)
+            wglMakeCurrent(openxr->deviceContext, openxr->openGLContext);
+
+        // If myglBindFramebuffer not yet assigned, do it now, after our OpenGL context was activated.
+        // All contexts with same pixelformat return the same function pointer - so all ours do on a
+        // single-gpu configuration like the one supported by OpenXR and this driver:
+        if (myglBindFramebuffer == NULL)
+            myglBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC) wglGetProcAddress("glBindFramebufferEXT");
+
+        if (myglCopyImageSubData == NULL)
+            myglCopyImageSubData = (PFNGLCOPYIMAGESUBDATAPROC) wglGetProcAddress("glCopyImageSubData");
+
+        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+            // Fast path supported and requested?
+            if ((openxr->srcTexIds[eyeIndex] > 0) && (myglCopyImageSubData != NULL)) {
+                // Yes. Use glCopyImageSubData(), supported since OpenGL 4.3 and before as ARB extension
+                // GL_ARB_copy_image. This is the fast path, copying textures to textures, memcpy() style:
+                GLenum target = (openxr->numMSAASamples > 1) ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+                myglCopyImageSubData(openxr->srcTexIds[eyeIndex], target, 0, 0, 0, 0,
+                                     openxr->currentTextures[eyeIndex], target, 0, 0, 0, 0,
+                                     openxr->textureWidth, openxr->textureHeight, 1);
+            }
+            else {
+                // Fallback, hopefully never needed. Can only do non-MSAA textures, higher overhead. Can
+                // be requested for test purposes by passing fbo id's instead of texture handles, but
+                // negated, ie. -fboId:
+                myglBindFramebuffer(GL_READ_FRAMEBUFFER, -1 * openxr->srcTexIds[eyeIndex]);
+                glBindTexture(GL_TEXTURE_2D, openxr->currentTextures[eyeIndex]);
+                glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, openxr->textureWidth, openxr->textureHeight);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+        }
+
+        // Restoring the old OpenGL context binding would make sense, but doing so on OculusVR
+        // just ends badly multi-threaded, due to OculusVR runtime bugs as of v1.79.0 / January 2023.
+        // The runtime does not activate its OpenXR work OpenGL context in all relevant functions, as
+        // it should, so things go sideways...
+        //if (oldContext != openxr->openGLContext)
+        //    wglMakeCurrent(openxr->deviceContext, oldContext);
+    }
+    #endif
 
     // Release new stimulus images to swapchain before xrEndFrame() submission:
     for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
