@@ -581,9 +581,11 @@ if cmd == 1
       texRight = [];
     end
 
-    % Attach them as new backing textures, detach the previously bound ones, so they
-    % are ready for submission to the VR compositor:
-    Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+    if ~hmd{handle}.needWinThreadingWa1 || ~PsychOpenXRCore('PresenterThreadEnable', hmd{handle}.handle)
+      % Attach them as new backing textures, detach the previously bound ones, so they
+      % are ready for submission to the VR compositor:
+      Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+    end
   end
 
   return;
@@ -839,9 +841,26 @@ if strcmpi(cmd, 'Start')
   end
 
   % Use of multi-threading only in stopped 3D mode?
-  if hmd{myhmd.handle}.multiThreaded == 1
+  if (hmd{myhmd.handle}.multiThreaded == 1) && PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
     % Stop thread:
+
+    % Need Windows runtimes workaround?
+    if hmd{myhmd.handle}.needWinThreadingWa1
+      texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 0);
+      if hmd{myhmd.handle}.StereoMode > 0
+        texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 1);
+      else
+        texRight = [];
+      end
+    end
+
+    % Shutdown thread, wait for it to be done:
     PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 0);
+
+    if hmd{myhmd.handle}.needWinThreadingWa1
+      % Switch back to OpenXR swapchain backing textures:
+      Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+    end
   end
 
   % Mark userscript driven tracking as active:
@@ -859,7 +878,15 @@ if strcmpi(cmd, 'Stop')
 
   % Use of multi-threading only needed in stopped 3D mode?
   if (hmd{myhmd.handle}.multiThreaded == 1) && hmd{myhmd.handle}.use3DMode && ...
-     PsychOpenXRCore('NeedLocateForProjectionLayers', hmd{myhmd.handle}.handle)
+     PsychOpenXRCore('NeedLocateForProjectionLayers', hmd{myhmd.handle}.handle) && ...
+     ~PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
+
+    % Need Windows runtimes workaround?
+    if hmd{myhmd.handle}.needWinThreadingWa1
+      % Switch back to Screen's own backing textures:
+      Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '',hmd{myhmd.handle}.oldglLeftTex, hmd{myhmd.handle}.oldglRightTex);
+    end
+
     % Start thread:
     PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 1);
   end
@@ -1046,6 +1073,44 @@ if strcmpi(cmd, 'Open')
     newhmd.steamXROpenGLWa = 1;
   else
     newhmd.steamXROpenGLWa = 0;
+  end
+
+  % Windows OpenXR runtimes need a special workaround in multi-threaded
+  % mode to deal with severe limitations of MS-Windows OpenGL-DirectX
+  % interop extension (WGL_NV_DX_interop) wrt. use of Direct3D interop
+  % textures shared across multiple OpenGL contexts. Essentially, only one
+  % OpenGL context at a time can lock and use such a texture, but we don't
+  % have any control over locking, as this is hidden inside the OpenXR
+  % runtimes (xrAcquire/Wait/ReleaseSwapchainImage implementations). With
+  % the "OpenXR OpenGL work context on one thread only at a time" - which
+  % is neccessarily the presenterThread in multi-threaded mode, makes it
+  % almost impossible to also use such a OpenXR swapchain image texture as
+  % finalizedFBO backing for Screen's stimulus rendering and post-
+  % processing --> Resource locking disasters and other monsters will come
+  % out! We work around this by keeping the XrSwapchain textures away from
+  % Screen: Instead we use Screen's own backing textures for the
+  % finalizedFBO's, only use OpenXR textures in the presenterThread, and
+  % then inside the presenterThreads releaseImages function, we copy the
+  % rendered stimulus from Screen's finalizedFBO texture to the OpenXR
+  % swapchain texture -- one extra full stimulus image copy per present!
+  % Not good for performance, but this way Screen does not have to touch
+  % OpenXR stuff, and the OpenXR thread's bound OpenXR work OpenGL context
+  % can read from the texture shared with Screen, and write to the OpenXR
+  % textures. Cfe. special code in PsychOpenXRCore's releaseTextureHandles()
+  % routine. Here we need delicate switching between the two modes of
+  % operation.
+  % So far the theory: In practice, this only fixes mayhem on the OculusVR
+  % runtime, but SteamVR still shits itself when using a secondary OpenGL
+  % userspace rendering context via Screen('Begin/EndOpenGL'). May be a
+  % related bug or not, but this is not it yet...
+  if IsWin
+    % The land of awful OpenGL-Direct3D interactions and buggy runtimes...
+    newhmd.needWinThreadingWa1 = 1;
+  else
+    % Linux, where things are better, due to use of OpenGL-Vulkan interop,
+    % or no need for interop at all, as XR compositors are written in
+    % OpenGL or Vulkan.
+    newhmd.needWinThreadingWa1 = 0;
   end
 
   % Monado OpenXR runtime does not need frequent tracking to keep
@@ -1822,6 +1887,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Last step: Start presenter thread if always-on multi-threading is requested:
   if hmd{handle}.multiThreaded == 2
+    if hmd{handle}.needWinThreadingWa1
+      Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex);
+    end
+
     PsychOpenXRCore('PresenterThreadEnable', handle, 1);
   end
 
