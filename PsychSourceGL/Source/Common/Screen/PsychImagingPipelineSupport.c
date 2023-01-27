@@ -2158,6 +2158,8 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
         // Attach the new texture as color buffer zero:
         glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, (GLenum) glTextureTarget, (GLuint) ((viewid == 0) ? leftglHandle : rightglHandle), 0);
 
+        PsychTestForGLErrors();
+
         // Check for framebuffer completeness:
         fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
         if (fborc != GL_FRAMEBUFFER_COMPLETE_EXT) {
@@ -2202,10 +2204,12 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
             }
 
             if (PsychPrefStateGet_Verbosity() > 1)
-                printf("PTB-WARNING: PsychSetPipelineExportTexture: Framebuffer viewid=%i incomplete [%s]! Reverting to old textures.\n", viewid, fbodiag);
+                printf("PTB-WARNING: PsychSetPipelineExportTexture: Framebuffer viewid=%i incomplete for new texture %i [%s]! Reverting to previous texture %i\n", viewid,
+                       (viewid == 0) ? leftglHandle : rightglHandle, fbodiag, fbo->coltexid);
 
             // Reattach old texture:
             glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, fbo->textarget, fbo->coltexid, 0);
+            PsychTestForGLErrors();
         }
         else {
             // Success: Assign new values:

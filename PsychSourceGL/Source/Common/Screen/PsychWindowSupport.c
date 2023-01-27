@@ -2097,6 +2097,9 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
         // Sync and idle the pipeline:
         glFinish();
 
+        // Make sure our main OpenGL context is active for final cleanup:
+        PsychSetGLContext(windowRecord);
+
         // Shutdown only OpenGL related parts of imaging pipeline for this windowRecord, i.e.
         // do the shutdown work which still requires a fully functional OpenGL context and
         // hook-chains:
