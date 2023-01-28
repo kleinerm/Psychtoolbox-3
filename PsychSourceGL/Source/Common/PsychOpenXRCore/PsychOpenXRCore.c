@@ -4026,7 +4026,7 @@ static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
     int eyeIndex;
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    if (isMultithreaded(openxr)) {
+    if (openxr->multiThreaded) {
         typedef void (*PFNGLBINDFRAMEBUFFERPROC)(GLenum target, GLuint handle);
         typedef void (*PFNGLCOPYIMAGESUBDATAPROC)(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth);
         static PFNGLBINDFRAMEBUFFERPROC myglBindFramebuffer = NULL;
@@ -4074,12 +4074,13 @@ static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
             }
         }
 
-        // Restoring the old OpenGL context binding would make sense, but doing so on OculusVR
+        // Restoring the old OpenGL context binding should always make sense, but doing so on OculusVR
         // just ends badly multi-threaded, due to OculusVR runtime bugs as of v1.79.0 / January 2023.
         // The runtime does not activate its OpenXR work OpenGL context in all relevant functions, as
         // it should, so things go sideways...
-        //if (oldContext != openxr->openGLContext)
-        //    wglMakeCurrent(openxr->deviceContext, oldContext);
+        // Therefore only restore the original (Screen()) OpenGL context if we are on the main thread:
+        if ((oldContext != openxr->openGLContext) && PsychIsMasterThread())
+            wglMakeCurrent(openxr->deviceContext, oldContext);
     }
     #endif
 
@@ -4527,6 +4528,15 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
     double tPredictedOnset = 0;
     XrResult result;
 
+    // Workaround for broken MS-Windows OpenXR runtimes. Manually manage the OpenGL
+    // context, ie. transition current context -> OpenXR context. The out path has
+    // a corresponding transition back:
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    HGLRC oldContext = wglGetCurrentContext();
+    if (oldContext != openxr->openGLContext)
+        wglMakeCurrent(openxr->deviceContext, openxr->openGLContext);
+    #endif
+
     // Skip if no frame present cycle is wanted:
     if (!openxr->needFrameLoop) {
         success = TRUE;
@@ -4633,6 +4643,11 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 
 present_out:
 present_fail:
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (oldContext != openxr->openGLContext)
+        wglMakeCurrent(openxr->deviceContext, oldContext);
+    #endif
 
     openxr->tPredictedOnset = tPredictedOnset;
     return(success ? tPredictedOnset : -1);
