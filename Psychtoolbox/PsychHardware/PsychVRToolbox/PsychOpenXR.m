@@ -1627,21 +1627,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:
-  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight, fboIds(1), fboIds(2)] = Screen('Hookfunction', win, 'GetDisplayBufferTextures'); %#ok<NASGU> 
-
-  % Override fboIds with backing texture handles in production use:
-  if 1
-    fboIds = [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex];
-  else
-    % This triggers the slower FBO based glCopyTexSubImage2D() path, which
-    % can only handle non-MSAA content:
-    fboIds = -fboIds; %#ok<UNRCH>
-    warning('Slow MS-Windows fallback for copies triggered, which also can not handle native OpenXR MSAA.');
-  end
+  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight, fboIds(1), fboIds(2)] = Screen('Hookfunction', win, 'GetDisplayBufferTextures'); %#ok<NASGU>
+  bufferHandles = [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, fboIds(1), fboIds(2)];
 
   % Create and start OpenXR session:
   [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, openglContext, gli.OpenGLDrawable, ...
-                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, hmd{handle}.use3DMode, hmd{handle}.multiThreaded, fboIds);
+                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, hmd{handle}.use3DMode, hmd{handle}.multiThreaded, bufferHandles);
 
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
   Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
@@ -1754,8 +1745,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Assign them to Screen(), tell Screen the true texture format, so it can adapt if needed:
   if ~hmd{handle}.multiThreaded || ~hmd{handle}.needWinThreadingWa1
     Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', texLeft, texRight, [], texChainFormat);
-  else
-    Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, [], texChainFormat);
   end
 
   % Go back to user requested clear color, now that all our buffers
