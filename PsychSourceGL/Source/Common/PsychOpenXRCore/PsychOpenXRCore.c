@@ -172,6 +172,7 @@ typedef struct PsychOpenXRDevice {
     double                              tPredictedOnset;                // MT mutex.
     double                              VRtimeoutSecs;
     int                                 srcTexIds[2];
+    int                                 srcFboIds[2];
     #ifdef XR_USE_PLATFORM_WIN32
     HDC                                 deviceContext;
     HGLRC                               openGLContext;
@@ -3398,10 +3399,11 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     "'multiThreaded' if provided as non-zero value, will use an asynchronous presenter thread "
     "to try to improve stimulus presentation scheduling. A zero value means to not use such a thread, "
     "1 on demand, and 2 permanently for the duration of the whole session.\n"
-    "'srcTexIds' Texture handles of the Screen() finalizedFBO backing textures, needed for some "
-    "workarounds for MS-Windows OpenXR runtime deficiencies in multi-threaded mode. Passing in "
-    "negative handles interprets the values as FBO handles for the corresponding FBOs, triggering "
-    "a slower fallback path that can only handle non-MSAA content, but is hopefully never needed.\n"
+    "'srcTexIds' Texture and FBO handles of the Screen() finalizedFBO backing textures and FBO's, "
+    "needed for some workarounds for MS-Windows OpenXR runtime deficiencies in multi-threaded mode. "
+    "It has the format 'srcTexIds' = [leftTex, rightTex, leftFbo, rightFbo]. The driver tries to "
+    "use an efficient texture based method, but falls back to a FBO based method if needed. This is "
+    "a slower fallback path that can only handle non-MSAA content.\n"
     "\n"
     "Returns the following information:\n"
     "'videoRefreshDuration' Video refresh duration in seconds of the XR display device if "
@@ -3481,12 +3483,14 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Get mandatory srcTexIds list:
     PsychAllocInIntegerListArg(9, kPsychArgRequired, &numTexHandles, &srcTexIds);
-    if ((numTexHandles < 1) || (numTexHandles > 2))
-        PsychErrorExitMsg(PsychError_user, "Invalid 'srcTexIds' list provided. Must be a vector with integer handles of length 1 or 2.");
+    if (numTexHandles != 4)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'srcTexIds' list provided. Must be a vector with integer handles of length 4.");
 
     // Assign for use with certain workarounds:
     openxr->srcTexIds[0] = srcTexIds[0];
     openxr->srcTexIds[1] = srcTexIds[1];
+    openxr->srcFboIds[0] = srcTexIds[2];
+    openxr->srcFboIds[1] = srcTexIds[3];
 
     // Linux X11/GLX/XLib specific setup of OpenGL interop:
     #ifdef XR_USE_PLATFORM_XLIB
@@ -4054,8 +4058,10 @@ static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
             myglCopyImageSubData = (PFNGLCOPYIMAGESUBDATAPROC) wglGetProcAddress("glCopyImageSubData");
 
         for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
-            // Fast path supported and requested?
-            if ((openxr->srcTexIds[eyeIndex] > 0) && (myglCopyImageSubData != NULL)) {
+            while (glGetError());
+
+            // Fast path supported?
+            if (myglCopyImageSubData != NULL) {
                 // Yes. Use glCopyImageSubData(), supported since OpenGL 4.3 and before as ARB extension
                 // GL_ARB_copy_image. This is the fast path, copying textures to textures, memcpy() style:
                 GLenum target = (openxr->numMSAASamples > 1) ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
@@ -4063,14 +4069,19 @@ static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
                                      openxr->currentTextures[eyeIndex], target, 0, 0, 0, 0,
                                      openxr->textureWidth, openxr->textureHeight, 1);
             }
-            else {
-                // Fallback, hopefully never needed. Can only do non-MSAA textures, higher overhead. Can
-                // be requested for test purposes by passing fbo id's instead of texture handles, but
-                // negated, ie. -fboId:
-                myglBindFramebuffer(GL_READ_FRAMEBUFFER, -1 * openxr->srcTexIds[eyeIndex]);
+
+            // Unsupported, or failed due to incompatible formats between source and target texture?
+            if ((myglCopyImageSubData == NULL) || (glGetError() == GL_INVALID_OPERATION)) {
+                // Fallback: Can only do non-MSAA textures, and has higher overhead. It gets also triggered
+                // if Screen's texture formats and OpenXR swapchains texture formats are incompatible. One
+                // culprit is SteamVR on Linux, at least with OculusVR backend, which often uses highly
+                // incompatible formats.
+                myglBindFramebuffer(GL_READ_FRAMEBUFFER, openxr->srcFboIds[eyeIndex]);
                 glBindTexture(GL_TEXTURE_2D, openxr->currentTextures[eyeIndex]);
                 glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, openxr->textureWidth, openxr->textureHeight);
                 glBindTexture(GL_TEXTURE_2D, 0);
+                myglBindFramebuffer(GL_FRAMEBUFFER, 0);
+                glFinish();
             }
         }
 
