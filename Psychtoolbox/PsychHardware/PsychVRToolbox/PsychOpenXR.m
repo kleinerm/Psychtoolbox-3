@@ -581,7 +581,7 @@ if cmd == 1
       texRight = [];
     end
 
-    if ~hmd{handle}.needWinThreadingWa1 || ~PsychOpenXRCore('PresenterThreadEnable', hmd{handle}.handle)
+    if ~hmd{handle}.multiThreaded || ~hmd{handle}.needWinThreadingWa1
       % Attach them as new backing textures, detach the previously bound ones, so they
       % are ready for submission to the VR compositor:
       Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
@@ -845,7 +845,7 @@ if strcmpi(cmd, 'Start')
     % Stop thread:
 
     % Need Windows runtimes workaround?
-    if hmd{myhmd.handle}.needWinThreadingWa1
+    if hmd{myhmd.handle}.needWinThreadingWa1 && false
       texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 0);
       if hmd{myhmd.handle}.StereoMode > 0
         texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 1);
@@ -857,7 +857,7 @@ if strcmpi(cmd, 'Start')
     % Shutdown thread, wait for it to be done:
     PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 0);
 
-    if hmd{myhmd.handle}.needWinThreadingWa1
+    if hmd{myhmd.handle}.needWinThreadingWa1 && false
       % Switch back to OpenXR swapchain backing textures:
       Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
     end
@@ -882,7 +882,7 @@ if strcmpi(cmd, 'Stop')
      ~PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
 
     % Need Windows runtimes workaround?
-    if hmd{myhmd.handle}.needWinThreadingWa1
+    if hmd{myhmd.handle}.needWinThreadingWa1 && false
       % Switch back to Screen's own backing textures:
       Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '',hmd{myhmd.handle}.oldglLeftTex, hmd{myhmd.handle}.oldglRightTex);
     end
@@ -1752,7 +1752,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Assign them to Screen(), tell Screen the true texture format, so it can adapt if needed:
-  Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', texLeft, texRight, [], texChainFormat);
+  if ~hmd{handle}.multiThreaded || ~hmd{handle}.needWinThreadingWa1
+    Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', texLeft, texRight, [], texChainFormat);
+  else
+    Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, [], texChainFormat);
+  end
 
   % Go back to user requested clear color, now that all our buffers
   % are cleared to black:
