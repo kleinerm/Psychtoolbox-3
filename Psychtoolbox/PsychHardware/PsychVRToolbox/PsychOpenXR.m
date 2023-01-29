@@ -543,6 +543,7 @@ end
 % Fast-Path function 'EndFrameRender' - Queues new frames to Compositor:
 if cmd == 0
   % Submit/Commit just unbound textures to texture swap-chains:
+  glBindFramebuffer(GL.FRAMEBUFFER, 0);
   PsychOpenXRCore('EndFrameRender', hmd{varargin{1}}.handle);
 
   if hmd{varargin{1}}.steamXROpenGLWa
@@ -550,7 +551,7 @@ if cmd == 0
     % 'EndFrameRender' aka xrReleaseSwapchainImages(), which would
     % cause OpenGL errors. The following 'GetWindowInfo' forces our
     % OpenGL context back on to resolve the problem:
-    Screen('GetWindowInfo', hmd{varargin{1}}.win);
+    Screen('GetWindowInfo', hmd{varargin{1}}.win, -1);
   end
 
   return;
