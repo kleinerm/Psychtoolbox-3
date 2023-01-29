@@ -305,7 +305,6 @@ void InitializeSynopsis(void)
     synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    synopsis[i++] = "PsychOpenXRCore('StartRender', openxrPtr [, targetTime=nextFrame]);";
     synopsis[i++] = "";
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
@@ -313,7 +312,6 @@ void InitializeSynopsis(void)
     synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded, srcTexIds);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
-    synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr);";
     synopsis[i++] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
@@ -4435,99 +4433,6 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     return(PsychError_none);
 }
 
-PsychError PSYCHOPENXRStartRender(void)
-{
-    static char useString[] = "PsychOpenXRCore('StartRender', openxrPtr [, targetTime=nextFrame]);";
-    //                                                        1            2
-    static char synopsisString[] =
-    "Mark start of a new 3D head/eye tracked render cycle for OpenXR device 'openxrPtr'.\n"
-    "The render is for an eye position and orientation at target time 'targetTime' in seconds if provided. "
-    "If 'targetTime' is omitted or zero, then the render is performed for the mid-point of the next "
-    "possible video frame of the HMD, ie. the most likely presentation time for immediately rendered images.\n";
-    static char seeAlsoString[] = "GetTrackingState EndFrameRender";
-
-    int handle;
-    PsychOpenXRDevice *openxr;
-    double predictionTime;
-
-    // All sub functions should have these two lines:
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
-
-    // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(0));
-    PsychErrorExit(PsychCapNumInputArgs(2));
-    PsychErrorExit(PsychRequireNumInputArgs(1));
-
-    // Make sure driver is initialized:
-    PsychOpenXRCheckInit(FALSE);
-
-    // Get device handle:
-    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
-    openxr = PsychGetXR(handle, FALSE);
-
-    // Get optional target time for predicted tracking state. Default to the
-    // predicted state for the predicted mid-point of the next video frame:
-    if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
-        predictionTime = 0;
-
-    // This function does not do anything meaningful yet. Just return success:
-    return(PsychError_none);
-}
-
-PsychError PSYCHOPENXREndFrameRender(void)
-{
-    static char useString[] = "PsychOpenXRCore('EndFrameRender', openxrPtr);";
-    //                                                           1
-    static char synopsisString[] =
-    "Mark end of a render cycle for a swapchain of an OpenXR HMD device 'openxrPtr'.\n\n"
-    "You usually won't call this function yourself, but Screen('Flip') will call it automatically "
-    "for you at the appropriate moment.\n";
-    static char seeAlsoString[] = "StartRender PresentFrame";
-
-    int handle;
-    PsychOpenXRDevice *openxr;
-
-    // All sub functions should have these two lines:
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
-
-    // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(0));
-    PsychErrorExit(PsychCapNumInputArgs(1));
-    PsychErrorExit(PsychRequireNumInputArgs(1));
-
-    // Make sure driver is initialized:
-    PsychOpenXRCheckInit(FALSE);
-
-    // Get device handle:
-    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
-    openxr = PsychGetXR(handle, FALSE);
-
-    if (!processXREvents(xrInstance) && (verbosity > 0))
-        printf("PsychOpenXRCore-ERROR:EndFrameRender: Failed to poll events, or session state reports error abort!");
-
-    if (verbosity > 4)
-        printf("PsychOpenXRCore-INFO:EndFrameRender: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
-               openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
-
-    // If frame loop is supposed to be inactive, skip the xrReleaseSwapchainImage calls:
-    if (!openxr->needFrameLoop)
-        return(PsychError_none);
-
-    // During active multi-threaded presentation, there's nothing to do here, as
-    // the presenterThread takes care of releasing swapchain images:
-    if (isMultithreaded(openxr))
-        return(PsychError_none);
-
-    if (!resultOK(releaseTextureHandles(openxr))) {
-        if (verbosity > 0)
-            printf("PsychOpenXRCore-ERROR: Failed to release current swapchain images: %s\n", errorString);
-    }
-
-    return(PsychError_none);
-}
-
 // Execute VR present operation, possibly committing new content to the swapchains:
 // Must be called with the presenterLock locked!
 // Called by idle presenterThread to keep VR compositor timeout handling from kicking in,
@@ -4889,7 +4794,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     "'tPredictedFutureOnset' Predicted best-case onset time for the next/future submitted frame, according to compositor.\n"
     "'tDebugFlipTime' Assumed pageflip/start-of-scanout time for the just submitted frame, only applicable to special debug setups!\n"
     "\n\n";
-    static char seeAlsoString[] = "EndFrameRender";
+    static char seeAlsoString[] = "";
 
     int rc;
     int handle;
@@ -4911,6 +4816,23 @@ PsychError PSYCHOPENXRPresentFrame(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
+
+    // Process pending OpenXR events:
+    if (!processXREvents(xrInstance) && (verbosity > 0))
+        printf("PsychOpenXRCore-ERROR:PresentFrame: Failed to poll events, or session state reports error abort!");
+
+    if (verbosity > 4)
+        printf("PsychOpenXRCore-INFO:PresentFrame: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
+               openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
+
+    // During single-threaded presentation, we need to latch the to-be-presented frame to the
+    // OpenXR runtime / swapchain, in multi-threaded mode the presenterThread will do that:
+    if (!isMultithreaded(openxr)) {
+        if (!resultOK(releaseTextureHandles(openxr))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to release current swapchain images: %s\n", errorString);
+        }
+    }
 
     // Get optional presentation target time and clamp it to be never more than
     // 10 seconds in the past, to simplify timing code in the present operations
@@ -4994,10 +4916,8 @@ PsychError PSYCHOPENXRGetEyePose(void)
     "first, or if the right eye should be rendered first, depends on the visual scanning order of the HMD "
     "display panel - is it top to bottom, left to right, or right to left? This function provides that optimized "
     "mapping. Using this function to query the parameters for render setup of an eye can provide a bit more "
-    "accuracy in rendering, at the expense of more complex usercode. If you want the more simple solution, just "
-    "omit this function and use the eyePose's provided for both eyes by the 'StartRender' method.\n";
-
-    static char seeAlsoString[] = "StartRender";
+    "accuracy in rendering, at the expense of more complex usercode.\n";
+    static char seeAlsoString[] = "";
 
     int handle, renderPass, eye;
     PsychOpenXRDevice *openxr;

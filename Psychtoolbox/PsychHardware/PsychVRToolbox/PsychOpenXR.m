@@ -540,23 +540,6 @@ if nargin < 1 || isempty(cmd)
   return;
 end
 
-% Fast-Path function 'EndFrameRender' - Queues new frames to Compositor:
-if cmd == 0
-  % Submit/Commit just unbound textures to texture swap-chains:
-  glBindFramebuffer(GL.FRAMEBUFFER, 0);
-  PsychOpenXRCore('EndFrameRender', hmd{varargin{1}}.handle);
-
-  if hmd{varargin{1}}.steamXROpenGLWa
-    % SteamVR leaves our OpenGL context in a disabled state after
-    % 'EndFrameRender' aka xrReleaseSwapchainImages(), which would
-    % cause OpenGL errors. The following 'GetWindowInfo' forces our
-    % OpenGL context back on to resolve the problem:
-    Screen('GetWindowInfo', hmd{varargin{1}}.win, -1);
-  end
-
-  return;
-end
-
 % Fast-Path function 'PresentFrame' - Present frame to VR compositor,
 % wait for present completion, inject present completion timestamps:
 if cmd == 1
@@ -565,8 +548,6 @@ if cmd == 1
 
   % Present and timestamp:
   [predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
-  %[predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
-  %predictedOnset = hmd{handle}.predictedFutureOnset; % Testing on MonadoXR shows this is the right(est) timestamp, iow. without subtraction.
 
   % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
@@ -587,6 +568,15 @@ if cmd == 1
       % are ready for submission to the VR compositor:
       Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
     end
+  end
+
+  % Workaround for SteamVR bug on Linux needed? TODO: Is this still needed?
+  if hmd{handle}.steamXROpenGLWa
+    % SteamVR leaves our OpenGL context in a disabled state after
+    % 'EndFrameRender' aka xrReleaseSwapchainImages(), which would
+    % cause OpenGL errors. The following 'GetWindowInfo' forces our
+    % OpenGL context back on to resolve the problem:
+    Screen('GetWindowInfo', hmd{handle}.win, -1);
   end
 
   return;
@@ -639,9 +629,6 @@ if strcmpi(cmd, 'PrepareRender')
     % Default: Provide predicted value for the midpoint of the next video frame:
     targetTime = [];
   end
-
-  % Mark start of a new frame render cycle for the runtime:
-  PsychOpenXRCore('StartRender', myhmd.handle, targetTime);
 
   % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
   [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime);
@@ -1776,12 +1763,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   tw = RectWidth(rect);
   th = RectHeight(rect);
 
-  % Need to call the PsychOpenXR(0) callback at each Screen('Flip') to get the imaging
-  % pipelines post-processed final output frames for left/right eye and commit them to
-  % the XR-Compositors texture swap-chain(s), then setting up new target textures as
-  % buffers for next cycle. This happens at the end of preflip operations, as part of
-  % the implicit 'DrawingFinished':
-  cmdString = sprintf('PsychOpenXR(0, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', handle);
   if winfo.StereoMode > 0
     % In debug mode, setup mirror blit from left/right eye buffers to onscreen window OpenGL backbuffer:
     if hmd{handle}.debugDisplay
@@ -1790,21 +1771,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
       copyString = sprintf('moglcore(''glBindFramebufferEXT'', 36009, 0); moglcore(''glBlitFramebufferEXT'', 0, 0, %i, %i, %i, 0, %i, %i, 16384, 9729);', width, height, tw / 2, tw, th);
       Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OpenXR debug mirror blit right', copyString);
+      Screen('Hookfunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
-
-    % In stereo mode, use right finalizer chain for right texture detach and both textures commit, as it executes last:
-    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OpenXR Stereo commit Operation', cmdString);
-    Screen('Hookfunction', win, 'Enable', 'RightFinalizerBlitChain');
   else
     % In debug mode, setup mirror blit from mono buffer to onscreen window OpenGL backbuffer:
     if hmd{handle}.debugDisplay
       copyString = sprintf('moglcore(''glBindFramebufferEXT'', 36009, 0); moglcore(''glBlitFramebufferEXT'', 0, 0, %i, %i, 0, 0, %i, %i, 16384, 9729);', width, height, tw, th);
       Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OpenXR debug mirror blit mono', copyString);
+      Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
     end
-
-    % In mono mode, use left finalizer chain for texture detach and commit, as it executes only - and therefore last:
-    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OpenXR Mono commit Operation', cmdString);
-    Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
   end
 
   % Need to call the PsychOpenXR(1) callback at each Screen('Flip') to submit the output
