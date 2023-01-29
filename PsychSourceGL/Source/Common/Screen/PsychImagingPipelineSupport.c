@@ -4086,6 +4086,10 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
                     scissor_ignore = TRUE;
                 }
             }
+            else if (hookfunc->hookfunctype == kPsychBuiltinFunc && strstr(hookfunc->idString, "Builtin:ActivateOpenGLContext")) {
+                // Enable associated GL context with no other side effects:
+                PsychSetGLContext(windowRecord);
+            }
             else {
                 // Normal hook function - Process this hook function:
                 if (!PsychPipelineExecuteHookSlot(windowRecord, hookId, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, &mysrcfbo1, &mysrcfbo2, &mydstfbo, &mynxtfbo)) {

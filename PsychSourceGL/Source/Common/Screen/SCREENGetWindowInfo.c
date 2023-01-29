@@ -143,6 +143,7 @@ static char synopsisString[] =
     "Returns a struct with miscellaneous info for the specified onscreen window.\n\n"
     "\"windowPtr\" is the handle of the onscreen window for which info should be returned.\n\n"
     "\"infoType\" If left out or set to zero, all available information for the 'windowPtr' is returned.\n\n"
+    "If set to -1, only the OpenGL context of the onscreen window is activated (Expert use only!).\n\n"
     "If set to 1, only the rasterbeam position of the associated display device is returned (or -1 if unsupported).\n\n"
     "If set to 2, information about the window server is returned (or -1 if unsupported).\n\n"
     "If set to 3, low-level window server settings are changed according to 'auxArg1'. Do *not* use, "
@@ -266,7 +267,7 @@ PsychError SCREENGetWindowInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-    if (infoType < 0 || infoType > 9) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
+    if (infoType < -1 || infoType > 9) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 
     // Windowserver info requested?
     if (infoType == 2 || infoType == 3) {
@@ -357,6 +358,12 @@ PsychError SCREENGetWindowInfo(void)
     // Get the window record:
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
     onscreen = PsychIsOnscreenWindow(windowRecord);
+
+    // Only want windows OpenGL context activated?
+    if (infoType == -1) {
+        PsychSetGLContext(windowRecord);
+        return(PsychError_none);
+    }
 
     if (onscreen) {
         // Query rasterbeam position: Will return -1 if unsupported.
