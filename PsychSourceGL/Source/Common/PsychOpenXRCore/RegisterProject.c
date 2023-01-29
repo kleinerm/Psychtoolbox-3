@@ -62,9 +62,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("GetTrackingState", &PSYCHOPENXRGetTrackingState));
     PsychErrorExit(PsychRegister("GetInputState", &PSYCHOPENXRGetInputState));
     PsychErrorExit(PsychRegister("GetFovTextureSize", &PSYCHOPENXRGetFovTextureSize));
-    PsychErrorExit(PsychRegister("StartRender", &PSYCHOPENXRStartRender));
     PsychErrorExit(PsychRegister("GetStaticRenderParameters", &PSYCHOPENXRGetStaticRenderParameters));
-    PsychErrorExit(PsychRegister("EndFrameRender", &PSYCHOPENXREndFrameRender));
     PsychErrorExit(PsychRegister("PresentFrame", &PSYCHOPENXRPresentFrame));
     PsychErrorExit(PsychRegister("Verbosity", &PSYCHOPENXRVerbosity));
     PsychErrorExit(PsychRegister("TrackingOriginType", &PSYCHOPENXRTrackingOriginType));
