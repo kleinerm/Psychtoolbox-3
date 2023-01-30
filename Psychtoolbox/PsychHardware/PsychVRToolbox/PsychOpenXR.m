@@ -1840,7 +1840,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % SteamVR needs the extra 'Controllers' call below, or things will continue
     % to fail.
     for i = 1:3
-      Screen('Flip', win);
+      % Loop until we get a true flip through. This will spin-wait if HMD
+      % is not detecting users presence, e.g., a VR HMD's proximity sensor
+      % does not report "HMD firmly attached to users head". We break the
+      % loop, once the user is ready.
+      while Screen('Flip', win) == 0; end
       hmd{handle}.controllerTypes = PsychOpenXRCore('Controllers', hmd{handle}.handle);
       WaitSecs(0.5);
     end
