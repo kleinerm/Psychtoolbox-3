@@ -1091,7 +1091,9 @@ if strcmpi(cmd, 'Open')
   % runtime, but SteamVR still shits itself when using a secondary OpenGL
   % userspace rendering context via Screen('Begin/EndOpenGL'). May be a
   % related bug or not, but this is not it yet...
-  if IsWin
+  %
+  % Therefore use the workaround on OculusVR for now, but not on SteamVR:
+  if IsWin && strcmp(runtimeName, 'Oculus')
     % The land of awful OpenGL-Direct3D interactions and buggy runtimes...
     newhmd.needWinThreadingWa1 = 1;
   else
