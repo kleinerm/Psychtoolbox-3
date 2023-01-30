@@ -1656,12 +1656,14 @@ static psych_bool processXREvents(XrInstance pollInstance)
                                 .primaryViewConfigurationType = openxr->viewType
                             };
 
+                            PsychLockMutex(&(openxr->presenterLock));
                             if (!resultOK(xrBeginSession(openxr->hmd, &sessionBeginInfo))) {
                                 // Failed - Error return:
                                 if (verbosity > 0)
                                     printf("PsychOpenXRCore-ERROR: Failed to xrBeginSession for session %p of instance %p: %s\n", openxr->hmd, pollInstance, errorString);
 
                                 // Failure return code:
+                                PsychUnlockMutex(&(openxr->presenterLock));
                                 return(FALSE);
                             }
 
@@ -1670,8 +1672,11 @@ static psych_bool processXREvents(XrInstance pollInstance)
                             openxr->sessionActive = TRUE;
                             openxr->needFrameLoop = TRUE;
 
+                            PsychUnlockMutex(&(openxr->presenterLock));
+
                             // PresentExecute() the first time on the main thread to sync us up:
-                            PresentExecute(openxr, TRUE);
+                            if (!isMultithreaded(openxr))
+                                PresentExecute(openxr, TRUE);
                         }
 
                         break;
@@ -1684,6 +1689,9 @@ static psych_bool processXREvents(XrInstance pollInstance)
                         // Active?
                         if (openxr->sessionActive) {
                             // End session:
+                            psych_bool thread_was_active = isMultithreaded(openxr);
+                            PsychOpenXRStopPresenterThread(openxr);
+                            
                             if (!resultOK(xrEndSession(openxr->hmd))) {
                                 // Failed - Error return:
                                 if (verbosity > 0)
@@ -1696,6 +1704,9 @@ static psych_bool processXREvents(XrInstance pollInstance)
                             // Success. Session is now inactive, frame presentation can stop:
                             openxr->sessionActive = FALSE;
                             openxr->needFrameLoop = FALSE;
+
+                            if (thread_was_active)
+                                PsychOpenXRStartPresenterThread(openxr);
                         }
 
                         break;
@@ -1967,7 +1978,7 @@ void PsychOpenXRClose(int handle)
             if (verbosity > 4)
                 printf("PsychOpenXRCore-DEBUG: xrRequestExitSession().\n");
 
-            if (!resultOK(xrRequestExitSession(openxr->hmd))) {
+            if (openxr->sessionActive && !resultOK(xrRequestExitSession(openxr->hmd))) {
                 if (verbosity > 0)
                     printf("PsychOpenXRCore-ERROR: Failed to xrRequestExitSession(): %s\n", errorString);
             }
@@ -1975,9 +1986,9 @@ void PsychOpenXRClose(int handle)
             if (verbosity > 4)
                 printf("PsychOpenXRCore-DEBUG: Waiting for session shutdown to complete.\n");
 
-            while (!openxr->userExit && !openxr->lossPending) {
+            while (!openxr->userExit && !openxr->lossPending && openxr->sessionActive) {
                 if (!processXREvents(xrInstance) && (verbosity > 0))
-                    printf("PsychOpenXRCore-ERROR:Close: Failed to poll events!");
+                    printf("PsychOpenXRCore-ERROR:Close: Failed to poll events II!\n");
             }
 
             if (verbosity > 4)
@@ -3676,12 +3687,12 @@ PsychError PSYCHOPENXRControllers(void)
 
     // Need sync actions to make sure proper interaction profiles are bound:
     if (!processXREvents(xrInstance) && (verbosity > 0))
-        printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!");
+        printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!\n");
 
     syncXRActions(openxr);
 
     if (!processXREvents(xrInstance) && (verbosity > 0))
-        printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!");
+        printf("PsychOpenXRCore-ERROR:Controllers: Failed to poll events, or session state reports error abort!\n");
 
     // Return controllerTypes mask:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, getActiveControllers(xrInstance, openxr));
@@ -4588,6 +4599,12 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
     psych_bool success = TRUE;
     double targetPresentTime = openxr->targetPresentTime;
 
+    if (!openxr->sessionActive) {
+        PsychUnlockMutex(&(openxr->presenterLock));
+        PsychYieldIntervalSeconds(0.5 * openxr->frameDuration);
+        goto presentcycle_fail;
+    }
+
     // Validate requested presentation time targetPresentTime. If it is valid, convert from Psychtoolbox GetSecs time
     // to absolute XrTime targetDisplayTime. Otherwise select next possible predicted display time:
     XrTime targetDisplayTime = (targetPresentTime < DBL_MAX) ? PsychTimeToXrTime(targetPresentTime) : openxr->predictedDisplayTime;
@@ -4830,58 +4847,64 @@ PsychError PSYCHOPENXRPresentFrame(void)
 
     // Process pending OpenXR events:
     if (!processXREvents(xrInstance) && (verbosity > 0))
-        printf("PsychOpenXRCore-ERROR:PresentFrame: Failed to poll events, or session state reports error abort!");
+        printf("PsychOpenXRCore-ERROR:PresentFrame: Failed to poll events, or session state reports error abort!\n");
 
     if (verbosity > 4)
         printf("PsychOpenXRCore-INFO:PresentFrame: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
                openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
 
-    // During single-threaded presentation, we need to latch the to-be-presented frame to the
-    // OpenXR runtime / swapchain, in multi-threaded mode the presenterThread will do that:
-    if (!isMultithreaded(openxr)) {
-        if (!resultOK(releaseTextureHandles(openxr))) {
-            if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: Failed to release current swapchain images: %s\n", errorString);
+    if (openxr->needFrameLoop) {
+        // During single-threaded presentation, we need to latch the to-be-presented frame to the
+        // OpenXR runtime / swapchain, in multi-threaded mode the presenterThread will do that:
+        if (!isMultithreaded(openxr)) {
+            if (!resultOK(releaseTextureHandles(openxr))) {
+                if (verbosity > 0)
+                    printf("PsychOpenXRCore-ERROR: Failed to release current swapchain images: %s\n", errorString);
+            }
+        }
+    
+        // Get optional presentation target time and clamp it to be never more than
+        // 10 seconds in the past, to simplify timing code in the present operations
+        // and thread:
+        tWhen = 0;
+        PsychCopyInDoubleArg(2, kPsychArgOptional, &tWhen);
+        tNow = PsychGetAdjustedPrecisionTimerSeconds(NULL);
+        if (tWhen < tNow - 10.0)
+            tWhen = tNow - 10.0;
+
+        if (isMultithreaded(openxr)) {
+            // Background parallel presenter thread will latch our new rendered frame at the
+            // proper time to target visual onset at targetPresentTime, so lock the lock and
+            // latch the time:
+            PsychLockMutex(&(openxr->presenterLock));
+            openxr->targetPresentTime = tWhen;
+
+            // Wait for signal of present completion:
+            while (openxr->targetPresentTime != DBL_MAX)
+                if ((rc = PsychWaitCondition(&(openxr->presentedSignal), &(openxr->presenterLock)))) {
+                    printf("PsychOpenXRCore-ERROR: Waitcondition on presentedSignal trigger failed  [%s].\n", strerror(rc));
+                }
+
+            // Retrieve estimated stimulus onset time:
+            tPredictedOnset = openxr->tPredictedOnset;
+
+            // Retrieve best-guess future stimulus onset time for future frame / Flip:
+            tPredictedFutureOnset = XrTimeToPsychTime(openxr->predictedDisplayTime);
+
+            PsychUnlockMutex(&(openxr->presenterLock));
+        }
+        else {
+            // Define targetPresentTime and execute present on this main thread:
+            openxr->targetPresentTime = tWhen;
+            tPredictedOnset = PresentExecute(openxr, FALSE);
+            tPredictedFutureOnset = XrTimeToPsychTime(openxr->predictedDisplayTime);
+            // Invalidate targetPresentTime after present:
+            openxr->targetPresentTime = DBL_MAX;
         }
     }
-
-    // Get optional presentation target time and clamp it to be never more than
-    // 10 seconds in the past, to simplify timing code in the present operations
-    // and thread:
-    tWhen = 0;
-    PsychCopyInDoubleArg(2, kPsychArgOptional, &tWhen);
-    tNow = PsychGetAdjustedPrecisionTimerSeconds(NULL);
-    if (tWhen < tNow - 10.0)
-        tWhen = tNow - 10.0;
-
-    if (isMultithreaded(openxr)) {
-        // Background parallel presenter thread will latch our new rendered frame at the
-        // proper time to target visual onset at targetPresentTime, so lock the lock and
-        // latch the time:
-        PsychLockMutex(&(openxr->presenterLock));
-        openxr->targetPresentTime = tWhen;
-
-        // Wait for signal of present completion:
-        while (openxr->targetPresentTime != DBL_MAX)
-            if ((rc = PsychWaitCondition(&(openxr->presentedSignal), &(openxr->presenterLock)))) {
-                printf("PsychOpenXRCore-ERROR: Waitcondition on presentedSignal trigger failed  [%s].\n", strerror(rc));
-            }
-
-        // Retrieve estimated stimulus onset time:
-        tPredictedOnset = openxr->tPredictedOnset;
-
-        // Retrieve best-guess future stimulus onset time for future frame / Flip:
-        tPredictedFutureOnset = XrTimeToPsychTime(openxr->predictedDisplayTime);
-
-        PsychUnlockMutex(&(openxr->presenterLock));
-    }
     else {
-        // Define targetPresentTime and execute present on this main thread:
-        openxr->targetPresentTime = tWhen;
-        tPredictedOnset = PresentExecute(openxr, FALSE);
-        tPredictedFutureOnset = XrTimeToPsychTime(openxr->predictedDisplayTime);
-        // Invalidate targetPresentTime after present:
-        openxr->targetPresentTime = DBL_MAX;
+        tPredictedOnset = 0;
+        tPredictedFutureOnset = 0;
     }
 
     if ((tPredictedOnset < 0) && (verbosity > 0))
