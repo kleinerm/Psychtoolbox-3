@@ -1,5 +1,5 @@
-function res = VRInputStuffTest(withHapticFeedback)
-% VRInputStuffTest([withHapticFeedback=0]) - Test input functionality related to VR devices.
+function res = VRInputStuffTest(withHapticFeedback, withMTStressTest)
+% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0]) - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
 % input. After any key press or controller button press, reports live state
@@ -11,6 +11,13 @@ function res = VRInputStuffTest(withHapticFeedback)
 % frequency rumble on right or left controller. Haptic feedback is not
 % exercised by default, as it empties the controllers batteries relatively
 % fast.
+%
+% The optional parameter 'withMTStressTest' if set to 1 will test
+% single-threading to multi-threading switching on the fly. Multi-threaded
+% mode is less efficient, more prone to skipped deadlines or lower
+% animation rates, but stabilizes visuals in 'Stop'ed 3D mode, and is
+% needed on most OpenXR runtimes to get even a semblance of correct frame
+% presentation timing and timestamping.
 %
 % After a keypress (or Enter/Back button press on the controller),
 % visualizes tracked hand position and orientation of hand controllers and
@@ -31,6 +38,11 @@ global GL;
 % No testing of haptic feedback by default, as it sucks up batteries a lot:
 if nargin < 1 || isempty(withHapticFeedback)
     withHapticFeedback = 0;
+end
+
+% No single/multi-threading stress test by default:
+if nargin < 2 || isempty(withMTStressTest)
+    withMTStressTest = 0;
 end
 
 canary = onCleanup(@sca);
@@ -677,6 +689,17 @@ if hmdinfo.handTrackingSupported
 
     if ~isempty(pulseEnd) && pulseEnd > secs
         DrawFormattedText(win, sprintf('t = %f secs.', pulseEnd - secs), 'center', 'center');
+    end
+
+    % MT->ST->MT->... switching stress test, if enabled:
+    if withMTStressTest
+        if mod(fcount, 360) == 0
+            PsychVRHMD('Stop', hmd);
+        end
+
+        if mod(fcount, 360) == 180
+            PsychVRHMD('Start', hmd);
+        end
     end
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,

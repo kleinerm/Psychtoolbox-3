@@ -1616,7 +1616,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:
   [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight, fboIds(1), fboIds(2)] = Screen('Hookfunction', win, 'GetDisplayBufferTextures'); %#ok<NASGU>
-  bufferHandles = [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, fboIds(1), fboIds(2)];
+
+  % The MS-Windows workaround needs this extra copy operation:
+  if hmd{handle}.multiThreaded && hmd{handle}.needWinThreadingWa1
+    bufferHandles = [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, fboIds(1), fboIds(2)];
+  else
+    bufferHandles = [];
+  end
 
   % Create and start OpenXR session:
   [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, openglContext, gli.OpenGLDrawable, ...
