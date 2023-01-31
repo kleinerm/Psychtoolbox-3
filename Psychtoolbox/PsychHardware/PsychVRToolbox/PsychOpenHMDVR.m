@@ -135,8 +135,10 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % 'FastResponse' = Try to switch images with minimal delay and fast
 % pixel switching time. This does nothing on this driver at the moment.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. This does nothing on this driver at the moment.
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+% Not really needed, as this driver always uses high precision timing and
+% timestamping, at least if you present to your HMD via a dedicated
+% X-Screen on a multi-X-Screen setup under Linux X11.
 %
 % 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
 % poses at scanout time. This mostly only makes sense for head-tracked 3D
@@ -1226,14 +1228,6 @@ if strcmpi(cmd, 'SetBasicQuality')
     PsychOpenHMDVRCore('SetLowPersistence', handle, 1);
   else
     PsychOpenHMDVRCore('SetLowPersistence', handle, 0);
-  end
-
-  % Dynamic prediction enables advanced head tracking prediction and eye timewarping:
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport')) || ...
-     ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
-    %PsychOpenHMDVRCore('SetDynamicPrediction', handle, 1);
-  else
-    %PsychOpenHMDVRCore('SetDynamicPrediction', handle, 0);
   end
 
   return;
