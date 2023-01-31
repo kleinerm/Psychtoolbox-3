@@ -83,10 +83,81 @@ function varargout = PsychVRHMD(cmd, varargin)
 % with the new Oculus v1.11+ runtime, this is always active, so 'FastResponse'
 % is redundant on such panels and drivers.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. On the Rift DK1 this does nothing. On the DK2
-% it enables dynamic prediction and timing measurements with the Rifts internal
-% latency tester. This does nothing anymore on Rift CV1.
+% 'NoTimingSupport' = Signal no need at all for high precision and reliability
+% timing for presentation. If you don't need any timing precision or
+% reliability in your script, specifying this keyword may allow the driver
+% to optimize for higher performance. See 'TimingSupport' explanation right
+% below:
+%
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+% Please note that generally only the special Linux VR/AR/MR/XR drivers are
+% currently capable of robust, reliable, trustworthy and accurate timing,
+% and sometimes even they need special configuration or have some caveats,
+% specifically:
+%
+% - The original PsychOculusVR driver has perfect timing, but only works on
+%   Linux/X11 with a separate X-Screen for the HMD, and only works with the
+%   original Oculus Rift DK1 and DK2 VR HMDs.
+%
+% - The PsychOpenHMDVR driver has perfect timing, but only works on
+%   Linux/X11 with a separate X-Screen for the HMD, and only works with the
+%   subset of VR HMDs supported by OpenHMD, and often various caveats
+%   apply for those HMDs, like imperfect optical undistortion, or lack of
+%   full 6 DoF head tracking - Often only 3 DoF orientation tracking is
+%   supported.
+%
+% - The PsychOculusVR1 driver for the Oculus VR 1.x runtime on MS-Windows
+%   has essentially unreliable/not trustworthy timing and timestamping.
+%
+% - The timing properties of the PsychOpenXR driver are highly dependent on
+%   the OpenXR runtime at use. Citing from the 'help PsychOpenXR':
+%
+%     The current OpenXR specification, as of OpenXR version v1.0.26 from January 2023,
+%     does not provide any means of reliable, trustworthy, accurate timestamping of
+%     presentation, and all so far tested proprietary OpenXR runtime implementations
+%     have severely broken and defective timing support. Only the open-source
+%     Monado OpenXR runtime on Linux provides a reliable and accurate timing
+%     implementation. Therefore this driver has to use a workaround on non-Monado
+%     OpenXR runtimes to achieve at least ok'ish timing if you require it, and
+%     that workaround involves multi-threaded operation. This multi-threading
+%     in turn can severely degrade performance, possibly reducing achievable
+%     presentation framerates to (less than) half of the maximum video refresh
+%     rate of your HMD! For this reason you should only request 'TimingSupport'
+%     on non-Monado if you really need it and be willing to pay the performance
+%     price.
+%     
+%     If you omit this keyword, the driver will try to guess if you need
+%     precise presentation timing for your session or not. As long as you only
+%     call Screen('Flip', window) or Screen('Flip', window, [], ...), ie. don't
+%     specify a requested stimulus onset time, the driver assumes you don't
+%     need precise timing, just presenting as soon as possible after a
+%     Screen('Flip'), and also that you don't care about accurate or trustworthy
+%     or correct presentation timestamps to be returned by Screen('Flip'). Once
+%     you specify a target onset time tWhen, ie. via calling 'Flip' as
+%     Screen('Flip', window, tWhen [, ...]), the driver assumes from then on
+%     and for the rest of the session that you want reasonably accurate
+%     presentation timing. It will then switch to multi-threaded operation with
+%     better timing, but potentially drastically reduced performance.
+%
+%     'TimestampingSupport' = Use high precision and reliability timestamping for presentation.
+%     'NoTimestampingSupport' = Do not need high precision and reliability timestamping for presentation.
+%     Those keywords let you specify if you definitely need or don't need
+%     trustworthy, reliable, robust, precise presentation timestamps, ie. the
+%     'timestamp' return values of timestamp = Screen('Flip') should be high
+%     quality, or if you don't care. If you omit both keywords, the driver will
+%     try to guess what you wanted. On most current OpenXR runtimes, use of
+%     timestamping will imply multi-threaded operation with the performance
+%     impacts and problems mentioned above in the section about 'TimingSupport',
+%     that is why it is advisable to explicitely state your needs, to allow the
+%     driver to optimize for the best precision/reliability/performance
+%     tradeoff on all the runtimes where such a tradeoff is required.
+%     Notable exceptions are the Linux PsychOculus and PsychOpenHMDVR
+%     drivers when used on separate X-Screens for their HMDs, and some
+%     configurations of the Monado OpenXR runtime on Linux, where
+%     timestamps are trustworthy without performance tradeoffs or other
+%     known problems. The PsychOculusVR1 driver on MS-Windows always
+%     provides untrustworthy timestamps, no matter what.
+%
 %
 % 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
 % poses at scanout time. This mostly only makes sense for head-tracked 3D
