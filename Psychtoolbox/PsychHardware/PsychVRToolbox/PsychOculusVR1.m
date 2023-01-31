@@ -89,10 +89,9 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % different and asymmetric fields of view for each eye, e.g., by selecting proper 3D
 % projection matrices for each eye.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. On the Rift DK1 this does nothing. On the DK2
-% it enables dynamic prediction and timing measurements with the Rifts internal
-% latency tester.
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+% Useless, as this driver always has presentation timing that has to be considered
+% *not trustworthy*, unreliable and unprecise!
 %
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
@@ -1449,15 +1448,6 @@ if strcmpi(cmd, 'SetBasicQuality')
   basicQuality = varargin{2};
   basicQuality = min(max(basicQuality, 0), 1);
   hmd{handle}.basicQuality = basicQuality;
-
-  % TODO FIXME: Any special handling for TimingSupport or Tracked3DVR ?
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport')) || ...
-     ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
-    %    PsychOculusVRCore1('SetDynamicPrediction', handle, 1);
-  else
-    %    PsychOculusVRCore1('SetDynamicPrediction', handle, 0);
-  end
-
   return;
 end
 
