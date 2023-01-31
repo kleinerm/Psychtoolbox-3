@@ -69,10 +69,12 @@ function varargout = PsychOculusVR(cmd, varargin)
 % on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
 % relatively expensive post processing step.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. On the Rift DK1 this does nothing. On the DK2
-% it enables dynamic prediction and timing measurements with the Rifts internal
-% latency tester.
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+% This driver always uses high precision timing and timestamping, at least if you
+% present to your Rift DK1/DK2 HMD via a dedicated X-Screen on a multi-X-Screen
+% setup under Linux X11. However, specifying it will enable some additional
+% optimizations on the Oculus Rift DK2, taking advantage of some builtin
+% hardware features.
 %
 % 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
 % poses at scanout time. This mostly only makes sense for head-tracked 3D
