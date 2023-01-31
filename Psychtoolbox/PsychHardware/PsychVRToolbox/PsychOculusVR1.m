@@ -1,7 +1,7 @@
 function varargout = PsychOculusVR1(cmd, varargin)
 % PsychOculusVR1 - A high level driver for Oculus VR hardware using the Version 1.16+ runtime.
 %
-% Copyright (c) 2018-2021 Mario Kleiner. Licensed under the MIT license.
+% Copyright (c) 2018-2023 Mario Kleiner. Licensed under the MIT license.
 % The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is
 % “Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”
 % A copy of the Oculus SDK license, its terms of use and thereby redistribution
@@ -1691,13 +1691,6 @@ if strcmpi(cmd, 'GetEyeShiftVector')
   end
 
   return;
-end
-
-if strcmpi(cmd, 'Start') || strcmpi(cmd, 'Stop')
-    % Make sure the 'Start' and 'Stop' commands, which are mandatory to support
-    % for backwards compatibility (see PsychVRHMD), do absolutely nothing in this
-    % driver.
-    return;
 end
 
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')
