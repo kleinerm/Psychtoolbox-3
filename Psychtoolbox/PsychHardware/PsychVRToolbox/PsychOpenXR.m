@@ -70,10 +70,102 @@ function varargout = PsychOpenXR(cmd, varargin)
 % requested from Psychtoolbox and the compositor, ie., a roughly gamma 2.2 8 bpc
 % format is used.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. On the Rift DK1 this does nothing. On the DK2
-% it enables dynamic prediction and timing measurements with the Rifts internal
-% latency tester.
+% 'ForbidMultiThreading' = Forbid any use of multi-threading for visual
+% presentation by the driver for any means or purposes! This is meant to
+% get your setup going in case of severe bugs in proprietary OpenXR
+% runtimes that can cause instability, hangs, crashes or other malfunctions
+% when multi-threading is used. Or if one wants to squeeze out every last
+% bit of performance, no matter the consequences ("Fast and furious mode").
+% On many proprietary OpenXR runtimes, this will prevent any reliable,
+% trustworthy, robust or accurate presentation timing or timestamping, and
+% may cause severe visual glitches under some modes of operation. See the
+% following keywords below for descriptions of various more nuanced
+% approaches to multi-threading vs. single-threading to choose fine-tuned
+% tradeoffs between performance, stability and correctness for your
+% specific experimental needs.
+%
+% 'Use2DViewsWhen3DStopped' = Ask the driver to switch to use of the same 2D views
+% and geometry during the '3DVR' or 'Tracked3DVR' basicTask as would be used
+% for pure 2D display in basicTask 'Stereoscopic' whenever the user script
+% signals it does not execute a tight tracking and animation loop, ie.
+% whenever the script calls PsychVRHMD('Stop', hmd). Switch back to regular
+% 3D projected geometry and views after a consecutive PsychVRHMD('Start', hmd).
+% This is useful if have phases in your experiment session when you want to
+% display non-tracked content, e.g., instructions or feedback to the
+% subject between trials, fixation crosses, etc., or pause script execution
+% for more than a few milliseconds, but still want the visual display to
+% stay stable. If this keyword is omitted, depending on the specific OpenXR
+% runtime in use, the driver will stabilize the regular 3D projected
+% display by use of multi-threaded operation when calling PsychVRHMD('Stop', hmd),
+% and resume single-threaded operation after PsychVRHMD('Start', hmd). This
+% higher overhead mode of operation via multi-threading will possibly have
+% degraded performance, and not only between the 'Stop' and 'Start' calls,
+% but throughout the whole session! This is why it can be advisable to
+% evaulate if use of the 'Use2DViewsWhen3DStopped' keyword is a better
+% solution for your specific experiment paradigm. The switching between 3D
+% projected view and standard 2D stereoscopic view will change the image
+% though, which may disorient the subject for a moment while the subjects
+% eyes need to adapt their accomodation, vergence and focus point.
+%
+% 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
+% care about potential significant visual presentation glitches happening if
+% your script does not run a continuous animation with high framerate, e.g.,
+% after calling PsychVRHMD('Stop', hmd), pausing, etc. This makes sense if
+% you don't care, or if your script does not ever pause or slow down during
+% a session or at least an ongoing trial. This will avoid multi-threading
+% for glitch prevention in such cases, possibly allowing to side-step
+% certain bugs in proprietary OpenXR runtimes, or to squeeze out higher
+% steady-state performance.
+%
+% 'NoTimingSupport' = Signal no need at all for high precision and reliability
+% timing for presentation. If you don't need any timing precision or
+% reliability in your script, specifying this keyword may allow the driver
+% to optimize for higher performance. See 'TimingSupport' explanation right
+% below:
+%
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+%
+% The current OpenXR specification, as of OpenXR version v1.0.26 from January 2023,
+% does not provide any means of reliable, trustworthy, accurate timestamping of
+% presentation, and all so far tested proprietary OpenXR runtime implementations
+% have severely broken and defective timing support. Only the open-source
+% Monado OpenXR runtime on Linux provides a reliable and accurate timing
+% implementation. Therefore this driver has to use a workaround on non-Monado
+% OpenXR runtimes to achieve at least ok'ish timing if you require it, and
+% that workaround involves multi-threaded operation. This multi-threading
+% in turn can severely degrade performance, possibly reducing achievable
+% presentation framerates to (less than) half of the maximum video refresh
+% rate of your HMD! For this reason you should only request 'TimingSupport'
+% on non-Monado if you really need it and be willing to pay the performance
+% price.
+%
+% If you omit this keyword, the driver will try to guess if you need
+% precise presentation timing for your session or not. As long as you only
+% call Screen('Flip', window) or Screen('Flip', window, [], ...), ie. don't
+% specify a requested stimulus onset time, the driver assumes you don't
+% need precise timing, just presenting as soon as possible after a
+% Screen('Flip'), and also that you don't care about accurate or trustworthy
+% or correct presentation timestamps to be returned by Screen('Flip'). Once
+% you specify a target onset time tWhen, ie. via calling 'Flip' as
+% Screen('Flip', window, tWhen [, ...]), the driver assumes from then on
+% and for the rest of the session that you want reasonably accurate
+% presentation timing. It will then switch to multi-threaded operation with
+% better timing, but potentially drastically reduced performance.
+%
+% 'TimestampingSupport' = Use high precision and reliability timestamping for presentation.
+%
+% 'NoTimestampingSupport' = Do not need high precision and reliability timestamping for presentation.
+% Those keywords let you specify if you definitely need or don't need
+% trustworthy, reliable, robust, precise presentation timestamps, ie. the
+% 'timestamp' return values of timestamp = Screen('Flip') should be high
+% quality, or if you don't care. If you omit both keywords, the driver will
+% try to guess what you wanted. On most current OpenXR runtimes, use of
+% timestamping will imply multi-threaded operation with the performance
+% impacts and problems mentioned above in the section about 'TimingSupport',
+% that is why it is advisable to explicitely state your needs, to allow the
+% driver to optimize for the best precision/reliability/performance
+% tradeoff on all the runtimes where such a tradeoff is required.
+%
 %
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
@@ -546,6 +638,29 @@ if cmd == 1
   handle = varargin{1};
   tWhen = varargin{2};
 
+  % Actual stimulus onset target time provided by user-script? And we know
+  % that we need MT for proper timing, but this is the first time we get
+  % evidence we actually need proper timing?
+  if (tWhen ~= 0) && (hmd{handle}.multiThreaded == 1) && ...
+     (hmd{handle}.needMTForTiming == -1 || hmd{handle}.needMTForTimestamping == -1)
+    % Yes! Let's define the remainder of the session as needing full MT,
+    % and enable full MT:
+    if hmd{handle}.needMTForTiming == -1
+      hmd{handle}.needMTForTiming = 1;
+    end
+
+    if hmd{handle}.needMTForTimestamping == -1
+      hmd{handle}.needMTForTimestamping = 1;
+    end
+
+    hmd{handle}.multiThreaded = 2;
+    if ~PsychOpenXRCore('PresenterThreadEnable', hmd{handle}.handle)
+      PsychOpenXRCore('PresenterThreadEnable', hmd{handle}.handle, 1);
+    end
+    fprintf('PsychOpenXR-INFO: Need for proper timing and timestamping detected. Enabling multi-threading for remainder of session\n');
+    fprintf('PsychOpenXR-INFO: to facilitate this. Performance will be reduced in exchange for better timing/timestamping.\n');
+  end
+
   % Present and timestamp:
   [predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
 
@@ -828,7 +943,12 @@ if strcmpi(cmd, 'Start')
     error('PsychOpenXR:Start: Specified handle does not correspond to an open HMD!');
   end
 
-  % Use of multi-threading only in stopped 3D mode?
+  if hmd{myhmd.handle}.switchTo2DViewsOnStop
+      % Switch back to 3D projectionLayers, now that tracking is started in 3D mode:
+      PsychOpenXRCore('ViewType', hmd{myhmd.handle}.handle, 1);
+  end
+
+  % Use of multi-threading only in stopped 3D mode? Then we need to stop thread now.
   if (hmd{myhmd.handle}.multiThreaded == 1) && PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
     % Stop thread:
 
@@ -864,9 +984,18 @@ if strcmpi(cmd, 'Stop')
     error('PsychOpenXR:Stop: Specified handle does not correspond to an open HMD!');
   end
 
-  % Use of multi-threading only needed in stopped 3D mode?
+  % Use 2D quad views in 'Stop' mode?
+  if hmd{myhmd.handle}.switchTo2DViewsOnStop
+      % Switch to 2D quadView layers, now that tracking is stopped in 3D mode:
+      PsychOpenXRCore('ViewType', hmd{myhmd.handle}.handle, 0);
+  end
+
+  % Use of multi-threading needed in stopped 3D mode? Either if we use
+  % projection layers and they need MT updates, or if we switch to quad
+  % views but they also need MT updates.
   if (hmd{myhmd.handle}.multiThreaded == 1) && hmd{myhmd.handle}.use3DMode && ...
-     PsychOpenXRCore('NeedLocateForProjectionLayers', hmd{myhmd.handle}.handle) && ...
+     ((PsychOpenXRCore('NeedLocateForProjectionLayers', hmd{myhmd.handle}.handle) && ~hmd{myhmd.handle}.switchTo2DViewsOnStop) || ...
+      (hmd{myhmd.handle}.switchTo2DViewsOnStop && hmd{myhmd.handle}.needMTFor2DQuadViews)) && ...
      ~PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
 
     % Need Windows runtimes workaround?
@@ -1051,8 +1180,11 @@ if strcmpi(cmd, 'Open')
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
 
-  % Default to multiThreaded off:
-  newhmd.multiThreaded = 0;
+  % Default to multiThreaded allowed:
+  newhmd.multiThreaded = 1;
+
+  % No need for MT for pure 2D mode either, aka use of quadViews, by default:
+  newhmd.needMTFor2DQuadViews = 0;
 
   % SteamVR OpenXR runtime needs a workaround for not properly
   % managing its OpenGL context sometimes. So far confirmed to be
@@ -1087,6 +1219,7 @@ if strcmpi(cmd, 'Open')
   % textures. Cfe. special code in PsychOpenXRCore's releaseTextureHandles()
   % routine. Here we need delicate switching between the two modes of
   % operation.
+  %
   % So far the theory: In practice, this only fixes mayhem on the OculusVR
   % runtime, but SteamVR still shits itself when using a secondary OpenGL
   % userspace rendering context via Screen('Begin/EndOpenGL'). May be a
@@ -1098,8 +1231,9 @@ if strcmpi(cmd, 'Open')
     newhmd.needWinThreadingWa1 = 1;
   else
     % Linux, where things are better, due to use of OpenGL-Vulkan interop,
-    % or no need for interop at all, as XR compositors are written in
-    % OpenGL or Vulkan.
+    % or no need for interop at all, if XR compositors are written in
+    % OpenGL. Also for SteamVR on Windows, where the workaround does not
+    % help at all:
     newhmd.needWinThreadingWa1 = 0;
   end
 
@@ -1110,11 +1244,28 @@ if strcmpi(cmd, 'Open')
     % millisecond from a multi-threaded / not client-tracked loop and gives
     % extra visual stability:
     PsychOpenXRCore('NeedLocateForProjectionLayers', handle, 0);
+
+    % Also no need for MT for timing (bravo Monado, you are great!):
+    newhmd.needMTForTiming = 0;
+
+    % TODO: Need MT for timestamping if we can't use tracy/metrics hacks,
+    % or a proper to-be-drafted-and-prototyped Monado specifc XR timestamping
+    % extension:
+    newhmd.needMTForTimestamping = -1;
   else
     % Less advanced: Need tracking update, and multi-threading if the
     % client does not use active fast tracking:
     PsychOpenXRCore('NeedLocateForProjectionLayers', handle, 1);
-    newhmd.multiThreaded = 1;
+
+    % Also need multi-threading MT for timing or timestamping:
+    newhmd.needMTForTiming = -1;
+    newhmd.needMTForTimestamping = -1;
+  end
+
+  % SteamVR on Windows, with Oculus VR backend for Oculus HMDs?
+  if IsWin && strcmpi(newhmd.modelName, 'SteamVR/OpenXR : oculus')
+    % Even 2D modes with quadViews need a thread to keep them stable!
+    newhmd.needMTFor2DQuadViews = -1;
   end
 
   % Default autoclose flag to "no autoclose":
@@ -1602,6 +1753,148 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     floatFlag = 1;
   end
 
+  % Now for the decision making if we always/never/conditionally need
+  % multi-threading (MT) during this session. MT can have a substantial
+  % impact on performance, and with some buggy OpenXR runtimes on
+  % stability, so we want to avoid it whenever possible.
+
+  % Does user want us to not care about visual glitch prevention in 'Stop' mode or slow running
+  % scripts? If so, we can avoid all use of multi-threading for such purposes.
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'DontCareAboutVisualGlitchesWhenStopped'))
+    % Don't use MT for 3D projection layers when 'Stop'ed:
+    if PsychOpenXRCore('NeedLocateForProjectionLayers', handle) || (hmd{handle}.needMTFor2DQuadViews ~= 0)
+      fprintf('PsychOpenXR-INFO: Avoiding use of multi-threading for stopped or slow 2D/3D animation loops on this runtime,\n');
+      fprintf('PsychOpenXR-INFO: as requested via DontCareAboutVisualGlitchesWhenStopped keyword. Visual glitches may occur.\n');
+    end
+
+    PsychOpenXRCore('NeedLocateForProjectionLayers', handle, 0);
+    hmd{handle}.needMTFor3DViews = 0;
+    hmd{handle}.needMTFor2DQuadViews = 0;
+  end
+
+  % User wants us to switch to 2D quad views in 'Stop' mode?
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'Use2DViewsWhen3DStopped')) && hmd{handle}.use3DMode
+    hmd{handle}.switchTo2DViewsOnStop = 1;
+  else
+    hmd{handle}.switchTo2DViewsOnStop = 0;
+  end
+
+  % 3D mode with projectionLayers, and need continuous tracking updates when stopped?
+  if PsychOpenXRCore('NeedLocateForProjectionLayers', handle) && hmd{handle}.use3DMode && ...
+     isempty(strfind(hmd{handle}.basicRequirements, 'Use2DViewsWhen3DStopped'))
+    hmd{handle}.needMTFor3DViews = -1;
+    fprintf('PsychOpenXR-INFO: Will need multi-threading for stopped 3D animation loops on this runtime. Performance will be mildly reduced throughout the session.\n');
+    if hmd{handle}.needMTFor2DQuadViews == 0
+      fprintf('PsychOpenXR-INFO: Consider using the keyword Use2DViewsWhen3DStopped in the basicRequirements parameter for possibly optimized performance.\n');
+    end
+  else
+    hmd{handle}.needMTFor3DViews = 0;
+  end
+
+  % Will 2D quadViews be needed in this session, and do they need
+  % multi-threading to stay stable?
+  if hmd{handle}.needMTFor2DQuadViews ~= 0
+    % 2D mode active, which needs permanent MT in this case?
+    if ~hmd{handle}.use3DMode
+      % Yes. Make it so:
+      hmd{handle}.needMTFor2DQuadViews = 1;
+      fprintf('PsychOpenXR-INFO: Will need multi-threading even for 2D Monoscopic/Stereoscopic mode on this runtime. Performance will be reduced throughout the session.\n');
+    elseif ~isempty(strfind(hmd{handle}.basicRequirements, 'Use2DViewsWhen3DStopped'))
+      % 3D mode: Only need MT for quadViews if PsychVRHMD('Stop'):
+      hmd{handle}.needMTFor2DQuadViews = -1;
+      fprintf('PsychOpenXR-INFO: Will need multi-threading for stopped 3D animation loops on this runtime. Performance will be mildly reduced throughout the session.\n');
+    else
+      % No need at all, as we are in 3D mode and user doesn't want to use quadViews when stopped:
+      hmd{handle}.needMTFor2DQuadViews = 0;
+    end
+  end
+
+  % Specific NoTimingSupport or TimingSupport requested for this session?
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'NoTimingSupport'))
+    % Absolutely no timing support needed -> Disable permanently:
+    hmd{handle}.needMTForTiming = 0;
+  elseif ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport'))
+    % Timing support definitely needed -> Enable permanently on all
+    % runtimes that need MT for it:
+    if hmd{handle}.needMTForTiming ~= 0
+      hmd{handle}.needMTForTiming = 1;
+      fprintf('PsychOpenXR-INFO: Will need multi-threading for proper frame presentation timing on this runtime. Performance will be reduced throughout the session.\n');
+    end
+  elseif hmd{handle}.needMTForTiming ~= 0
+    fprintf('PsychOpenXR-INFO: Need for multi-threading for proper frame presentation timing during this session unknown. Multi-threading will be enabled\n');
+    fprintf('PsychOpenXR-INFO: if i can determine a need for it. Performance will be mildly reduced throughout the session. Please use the keywords\n');
+    fprintf('PsychOpenXR-INFO: TimingSupport or NoTimingSupport in the basicRequirements parameter to give me a clue about what you want, for\n');
+    fprintf('PsychOpenXR-INFO: both potentially higher reliability of timing and timestamping, and potentially better performance.\n');
+  end
+
+  % Specific NoTimestampingSupport or TimestampingSupport requested for this session?
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'NoTimestampingSupport'))
+    % Absolutely no timestamping support needed -> Disable permanently:
+    hmd{handle}.needMTForTimestamping = 0;
+  elseif ~isempty(strfind(hmd{handle}.basicRequirements, 'TimestampingSupport'))
+    % Timestamping support definitely needed -> Enable permanently on all
+    % runtimes that need MT for it:
+    if hmd{handle}.needMTForTimestamping ~= 0
+      hmd{handle}.needMTForTimestamping = 1;
+      fprintf('PsychOpenXR-INFO: Will need multi-threading for proper frame timestamping on this runtime. Performance will be reduced throughout the session.\n');
+    end
+  elseif hmd{handle}.needMTForTimestamping ~= 0
+    fprintf('PsychOpenXR-INFO: Need for multi-threading for better frame timestamping during this session unknown. Timestamps will be unreliable until i\n');
+    fprintf('PsychOpenXR-INFO: can determine need for proper timing. Performance will be mildly reduced throughout the session. Please use the keywords\n');
+    fprintf('PsychOpenXR-INFO: TimestampingSupport or NoTimestampingSupport in the basicRequirements parameter to give me a clue about what you want, for\n');
+    fprintf('PsychOpenXR-INFO: both potentially higher timestamp trustworthyness and potentially better performance.\n');
+  end
+
+  % Derive initial master multiThreaded mode from current MT requirements:
+  mtReqs = [hmd{handle}.needMTFor3DViews, hmd{handle}.needMTFor2DQuadViews, hmd{handle}.needMTForTiming, hmd{handle}.needMTForTimestamping]; 
+  if ~any(mtReqs) || ~isempty(strfind(hmd{handle}.basicRequirements, 'ForbidMultiThreading'))
+    % No need or want for multi-threading at all in this session -> Master
+    % disable. We run only single-threaded for this session, which is
+    % most trouble-free and efficient/high-perf:
+    hmd{handle}.multiThreaded = 0;
+
+    % Will this have downsides?
+    if any(mtReqs)
+      % Yep:
+      fprintf('PsychOpenXR-WARNING: User script forbids any use of multi-threading for its use-case, but would be needed! Expect timing/timestamping/jitter/judder problems!\n');
+    end
+  else
+    % Some potential need for MT. Ok to use?
+    if hmd{handle}.multiThreaded == 0
+      fprintf('PsychOpenXR-WARNING: User script needs multi-threading for its use-case, but multi-threading is disabled! Expect timing/timestamping/jitter/judder problems!\n');
+    else
+      % Special troublemakers? SteamVR on Windows with OculusVR backend
+      % will hang/fail/malfunction if Screen('BeginOpenGL') is used for
+      % typical 3D rendering, unless OpenGL context isolation is disabled,
+      % which is a troublemaker in many other ways!
+      if IsWin && hmd{handle}.use3DMode && strcmpi(hmd{handle}.modelName, 'SteamVR/OpenXR : oculus')
+        fprintf('PsychOpenXR-WARNING: User script needs multi-threading for its use-case, but broken MS-Windows SteamVR runtime with OculusVR backend in use!\n');
+        % kPsychDisableContextIsolation in use?
+        if bitand(Screen('Preference', 'ConserveVRAM'), 8)
+          fprintf('PsychOpenXR-WARNING: I see you disabled OpenGL context isolation to work around the problem. Tread carefully, this\n');
+          fprintf('PsychOpenXR-WARNING: may screw up rendering and Screen() operation badly if you don''t know exactly what you are doing!\n');
+        else
+          % This is an almost guaranteed crasher as of SteamVR 1.24.7 from
+          % February 2023 - will fail after a few seconds of 3D rendering
+          % with a hard hang of Matlab/Octave and need to kill the
+          % application via task manager etc.:
+          fprintf('PsychOpenXR-WARNING: As of SteamVR version 1.24.7 from February 2023, this will almost certainly end in a Psychtoolbox hang or crash\n');
+          fprintf('PsychOpenXR-WARNING: if your script calls Screen(''BeginOpenGL'') anywhere. Brace for impact! Report back if you do not experience any\n');
+          fprintf('PsychOpenXR-WARNING: problems with a later/future SteamVR version.\n');
+        end
+      end
+    end
+
+    % Is there a definite request to use it throughout this session?
+    if any(mtReqs > 0)
+      % Yes, at least one mandatory user of permanent MT. Keep it on all time:
+      hmd{handle}.multiThreaded = 2;
+    else
+      % No, only some conditional on-demand use. Keep it on dynamic/on-demand:
+      hmd{handle}.multiThreaded = 1;
+    end
+  end
+
   % Create and startup XR session, based on the Screen() OpenGL interop info in 'gli':
   gli = Screen('GetWindowInfo', win, 9);
 
@@ -1611,9 +1904,17 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   if hmd{handle}.multiThreaded
     % Use dedicated OpenGL context for OpenXR worker thread:
     openglContext = gli.OpenGLContext;
+
+    if hmd{handle}.multiThreaded == 2
+      fprintf('PsychOpenXR-INFO: Multithreaded mode permanently active due to timing/timestamping needs, or for some workaround, see above. Performance will be likely reduced.\n');
+    else
+      fprintf('PsychOpenXR-INFO: Multithreaded mode on-demand selected due to timing/timestamping needs, or for some workaround, see above. Performance can be reduced sometimes.\n');
+    end
   else
     % Use Screen()'s main OpenGL context for everything, both Screen and OpenXR OpenGL ops:
     openglContext = gli.OpenGLContextScreen;
+
+    fprintf('PsychOpenXR-INFO: Purely single-threaded mode active. Great for performance!\n');
   end
 
   % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:

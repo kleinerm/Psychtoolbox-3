@@ -30,10 +30,11 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % 'LowPersistence' = Try to keep exposure time of visual images on the retina
 % low if possible, ie., try to approximate a pulse-type display instead of a
-% hold-type display if possible. This has no effect on the Oculus Rift DK1.
-% On the Rift DK2 it will enable low persistence scanning of the OLED display
-% panel, to light up each pixel only a fraction of a video refresh cycle duration.
-% On the Rift CV1, low persistence is always active, so this setting is redundant.
+% hold-type display if possible. On the Oculus Rift DK2 with the original Oculus
+% runtime on Linux, it will enable low persistence scanning of the OLED
+% display panel, to light up each pixel only a fraction of a video refresh
+% cycle duration. On any other HMD hardware or runtime this setting does
+% not have any effect and is thereby pretty much redundant.
 %
 % 'DebugDisplay' = Show the output which is displayed on the HMD inside the
 % Psychtoolbox onscreen window as well. This will have a negative impact on
@@ -79,9 +80,56 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'FastResponse' = Try to switch images with minimal delay and fast
 % pixel switching time. This will enable OLED panel overdrive processing
 % on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
-% relatively expensive post processing step. On the Rift CV1, and generally
-% with the new Oculus v1.11+ runtime, this is always active, so 'FastResponse'
-% is redundant on such panels and drivers.
+% relatively expensive post processing step. On any other VR device and
+% runtime other than Oculus Rift DK1/DK2 this option currently has no
+% effect and is therefore redundant.
+%
+% 'ForbidMultiThreading' = Forbid any use of multi-threading for visual
+% presentation by the driver for any means or purposes! This is meant to
+% get your setup going in case of severe bugs in proprietary OpenXR
+% runtimes that can cause instability, hangs, crashes or other malfunctions
+% when multi-threading is used. Or if one wants to squeeze out every last
+% bit of performance, no matter the consequences ("Fast and furious mode").
+% On many proprietary OpenXR runtimes, this will prevent any reliable,
+% trustworthy, robust or accurate presentation timing or timestamping, and
+% may cause severe visual glitches under some modes of operation. See the
+% following keywords below for descriptions of various more nuanced
+% approaches to multi-threading vs. single-threading to choose fine-tuned
+% tradeoffs between performance, stability and correctness for your
+% specific experimental needs.
+%
+% 'Use2DViewsWhen3DStopped' = Ask the driver to switch to use of the same 2D views
+% and geometry during the '3DVR' or 'Tracked3DVR' basicTask as would be used
+% for pure 2D display in basicTask 'Stereoscopic' whenever the user script
+% signals it does not execute a tight tracking and animation loop, ie.
+% whenever the script calls PsychVRHMD('Stop', hmd). Switch back to regular
+% 3D projected geometry and views after a consecutive PsychVRHMD('Start', hmd).
+% This is useful if have phases in your experiment session when you want to
+% display non-tracked content, e.g., instructions or feedback to the
+% subject between trials, fixation crosses, etc., or pause script execution
+% for more than a few milliseconds, but still want the visual display to
+% stay stable. If this keyword is omitted, depending on the specific OpenXR
+% runtime in use, the driver will stabilize the regular 3D projected
+% display by use of multi-threaded operation when calling PsychVRHMD('Stop', hmd),
+% and resume single-threaded operation after PsychVRHMD('Start', hmd). This
+% higher overhead mode of operation via multi-threading will possibly have
+% degraded performance, and not only between the 'Stop' and 'Start' calls,
+% but throughout the whole session! This is why it can be advisable to
+% evaulate if use of the 'Use2DViewsWhen3DStopped' keyword is a better
+% solution for your specific experiment paradigm. The switching between 3D
+% projected view and standard 2D stereoscopic view will change the image
+% though, which may disorient the subject for a moment while the subjects
+% eyes need to adapt their accomodation, vergence and focus point.
+%
+% 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
+% care about potential significant visual presentation glitches happening if
+% your script does not run a continuous animation with high framerate, e.g.,
+% after calling PsychVRHMD('Stop', hmd), pausing, etc. This makes sense if
+% you don't care, or if your script does not ever pause or slow down during
+% a session or at least an ongoing trial. This will avoid multi-threading
+% for glitch prevention in such cases, possibly allowing to side-step
+% certain bugs in proprietary OpenXR runtimes, or to squeeze out higher
+% steady-state performance.
 %
 % 'NoTimingSupport' = Signal no need at all for high precision and reliability
 % timing for presentation. If you don't need any timing precision or
@@ -139,24 +187,26 @@ function varargout = PsychVRHMD(cmd, varargin)
 %     presentation timing. It will then switch to multi-threaded operation with
 %     better timing, but potentially drastically reduced performance.
 %
-%     'TimestampingSupport' = Use high precision and reliability timestamping for presentation.
-%     'NoTimestampingSupport' = Do not need high precision and reliability timestamping for presentation.
-%     Those keywords let you specify if you definitely need or don't need
-%     trustworthy, reliable, robust, precise presentation timestamps, ie. the
-%     'timestamp' return values of timestamp = Screen('Flip') should be high
-%     quality, or if you don't care. If you omit both keywords, the driver will
-%     try to guess what you wanted. On most current OpenXR runtimes, use of
-%     timestamping will imply multi-threaded operation with the performance
-%     impacts and problems mentioned above in the section about 'TimingSupport',
-%     that is why it is advisable to explicitely state your needs, to allow the
-%     driver to optimize for the best precision/reliability/performance
-%     tradeoff on all the runtimes where such a tradeoff is required.
-%     Notable exceptions are the Linux PsychOculus and PsychOpenHMDVR
-%     drivers when used on separate X-Screens for their HMDs, and some
-%     configurations of the Monado OpenXR runtime on Linux, where
-%     timestamps are trustworthy without performance tradeoffs or other
-%     known problems. The PsychOculusVR1 driver on MS-Windows always
-%     provides untrustworthy timestamps, no matter what.
+%
+% 'TimestampingSupport' = Use high precision and reliability timestamping for presentation.
+%
+% 'NoTimestampingSupport' = Do not need high precision and reliability timestamping for presentation.
+% Those keywords let you specify if you definitely need or don't need
+% trustworthy, reliable, robust, precise presentation timestamps, ie. the
+% 'timestamp' return values of timestamp = Screen('Flip') should be high
+% quality, or if you don't care. If you omit both keywords, the driver will
+% try to guess what you wanted. On most current OpenXR runtimes, use of
+% timestamping will imply multi-threaded operation with the performance
+% impacts and problems mentioned above in the section about 'TimingSupport',
+% that is why it is advisable to explicitely state your needs, to allow the
+% driver to optimize for the best precision/reliability/performance
+% tradeoff on all the runtimes where such a tradeoff is required.
+% Notable exceptions are the Linux PsychOculus and PsychOpenHMDVR
+% drivers when used on separate X-Screens for their HMDs, and some
+% configurations of the Monado OpenXR runtime on Linux, where
+% timestamps are trustworthy without performance tradeoffs or other
+% known problems. The PsychOculusVR1 driver on MS-Windows always
+% provides untrustworthy timestamps, no matter what.
 %
 %
 % 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
