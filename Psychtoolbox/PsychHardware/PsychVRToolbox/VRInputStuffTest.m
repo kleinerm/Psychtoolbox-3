@@ -1,5 +1,5 @@
-function res = VRInputStuffTest(withHapticFeedback, withMTStressTest)
-% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0]) - Test input functionality related to VR devices.
+function res = VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs)
+% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay']) - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
 % input. After any key press or controller button press, reports live state
@@ -18,6 +18,15 @@ function res = VRInputStuffTest(withHapticFeedback, withMTStressTest)
 % animation rates, but stabilizes visuals in 'Stop'ed 3D mode, and is
 % needed on most OpenXR runtimes to get even a semblance of correct frame
 % presentation timing and timestamping.
+%
+% The optional parameter 'specialReqs' allows to pass in extra
+% basicRequirments into the driver. Meaningful keywords could be:
+%
+% Use2DViewsWhen3DStopped = Use different display mode for stopped 3D rendering.
+% DontCareAboutVisualGlitchesWhenStopped = Don't care about glitches when stopped.
+% ForbidMultiThreading = Do not use multi-threaded presentation ever.
+% DebugDisplay = Also show rendered stimuli on the experimenters monitor.
+% This is the default.
 %
 % After a keypress (or Enter/Back button press on the controller),
 % visualizes tracked hand position and orientation of hand controllers and
@@ -45,6 +54,11 @@ if nargin < 2 || isempty(withMTStressTest)
     withMTStressTest = 0;
 end
 
+% Use DebugDisplay by default, if specialReqs omitted:
+if nargin < 3 || isempty(specialReqs)
+    specialReqs = 'DebugDisplay';
+end
+
 canary = onCleanup(@sca);
 
 % Setup unified keymapping and unit color range:
@@ -62,7 +76,12 @@ PsychDebugWindowConfiguration;
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 
-hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'DebugDisplay');
+% Request Head-tracked 3D mode and tell driver that we don't care about
+% properly timed presentation or accurate/trustworthy stimulus onset
+% timestamps. We use timestamps for simple performance tests, but they are
+% not critical for our purpose.
+% Optional: Use2DViewsWhen3DStopped DontCareAboutVisualGlitchesWhenStopped ForbidMultiThreading
+hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', ['NoTimingSupport NoTimestampingSupport ' specialReqs]);
 if isempty(hmd)
     fprintf('No VR HMDs connected. Game over!\n');
     return;

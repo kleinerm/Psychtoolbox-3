@@ -29,9 +29,10 @@ screenid = max(Screen('Screens'));
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 % Setup the HMD to act as a regular "monoscopic" display monitor
-% by displaying the same image to both eyes:
+% by displaying the same image to both eyes. We need reliable timing and
+% timestamping support for this test script:
 % hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
-hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic');
+hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingSupport TimestampingSupport');
 
 [win, rect] = PsychImaging('OpenWindow', screenid, [1 0 0]);
 ifi = Screen('GetFlipInterval', win)
