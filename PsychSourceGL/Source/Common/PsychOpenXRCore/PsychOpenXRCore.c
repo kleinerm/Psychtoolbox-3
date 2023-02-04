@@ -298,6 +298,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
     //synopsis[i++] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
     synopsis[i++] = "oldType = PsychOpenXRCore('ViewType', openxrPtr [, viewLayerType]);";
+    synopsis[i++] = "[oldPosition, oldSize] = PsychOpenXRCore('View2DParameters', openxrPtr, eye [, position][, size]);";
     synopsis[i++] = "oldNeed = PsychOpenXRCore('NeedLocateForProjectionLayers', openxrPtr [, needLocate]);";
     synopsis[i++] = "oldEnable = PsychOpenXRCore('PresenterThreadEnable', openxrPtr [, enableThread]);";
     synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
@@ -2382,21 +2383,41 @@ PsychError PSYCHOPENXRTrackingOriginType(void)
     return(PsychError_none);
 }
 
-// TODO PsychOpenXRCore('View2DParameters', hmd, eye, [x,y,z], [w,h]);
 PsychError PSYCHOPENXRView2DParameters(void)
 {
-    static char useString[] = "oldParameters = PsychOpenXRCore('View2DParameters', openxrPtr [, viewParameters]);";
-    //                         1                                                      1            2
+    static char useString[] = "[oldPosition, oldSize] = PsychOpenXRCore('View2DParameters', openxrPtr, eye [, position][, size]);";
+    //                          1            2                                              1          2      3           4
     static char synopsisString[] =
-    "Query or assign 2D quad view parameters for OpenXR device 'openxrPtr'.\n\n"
-    "This returns the current settings in 'oldParameters'.\n"
-    "Optionally you can specify new settings in 'viewParameters'.\n"
-    "viewParameters must be:\n\n"
-    "\n";
+    "Query or assign 2D quad view parameters for eye 'eye' of OpenXR device 'openxrPtr'.\n\n"
+    "Such 2D quad views are used in 'Monoscopic' (same view for both eyes), or 'Stereoscopic' "
+    "mode (one view per eye), as well as in 3D modes when a script is 'Stop'ed and the user "
+    "asked for use of these 2D quad views instead of projective views.\n"
+    "This returns the current or previous settings for position and size in 'oldPosition' "
+    "and 'oldSize'.\n"
+    "'eye' Mandatory: 0 = Left eye or monoscopic view, 1 = right eye in stereo mode.\n"
+    "Optionally you can specify new settings, as follows:\n"
+    "'position' 3D position of the center of the virtual viewscreen, relative to the eye "
+    "of the subject. Unit is meters, e.g., [0, 0, -0.5] would center the view at x,y offset "
+    "zero relative to the optical axis, and 0.5 meters away from the eye. Iow. the center of "
+    "the viewscreen aligns with the straightforward looking direction of the eye, but the "
+    "screen floats at 0.5 meters distance. If this parameter is left empty [] or omitted, then "
+    "the position does not change. Default position at session startup is centered and at a "
+    "comfortable viewing distance away, so staring straight forward with parallel eyes, e.g., "
+    "like when looking at an infinite point in space, would cause the center of the stimulus "
+    "image to be located at your fixation direction.\n"
+    "'size' Size of the virtual viewscreen in meters. E.g., [0.8, 1] would have the screen "
+    "at an apparent width of 0.8 meters and an apparent height of 1 meter. If the parameter "
+    "is omitted or left empty [], the size won't be changed. Default size is 1 meter high "
+    "and the width adjusted to preserve the aspect ratio of the Psychtoolbox onscreen window "
+    "into which your script draws, so a drawn circle is actually circular instead of elliptic.\n";
     static char seeAlsoString[] = "ViewType";
 
     int handle;
-    int viewParameters;
+    int eyeIndex;
+    int m, n, p;
+    double *position;
+    double *size;
+    double *outM;
     PsychOpenXRDevice *openxr;
 
     // All sub functions should have these two lines:
@@ -2404,9 +2425,9 @@ PsychError PSYCHOPENXRView2DParameters(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(2));
-    PsychErrorExit(PsychRequireNumInputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(4));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
@@ -2415,16 +2436,49 @@ PsychError PSYCHOPENXRView2DParameters(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Query and return old setting:
-    // TODO PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->);
+    // Get eye index:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &eyeIndex);
+    if (eyeIndex < 0 || eyeIndex > 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
 
-    // New origin type provided?
-    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &viewParameters)) {
-        if (viewParameters < 0 || viewParameters > 1)
-            PsychErrorExitMsg(PsychError_user, "Invalid 'viewParameters' for XXX TODO specified. Must be 0 or 1.");
+    // Query and return old settings:
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 3, 1, &outM);
+    outM[0] = openxr->quadViewLayer[eyeIndex].pose.position.x;
+    outM[1] = openxr->quadViewLayer[eyeIndex].pose.position.y;
+    outM[2] = openxr->quadViewLayer[eyeIndex].pose.position.z;
 
+    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 1, 2, 1, &outM);
+    outM[0] = openxr->quadViewLayer[eyeIndex].size.width;
+    outM[1] = openxr->quadViewLayer[eyeIndex].size.height;
+
+    // New position provided?
+    if (PsychAllocInDoubleMatArg(3, kPsychArgOptional, &m, &n, &p, &position)) {
+        if (m*n*p != 3)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'position' specified. Must be a [x, y, z] vector.");
+
+        if (position[2] >= 0.0)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'position' specified. z-Position must be smaller than zero.");
+
+        // Assign:
         PsychLockMutex(&(openxr->presenterLock));
-        // TODO openxr-> = viewParameters;
+        openxr->quadViewLayer[eyeIndex].pose.position.x = (float) position[0];
+        openxr->quadViewLayer[eyeIndex].pose.position.y = (float) position[1];
+        openxr->quadViewLayer[eyeIndex].pose.position.z = (float) position[2];
+        PsychUnlockMutex(&(openxr->presenterLock));
+    }
+
+    // New size provided?
+    if (PsychAllocInDoubleMatArg(4, kPsychArgOptional, &m, &n, &p, &size)) {
+        if (m*n*p != 2)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'size' specified. Must be a [width, height] vector.");
+
+        if ((size[0] <= 0.0) || (size[1] <= 0.0))
+            PsychErrorExitMsg(PsychError_user, "Invalid 'size' specified. Both width and height must be greater than zero.");
+
+        // Assign:
+        PsychLockMutex(&(openxr->presenterLock));
+        openxr->quadViewLayer[eyeIndex].size.width = (float) size[0];
+        openxr->quadViewLayer[eyeIndex].size.height = (float) size[1];
         PsychUnlockMutex(&(openxr->presenterLock));
     }
 
@@ -3729,6 +3783,7 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
 
     int handle, eyeIndex;
     int width, height, out_Length, floatFormat, numMSAASamples;
+    float aspectRatio;
     uint32_t nFormats, i;
     int64_t *swapchainFormats = NULL;
     int64_t imageFormat = -1;
@@ -4000,8 +4055,11 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     // Shift away from eyes by 0.5 meters:
     openxr->quadViewLayer[eyeIndex].pose.position.z -= 0.5;
 
-    // Size of virtual projection screen / display monitor is 1 x 1 meters:
-    openxr->quadViewLayer[eyeIndex].size.width = 1.0;
+    // Size of virtual projection screen / display monitor is 1 meter high, and a width
+    // that is 1 meter times the aspect ratio of the input framebuffer, so we don't get
+    // squished or stretched looking stimuli by default:
+    aspectRatio = (float) openxr->textureWidth / (float) openxr->textureHeight;
+    openxr->quadViewLayer[eyeIndex].size.width = aspectRatio;
     openxr->quadViewLayer[eyeIndex].size.height = 1.0;
 
     // projViews are used for full 3D OpenGL rendering, usually driven by full tracking
