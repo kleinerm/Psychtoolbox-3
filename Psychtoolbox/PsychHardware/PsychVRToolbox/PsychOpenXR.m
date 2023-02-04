@@ -61,6 +61,16 @@ function varargout = PsychOpenXR(cmd, varargin)
 % defined are the following strings which can be combined into a single
 % 'basicRequirements' string:
 %
+% 'ForceSize=widthxheight' = Enforce a specific fixed size of the stimulus
+% image buffer in pixels, overriding the recommmended value by the runtime,
+% e.g., 'ForceSize=2200x1200' for a 2200 pixels wide and 1200 pixels high
+% image buffer. By default the driver will choose values that provide good
+% quality for the given XR display device, which can be scaled up or down
+% with the optional 'pixelsPerDisplay' parameter for a different quality vs.
+% performance tradeoff in the function PsychOpenXR('SetupRenderingParameters');
+% The specified values are clamped against the maximum values supported by
+% the given hardware + driver combination.
+%
 % 'Float16Display' = Request rendering, compositing and display in 16 bpc float
 % format. This will ask Psychtoolbox to render and post-process stimuli in 16 bpc
 % linear floating point format, and allocate 16 bpc half-float textures as final
@@ -518,13 +528,12 @@ function varargout = PsychOpenXR(cmd, varargin)
 % updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
 % good default field of view and that will be used. The field of view may be
 % dependent on the settings in the HMD user profile of the currently selected
-% user. Note: This parameter is completely ignored with the current driver and on
-% a standard OpenXR 1.0 backend.
+% user. Note: This parameter is completely ignored with the current driver on
+% any standard OpenXR 1.0 backend.
 %
 % 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
 % at the center of distortion. Defaults to 1.0 if omitted. Lower values can
-% improve performance, at lower quality. Note: This parameter is completely ignored
-% with the current driver and on a standard OpenXR 1.0 backend.
+% improve performance, at lower quality.
 %
 %
 % PsychOpenXR('SetBasicQuality', hmd, basicQuality);
@@ -594,7 +603,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 %
 % needPanelFitter = PsychOpenXR('GetPanelFitterParameters', hmd);
-% - 'needPanelFitter' is 1 if a custom panel fitter tasks is needed, and 'bufferSize'
+% - 'needPanelFitter' is 1 if a custom panel fitter task is needed, and the 'bufferSize'
 % from the PsychVRHMD('GetClientRenderingParameters', hmd); defines the size of the
 % clientRect for the onscreen window. 'needPanelFitter' is 0 if no panel fitter is
 % needed.
@@ -1071,7 +1080,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if length(varargin) >= 1 && ~isempty(varargin{1})
     basicTask = varargin{1};
   else
-    basicTask = 'Tracked3DVR';
+    basicTask = '';
   end
 
   % Basic basicRequirements to choose:
@@ -1085,7 +1094,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if length(varargin) >= 3 && ~isempty(varargin{3})
     basicQuality = varargin{3};
   else
-    basicQuality = 0;
+    basicQuality = [];
   end
 
   % HMD device selection:
@@ -1452,15 +1461,6 @@ if strcmpi(cmd, 'SetBasicQuality')
   basicQuality = varargin{2};
   basicQuality = min(max(basicQuality, 0), 1);
   hmd{handle}.basicQuality = basicQuality;
-
-  % TODO FIXME: Any special handling for TimingSupport or Tracked3DVR ?
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport')) || ...
-     ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
-    %    PsychOpenXRCore('SetDynamicPrediction', handle, 1);
-  else
-    %    PsychOpenXRCore('SetDynamicPrediction', handle, 0);
-  end
-
   return;
 end
 
@@ -1534,19 +1534,59 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     basicQuality = 0;
   end
 
+  if length(varargin) >= 5 && ~isempty(varargin{5})
+    fov = varargin{5};
+  else
+    fov = [];
+  end
+
+  if length(varargin) >= 6 && ~isempty(varargin{6})
+    pixelsPerDisplay = varargin{6};
+  else
+    pixelsPerDisplay = 1;
+  end
+
   hmd{myhmd.handle}.basicTask = basicTask;
   hmd{myhmd.handle}.basicRequirements = basicRequirements;
 
   PsychOpenXR('SetBasicQuality', myhmd, basicQuality);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0);
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.maxMSAASamples, hmd{myhmd.handle}.maxrbwidth, hmd{myhmd.handle}.maxrbheight] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1);
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.maxMSAASamples, hmd{myhmd.handle}.maxrbwidth, hmd{myhmd.handle}.maxrbheight] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1);
+
+  if pixelsPerDisplay <= 0
+    sca;
+    error('PsychOpenXR:SetupRenderingParameters(): Invalid ''pixelsPerDisplay'' specified! Must be greater than zero.');
+  end
+
+  % Scale runtime recommended renderbuffer width x height with
+  % pixelsPerDisplay, clamp values to be at least 1 pixel and no more than
+  % maximum runtime supported renderbuffer size:
+  hmd{myhmd.handle}.rbwidth = min(ceil(hmd{myhmd.handle}.rbwidth * pixelsPerDisplay), hmd{myhmd.handle}.maxrbwidth);
+  hmd{myhmd.handle}.rbheight = min(ceil(hmd{myhmd.handle}.rbheight * pixelsPerDisplay), hmd{myhmd.handle}.maxrbheight);
+
+  % Forced override size of framebuffer provided?
+  rbOvrSize = strfind(basicRequirements, 'ForceSize=');
+  if ~isempty(rbOvrSize)
+    rbOvrSize = sscanf(basicRequirements(min(rbOvrSize):end), 'ForceSize=%ix%i');
+    if length(rbOvrSize) ~= 2 || ~isvector(rbOvrSize) || ~isreal(rbOvrSize)
+      sca;
+      error('SetupRenderingParameters(): Invalid ''ForceSize='' string in ''basicRequirements'' specified! Must be of the form ''ForceSize=widthxheight'' pixels.');
+    end
+
+    % Clamp to valid range and assign:
+    hmd{myhmd.handle}.rbwidth = max(1, min(ceil(rbOvrSize(1) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbwidth));
+    hmd{myhmd.handle}.rbheight = max(1, min(ceil(rbOvrSize(2) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbheight));
+    if hmd{myhmd.handle}.rbwidth ~= rbOvrSize(1) || hmd{myhmd.handle}.rbheight ~= rbOvrSize(2)
+        warning('SetupRenderingParameters(): Had to clamp ''ForceSize=widthxheight'' requested pixelbuffer size to fit into valid range! Result may look funky.');
+    end
+  end
 
   % Debug display of HMD output into onscreen window requested?
-  if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
+  if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel) %#ok<*STREMP> 
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
   end

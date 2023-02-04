@@ -22,6 +22,7 @@ function res = VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReq
 % The optional parameter 'specialReqs' allows to pass in extra
 % basicRequirments into the driver. Meaningful keywords could be:
 %
+% ForceSize=1230x4560 = Enforce a per-eye image size of 1230x4560 pixels.
 % Use2DViewsWhen3DStopped = Use different display mode for stopped 3D rendering.
 % DontCareAboutVisualGlitchesWhenStopped = Don't care about glitches when stopped.
 % ForbidMultiThreading = Do not use multi-threaded presentation ever.
