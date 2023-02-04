@@ -292,7 +292,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions used by regular user scripts (but mostly indirectly via PsychVRHMD() or PsychOpenXR()):";
     synopsis[i++] = "";
     synopsis[i++] = "oldVerbosity = PsychOpenXRCore('Verbosity' [, verbosity]);";
-    synopsis[i++] = "numHMDs = PsychOpenXRCore('GetCount');";
+    synopsis[i++] = "numDevices = PsychOpenXRCore('GetCount');";
     synopsis[i++] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOpenXRCore('Close' [, openxrPtr]);";
     synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
@@ -2032,7 +2032,7 @@ void PsychOpenXRClose(int handle)
             printf("PsychOpenXRCore-WARNING: This will cause resource leakage. Maybe you should better exit and restart Octave?");
         }
 
-        if (verbosity >= 4) printf("PsychOpenXRCore-INFO: Closed OpenXR HMD with handle %i.\n", handle);
+        if (verbosity >= 4) printf("PsychOpenXRCore-INFO: Closed OpenXR device with handle %i.\n", handle);
 
         // Done with this device:
         devicecount--;
@@ -2148,8 +2148,8 @@ PsychError PSYCHOPENXRVerbosity(void)
 
 PsychError PSYCHOPENXRGetCount(void)
 {
-    static char useString[] = "numHMDs = PsychOpenXRCore('GetCount');";
-    static char synopsisString[] =  "Returns count of currently connected HMDs.\n"
+    static char useString[] = "numDevices = PsychOpenXRCore('GetCount');";
+    static char synopsisString[] =  "Returns count of currently connected XR devices.\n"
                                     "Returns -1 if the runtime or server couldn't get initialized.\n";
     static char seeAlsoString[] = "Open";
 
@@ -2176,9 +2176,9 @@ PsychError PSYCHOPENXROpen(void)
     static char useString[] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
     //                          1          2          3                                        1
     static char synopsisString[] =
-        "Open connection to OpenXR HMD, return a 'openxrPtr' handle to it.\n\n"
-        "The call tries to open the HMD with index 'deviceIndex', or the first detected "
-        "HMD if 'deviceIndex' is omitted. Please note that currently only one single HMD "
+        "Open connection to OpenXR device, return a 'openxrPtr' handle to it.\n\n"
+        "The call tries to open the device with index 'deviceIndex', or the first detected "
+        "device if 'deviceIndex' is omitted. Please note that currently only one single device "
         "is supported by OpenXR-1, so this 'deviceIndex' is redundant at the moment, given "
         "that zero is the only valid value.\n"
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
@@ -2220,9 +2220,9 @@ PsychError PSYCHOPENXROpen(void)
 
     if (deviceIndex >= numAvailableDevices) {
         if (verbosity > 0)
-            printf("PsychOpenXRCore-ERROR: Invalid deviceIndex %i >= number of available HMDs %i.\n", deviceIndex, numAvailableDevices);
+            printf("PsychOpenXRCore-ERROR: Invalid deviceIndex %i >= number of available devices %i.\n", deviceIndex, numAvailableDevices);
 
-        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Not enough HMDs available!");
+        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Not enough devices available!");
     }
 
     // Zero init device structure:
@@ -2250,12 +2250,12 @@ PsychError PSYCHOPENXROpen(void)
     // Initialize the mutex lock:
     if ((rc = PsychInitMutex(&(openxr->presenterLock)))) {
         printf("PsychOpenXRCore-ERROR: Could not create internal presenterLock mutex lock [%s].\n", strerror(rc));
-        PsychErrorExitMsg(PsychError_system, "Insufficient system resources for mutex creation as part of HMD open operation!");
+        PsychErrorExitMsg(PsychError_system, "Insufficient system resources for mutex creation as part of device open operation!");
     }
 
     if ((rc = PsychInitCondition(&(openxr->presentedSignal), NULL))) {
         printf("PsychOpenXRCore-ERROR: Could not create internal presentedSignal condition variable [%s].\n", strerror(rc));
-        PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for condition variable creation as part of HMD open operation!");
+        PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for condition variable creation as part of device open operation!");
     }
 
     // Mark device as open:
@@ -2331,7 +2331,7 @@ PsychError PSYCHOPENXRTrackingOriginType(void)
         "This returns the current type of tracking origin in 'oldType'.\n\n"
         "Optionally you can specify a new tracking origin type as 'newType'. "
         "Type must be either:\n\n"
-        "0 = Origin is at eye height (HMD height).\n"
+        "0 = Origin is at eye height (device height).\n"
         "1 = Origin is at floor height.\n\n"
         "The eye height or floor height gets defined by the system during "
         "calls to 'RecenterTrackingOrigin' and during sensor calibration in "
@@ -2376,7 +2376,7 @@ PsychError PSYCHOPENXRTrackingOriginType(void)
         }
         else {
             if (verbosity > 3)
-                printf("PsychOpenXRCore-INFO: Set new tracking origin type for HMD to %i.\n", originType);
+                printf("PsychOpenXRCore-INFO: Set new tracking origin type for device to %i.\n", originType);
         }
     }
 */
@@ -2665,7 +2665,7 @@ PsychError PSYCHOPENXRStart(void)
                                    "head tracking functions, to drive driver internal tracking state updates and inform the rendering. "
                                    "Too slowly running user-script animation loops, stopped animation loops or loops avoiding the needed "
                                    "calls to the 'GetTrackingState', ie., PsychVRHMD('PrepareRender'), function, may cause visual artifacts "
-                                   "in the HMD's presented imagery, e.g., judder and jerks.";
+                                   "in the device's presented imagery, e.g., judder and jerks.";
     static char seeAlsoString[] = "Stop GetTrackingState";
 
     int handle;
@@ -2689,7 +2689,7 @@ PsychError PSYCHOPENXRStart(void)
     if (openxr->isTracking) {
         if (verbosity >= 0)
             printf("PsychOpenXRCore-ERROR: Tried to start tracking on device %i, but tracking is already started.\n", handle);
-        PsychErrorExitMsg(PsychError_user, "Tried to start tracking on HMD, but tracking already active.");
+        PsychErrorExitMsg(PsychError_user, "Tried to start tracking on device, but tracking already active.");
     }
 
     if (verbosity >= 4)
@@ -2711,7 +2711,7 @@ PsychError PSYCHOPENXRStop(void)
                                    "This signals that the user-scripts animation loop is (about to be) stopped, will run at low framerate, "
                                    "and/or avoid calls to 'GetTrackingState', ie., PsychVRHMD('PrepareRender'). This means the script will "
                                    "not take care of the processing needed to keep tracked 3D content displaying properly. The driver will "
-                                   "try to take care of needed steps itself to provide a stable picture in the HMD display in this case, "
+                                   "try to take care of needed steps itself to provide a stable picture in the device display in this case, "
                                    "if possible, given the used hardware + OpenXR and operating system software setup. Results may vary...\n";
     static char seeAlsoString[] = "Start GetTrackingState";
 
@@ -2755,7 +2755,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "Return current state of eye position and orientation tracking for OpenXR device 'openxrPtr'.\n"
         "Position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
-        "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
+        "then the prediction is performed for the mid-point of the next possible video frame of the device, ie. "
         "the most likely presentation time for immediately rendered images.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of returned tracking state.\n"
@@ -2763,12 +2763,12 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "+1 = Orientation tracked for all eyes,\n"
         "+2 = Position tracked for all eyes,\n"
         "+4 = At least part of the pose is somewhat valid, even if not tracked, but just inferred,\n"
-        "+128 = HMD display is connected, available and actually on users head, displaying our content.\n\n"
+        "+128 = device display is connected, available and actually on users head, displaying our content.\n\n"
         "'SessionState' = VR session status flags, added together:\n"
-        "+1  = Our rendering goes to the HMD, ie. we have control over it. If some other app would "
+        "+1  = Our rendering goes to the device, ie. we have control over it. If some other app would "
         "be in control, this flag would be missing.\n"
-        "+2  = HMD is present and active.\n"
-        "+4  = HMD is strapped onto users head. E.g., a Rift CV1 would switch off/blank if not on the head.\n"
+        "+2  = device is present and active.\n"
+        "+4  = device is strapped onto users head. E.g., a Rift CV1 would switch off/blank if not on the head.\n"
         "+8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit to recover.\n"
         "+16 = ShouldQuit The user interface asks us to voluntarily terminate this session.\n\n"
         "'CalibratedOrigin' = The pose of the world coordinate system origin during last recalibration, relative "
@@ -2782,7 +2782,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "The return argument 'touch' is a struct array with 2 structs. touch(1) contains info about "
         "the tracking state and tracked pose of the left hand (= left touch controller) of the user, "
         "touch(2) contains info about the right hand (= right touch controller) of the user.\n"
-        "The structs have very similar structure to the head (= HMD) tracking data returned by 'state':\n\n"
+        "The structs have very similar structure to the head (= device) tracking data returned by 'state':\n\n"
         "'Time' = Time in seconds of returned hand/controller tracking state.\n"
         "'Status' = Tracking status flags:\n"
         " 0 = No tracking info for hand/controller, ie. no OpenXR touch sensor connected.\n"
@@ -2865,7 +2865,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     openxr->sensorSampleTime = predictionTime;
     PsychSetStructArrayDoubleElement("Time", 0, predictionTime, status);
 
-    // HMD tracking status:
+    // device tracking status:
     StatusFlags = 0;
 
     // Active orientation tracking?
@@ -2880,7 +2880,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     if (openxr->viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT || openxr->viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT)
         StatusFlags |= 4;
 
-    // HMD present, connected and online and on users head, displaying us?
+    // device present, connected and online and on users head, displaying us?
     if (openxr->state == XR_SESSION_STATE_VISIBLE || openxr->state == XR_SESSION_STATE_FOCUSED)
         StatusFlags |= 128;
 
@@ -3037,7 +3037,7 @@ PsychError PSYCHOPENXRGetInputState(void)
         "'controllerType' can be one of the following values:\n"
         "OVR.ControllerType_LTouch = Left touch controller (Left tracked hand).\n"
         "OVR.ControllerType_RTouch = Right touch controller (Right tracked hand).\n"
-        "OVR.ControllerType_Remote = Connected remote control or similar, e.g., control buttons on HMD.\n"
+        "OVR.ControllerType_Remote = Connected remote control or similar, e.g., control buttons on a HMD.\n"
         "OVR.ControllerType_XBox = Microsoft XBox controller or some equivalent gamepad.\n"
         "OVR.ControllerType_Active = Whatever controller is connected and active.\n"
         "\n"
@@ -3605,7 +3605,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
         PsychErrorExitMsg(PsychError_system, "OpenXR session creation for OpenGL rendered XR failed.");
     }
 
-    // Try to query video refresh rate of the HMD from runtime:
+    // Try to query video refresh rate of the device from runtime:
     if (pxrGetDisplayRefreshRateFB && resultOK(pxrGetDisplayRefreshRateFB(openxr->hmd, &displayRefreshRate))) {
         if (displayRefreshRate > 0)
             openxr->frameDuration = 1.0 / (double) displayRefreshRate;
@@ -3616,20 +3616,20 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
             printf("PsychOpenXRCore-INFO: Queried XR display refresh rate reported as %f Hz.\n", displayRefreshRate);
     }
     else {
-        // Fallback to assumed 90 Hz as something reasonable for many consumer HMDs:
+        // Fallback to assumed 90 Hz as something reasonable for many consumer devices:
         openxr->frameDuration = 1.0 / 90.0;
 
         if (verbosity > 3)
             printf("PsychOpenXRCore-INFO: Could not query XR display refresh rate [%s], assuming 90 Hz.\n", (pxrGetDisplayRefreshRateFB) ? errorString : "Not supported");
     }
 
-    // Assume the timeout for the compositor thinking we are unresponsive is 2 HMD frame durations:
+    // Assume the timeout for the compositor thinking we are unresponsive is 2 device frame durations:
     openxr->VRtimeoutSecs = 2 * openxr->frameDuration;
 
     // Return video refresh duration of the XR display:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->frameDuration);
 
-    // Create and initialize our standard space for rendering the views in HMD reference frame:
+    // Create and initialize our standard space for rendering the views in device reference frame:
     XrReferenceSpaceCreateInfo refSpaceCreateInfo = {
         .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
         .next = NULL,
@@ -3716,7 +3716,7 @@ PsychError PSYCHOPENXRControllers(void)
     "The returned 'controllerTypes' can be the logical OR of one of these flags:\n"
     "OVR.ControllerType_LTouch = Left touch controller (Left tracked hand).\n"
     "OVR.ControllerType_RTouch = Right touch controller (Right tracked hand).\n"
-    "OVR.ControllerType_Remote = Connected remote control or similar, e.g., control buttons on HMD.\n"
+    "OVR.ControllerType_Remote = Connected remote control or similar, e.g., control buttons on a HMD.\n"
     "OVR.ControllerType_XBox = Microsoft XBox controller or some equivalent gamepad.\n"
     "\n";
     static char seeAlsoString[] = "GetInputState HapticPulse";
@@ -3769,7 +3769,7 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     "and right eye.\n\n"
     "'width' and 'height' are the width x height of the texture into which Psychtoolbox "
     "Screen() image processing pipeline will render the output image of an eye for submission "
-    "to the VR compositor. Left and right eye must use identical 'width' and 'height'.\n\n"
+    "to the XR compositor. Left and right eye must use identical 'width' and 'height'.\n\n"
     "'floatFormat' Texture format: 0 = RGBA8 sRGB format for sRGB rendering and output. 1 = 16 bpc "
     "half-float RGBA16F in linear format.\n\n"
     "'numMSAASamples' is the number of samples to use per texel. Must be at least 1, and can be more "
@@ -4243,7 +4243,7 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
     "Retrieve OpenGL texture object handle for next target texture for OpenXR device 'openxrPtr'.\n"
     "'eye' Eye for which handle of next texture should be returned: 0 = Left/Mono, 1 = Right.\n"
     "Returns a GL_TEXTURE_2D texture object name/handle in 'texObjectHandle' for the texture "
-    "to which the next VR frame should be rendered. Returns -1 if busy.\n";
+    "to which the next XR frame should be rendered. Returns -1 if busy.\n";
     static char seeAlsoString[] = "CreateRenderTextureChain";
 
     int handle, eyeIndex;
@@ -4487,7 +4487,7 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
         int eyeIndex;
 
         for (eyeIndex = 0; eyeIndex < 2; eyeIndex++) {
-            printf("PsychOpenXRCore-INFO: HMD %i, eye %i - FoV degrees: %f %f %f %f\n", handle, eyeIndex,
+            printf("PsychOpenXRCore-INFO: device %i, eye %i - FoV degrees: %f %f %f %f\n", handle, eyeIndex,
                    rad2deg(openxr->view[eyeIndex].fov.angleLeft), rad2deg(openxr->view[eyeIndex].fov.angleRight),
                    rad2deg(openxr->view[eyeIndex].fov.angleUp), rad2deg(openxr->view[eyeIndex].fov.angleDown));
         }
@@ -4514,9 +4514,9 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     return(PsychError_none);
 }
 
-// Execute VR present operation, possibly committing new content to the swapchains:
+// Execute XR present operation, possibly committing new content to the swapchains:
 // Must be called with the presenterLock locked!
-// Called by idle presenterThread to keep VR compositor timeout handling from kicking in,
+// Called by idle presenterThread to keep XR compositor timeout handling from kicking in,
 // and directly from PSYCHOPENXRPresentFrame when userspace wants to present new content.
 static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 {
@@ -4843,7 +4843,7 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
         return(NULL);
     }
 
-    // VR compositor timeout prevention loop: Repeats infinitely, until we receive a
+    // XR compositor timeout prevention loop: Repeats infinitely, until we receive a
     // shutdown request and terminate ourselves. PresentCycle() will execute once per
     // XR compositor work cycle. Each cycle it goes to sleep in xrWaitFrame, with the
     // presenterLock temporarily dropped, syncing up to the compositor:
@@ -4863,7 +4863,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     static char useString[] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
     //                          1                2                      3                                                 1            2
     static char synopsisString[] =
-    "Present last rendered frame to OpenXR HMD device 'openxrPtr'.\n\n"
+    "Present last rendered frame to OpenXR display device 'openxrPtr'.\n\n"
     "This will commit the current set of 2D textures with new rendered content "
     "to the texture swapchains, for consumption by the XR runtime/compositor, "
     "and a present is requested to the compositor. The swapchains will advance, "
@@ -4967,10 +4967,10 @@ PsychError PSYCHOPENXRPresentFrame(void)
     }
 
     if ((tPredictedOnset < 0) && (verbosity > 0))
-        printf("PsychOpenXRCore-ERROR: Failed to present new frame to VR compositor.\n");
+        printf("PsychOpenXRCore-ERROR: Failed to present new frame to XR compositor.\n");
 
     if ((tPredictedOnset == 0) && (verbosity > 4))
-        printf("PsychOpenXRCore-INFO: Present of new frame to VR compositor skipped.\n");
+        printf("PsychOpenXRCore-INFO: Present of new frame to XR compositor skipped.\n");
 
     // Return our best estimate of visual stimulus onset time-point at centr of XR display:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, tPredictedOnset);
@@ -4998,7 +4998,7 @@ PsychError PSYCHOPENXRGetEyePose(void)
     "'renderPass' is the view render pass for which to provide the data: 0 = First pass, 1 = Second pass.\n"
     "Eye position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
     "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
-    "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
+    "then the prediction is performed for the mid-point of the next possible video frame of the device, ie. "
     "the most likely presentation time for immediately rendered images.\n\n"
     "Return value is the vector 'eyePose' which defines the position and orientation for the eye corresponding "
     "to the requested renderPass ie. 'eyePose' = [posX, posY, posZ, rotX, rotY, rotZ, rotW].\n"
@@ -5006,7 +5006,7 @@ PsychError PSYCHOPENXRGetEyePose(void)
     "be 0 for left eye, and 1 for right eye, and could be used to select the target render view via, e.g.,\n"
     "Screen('SelectStereoDrawBuffer', window, eyeIndex);\n"
     "Which 'eyeIndex' corresponds to the first or second 'renderPass', ie., if the left eye should be rendered "
-    "first, or if the right eye should be rendered first, depends on the visual scanning order of the HMD "
+    "first, or if the right eye should be rendered first, depends on the visual scanning order of the device "
     "display panel - is it top to bottom, left to right, or right to left? This function provides that optimized "
     "mapping. Using this function to query the parameters for render setup of an eye can provide a bit more "
     "accuracy in rendering, at the expense of more complex usercode.\n";
@@ -5096,7 +5096,7 @@ PsychError PSYCHOPENXRHapticPulse(void)
     "the Oculus OpenXR runtime for Microsoft Windows will not execute a haptic feedback pulse longer than 2.5 seconds.\n\n"
     "'freq' Requested frequency of the vibration: 'freq' is understood to be in Hz for 'freq' > 1, or in a normalized 0.0 - 1.0 range:\n"
     "0 = Disable ongoing pulse immediately.\n"
-    "0 < freq <= 1 will be mapped to 0 Hz to 320 Hz for compatibility with other older VR api's, runtimes, and Oculus devices.\n"
+    "0 < freq <= 1 will be mapped to 0 Hz to 320 Hz for compatibility with other older XR api's, runtimes, and Oculus devices.\n"
     "freq > 1 will be passed unchanged as a requested frequency in Hz. The OpenXR runtimes and devices may clamp freq into a "
     "runtime and hardware dependent minimum and maximum range, or quantize actual freq to only a few discrete supported values. E.g., "
     "Oculus CV-1 touch controllers only support 160 Hz and 320 Hz, whereas Oculus S touch controllers only support 160 Hz and 500 Hz. "
