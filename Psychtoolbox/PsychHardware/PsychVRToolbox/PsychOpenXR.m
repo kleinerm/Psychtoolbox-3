@@ -7,15 +7,13 @@ function varargout = PsychOpenXR(cmd, varargin)
 % interface to a system-installed OpenXR runtime. These components are dual-licensed by
 % Khronos under Apache 2.0 and MIT license: SPDX license identifier "Apache-2.0 OR MIT"
 %
-% Note: If you want to write VR code that is portable across
-% VR headsets of different vendors, then use the PsychVRHMD()
-% driver instead of this driver. The PsychVRHMD driver will use
-% this driver as appropriate when connecting to a OpenXR supported XR device,
-% but it will also automatically work
-% with other head mounted displays. This driver does however
-% expose a few functions specific to OpenXR hardware, so you can
-% mix calls to this driver with calls to PsychVRHMD to do some
-% mix & match.
+% Note: If you want to write code that is portable across XR devices of
+% different vendors, then use the PsychVRHMD() driver instead of this
+% driver. The PsychVRHMD driver will use this driver as appropriate when
+% connecting to a OpenXR supported XR device, but it will also
+% automatically work with other head mounted displays. This driver does
+% however expose a few functions specific to OpenXR hardware, so you can
+% mix calls to this driver with calls to PsychVRHMD to do some mix & match.
 %
 % For setup instructions for OpenXR, see "help OpenXR". TODO
 %
@@ -31,17 +29,17 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 %
 % hmd = PsychOpenXR('AutoSetupHMD' [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, deviceIndex]);
-% - Open a OpenXR HMD, set it up with good default rendering and
+% - Open a OpenXR device, set it up with good default rendering and
 % display parameters and generate a PsychImaging('AddTask', ...)
 % line to setup the Psychtoolbox imaging pipeline for proper display
-% on the HMD. This will also cause the device connection to get
+% on the device. This will also cause the device connection to get
 % auto-closed as soon as the onscreen window which displays on
-% the HMD is closed. Returns the 'hmd' handle of the HMD on success.
+% the device is closed. Returns the 'hmd' handle of the device on success.
 %
-% By default, the first detected HMD will be used and if no VR HMD
+% By default, the first detected devide will be used and if no device
 % is connected, it will return an empty [] hmd handle. You can override
-% this default choice of HMD by specifying the optional 'deviceIndex'
-% parameter to choose a specific HMD. However, only one HMD per machine is
+% this default choice of device by specifying the optional 'deviceIndex'
+% parameter to choose a specific device. However, only one device per machine is
 % supported, so the 'deviceIndex' will probably be only useful in the future.
 %
 % More optional parameters: 'basicTask' what kind of task should be implemented.
@@ -50,12 +48,12 @@ function varargout = PsychOpenXR(cmd, varargin)
 % in some kind of 3D virtual world. This is the default if omitted. The task
 % 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
 % head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
-% the HMD is just used as a special kind of standard display monitor. In 'Monoscopic'
+% the device is just used as a special kind of standard display monitor. In 'Monoscopic'
 % and 'Stereoscopic' mode, both eyes will be presented with an identical field of view,
 % to make sure pure 2D drawing works, without the need for setup of special per-eye
 % projection transformations. In 'Tracked3DVR' mode, each eye will have a different
 % field of view, optimized to maximize the viewable area while still avoiding occlusion
-% artifacts due to the nose of the wearer of the HMD.
+% artifacts due to the nose of the wearer of the device.
 %
 % In monoscopic or stereoscopic mode, you can change the imaging parameters, ie.,
 % apparent size and location of the 2D views used with the following command to
@@ -82,7 +80,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % format. This will ask Psychtoolbox to render and post-process stimuli in 16 bpc
 % linear floating point format, and allocate 16 bpc half-float textures as final
 % renderbuffers to be sent to the VR compositor. If the VR compositor takes advantage
-% of the high source image precision is at the discretion of the compositor and HMD.
+% of the high source image precision is at the discretion of the compositor and device.
 % By default, if this request is omitted, processing and display in sRGB format is
 % requested from Psychtoolbox and the compositor, ie., a roughly gamma 2.2 8 bpc
 % format is used.
@@ -158,7 +156,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % that workaround involves multi-threaded operation. This multi-threading
 % in turn can severely degrade performance, possibly reducing achievable
 % presentation framerates to (less than) half of the maximum video refresh
-% rate of your HMD! For this reason you should only request 'TimingSupport'
+% rate of your device! For this reason you should only request 'TimingSupport'
 % on non-Monado if you really need it and be willing to pay the performance
 % price.
 %
@@ -198,24 +196,24 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 %
 % hmd = PsychOpenXR('Open' [, deviceIndex], ...);
-% - Open HMD with index 'deviceIndex'. See PsychOpenXRCore Open?
+% - Open device with index 'deviceIndex'. See PsychOpenXRCore Open?
 % for help on additional parameters.
 %
 %
 % PsychOpenXR('SetAutoClose', hmd, mode);
-% - Set autoclose mode for HMD with handle 'hmd'. 'mode' can be
+% - Set autoclose mode for device with handle 'hmd'. 'mode' can be
 % 0 (this is the default) to not do anything special. 1 will close
-% the HMD 'hmd' when the onscreen window is closed which displays
-% on the HMD. 2 will do the same as 1, but close all open HMDs and
+% the device 'hmd' when the onscreen window is closed which displays
+% on the device. 2 will do the same as 1, but close all open HMDs and
 % shutdown the complete driver and OpenXR runtime - a full cleanup.
 %
 %
 % isOpen = PsychOpenXR('IsOpen', hmd);
-% - Returns 1 if 'hmd' corresponds to an open HMD, 0 otherwise.
+% - Returns 1 if 'hmd' corresponds to an open device, 0 otherwise.
 %
 %
 % PsychOpenXR('Close' [, hmd]);
-% - Close provided HMD device 'hmd'. If no 'hmd' handle is provided,
+% - Close provided device 'hmd'. If no 'hmd' handle is provided,
 % all HMDs will be closed and the driver will be shutdown.
 %
 %
@@ -225,12 +223,12 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 %
 % info = PsychOpenXR('GetInfo', hmd);
-% - Retrieve a struct 'info' with information about the HMD 'hmd'.
+% - Retrieve a struct 'info' with information about the device 'hmd'.
 % The returned info struct contains at least the following standardized
 % fields with information:
 %
-% handle = Driver internal handle for the specific HMD.
-% driver = Function handle to the actual driver for the HMD, e.g., @PsychOpenXR.
+% handle = Driver internal handle for the specific device.
+% driver = Function handle to the actual driver for the device, e.g., @PsychOpenXR.
 % type   = Defines the type/vendor of the device, e.g., 'OpenXR'.
 % modelName = Name string with the name of the model of the device, e.g., 'Rift DK2'.
 % separateEyePosesSupported = 1 if use of PsychOpenXR('GetEyePose') will improve
@@ -276,7 +274,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 %
 % input = PsychOpenXR('GetInputState', hmd, controllerType);
-% - Get input state of controller 'controllerType' associated with HMD 'hmd'.
+% - Get input state of controller 'controllerType' associated with device 'hmd'.
 %
 % 'controllerType' can be one of OVR.ControllerType_LTouch, OVR.ControllerType_RTouch,
 % OVR.ControllerType_Touch, OVR.ControllerType_Remote, OVR.ControllerType_XBox, or
@@ -331,7 +329,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % Currently supported values for 'controllerType' are:
 %
 % OVR.ControllerType_XBox   - The Microsoft XBox controller or compatible gamepad.
-% OVR.ControllerType_Remote - Connected remote control or similar, e.g., control buttons on HMD.
+% OVR.ControllerType_Remote - Connected remote control or similar, e.g., control buttons on device.
 % OVR.ControllerType_LTouch - Haptic enabled left hand controller.
 % OVR.ControllerType_RTouch - Haptic enabled right hand controller.
 % OVR.ControllerType_Touch  - All haptics enabled hand controllers.
@@ -369,7 +367,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % Return a struct 'state' which contains various useful bits of information
 % for 3D stereoscopic rendering of a scene, based on head tracking data.
 %
-% 'hmd' is the handle of the HMD which delivers tracking data and receives the
+% 'hmd' is the handle of the device which delivers tracking data and receives the
 % rendered content for display.
 %
 % 'reqmask' defines what kind of information is requested to be returned in
@@ -400,17 +398,17 @@ function varargout = PsychOpenXR(cmd, varargin)
 % of head tracking for this frame. A +1 flag means that head orientation is
 % tracked. A +2 flag means that head position is tracked via some absolute
 % position tracker like, e.g., the Oculus Rift DK2 or Rift CV1 camera. A +128
-% flag means the HMD is actually strapped onto the subjects head and displaying
-% our visual content. Lack of this flag means the HMD is off and thereby blanked
+% flag means the device is actually strapped onto the subjects head and displaying
+% our visual content. Lack of this flag means the device is off and thereby blanked
 % and dark, or we lost access to it to another application.
 %
 % state also always contains a field state.SessionState, whose bits signal general
 % VR session status:
-% +1  = Our rendering goes to the HMD, ie. we have control over it. Lack of this could
+% +1  = Our rendering goes to the device, ie. we have control over it. Lack of this could
 %       mean the Health and Safety warning is displaying at the moment and waiting for
 %       acknowledgement, or the OpenXR GUI application is in control.
-% +2  = HMD is present and active.
-% +4  = HMD is strapped onto users head. A Rift CV1 would switch off/blank if not on the head.
+% +2  = Device is present and active.
+% +4  = Device is strapped onto users head. A Rift CV1 would switch off/blank if not on the head.
 % +8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit this
 %       Psychtoolbox session to recover from this.
 % +16 = ShouldQuit The user interface / user asks us to voluntarily terminate this session.
@@ -472,7 +470,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % benefit on OpenXR VR/AR/XR devices, but instead may cause a performance decrease
 % when used! It is recommended to not use it in new scripts.
 %
-% 'hmd' is the handle of the HMD which delivers tracking data and receives the
+% 'hmd' is the handle of the device which delivers tracking data and receives the
 % rendered content for display.
 %
 % 'renderPass' defines if information should be returned for the 1st renderpass
@@ -480,7 +478,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % decide for you if the 1st renderpass should render the left eye and the 2nd
 % pass the right eye, or if the 1st renderpass should render the right eye and
 % then the 2nd renderpass the left eye. The ordering depends on the properties
-% of the video display of your HMD, specifically on the video scanout order:
+% of the video display of your device, specifically on the video scanout order:
 % Is it right to left, left to right, or top to bottom? For each scanout order
 % there is an optimal order for the renderpasses to minimize perceived lag.
 %
@@ -524,23 +522,23 @@ function varargout = PsychOpenXR(cmd, varargin)
 % This returns the current type of tracking origin in 'oldType'.
 % Optionally you can specify a new tracking origin type as 'newType'.
 % Type must be either:
-% 0 = Origin is at eye height (HMD height).
+% 0 = Origin is at eye height (device height).
 % 1 = Origin is at floor height.
 % The eye height or floor height gets defined by the system during
 % sensor calibration, possibly guided by some OpenXR GUI control application.
 %
 %
 % PsychOpenXR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
-% - Query the HMD 'hmd' for its properties and setup internal rendering
+% - Query the device 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
-% to display properly on the HMD. See section about 'AutoSetupHMD' above for
+% to display properly on the device. See section about 'AutoSetupHMD' above for
 % the meaning of the optional parameters 'basicTask', 'basicRequirements'
 % and 'basicQuality'.
 %
 % 'fov' Optional field of view in degrees, from line of sight: [leftdeg, rightdeg,
-% updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
+% updeg, downdeg]. If 'fov' is omitted, the device runtime will be asked for a
 % good default field of view and that will be used. The field of view may be
-% dependent on the settings in the HMD user profile of the currently selected
+% dependent on the settings in the device user profile of the currently selected
 % user. Note: This parameter is completely ignored with the current driver on
 % any standard OpenXR 1.0 backend.
 %
@@ -584,20 +582,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 % Deprecated: This function does nothing. It just exists for (backwards)
 % compatibility with PsychVRHMD.
 %
-% - Return old settings for panel overdrive mode in 'oldSettings',
-% optionally set new settings in 'newparams'. This changes the operating
-% parameters of OLED panel overdrive on the Rift DK-2 if 'FastResponse'
-% mode is active. newparams is a vector [upscale, downscale, gamma] with
-% the following meaning: gamma = 1 Use gamma/degamma pass to perform
-% overdrive boost in gamma 2.2 corrected space. This is the startup default.
-% upscale = How much should rising pixel color intensity values be boosted.
-% Default is 0.10 for a 10% boost.
-% downscale = How much should rising pixel color intensity values be reduced.
-% Default is 0.05 for a 5% reduction.
-% The Rift DK-2 OLED panel controller is slower on rising intensities than on
-% falling intensities, therefore the higher boost on rising than on falling
-% direction.
-%
 %
 % PsychOpenXR('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
 % - Set how the user can dismiss the "Health and safety warning display".
@@ -607,7 +591,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % [bufferSize, imagingFlags, stereoMode] = PsychOpenXR('GetClientRenderingParameters', hmd);
 % - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
-% renderbuffer for each eye for rendering to the HMD. Returns parameters
+% renderbuffer for each eye for rendering to the device. Returns parameters
 % previously computed by PsychOpenXR('SetupRenderingParameters', hmd).
 %
 % Also returns 'imagingFlags', the required imaging mode flags for setup of
@@ -624,16 +608,16 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
-% for a specific HMD. Take other preparatory steps as needed, immediately before the
+% for a specific device. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
 % with the user provided hmd, screenid, winRect etc.
 %
 %
 % isOutput = PsychOpenXR('IsHMDOutput', hmd, scanout);
 % - Returns 1 (true) if 'scanout' describes the video output to which the
-% HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
+% device 'hmd' is connected. 'scanout' is a struct returned by the Screen
 % function Screen('ConfigureDisplay', 'Scanout', screenid, outputid);
-% This allows probing video outputs to find the one which feeds the HMD.
+% This allows probing video outputs to find the one which feeds the device.
 % Deprecated: This function does nothing. It just exists for (backwards)
 % compatibility with PsychVRHMD.
 %
@@ -739,7 +723,7 @@ if strcmpi(cmd, 'PrepareRender')
   % Get and validate handle - fast path open coded:
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:PrepareRender: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:PrepareRender: Specified handle does not correspond to an open device!');
   end
 
   % Get 'userTransformMatrix' if any:
@@ -803,11 +787,11 @@ if strcmpi(cmd, 'PrepareRender')
     % [norm(dv(1:3)) * 0.5, 0, 0]. As orientation we use the orientation of the left eye
     % state.EyePoseLeft quaternion components 4-7. Iow. we define head pose as a copy of left eye,
     % shifted half-way along the line segment connecting the optical center of left and
-    % right eye. For HMD's without gaze tracking, this is a reasonable approximation, as
-    % they track HMD position and derive eye pose from HMD pose, so we just undo that. For
-    % a HMD with gaze tracking that would use gaze info to compute different eye orientation
+    % right eye. For devices without gaze tracking, this is a reasonable approximation, as
+    % they track device position and derive eye pose from device pose, so we just undo that. For
+    % a device with gaze tracking that would use gaze info to compute different eye orientation
     % for each eye, this would go wrong, and something more clever would be needed, to at
-    % least get a roughly correct approximation of HMD orientation, although an exactly
+    % least get a roughly correct approximation of device orientation, although an exactly
     % correct result is impossible to obtain from the two eye poses...
     dv = state.EyePoseRight - state.EyePoseLeft;
     [result.localHeadPoseMatrix, result.headPose] = eyePoseToCameraMatrix(state.EyePoseLeft, [norm(dv(1:3)) * 0.5, 0, 0]);
@@ -849,7 +833,7 @@ if strcmpi(cmd, 'GetEyePose')
   % Get and validate handle - fast path open coded:
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:GetEyePose: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:GetEyePose: Specified handle does not correspond to an open device!');
   end
 
   % Valid: Get view render pass for which to return information:
@@ -905,7 +889,7 @@ end
 %if strcmpi(cmd, 'GetTrackersState')
 %  myhmd = varargin{1};
 %  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-%    error('PsychOpenXR:GetTrackersState: Specified handle does not correspond to an open HMD!');
+%    error('PsychOpenXR:GetTrackersState: Specified handle does not correspond to an open device!');
 %  end
 %
 %  varargout{1} = PsychOpenXRCore('GetTrackersState', myhmd.handle);
@@ -917,7 +901,7 @@ if strcmpi(cmd, 'GetInputState')
   % Get and validate handle - fast path open coded:
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:GetInputState: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:GetInputState: Specified handle does not correspond to an open device!');
   end
 
   if length(varargin) < 2 || isempty(varargin{2})
@@ -946,7 +930,7 @@ if strcmpi(cmd, 'HapticPulse')
   % Get and validate handle - fast path open coded:
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:HapticPulse: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:HapticPulse: Specified handle does not correspond to an open device!');
   end
 
   if length(varargin) < 2 || isempty(varargin{2})
@@ -962,7 +946,7 @@ if strcmpi(cmd, 'Start')
   % Get and validate handle - fast path open coded:
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:Start: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:Start: Specified handle does not correspond to an open device!');
   end
 
   if hmd{myhmd.handle}.switchTo2DViewsOnStop
@@ -1003,7 +987,7 @@ if strcmpi(cmd, 'Stop')
   % Get and validate handle - fast path open coded:
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:Stop: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:Stop: Specified handle does not correspond to an open device!');
   end
 
   % Use 2D quad views in 'Stop' mode?
@@ -1039,7 +1023,7 @@ end
 if strcmpi(cmd, 'VRAreaBoundary')
   myhmd = varargin{1};
   if ~PsychOpenXR('IsOpen', myhmd)
-    error('VRAreaBoundary: Passed in handle does not refer to a valid and open HMD.');
+    error('VRAreaBoundary: Passed in handle does not refer to a valid and open device.');
   end
 
   % Return no-op values for this unsupported, but mandated by PsychVRHMD(), function:
@@ -1050,7 +1034,7 @@ end
 if strcmpi(cmd, 'TrackingOriginType')
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:TrackingOriginType: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:TrackingOriginType: Specified handle does not correspond to an open device!');
   end
 
   varargout{1} = PsychOpenXRCore('TrackingOriginType', myhmd.handle, varargin{2:end});
@@ -1061,7 +1045,7 @@ end
 if strcmpi(cmd, 'Supported')
   % Check if the OpenXR runtime 1+ is supported and active on this
   % installation, so it can be used to open connections to real HMDs,
-  % or at least to emulate a HMD for simple debugging purposes:
+  % or at least to emulate a device for simple debugging purposes:
   try
     if exist('PsychOpenXRCore', 'file') && PsychOpenXRCore('GetCount') > 0
       varargout{1} = 1;
@@ -1074,7 +1058,7 @@ if strcmpi(cmd, 'Supported')
   return;
 end
 
-% Autodetect first connected HMD and open a connection to it. Open a
+% Autodetect first connected device and open a connection to it. Open a
 % emulated one, if none can be detected. Perform basic setup with
 % default configuration, create a proper PsychImaging task.
 if strcmpi(cmd, 'AutoSetupHMD')
@@ -1083,13 +1067,13 @@ if strcmpi(cmd, 'AutoSetupHMD')
     % Nope: Game over.
     fprintf('PsychOpenXR:AutoSetupHMD: Could not initialize OpenXR driver. Game over!\n');
 
-    % Return an empty handle to signal lack of VR HMD support to caller,
+    % Return an empty handle to signal lack of XR device support to caller,
     % so caller can cope with it somehow:
     varargout{1} = [];
     return;
   end
 
-  % Basic task this HMD should fulfill:
+  % Basic task this device should fulfill:
   if length(varargin) >= 1 && ~isempty(varargin{1})
     basicTask = varargin{1};
   else
@@ -1110,31 +1094,31 @@ if strcmpi(cmd, 'AutoSetupHMD')
     basicQuality = [];
   end
 
-  % HMD device selection:
+  % XR device selection:
   if length(varargin) >= 4 && ~isempty(varargin{4})
     deviceIndex = varargin{4};
     newhmd = PsychOpenXR('Open', deviceIndex);
   else
-    % Check if at least one OpenXR HMD is connected and available:
+    % Check if at least one OpenXR device is connected and available:
     if PsychOpenXR('GetCount') > 0
-      % Yes. Open and initialize connection to first detected HMD:
+      % Yes. Open and initialize connection to first detected device:
       fprintf('PsychOpenXR: Opening the first connected OpenXR VR headset.\n');
       newhmd = PsychOpenXR('Open', 0);
     else
-      % HMD emulation not possible:
-      fprintf('PsychOpenXR: No OpenXR HMD detected. Game over.\n');
+      % Device emulation not possible:
+      fprintf('PsychOpenXR: No OpenXR device detected. Game over.\n');
       varargout{1} = [];
       return;
     end
   end
 
-  % Trigger an automatic device close at onscreen window close for the HMD display window:
+  % Trigger an automatic device close at onscreen window close for the device display window:
   PsychOpenXR('SetAutoClose', newhmd, 1);
 
   % Setup default rendering parameters:
   PsychOpenXR('SetupRenderingParameters', newhmd, basicTask, basicRequirements, basicQuality);
 
-  % Add a PsychImaging task to use this HMD with the next opened onscreen window:
+  % Add a PsychImaging task to use this device with the next opened onscreen window:
   PsychImaging('AddTask', 'General', 'UseVRHMD', newhmd);
 
   % Return the device handle:
@@ -1148,7 +1132,7 @@ if strcmpi(cmd, 'SetAutoClose')
   myhmd = varargin{1};
 
   if ~PsychOpenXR('IsOpen', myhmd)
-    error('PsychOpenXR:SetAutoClose: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:SetAutoClose: Specified handle does not correspond to an open device!');
   end
 
   % Assign autoclose flag:
@@ -1161,12 +1145,12 @@ if strcmpi(cmd, 'SetHSWDisplayDismiss')
   myhmd = varargin{1};
 
   if ~PsychOpenXR('IsOpen', myhmd)
-    error('PsychOpenXR:SetHSWDisplay: Specified handle does not correspond to an open HMD!');
+    error('PsychOpenXR:SetHSWDisplay: Specified handle does not correspond to an open device!');
   end
 
   % Method of dismissing HSW display:
   if length(varargin) < 2 || isempty(varargin{2})
-    % Default is keyboard, mouse click, or HMD tap:
+    % Default is keyboard, mouse click, or device tap:
     hmd{myhmd.handle}.hswdismiss = 1 + 2 + 4;
   else
     hmd{myhmd.handle}.hswdismiss = varargin{2};
@@ -1175,7 +1159,7 @@ if strcmpi(cmd, 'SetHSWDisplayDismiss')
   return;
 end
 
-% Open a HMD:
+% Open a device:
 if strcmpi(cmd, 'Open')
   if isempty(firsttime)
     firsttime = 1;
@@ -1294,7 +1278,7 @@ if strcmpi(cmd, 'Open')
   newhmd.autoclose = 0;
 
   % By default allow user to dismiss HSW display via key press,
-  % mouse click, or HMD tap:
+  % mouse click, or device tap:
   newhmd.hswdismiss = 1 + 2 + 4;
 
   % Setup basic task/requirement/quality specs to "nothing":
@@ -1398,7 +1382,7 @@ end
 if strcmpi(cmd, 'Controllers')
   myhmd = varargin{1};
   if ~PsychOpenXR('IsOpen', myhmd)
-    error('Controllers: Passed in handle does not refer to a valid and open HMD.');
+    error('Controllers: Passed in handle does not refer to a valid and open device.');
   end
 
   hmd{myhmd.handle}.controllerTypes = PsychOpenXRCore('Controllers', myhmd.handle);
@@ -1421,7 +1405,7 @@ if strcmpi(cmd, 'GetInfo')
   % Ok, cheap trick: We just return the passed in 'hmd' struct - the up to date
   % internal copy that is:
   if ~PsychOpenXR('IsOpen', varargin{1})
-    error('GetInfo: Passed in handle does not refer to a valid and open HMD.');
+    error('GetInfo: Passed in handle does not refer to a valid and open device.');
   end
 
   myhmd = varargin{1};
@@ -1480,7 +1464,7 @@ end
 if strcmpi(cmd, 'SetFastResponse')
   myhmd = varargin{1};
   if ~PsychOpenXR('IsOpen', myhmd)
-    error('SetFastResponse: Passed in handle does not refer to a valid and open HMD.');
+    error('SetFastResponse: Passed in handle does not refer to a valid and open device.');
   end
   handle = myhmd.handle;
 
@@ -1494,7 +1478,7 @@ end
 if strcmpi(cmd, 'SetTimeWarp')
   myhmd = varargin{1};
   if ~PsychOpenXR('IsOpen', myhmd)
-    error('SetTimeWarp: Passed in handle does not refer to a valid and open HMD.');
+    error('SetTimeWarp: Passed in handle does not refer to a valid and open device.');
   end
 
   % SetTimeWarp determined use of GPU accelerated 2D texture sampling
@@ -1511,7 +1495,7 @@ end
 if strcmpi(cmd, 'SetLowPersistence')
   myhmd = varargin{1};
   if ~PsychOpenXR('IsOpen', myhmd)
-    error('SetLowPersistence: Passed in handle does not refer to a valid and open HMD.');
+    error('SetLowPersistence: Passed in handle does not refer to a valid and open device.');
   end
 
   % SetLowPersistence defined the use of low persistence mode on the Rift DK2 with
@@ -1526,7 +1510,7 @@ end
 if strcmpi(cmd, 'SetupRenderingParameters')
   myhmd = varargin{1};
 
-  % Basic task this HMD should fulfill:
+  % Basic task this device should fulfill:
   if length(varargin) >= 2 && ~isempty(varargin{2})
     basicTask = varargin{2};
   else
@@ -1598,7 +1582,7 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     end
   end
 
-  % Debug display of HMD output into onscreen window requested?
+  % Debug display of device output into onscreen window requested?
   if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel) %#ok<*STREMP> 
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
@@ -1638,7 +1622,7 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
   % efficiency, but fallback to slow Screen MSAA if needed to fulfill the
   % user codes wishes - "quality first", at the expense of an extra framebuffer
   % copy for MSAA resolve between drawBufferFBOs and finalizedFBOs. If
-  % 'DebugDisplay' mode for mirroring of HMD content to the onscreen window
+  % 'DebugDisplay' mode for mirroring of device content to the onscreen window
   % is requested then we also always fallback to Screen() MSAA, instead of
   % using OpenXR MSAA, because the image mirroring code can not cope with
   % MSAA finalizedFBO's / color attachment textures, ie. glBlitFramebuffer
@@ -1686,7 +1670,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % Get wanted MSAA level from caller:
   ovrMultiSample = varargin{6};
 
-  % As the onscreen window is not used for displaying on the HMD, but
+  % As the onscreen window is not used for displaying on the device, but
   % either not at all, or just for debug output, make it a regular GUI
   % window, managed by the window manager, so user can easily get it out
   % of the way:
@@ -1731,11 +1715,11 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % Set as fbOverrideRect for window:
   ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
 
-  fprintf('PsychOpenXR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
+  fprintf('PsychOpenXR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with XR device direct output mode.\n', ...
           clientRes(1), clientRes(2));
 
   % Skip all visual timing sync tests and calibrations, as display timing
-  % of the onscreen window doesn't matter, only the timing on the HMD direct
+  % of the onscreen window doesn't matter, only the timing on the device direct
   % output matters - and that can't be measured by our standard procedures:
   Screen('Preference', 'SkipSyncTests', 2);
 
@@ -2102,7 +2086,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   Screen('FillRect', win, clearcolor);
 
   % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
-  % Debug display of HMD output into onscreen window requested?
+  % Debug display of device output into onscreen window requested?
   if ~isempty(strfind(hmd{handle}.basicRequirements, 'DebugDisplay'))
     % Debug output of compositor mirror texture into PTB onscreen window requested.
     % - Ask to skip flip's regular OpenGL swap completion timestamping, but instead
@@ -2145,9 +2129,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Need to call the PsychOpenXR(1) callback at each Screen('Flip') to submit the output
-  % frames to the VR-Compositor for presentation on the HMD. This gets called before an
+  % frames to the XR-Compositor for presentation on the device. This gets called before an
   % OpenGL bufferswap (if any) + timestamping + validation will happen. It is supposed to
-  % block until image presentation on the HMD has happened, and to inject proper Present
+  % block until image presentation on the device has happened, and to inject proper Present
   % timestamps for 'Flip':
   % The kPsychSkipWaitForFlipOnce flag is set, so PreSwapbuffersOperations executes
   % immediately. We pass the tWhen timestamp to this fast-path callback, which will pass
@@ -2162,14 +2146,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'OpenXR cleanup', cmdString);
   Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
-  % Does usercode request auto-closing the HMD or driver when the onscreen window is closed?
+  % Does usercode request auto-closing the device or driver when the onscreen window is closed?
   if hmd{handle}.autoclose > 0
     % Attach a window close callback for Device teardown at window close time:
     if hmd{handle}.autoclose == 2
       % Shutdown driver completely:
       Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown window callback into PsychOpenXR driver.', 'PsychOpenXR(''Close'');');
     else
-      % Only close this HMD:
+      % Only close this device:
       Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown window callback into PsychOpenXR driver.', sprintf('PsychOpenXR(''Close'', %i);', handle));
     end
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
@@ -2194,8 +2178,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % SteamVR needs the extra 'Controllers' call below, or things will continue
     % to fail.
     for i = 1:3
-      % Loop until we get a true flip through. This will spin-wait if HMD
-      % is not detecting users presence, e.g., a VR HMD's proximity sensor
+      % Loop until we get a true flip through. This will spin-wait if device
+      % is not detecting users presence, e.g., a VR device's proximity sensor
       % does not report "HMD firmly attached to users head". We break the
       % loop, once the user is ready.
       while Screen('Flip', win) == 0; end
