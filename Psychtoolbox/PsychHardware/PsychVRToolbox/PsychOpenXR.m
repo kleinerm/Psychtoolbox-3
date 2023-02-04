@@ -57,6 +57,13 @@ function varargout = PsychOpenXR(cmd, varargin)
 % field of view, optimized to maximize the viewable area while still avoiding occlusion
 % artifacts due to the nose of the wearer of the HMD.
 %
+% In monoscopic or stereoscopic mode, you can change the imaging parameters, ie.,
+% apparent size and location of the 2D views used with the following command to
+% optimize visual display:
+% 
+% PsychOpenXR('View2DParameters', openxrPtr, eye [, position][, size]);
+%
+%
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
 % 'basicRequirements' string:
@@ -115,7 +122,13 @@ function varargout = PsychOpenXR(cmd, varargin)
 % solution for your specific experiment paradigm. The switching between 3D
 % projected view and standard 2D stereoscopic view will change the image
 % though, which may disorient the subject for a moment while the subjects
-% eyes need to adapt their accomodation, vergence and focus point.
+% eyes need to adapt their accomodation, vergence and focus point. You can
+% change the imaging parameters, ie., apparent size and location of the 2D
+% views used in this mode with the following command to minimize visual
+% disorientation:
+% 
+% PsychOpenXR('View2DParameters', openxrPtr, eye [, position][, size]);
+%
 %
 % 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
 % care about potential significant visual presentation glitches happening if
