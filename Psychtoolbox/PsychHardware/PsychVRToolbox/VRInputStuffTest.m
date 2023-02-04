@@ -92,6 +92,10 @@ end
 ifi = Screen('GetFlipInterval', win);
 hmdinfo = PsychVRHMD('GetInfo', hmd);
 
+% Retrieve the initial settings for position and size for 2D quad views:
+oldPositionL = PsychVRHMD('View2DParameters', hmd, 0);
+oldPositionR = PsychVRHMD('View2DParameters', hmd, 0);
+
 clc;
 
 % Mark our own tracking + rendering loop as stopped for initial section of test/demo:
@@ -539,6 +543,8 @@ if hmdinfo.handTrackingSupported
       globalPos(1) = globalPos(1) - thumbmult * istate.Thumbstick(1,1);
       globalPos(2) = globalPos(2) - thumbmult * istate.Thumbstick(2,1);
       globalPos(3) = globalPos(3) + thumbmult * istate.Thumbstick(2,2);
+      oldPositionL(1) = oldPositionL(1) + 0.001 * istate.Thumbstick(1,2);
+      oldPositionR(1) = oldPositionR(1) - 0.001 * istate.Thumbstick(1,2);
     end
 
     % Compute a transformation matrix to globally position and orient the
@@ -713,6 +719,12 @@ if hmdinfo.handTrackingSupported
 
     % MT->ST->MT->... switching stress test, if enabled:
     if withMTStressTest
+        % Apply horizontal deflection of right thumbstick to change
+        % x-position of the 2D quad views, to change required vergence in
+        % 'Stop' mode when 2D views are used:
+        oldPositionL = PsychVRHMD('View2DParameters', hmd, 0, oldPositionL);
+        oldPositionR = PsychVRHMD('View2DParameters', hmd, 1, oldPositionR);
+
         if mod(fcount, 360) == 0
             PsychVRHMD('Stop', hmd);
         end
@@ -732,6 +744,8 @@ if hmdinfo.handTrackingSupported
   Priority(0);
 
   % Stats for nerds:
+  fprintf('Final settings for 2D views positionL = [%f, %f, %f] positionR = [%f, %f, %f]\n\n', ...
+          oldPositionL(1), oldPositionL(2), oldPositionL(3), oldPositionR(1), oldPositionR(2), oldPositionR(3));
   fps = fcount / (vbl - tstart);
   fprintf('Average framerate was %f fps. Bye!\n', fps);
 end

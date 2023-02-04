@@ -1822,6 +1822,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   return;
 end
 
+% Dummy implementation for compatibility with other drivers:
+if strcmpi(cmd, 'View2DParameters')
+  varargout{1} = [NaN, NaN, NaN];
+  varargout{2} = [NaN, NaN];
+  return;
+end
+
 % 'cmd' so far not dispatched? Let's assume it is a command
 % meant for PsychOpenHMDVRCore:
 if (length(varargin) >= 1) && isstruct(varargin{1})

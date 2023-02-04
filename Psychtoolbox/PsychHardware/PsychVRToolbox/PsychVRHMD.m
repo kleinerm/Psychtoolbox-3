@@ -24,6 +24,16 @@ function varargout = PsychVRHMD(cmd, varargin)
 % head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
 % the HMD is just used as a special kind of standard display monitor.
 %
+% In monoscopic or stereoscopic mode, you can change the imaging parameters, ie.,
+% apparent size and location of the 2D views used with the following command to
+% optimize visual display:
+% 
+% PsychVRHMD('View2DParameters', hmd, eye [, position][, size]);
+% The command is fully supported under the OpenXR driver, but does nothing
+% and only returns NaN results on other drivers like the old Oculus,
+% Oculus-1 and OpenHMD drivers.
+%
+%
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
 % 'basicRequirements' string:
@@ -62,7 +72,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % image buffer. By default the driver will choose values that provide good
 % quality for the given VR/AR/MR/XR display device, which can be scaled up
 % or down with the optional 'pixelsPerDisplay' parameter for a different
-% quality vs. performance tradeoff in the function PsychOpenXR('SetupRenderingParameters');
+% quality vs. performance tradeoff in the function PsychVRHMD('SetupRenderingParameters');
 % The specified values are clamped against the maximum values supported by
 % the given hardware + driver combination.
 %
@@ -129,7 +139,13 @@ function varargout = PsychVRHMD(cmd, varargin)
 % solution for your specific experiment paradigm. The switching between 3D
 % projected view and standard 2D stereoscopic view will change the image
 % though, which may disorient the subject for a moment while the subjects
-% eyes need to adapt their accomodation, vergence and focus point.
+% eyes need to adapt their accomodation, vergence and focus point. You can
+% change the imaging parameters, ie., apparent size and location of the 2D
+% views used in this mode with the following command to minimize visual
+% disorientation:
+% 
+% PsychVRHMD('View2DParameters', hmd, eye [, position][, size]);
+%
 %
 % 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
 % care about potential significant visual presentation glitches happening if
@@ -607,6 +623,34 @@ function varargout = PsychVRHMD(cmd, varargin)
 % PsychVRHMD('SetBasicQuality', hmd, basicQuality);
 % - Set basic level of quality vs. required GPU performance.
 %
+%
+% [oldPosition, oldSize] = PsychVRHMD('View2DParameters', hmd, eye [, position][, size]);
+% - Query or assign 2D quad view parameters for eye 'eye' of the hmd.
+% Such 2D quad views are used in 'Monoscopic' (same view for both eyes), or
+% 'Stereoscopic' mode (one view per eye), as well as in 3D modes when a script is
+% 'Stop'ed and the user asked for use of these 2D quad views instead of projective
+% views.
+% This returns the current or previous settings for position and size in
+% 'oldPosition' and 'oldSize'.
+% 'eye' Mandatory: 0 = Left eye or monoscopic view, 1 = right eye in stereo mode.
+% Optionally you can specify new settings, as follows:
+% 'position' 3D position of the center of the virtual viewscreen, relative to the
+% eye of the subject. Unit is meters, e.g., [0, 0, -0.5] would center the view at
+% x,y offset zero relative to the optical axis, and 0.5 meters away from the eye.
+% Iow. the center of the viewscreen aligns with the straightforward looking
+% direction of the eye, but the screen floats at 0.5 meters distance. If this
+% parameter is left empty [] or omitted, then the position does not change.
+% Default position at session startup is centered and at a comfortable viewing
+% distance away, so staring straight forward with parallel eyes, e.g., like when
+% looking at an infinite point in space, would cause the center of the stimulus
+% image to be located at your fixation direction.
+% 'size' Size of the virtual viewscreen in meters. E.g., [0.8, 1] would have the
+% screen at an apparent width of 0.8 meters and an apparent height of 1 meter. If
+% the parameter is omitted or left empty [], the size won't be changed. Default
+% size is 1 meter high and the width adjusted to preserve the aspect ratio of the
+% Psychtoolbox onscreen window into which your script draws, so a drawn circle is
+% actually circular instead of elliptic.
+% 
 %
 % oldSetting = PsychVRHMD('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
