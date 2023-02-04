@@ -83,6 +83,16 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % format is used, which is optimized for the gamma response curve of at least the Oculus
 % Rift CV1 display.
 %
+% 'ForceSize=widthxheight' = Enforce a specific fixed size of the stimulus
+% image buffer in pixels, overriding the recommmended value by the runtime,
+% e.g., 'ForceSize=2200x1200' for a 2200 pixels wide and 1200 pixels high
+% image buffer. By default the driver will choose values that provide good
+% quality for the given Oculus display device, which can be scaled up or down
+% with the optional 'pixelsPerDisplay' parameter for a different quality vs.
+% performance tradeoff in the function PsychOpenXR('SetupRenderingParameters');
+% The specified values are clamped against the maximum values supported by
+% the given hardware + driver combination.
+%
 % 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view even
 % when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
 % for wider field of view in these tasks, but requires the usercode to adapt to these
@@ -1558,6 +1568,28 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     % Recompute parameters based on override fov:
     [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOculusVRCore1('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
     [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore1('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
+  end
+
+  % No good way to find the supported maximum, and this driver is on its way
+  % to retirement anyway, so set it to infinity and let nature run its course:
+  hmd{myhmd.handle}.maxrbwidth = Inf;
+  hmd{myhmd.handle}.maxrbheight = Inf;
+
+  % Forced override size of framebuffer provided?
+  rbOvrSize = strfind(basicRequirements, 'ForceSize=');
+  if ~isempty(rbOvrSize)
+    rbOvrSize = sscanf(basicRequirements(min(rbOvrSize):end), 'ForceSize=%ix%i');
+    if length(rbOvrSize) ~= 2 || ~isvector(rbOvrSize) || ~isreal(rbOvrSize)
+      sca;
+      error('SetupRenderingParameters(): Invalid ''ForceSize='' string in ''basicRequirements'' specified! Must be of the form ''ForceSize=widthxheight'' pixels.');
+    end
+
+    % Clamp to valid range and assign:
+    hmd{myhmd.handle}.rbwidth = max(1, min(ceil(rbOvrSize(1) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbwidth));
+    hmd{myhmd.handle}.rbheight = max(1, min(ceil(rbOvrSize(2) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbheight));
+    if hmd{myhmd.handle}.rbwidth ~= rbOvrSize(1) || hmd{myhmd.handle}.rbheight ~= rbOvrSize(2)
+        warning('SetupRenderingParameters(): Had to clamp ''ForceSize=widthxheight'' requested pixelbuffer size to fit into valid range! Result may look funky.');
+    end
   end
 
   % Debug display of HMD output into onscreen window requested?
