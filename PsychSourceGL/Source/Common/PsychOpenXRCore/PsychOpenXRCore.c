@@ -3371,11 +3371,12 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     openxr->recSamples = views[eyeIndex].recommendedSwapchainSampleCount;
     openxr->maxSamples = views[eyeIndex].maxSwapchainSampleCount;
 
-    free(views);
-
     // Return recommended width and height and MSAA samples of drawBuffer:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, views[eyeIndex].recommendedImageRectWidth);
     PsychCopyOutDoubleArg(2, kPsychArgOptional, views[eyeIndex].recommendedImageRectHeight);
+
+    free(views);
+
     PsychCopyOutDoubleArg(3, kPsychArgOptional, openxr->recSamples);
 
     // Return maximum width and height and MSAA samples of drawBuffer:

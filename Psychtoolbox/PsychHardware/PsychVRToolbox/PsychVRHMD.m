@@ -56,6 +56,16 @@ function varargout = PsychVRHMD(cmd, varargin)
 % at least the Oculus Rift CV1 display. On other HMDs or drivers, this option may do
 % nothing and get silently ignored.
 %
+% 'ForceSize=widthxheight' = Enforce a specific fixed size of the stimulus
+% image buffer in pixels, overriding the recommmended value by the runtime,
+% e.g., 'ForceSize=2200x1200' for a 2200 pixels wide and 1200 pixels high
+% image buffer. By default the driver will choose values that provide good
+% quality for the given VR/AR/MR/XR display device, which can be scaled up
+% or down with the optional 'pixelsPerDisplay' parameter for a different
+% quality vs. performance tradeoff in the function PsychOpenXR('SetupRenderingParameters');
+% The specified values are clamped against the maximum values supported by
+% the given hardware + driver combination.
+%
 % 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view, even
 % when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
 % for wider field of view in these tasks, but requires the usercode to adapt to these
@@ -591,7 +601,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
 % at the center of distortion. Defaults to 1.0 if omitted. Lower values can
-% improve performance, at lower quality. Note: Ignored with the standard OpenXR backend.
+% improve performance, at lower quality.
 %
 %
 % PsychVRHMD('SetBasicQuality', hmd, basicQuality);
