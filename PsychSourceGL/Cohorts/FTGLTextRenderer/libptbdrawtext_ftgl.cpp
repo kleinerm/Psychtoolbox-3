@@ -689,6 +689,29 @@ int PsychInitText(void)
 {
     _firstCall = true;
 
+    // MS-Windows?
+    #ifdef _WIN32
+    // Override the path to the default fontconfig conf file and directory
+    // if the environment variable "FONTCONFIG_FILE" has not been set yet.
+    // I'm tired of configuration bugs in fontconfig for Windows, so lets
+    // just babysit the procedure and direct fontconfig to the GStreamer
+    // default location for the fontconfig conf file and folder.
+    char gstroot[FILENAME_MAX] = { 0 };
+    GetEnvironmentVariable("GSTREAMER_1_0_ROOT_MSVC_X86_64", gstroot, sizeof(gstroot));
+    if (strlen(gstroot) && !getenv("FONTCONFIG_FILE")) {
+        char fontconfpath[FILENAME_MAX];
+        sprintf(fontconfpath, "FONTCONFIG_FILE=%setc\\fonts\\fonts.conf", gstroot);
+        _putenv(fontconfpath);
+        sprintf(fontconfpath, "FONTCONFIG_PATH=%setc\\fonts\\", gstroot);
+        _putenv(fontconfpath);
+    }
+
+    fprintf(stdout, "libptbdrawtext_ftgl: GStreamer root is '%s'.\n", gstroot);
+    fprintf(stdout, "libptbdrawtext_ftgl: Path of fontconfig config file is '%s'.\n", getenv("FONTCONFIG_FILE"));
+    fprintf(stdout, "libptbdrawtext_ftgl: Path of fontconfig default config folder is '%s'.\n", getenv("FONTCONFIG_PATH"));
+    fflush(NULL);
+    #endif
+
     // Try to initialize libfontconfig - our fontMapper library for font matching and selection:
     if (!FcInit()) {
         if (_verbosity > 0) fprintf(stdout, "libptbdrawtext_ftgl: FontMapper initialization failed!\n");
@@ -705,7 +728,7 @@ int PsychInitText(void)
         fprintf(stdout, "libptbdrawtext_ftgl: This plugin uses multiple excellent free software libraries to do its work:\n");
         fprintf(stdout, "libptbdrawtext_ftgl: OGLFT (http://oglft.sourceforge.net/) the OpenGL-FreeType library.\n");
         fprintf(stdout, "libptbdrawtext_ftgl: The FreeType-2 (http://freetype.sourceforge.net/) library.\n");
-        fprintf(stdout, "libptbdrawtext_ftgl: The FontConfig (http://www.fontconfig.org) library.\n");
+        fprintf(stdout, "libptbdrawtext_ftgl: The FontConfig (http://www.fontconfig.org) library. Version Id: %i\n", FcGetVersion());
         fprintf(stdout, "libptbdrawtext_ftgl: Thanks!\n\n");
     }
 
