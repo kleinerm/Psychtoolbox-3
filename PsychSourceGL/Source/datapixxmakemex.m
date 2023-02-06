@@ -221,9 +221,9 @@ function datapixxmakemex()
         elseif (IsWin)
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Windows/Base/*.o'], '/', filesep));
             if Is64Bit
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave6WindowsFiles64'], '/', filesep));
+                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave7WindowsFiles64'], '/', filesep));
             else
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave6WindowsFiles'], '/', filesep));
+                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave7WindowsFiles'], '/', filesep));
             end
         end
     else

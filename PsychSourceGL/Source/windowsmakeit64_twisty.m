@@ -1,6 +1,6 @@
 function windowsmakeit64_twisty(what, onoctave)
-% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-6 and Matlab.
-% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-6 if
+% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-7 and Matlab.
+% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-7 if
 % all relevant SDK's, Compilers and libraries would be installed.
 % This script is customized for MK's build machines "darlene" and "touchy",
 % building against the Windows-10 SDK on Windows-10 64-Bit.
@@ -27,7 +27,7 @@ if what == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for what = 0:15
+    for what = 0:16
         windowsmakeit64_twisty(what);
     end
     elapsedsecs = toc;
@@ -44,7 +44,7 @@ if onoctave == 0
     % Matlab build:
     if what == 0
         % Default: Build Screen with GStreamer-1 support: Needs the
-        % www.gstreamer.freedesktop.org GStreamer-1.18 SDK in the MSVC
+        % www.gstreamer.freedesktop.org GStreamer-1.20.5+ SDK in the MSVC
         % variant for 64-Bit Windows, or a later version of GStreamer. Use
         % this for verbose linker output: /VERBOSE:LIB
         clear Screen
