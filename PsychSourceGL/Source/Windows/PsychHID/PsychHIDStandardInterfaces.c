@@ -179,7 +179,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
         PsychErrorExitMsg(PsychError_system, "PsychHID: FATAL ERROR: Couldn't get module handle to create interface to Microsoft DirectInput-8! Game over!");
 
     // Open a DirectInput-8 interface:
-    rc = DirectInput8Create(modulehandle, DIRECTINPUT_VERSION, IID_IDirectInput8, (LPVOID*)&dinput, NULL);
+    rc = DirectInput8Create(modulehandle, DIRECTINPUT_VERSION, &IID_IDirectInput8, (LPVOID*)&dinput, NULL);
 
     if (DI_OK != rc) {
         printf("PsychHID-ERROR: Error return from DirectInput8Create: %x\n", (int) rc);
@@ -188,28 +188,28 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     }
 
     // Enumerate all DirectInput keyboard(-like) devices:
-    rc = dinput->EnumDevices(DI8DEVCLASS_KEYBOARD, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
+    rc = IDirectInput8_EnumDevices(dinput, DI8DEVCLASS_KEYBOARD, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
     if (DI_OK != rc) {
         printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %x! Game over!\n", (int) rc);
         goto out;
     }
 
     // Enumerate all DirectInput mouse(-like) devices:
-    rc = dinput->EnumDevices(DI8DEVCLASS_POINTER, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
+    rc = IDirectInput8_EnumDevices(dinput, DI8DEVCLASS_POINTER, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
     if (DI_OK != rc) {
         printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %x! Game over!\n", (int) rc);
         goto out;
     }
 
     // Enumerate all DirectInput joystick/gamepad(-like) devices:
-    rc = dinput->EnumDevices(DI8DEVCLASS_GAMECTRL, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
+    rc =IDirectInput8_EnumDevices(dinput, DI8DEVCLASS_GAMECTRL, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
     if (DI_OK != rc) {
         printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %x! Game over!\n", (int) rc);
         goto out;
     }
 
     // Enumerate all other DirectInput devices:
-    rc = dinput->EnumDevices(DI8DEVCLASS_DEVICE, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
+    rc = IDirectInput8_EnumDevices(dinput, DI8DEVCLASS_DEVICE, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
     if (DI_OK != rc) {
         printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %x! Game over!\n", (int) rc);
         goto out;
@@ -284,7 +284,7 @@ out:
     ndevices = 0;
 
     // Release DirectInput and we are done:
-    if (dinput) dinput->Release();
+    if (dinput) IDirectInput8_Release(dinput);
     dinput = NULL;
 
     PsychErrorExitMsg(PsychError_system, "PsychHID: FATAL ERROR: X Input extension version 2.0 or later not available! Game over!");
@@ -296,7 +296,7 @@ static LPDIRECTINPUTDEVICE8 GetXDevice(int deviceIndex)
         PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex specified. No such device!");
 
     if ((x_dev[deviceIndex] == NULL) && (psychHIDKbQueueType[deviceIndex] == 0)) {
-        if (DI_OK != dinput->CreateDevice(info[deviceIndex].guidInstance, &(x_dev[deviceIndex]), NULL)) {
+        if (DI_OK != IDirectInput8_CreateDevice(dinput, &info[deviceIndex].guidInstance, &(x_dev[deviceIndex]), NULL)) {
             PsychErrorExitMsg(PsychError_user, "Could not open connection to device. CreateDevice() failed!");
         }
     }
@@ -316,7 +316,7 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 
     // Close all devices registered in x_dev array:
     for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) {
-        if (x_dev[i]) x_dev[i]->Release();
+        if (x_dev[i]) IDirectInput8_Release(x_dev[i]);
         x_dev[i] = NULL;
     }
 
@@ -331,7 +331,7 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
     ndevices = 0;
 
     // Release our DirectInput instance:
-    if (dinput) dinput->Release();
+    if (dinput) IDirectInput8_Release(dinput);
     dinput = NULL;
 
     // Unregister our own window class for windowing system event processing:
@@ -637,7 +637,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 
     // Query current state snapshot of keyboard:
     memset(keys, 0, sizeof(keys));
-    if (DI_OK != kb->GetDeviceState(cbSize, (LPVOID) &keys[0])) {
+    if (DI_OK != IDirectInputDevice8_GetDeviceState(kb, cbSize, (LPVOID) &keys[0])) {
         printf("PsychHID-ERROR: KbCheck for deviceIndex %i failed, because query of device failed!\n", deviceIndex);
         PsychErrorExitMsg(PsychError_user, "KbCheck failed!");
     }
@@ -772,7 +772,7 @@ static void KbQueueProcessEvents(psych_bool longSleep)
             while (TRUE) {
                 // Try one fetch from this device:
                 dwItems = 1;
-                rc = kb->GetDeviceData(sizeof(DIDEVICEOBJECTDATA), &event, &dwItems, 0);
+                rc = IDirectInputDevice8_GetDeviceData(kb, sizeof(DIDEVICEOBJECTDATA), &event, &dwItems, 0);
 
                 // If failed or nothing more to fetch, break out of fetch loop:
                 if (!SUCCEEDED(rc) || (0 == dwItems))
@@ -1025,7 +1025,7 @@ static LRESULT CALLBACK KbQueueWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         case WM_TOUCH: {
             UINT cInputs = LOWORD(wParam);
 
-            PTOUCHINPUT pInputs = (cInputs > 0) ? new TOUCHINPUT[cInputs] : NULL;
+            PTOUCHINPUT pInputs = (cInputs > 0) ? ((PTOUCHINPUT) calloc(cInputs, sizeof(TOUCHINPUT))) : NULL;
             if (pInputs) {
                 if (GetTouchInputInfo((HTOUCHINPUT) lParam, cInputs, pInputs, sizeof(TOUCHINPUT))) {
                     UINT i;
@@ -1122,7 +1122,7 @@ static LRESULT CALLBACK KbQueueWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
                     CloseTouchInputHandle((HTOUCHINPUT) lParam);
                 }
 
-                delete [] pInputs;
+                free(pInputs);
             }
 
             // Signal to Windows we are done with this event:
@@ -1372,14 +1372,14 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     // DirectInput device?
     if (kb) {
         // Release the device:
-        if (DI_OK != kb->Unacquire()) {
+        if (DI_OK != IDirectInputDevice8_Unacquire(kb)) {
             PsychUnlockMutex(&KbQueueMutex);
             printf("PsychHID-ERROR: Tried to stop processing on keyboard queue for deviceIndex %i, but releasing device failed!\n", deviceIndex);
             PsychErrorExitMsg(PsychError_user, "Stopping keyboard queue failed!");
         }
 
         // Disable state-change event notifications:
-        if (DI_OK != kb->SetEventNotification(NULL)) {
+        if (DI_OK != IDirectInputDevice8_SetEventNotification(kb, NULL)) {
             PsychUnlockMutex(&KbQueueMutex);
             printf("PsychHID-ERROR: Tried to stop processing on keyboard queue for deviceIndex %i, but disabling device state notifications failed!\n", deviceIndex);
             PsychErrorExitMsg(PsychError_user, "Stopping keyboard queue failed!");
@@ -1468,7 +1468,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
         // Device specific data format setup:
         switch (info[deviceIndex].dwDevType & 0xff) {
             case DI8DEVTYPE_KEYBOARD:
-                if (DI_OK != kb->SetDataFormat(&c_dfDIKeyboard)) {
+                if (DI_OK != IDirectInputDevice8_SetDataFormat(kb, &c_dfDIKeyboard)) {
                     PsychUnlockMutex(&KbQueueMutex);
                     printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
                     PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
@@ -1477,7 +1477,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 
             case DI8DEVTYPE_MOUSE:
             case DI8DEVTYPE_SCREENPOINTER:
-                if (DI_OK != kb->SetDataFormat(&c_dfDIMouse2)) {
+                if (DI_OK != IDirectInputDevice8_SetDataFormat(kb, &c_dfDIMouse2)) {
                     PsychUnlockMutex(&KbQueueMutex);
                     printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
                     PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
@@ -1485,7 +1485,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
             break;
 
             case DI8DEVTYPE_JOYSTICK:
-                if (DI_OK != kb->SetDataFormat(&c_dfDIJoystick2)) {
+                if (DI_OK != IDirectInputDevice8_SetDataFormat(kb, &c_dfDIJoystick2)) {
                     PsychUnlockMutex(&KbQueueMutex);
                     printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
                     PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
@@ -1500,20 +1500,20 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
         dipdw.diph.dwHow = DIPH_DEVICE;
         dipdw.dwData = 256;
 
-        if (DI_OK != kb->SetProperty(DIPROP_BUFFERSIZE, &dipdw.diph)) {
+        if (DI_OK != IDirectInputDevice8_SetProperty(kb, DIPROP_BUFFERSIZE, &dipdw.diph)) {
             PsychUnlockMutex(&KbQueueMutex);
             printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting buffersize on device failed!\n", deviceIndex);
             PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
         }
 
         // Enable state-change event notifications:
-        if (DI_OK != kb->SetEventNotification(hEvent)) {
+        if (DI_OK != IDirectInputDevice8_SetEventNotification(kb, hEvent)) {
             PsychUnlockMutex(&KbQueueMutex);
             printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting device state notifications failed!\n", deviceIndex);
             PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
         }
 
-        if (DI_OK != kb->Acquire()) {
+        if (DI_OK != IDirectInputDevice8_Acquire(kb)) {
             PsychUnlockMutex(&KbQueueMutex);
             printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but acquiring device failed!\n", deviceIndex);
             PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
@@ -1579,7 +1579,7 @@ void PsychHIDOSKbQueueFlush(int deviceIndex)
     // Flush device buffer if this is a DirectInput device:
     kb = GetXDevice(deviceIndex);
     if (kb)
-        kb->GetDeviceData(sizeof(DIDEVICEOBJECTDATA), NULL, &dwItems, 0);
+        IDirectInputDevice8_GetDeviceData(kb, sizeof(DIDEVICEOBJECTDATA), NULL, &dwItems, 0);
 
     // Clear our buffer:
     memset(psychHIDKbQueueFirstPress[deviceIndex]   , 0, (256 * sizeof(double)));
