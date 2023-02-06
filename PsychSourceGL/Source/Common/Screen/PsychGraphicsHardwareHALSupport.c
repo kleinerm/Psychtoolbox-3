@@ -904,7 +904,7 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
  * Returns 0 for unknown card, otherwise xx for NV_xx:
  *
  * Reference Linux nouveau-kms driver implementation in:
- * nouveau/core/engine/device/base.c: nouveau_devobj_ctor()
+ * drivers/gpu/drm/nouveau/nvkm/engine/device/base.c : nvkm_device_ctor()
  */
 unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 {
@@ -985,6 +985,15 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
         case 0x160:
             // Turing: GeForce 1650+ series, GeForce RTX 2060, 2070, 2080 (Ti), Titan RTX: 4th gen scanout engine. Assuming up to 4 CRTC's.
             card_type = 0x160;
+            break;
+        case 0x170:
+            // Ampere: GeForce MX570, GeForce RTX 2050 (mobile), GeForce RTX3000 series: 4th gen scanout engine. Assuming up to 4 CRTC's.
+            card_type = 0x170;
+            break;
+        case 0x180:
+        case 0x190:
+            // Ada Lovelace/Hopper: GeForce RTX4000 series: Probably 4th gen scanout engine. Assuming up to 4 CRTC's.
+            card_type = 0x180;
             break;
 
         default:

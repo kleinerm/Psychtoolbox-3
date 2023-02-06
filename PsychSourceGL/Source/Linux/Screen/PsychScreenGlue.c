@@ -3203,7 +3203,7 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
         // automatically on NVidia Kepler or later gpu's, because it would interfere with
         // our G-Sync support:
         if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) ||
--           ((fDeviceType == kPsychGeForce) && (PsychGetNVidiaGPUType(NULL) < 0x0E0))) {
+-           ((fDeviceType == kPsychGeForce) && (fCardType != 0x0) && (fCardType < 0x0E0))) {
             // Yes: Avoid queries that return zero -- If query result is zero, retry
             // until it becomes non-zero: Some hardware may needs this to resolve...
             // We use a timeout of 100 msecs though to prevent hangs if we try to
@@ -3754,7 +3754,7 @@ int PsychOSKDGetBeamposition(int screenId)
                     printf("VBLIncrement %i -> %i at scanline %i\n", oldcount, newcount, beampos);
                 }
             } else {
-                // NV-140 Volta, NV-160 Turing and later:
+                // NV-140 Volta, NV-160 Turing, NV-170 Ampere, NV-180/190 Ada Lovelace / Hopper and later:
 
                 // Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
                 // Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
