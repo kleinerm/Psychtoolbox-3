@@ -90,6 +90,9 @@
 %   stimuli created via alpha blending with 16 bit floating point framebuffers can
 %   achieve up to 11 bit precision, depending on specific stimulus.
 %
+%   Output precision without special stimulators to regular displays are
+%   still limited to 8 bpc maximum.
+%
 %   Movie playback of full HD video at 24 fps is possible with suitably encoded
 %   movies and proper playback settings. For playback of H264 encoded movies, the
 %   builtin H264 hardware decoder of the RaspberryPi 4 is used. You must specify

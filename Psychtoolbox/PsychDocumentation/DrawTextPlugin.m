@@ -60,17 +60,12 @@
 % Windows:
 % --------
 %
-% On MS-Windows with GNU/Octave the libraries are bundled with Octave,
-% no need for you to do anything.
-%
-% On MS-Windows with Matlab you will need to install the GStreamer multi-
-% media framework - see "help GStreamer" for installation instructions -
+% On MS-Windows you will need to install the GStreamer multi- media
+% framework - see "help GStreamer" for installation instructions -
 % otherwise Psychtoolbox will use the old lower quality GDI text renderer
-% instead. As of Psychtoolbox version 3.0.18, you *must* install GStreamer 1.18
-% (see download link in "help GStreamer" for latest tested version), *not* the
-% more recent GStreamer version 1.20 or later, as version 1.20+ is currently
-% incompatible with the text rendering plugin, and would cause the plugin to fail
-% to work!
+% instead. As of Psychtoolbox version 3.0.19, you *must* install GStreamer
+% 1.20.5 or later (see download link in "help GStreamer" for latest tested
+% version). All earlier versions will not work.
 %
 % If your version of Matlab bundles an outdated libfreetype.dll, as may be
 % the case with at least R2015a and later, you may need to get rid of that as
