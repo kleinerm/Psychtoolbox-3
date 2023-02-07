@@ -55,7 +55,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_13_API_VERSION
 #include <numpy/arrayobject.h>
 
-#if defined(Py_LIMITED_API) && defined(__GNUC__) && (__GNUC__ < 10)
+#if defined(Py_LIMITED_API) && defined(__GNUC__) && (__GNUC__ < 10) && !defined(__clang__)
 #error \
 "This version of gcc has a bug and cannot compile this code \
 with Py_LIMITED_API enabled. Either build without Py_LIMITED_API \
