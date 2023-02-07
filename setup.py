@@ -229,7 +229,7 @@ if platform.system() == 'Darwin':
     psychhid_libs = []
     # Weak-link libusb-1.0.dylib, so user does not need it on their local system as long as they
     # don't use PsychHID functions like USBControlTransfer/USBInterruptTransfer/USBBulkTransfer:
-    psychhid_extralinkargs = ['-weak_library PsychSourceGL/Cohorts/libusb1-win32/libusb-1.0.dylib']
+    psychhid_extralinkargs = ['-weak_library', 'PsychSourceGL/Cohorts/libusb1-win32/libusb-1.0.dylib']
 
     # Extra objects for PsychHID - statically linked HID utilities:
     psychhid_extra_objects = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a']
