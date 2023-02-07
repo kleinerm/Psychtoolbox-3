@@ -186,9 +186,10 @@ if mode==13
     cd(curdir);
 end
 
-if mode==14
+if mode==14 && false
     % Build PsychOculusVRCore:
-    % Depends on Oculus VR SDK v0.5
+    % Depends on Oculus VR SDK v0.5 - Does not work on macOS 10.15 or later
+    % due to the VR runtime being unsupported 32-Bit Intel only.
     mex -outdir ../Projects/MacOSX/build -output PsychOculusVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychOculusVRCore CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework LibOVR" -ICommon/Base -IOSX/Base -ICommon/PsychOculusVRCore -I/Library/Frameworks/LibOVR.framework/Versions/Current/Headers/ "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychOculusVRCore/*.c"
     unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
