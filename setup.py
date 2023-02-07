@@ -1,6 +1,6 @@
 # setup.py -- Build-Script for building Psychtoolbox-3 "mex" files as Python extensions.
 #
-# (c) 2018-2022 Mario Kleiner
+# (c) 2018-2023 Mario Kleiner
 # (c) 2020-2022 Alex Forrence
 # (c) 2019      Jonathan Peirce
 # (c) 2019      Richard Höchenberger
@@ -133,6 +133,7 @@ if platform.system() == 'Linux':
     psychhid_libdirs = []
     psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util']
     psychhid_extra_objects = []
+    psychhid_extralinkargs = []
 
     # Extra files needed, e.g., libraries:
     extra_files = {}
@@ -145,6 +146,7 @@ if platform.system() == 'Windows':
 
     # libusb includes:
     psychhid_includes = ['PsychSourceGL/Cohorts/libusb1-win32/include/libusb-1.0']
+    psychhid_extralinkargs = []
 
     if is_64bits:
         # 64bit supports PsychPortAudio
@@ -220,10 +222,15 @@ if platform.system() == 'Darwin':
     # Include our statically linked on-steroids version of PortAudio:
     audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio_osx_64.a']
 
-    # Include Apples open-source HID Utilities for all things USB-HID device handling:
-    psychhid_includes = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/', 'PsychSourceGL/Cohorts/HID_Utilities_64Bit/IOHIDManager']
+    # Include Apples open-source HID Utilities for all things USB-HID device handling, also libusb-1.0:
+    psychhid_includes = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/', 'PsychSourceGL/Cohorts/HID_Utilities_64Bit/IOHIDManager',
+                         'PsychSourceGL/Cohorts/libusb1-win32/include/libusb-1.0']
     psychhid_libdirs = []
     psychhid_libs = []
+    # Weak-link libusb-1.0.dylib, so user does not need it on their local system as long as they
+    # don't use PsychHID functions like USBControlTransfer/USBInterruptTransfer/USBBulkTransfer:
+    psychhid_extralinkargs = ['-weak_library PsychSourceGL/Cohorts/libusb1-win32/libusb-1.0.dylib']
+
     # Extra objects for PsychHID - statically linked HID utilities:
     psychhid_extra_objects = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a']
 
@@ -281,6 +288,7 @@ PsychHID = Extension(name,
                      sources = get_basesources(name, osname),
                      library_dirs = psychhid_libdirs,
                      libraries = base_libs + psychhid_libs,
+                     extra_link_args = psychhid_extralinkargs,
                      extra_objects = psychhid_extra_objects,
                      py_limited_api = py_limited_api,
                     )
