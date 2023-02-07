@@ -410,7 +410,8 @@ if IsOctave
                 pause;
             end
         elseif ismember(octavemajorv, [6,7]) && IsOSX
-            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave6'];
+            % Octave 6 and 7 can share the same mex files built against Octave 7:
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave7'];
         else
             % Everything else (aka other OS'es) goes by Octave major version:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
