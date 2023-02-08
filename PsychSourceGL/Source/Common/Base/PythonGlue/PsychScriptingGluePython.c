@@ -155,7 +155,9 @@ static struct PyModuleDef module_definition = {
     PyModuleDef_HEAD_INIT,                                                      // Base instance.
     PPYNAME(PTBMODULENAME),                                                     // Module name.
     "The " PPYNAME(PTBMODULENAME) " Psychtoolbox module for Python 3.\n"        // Help text.
-    "Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license.",
+    "Copyright (c) 2018-2023 Mario Kleiner.\n"
+    "Copyright (c) 2022-2023 Alex Forrence.\n"
+    "Licensed under the MIT license.",
     -1,                                                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
     GlobalPythonMethodsTable,                                                   // Function dispatch table, shared with Python 2.
     NULL,                                                                       // m_slots
