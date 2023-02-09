@@ -59,7 +59,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % apparent size and location of the 2D views used with the following command to
 % optimize visual display:
 % 
-% PsychOpenXR('View2DParameters', openxrPtr, eye [, position][, size]);
+% [oldPosition, oldSize, oldOrientation] = PsychOpenXR('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
 %
 % 'basicRequirements' defines basic requirements for the task. Currently
@@ -125,7 +125,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % views used in this mode with the following command to minimize visual
 % disorientation:
 % 
-% PsychOpenXR('View2DParameters', openxrPtr, eye [, position][, size]);
+% [oldPosition, oldSize, oldOrientation] = PsychOpenXR('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
 %
 % 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't

@@ -298,7 +298,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
     //synopsis[i++] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
     synopsis[i++] = "oldType = PsychOpenXRCore('ViewType', openxrPtr [, viewLayerType]);";
-    synopsis[i++] = "[oldPosition, oldSize] = PsychOpenXRCore('View2DParameters', openxrPtr, eye [, position][, size]);";
+    synopsis[i++] = "[oldPosition, oldSize, oldOrientation] = PsychOpenXRCore('View2DParameters', openxrPtr, eye [, position][, size][, orientation]);";
     synopsis[i++] = "oldNeed = PsychOpenXRCore('NeedLocateForProjectionLayers', openxrPtr [, needLocate]);";
     synopsis[i++] = "oldEnable = PsychOpenXRCore('PresenterThreadEnable', openxrPtr [, enableThread]);";
     synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
@@ -2386,15 +2386,15 @@ PsychError PSYCHOPENXRTrackingOriginType(void)
 
 PsychError PSYCHOPENXRView2DParameters(void)
 {
-    static char useString[] = "[oldPosition, oldSize] = PsychOpenXRCore('View2DParameters', openxrPtr, eye [, position][, size]);";
-    //                          1            2                                              1          2      3           4
+    static char useString[] = "[oldPosition, oldSize, oldOrientation] = PsychOpenXRCore('View2DParameters', openxrPtr, eye [, position][, size][, orientation]);";
+    //                          1            2        3                                                     1          2      3           4       5
     static char synopsisString[] =
     "Query or assign 2D quad view parameters for eye 'eye' of OpenXR device 'openxrPtr'.\n\n"
     "Such 2D quad views are used in 'Monoscopic' (same view for both eyes), or 'Stereoscopic' "
     "mode (one view per eye), as well as in 3D modes when a script is 'Stop'ed and the user "
     "asked for use of these 2D quad views instead of projective views.\n"
     "This returns the current or previous settings for position and size in 'oldPosition' "
-    "and 'oldSize'.\n"
+    "and 'oldSize', and for orientation in 'oldOrientation' as a quaternion.\n"
     "'eye' Mandatory: 0 = Left eye or monoscopic view, 1 = right eye in stereo mode.\n"
     "Optionally you can specify new settings, as follows:\n"
     "'position' 3D position of the center of the virtual viewscreen, relative to the eye "
@@ -2410,13 +2410,17 @@ PsychError PSYCHOPENXRView2DParameters(void)
     "at an apparent width of 0.8 meters and an apparent height of 1 meter. If the parameter "
     "is omitted or left empty [], the size won't be changed. Default size is 1 meter high "
     "and the width adjusted to preserve the aspect ratio of the Psychtoolbox onscreen window "
-    "into which your script draws, so a drawn circle is actually circular instead of elliptic.\n";
+    "into which your script draws, so a drawn circle is actually circular instead of elliptic.\n"
+    "'orientation' A 4 component vector encoding a quaternion for orientation in space, ie. "
+    "a [rx, ry, rz, rw] vector. Or a scalar angle in degrees for rotation around z-axis, e.g., "
+    "23 for a 23 degrees rotation around the optical axis / line of sight of the viewer.\n";
     static char seeAlsoString[] = "ViewType";
 
     int handle;
     int eyeIndex;
     int m, n, p;
     double *position;
+    double *orientation;
     double *size;
     double *outM;
     PsychOpenXRDevice *openxr;
@@ -2426,8 +2430,8 @@ PsychError PSYCHOPENXRView2DParameters(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(4));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumInputArgs(5));
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
@@ -2451,6 +2455,12 @@ PsychError PSYCHOPENXRView2DParameters(void)
     PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 1, 2, 1, &outM);
     outM[0] = openxr->quadViewLayer[eyeIndex].size.width;
     outM[1] = openxr->quadViewLayer[eyeIndex].size.height;
+
+    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 1, 4, 1, &outM);
+    outM[0] = openxr->quadViewLayer[eyeIndex].pose.orientation.x;
+    outM[1] = openxr->quadViewLayer[eyeIndex].pose.orientation.y;
+    outM[2] = openxr->quadViewLayer[eyeIndex].pose.orientation.z;
+    outM[3] = openxr->quadViewLayer[eyeIndex].pose.orientation.w;
 
     // New position provided?
     if (PsychAllocInDoubleMatArg(3, kPsychArgOptional, &m, &n, &p, &position)) {
@@ -2480,6 +2490,31 @@ PsychError PSYCHOPENXRView2DParameters(void)
         PsychLockMutex(&(openxr->presenterLock));
         openxr->quadViewLayer[eyeIndex].size.width = (float) size[0];
         openxr->quadViewLayer[eyeIndex].size.height = (float) size[1];
+        PsychUnlockMutex(&(openxr->presenterLock));
+    }
+
+    // New orientation quaternion provided?
+    if (PsychAllocInDoubleMatArg(5, kPsychArgOptional, &m, &n, &p, &orientation)) {
+        if (m*n*p != 4 && m*n*p != 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'orientation' specified. Must be a [rx, ry, rz, rw] quaternion vector or scalar rotation angle.");
+
+        // Assign:
+        PsychLockMutex(&(openxr->presenterLock));
+        if (m*n*p != 1) {
+            // Quaternion:
+            openxr->quadViewLayer[eyeIndex].pose.orientation.x = (float) orientation[0];
+            openxr->quadViewLayer[eyeIndex].pose.orientation.y = (float) orientation[1];
+            openxr->quadViewLayer[eyeIndex].pose.orientation.z = (float) orientation[2];
+            openxr->quadViewLayer[eyeIndex].pose.orientation.w = (float) orientation[3];
+        }
+        else {
+            // Rotation around z-axis, ie. essentially optical axis or line of sight:
+            double angle = orientation[0] * 3.1415926535 / 180.0;
+            openxr->quadViewLayer[eyeIndex].pose.orientation.x = 0;
+            openxr->quadViewLayer[eyeIndex].pose.orientation.y = 0;
+            openxr->quadViewLayer[eyeIndex].pose.orientation.z = (float) sin(angle / 2.0);
+            openxr->quadViewLayer[eyeIndex].pose.orientation.w = (float) cos(angle / 2.0);
+        }
         PsychUnlockMutex(&(openxr->presenterLock));
     }
 

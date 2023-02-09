@@ -30,7 +30,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % apparent size and location of the 2D views used with the following command to
 % optimize visual display:
 % 
-% PsychVRHMD('View2DParameters', hmd, eye [, position][, size]);
+% PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 % The command is fully supported under the OpenXR driver, but does nothing
 % and only returns NaN results on other drivers like the old Oculus,
 % Oculus-1 and OpenHMD drivers.
@@ -111,7 +111,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % views used in this mode with the following command to minimize visual
 % disorientation:
 % 
-% PsychVRHMD('View2DParameters', hmd, eye [, position][, size]);
+% PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
 % 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
 % care about potential significant visual presentation glitches happening if
@@ -631,7 +631,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % - Set basic level of quality vs. required GPU performance.
 %
 %
-% [oldPosition, oldSize] = PsychVRHMD('View2DParameters', hmd, eye [, position][, size]);
+% [oldPosition, oldSize, oldOrientation] = PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 % - Query or assign 2D quad view parameters for eye 'eye' of the hmd.
 % Such 2D quad views are used in 'Monoscopic' (same view for both eyes), or
 % 'Stereoscopic' mode (one view per eye), as well as in 3D modes when a script is
@@ -657,6 +657,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % size is 1 meter high and the width adjusted to preserve the aspect ratio of the
 % Psychtoolbox onscreen window into which your script draws, so a drawn circle is
 % actually circular instead of elliptic.
+% 'orientation' A 4 component vector encoding a quaternion for orientation in
+% space, ie. a [rx, ry, rz, rw] vector. Or for the most simple and most
+% frequent use case: A rotation angle in degrees around the z-axis aka
+% optical axis aka line of sight, e.g., 22.3 for a 22.3 degrees rotation.
 % 
 %
 % oldSetting = PsychVRHMD('SetFastResponse', hmd [, enable]);

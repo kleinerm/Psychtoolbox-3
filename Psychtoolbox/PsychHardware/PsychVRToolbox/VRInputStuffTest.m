@@ -94,7 +94,7 @@ hmdinfo = PsychVRHMD('GetInfo', hmd);
 
 % Retrieve the initial settings for position and size for 2D quad views:
 oldPositionL = PsychVRHMD('View2DParameters', hmd, 0);
-oldPositionR = PsychVRHMD('View2DParameters', hmd, 0);
+oldPositionR = PsychVRHMD('View2DParameters', hmd, 1);
 
 clc;
 

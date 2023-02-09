@@ -2134,6 +2134,7 @@ end
 if strcmpi(cmd, 'View2DParameters')
   varargout{1} = [NaN, NaN, NaN];
   varargout{2} = [NaN, NaN];
+  varargout{3} = [NaN, NaN, NaN, Nan];
   return;
 end
 
