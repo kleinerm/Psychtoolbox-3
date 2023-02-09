@@ -315,6 +315,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
+    synopsis[i++] = "timingSupport = PsychOpenXRCore('TimingSupport' [, openxrPtr]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -3706,7 +3707,6 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     return(PsychError_none);
 }
 
-
 PsychError PSYCHOPENXRControllers(void)
 {
     static char useString[] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
@@ -3751,6 +3751,58 @@ PsychError PSYCHOPENXRControllers(void)
 
     // Return controllerTypes mask:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, getActiveControllers(xrInstance, openxr));
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOPENXRTimingSupport(void)
+{
+    static char useString[] = "timingSupport = PsychOpenXRCore('TimingSupport' [, openxrPtr]);";
+    //                         1                                                  1
+    static char synopsisString[] =
+    "Return available level of precise timing and timestamping support for OpenXR device 'openxrPtr'. "
+    "If 'openxrPtr' is omitted, a more basic, general assessment of the OpenXR runtimes capabilities "
+    "is returned.\n"
+    "Standard, unextended OpenXR-1 runtimes, as of February 2023, do not support reliable visual onset "
+    "timestamping and most tested runtimes don't support reliable onset timing either. These runtimes "
+    "will return zero, hinting at the need for multi-threading tricks for bearable precision.\n"
+    "The open-source Monado runtime does support precise onset timing, and may support some better "
+    "onset timestamping for special customized Monado versions or future Monado versions. This would "
+    "be reported by a combination of one or more non-zero flags, as described below.\n"
+    "The returned 'timingSupport' can be the logical OR of one of these flags:\n"
+    "0 = None. Only use of multi-threading will allow for basic timing and timestamping.\n"
+    "1 = Some more reliable/trustworthy/accurate timing and timestamping precision available.\n"
+    "\n";
+    static char seeAlsoString[] = "PresentFrame PresenterThreadEnable";
+
+    int handle, timingSupport;
+    PsychOpenXRDevice *openxr;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(0));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get optional device handle, needed for more precise reporting:
+    if (PsychCopyInIntegerArg(1, kPsychArgOptional, &handle)) {
+        openxr = PsychGetXR(handle, FALSE);
+        // TODO: As of now, no timing support in any OpenXR runtime:
+        timingSupport = 0;
+    }
+    else {
+        // TODO: As of now, no timing support in any OpenXR runtime:
+        timingSupport = 0;
+    }
+
+    // Return timingSupport mask:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, timingSupport);
 
     return(PsychError_none);
 }

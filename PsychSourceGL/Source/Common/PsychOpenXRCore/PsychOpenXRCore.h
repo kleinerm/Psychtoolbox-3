@@ -80,6 +80,7 @@ PsychError PSYCHOPENXRViewType(void);
 PsychError PSYCHOPENXRView2DParameters(void);
 PsychError PSYCHOPENXRNeedLocateForProjectionLayers(void);
 PsychError PSYCHOPENXRPresenterThreadEnable(void);
+PsychError PSYCHOPENXRTimingSupport(void);
 
 #ifdef __cplusplus
 }

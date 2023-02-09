@@ -1879,7 +1879,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     fprintf('PsychOpenXR-INFO: Need for multi-threading for better frame timestamping during this session unknown. Timestamps will be unreliable until i\n');
     fprintf('PsychOpenXR-INFO: can determine need for proper timing. Performance will be mildly reduced throughout the session. Please use the keywords\n');
     fprintf('PsychOpenXR-INFO: TimestampingSupport or NoTimestampingSupport in the basicRequirements parameter to give me a clue about what you want, for\n');
-    fprintf('PsychOpenXR-INFO: both potentially higher timestamp trustworthyness and potentially better performance.\n');
+    fprintf('PsychOpenXR-INFO: both potentially higher timestamp trustworthiness and potentially better performance.\n');
   end
 
   % Derive initial master multiThreaded mode from current MT requirements:

@@ -32,7 +32,7 @@ PsychImaging('PrepareConfiguration');
 % by displaying the same image to both eyes. We need reliable timing and
 % timestamping support for this test script:
 % hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
-hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingSupport TimestampingSupport');
+hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingPrecisionIsCritical TimingSupport TimestampingSupport');
 
 [win, rect] = PsychImaging('OpenWindow', screenid, [1 0 0]);
 ifi = Screen('GetFlipInterval', win)
