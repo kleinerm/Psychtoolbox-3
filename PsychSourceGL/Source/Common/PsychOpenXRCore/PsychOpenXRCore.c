@@ -307,7 +307,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
     synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
-    synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    synopsis[i++] = "[projL, projR, fovL, fovR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "";
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
@@ -4585,8 +4585,8 @@ static void buildProjectionMatrix(double M[4][4], XrFovf fov, double zNear, doub
 
 PsychError PSYCHOPENXRGetStaticRenderParameters(void)
 {
-    static char useString[] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    //                          1      2                                                     1            2                3
+    static char useString[] = "[projL, projR, fovL, fovR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    //                          1      2      3     4                                                    1            2                3
     static char synopsisString[] =
     "Retrieve static rendering parameters for OpenXR device 'openxrPtr' at current settings.\n"
     "'clipNear' Optional near clipping plane for OpenGL. Defaults to 0.01.\n"
@@ -4594,7 +4594,10 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     "\nReturn arguments:\n\n"
     "'projL' is the 4x4 OpenGL projection matrix for the left eye rendering.\n"
     "'projR' is the 4x4 OpenGL projection matrix for the right eye rendering.\n"
-    "Please note that projL and projR are usually identical for typical rendering scenarios.\n";
+    "Please note that projL and projR are usually identical for typical rendering scenarios.\n"
+    "'fovL' is the [leftAngle, rightAngle, upAngle, downAngle] field of view for the left eye rendering.\n"
+    "'fovR' is the [leftAngle, rightAngle, upAngle, downAngle] field of view for the right eye rendering.\n"
+    "fovL and fovR angles are in units of radians, from the optical axis.\n";
     static char seeAlsoString[] = "";
 
     int handle;
@@ -4610,7 +4613,7 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -4660,6 +4663,20 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(outM++) = MR[j][i];
+
+    // Return left eye field of view angles in radians:
+    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 1, 4, 1, &outM);
+    outM[0] = openxr->view[0].fov.angleLeft;
+    outM[1] = openxr->view[0].fov.angleRight;
+    outM[2] = openxr->view[0].fov.angleUp;
+    outM[3] = openxr->view[0].fov.angleDown;
+
+    // Return right eye field of view angles in radians:
+    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 1, 4, 1, &outM);
+    outM[0] = openxr->view[1].fov.angleLeft;
+    outM[1] = openxr->view[1].fov.angleRight;
+    outM[2] = openxr->view[1].fov.angleUp;
+    outM[3] = openxr->view[1].fov.angleDown;
 
     return(PsychError_none);
 }
