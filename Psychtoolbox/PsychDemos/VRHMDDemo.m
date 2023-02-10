@@ -55,6 +55,9 @@ end
 
 [win, rect] = PsychImaging('OpenWindow', screenid);
 
+Screen('TextStyle', win, 1);
+Screen('TextSize', win, 100);
+
 if checkerboard
   % Apply regular checkerboard pattern as texture:
   bv = zeros(32);
@@ -75,7 +78,6 @@ while ~KbCheck
     Screen('FrameRect', win, [1 1 0], [], 20);
     if ~checkerboard
       Screen('FillOval', win, [1 1 1], CenterRect([0 0 700 700], rect));
-      Screen('TextSize', win, 100);
       DrawFormattedText(win, sprintf('HELLO\nWORLD!\n%i', eye), 'center', 'center', [0 1 0]);
     end
     Screen('FillOval', win, [mod(GetSecs, 1) 0 0], CenterRect([0 0 10 10], rect));
