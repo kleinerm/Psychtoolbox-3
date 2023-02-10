@@ -158,11 +158,12 @@ typedef struct PsychOpenXRDevice {
     XrViewState                         viewState;                      // MT mutex.
     XrView                              view[2];                        // MT mutex.
     XrCompositionLayerProjectionView    projView[2];                    // MT mutex.
-    XrCompositionLayerQuad              quadViewLayer[2];
-    XrSpace                             viewSpace;
-    XrSpace                             worldSpace;
+    XrCompositionLayerQuad              quadViewLayer[2];               // MT mutex.
+    XrSpace                             viewSpace;                      // MT mutex.
+    XrSpace                             worldSpace;                     // MT mutex.
+    XrReferenceSpaceType                worldSpaceType;                 // MT mutex.
     XrPosef                             originPoseInPreviousSpace;
-    XrCompositionLayerProjection        projectionLayer;
+    XrCompositionLayerProjection        projectionLayer;                // MT mutex.
     const XrCompositionLayerBaseHeader* submitLayers[2];                // MT mutex iff made dynamic.
     uint32_t                            submitLayersCount;              // MT mutex iff made dynamic.
     XrFrameState                        frameState;                     // Read by both threads, but not mutex protectable.
@@ -296,7 +297,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOpenXRCore('Close' [, openxrPtr]);";
     synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
-    //synopsis[i++] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
+    synopsis[i++] = "[oldType, spaceSize] = PsychOpenXRCore('ReferenceSpaceType', openxrPtr [, newType]);";
     synopsis[i++] = "oldType = PsychOpenXRCore('ViewType', openxrPtr [, viewLayerType]);";
     synopsis[i++] = "[oldPosition, oldSize, oldOrientation] = PsychOpenXRCore('View2DParameters', openxrPtr, eye [, position][, size][, orientation]);";
     synopsis[i++] = "oldNeed = PsychOpenXRCore('NeedLocateForProjectionLayers', openxrPtr [, needLocate]);";
@@ -2322,33 +2323,44 @@ PsychError PSYCHOPENXRClose(void)
     return(PsychError_none);
 }
 
-// TODO
-PsychError PSYCHOPENXRTrackingOriginType(void)
+PsychError PSYCHOPENXRReferenceSpaceType(void)
 {
-    static char useString[] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
-    //                         1                                                  1            2
+    static char useString[] = "[oldType, spaceSize] = PsychOpenXRCore('ReferenceSpaceType', openxrPtr [, newType]);";
+    //                          1        2                                                  1            2
     static char synopsisString[] =
-        "Specify the type of tracking origin for OpenXR device 'openxrPtr'.\n\n"
-        "This returns the current type of tracking origin in 'oldType'.\n\n"
-        "Optionally you can specify a new tracking origin type as 'newType'. "
-        "Type must be either:\n\n"
-        "0 = Origin is at eye height (device height).\n"
-        "1 = Origin is at floor height.\n\n"
-        "The eye height or floor height gets defined by the system during "
-        "calls to 'RecenterTrackingOrigin' and during sensor calibration in "
-        "the OpenXR GUI application.\n";
-    static char seeAlsoString[] = "RecenterTrackingOrigin GetTrackersState";
+        "Specify the type of reference space for OpenXR device 'openxrPtr'.\n"
+        "This returns the current type of the current reference space in 'oldType'.\n"
+        "Optionally you can specify a new reference space type as 'newType'. "
+        "The number is one of the reference space types defined by OpenXR or one of "
+        "its extensions. See the section \"Reference Spaces\" in the OpenXR spec.\n"
+        "Common types are as follows, note that only 1 and 2 are supported by all runtimes:\n"
+        "1 = Origin is at eye height and head-locked == XR_REFERENCE_SPACE_TYPE_VIEW.\n"
+        "2 = Origin is at runtime defined local tracking space origin == XR_REFERENCE_SPACE_TYPE_LOCAL.\n"
+        "3 = Origin is at floor height of a flat rectangular stage tracking space == XR_REFERENCE_SPACE_TYPE_STAGE.\n"
+        "1000038000 = Unbounded space for large tracking areas == XR_REFERENCE_SPACE_TYPE_UNBOUNDED_MSFT.\n"
+        "The origin of type 2 and 3 gets defined by the system during OpenXR runtime specific world "
+        "and sensor calibration, e.g., in some setup GUI application or configuration file, or other procedure.\n"
+        "\n"
+        "'spaceSize' is a [width, height] vector with the width and height (in meters) of the reference spaces "
+        "walking area, ie. a rectangle whose sides are aligned with the x and y axis, the origin of the space "
+        "being the center of the rectangle. The rectangle defines an area that is clear of obstacles and tracked, "
+        "therefore meaningfully and safely walkable by the subject during the XR session. If this information "
+        "is not available then returns an empty [] 'spaceSize'.\n";
+    static char seeAlsoString[] = "GetTrackingState GetInputState";
 
     int handle;
-    int originType;
+    int referenceSpaceType;
+    double *size;
     PsychOpenXRDevice *openxr;
+    XrExtent2Df bounds;
+    XrResult res;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    // Check to see if the user supplied superfluous arguments:
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -2358,29 +2370,81 @@ PsychError PSYCHOPENXRTrackingOriginType(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
-/*
-    // Query and return old setting:
-    originType = (int) ovr_GetTrackingOriginType(openxr->hmd);
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) originType);
+
+    if (!openxr->hmd)
+        PsychErrorExitMsg(PsychError_user, "Setting new reference space failed, as session is not up yet! Create a OpenXR session first via 'CreateAndStartSession'.");
+
+    // Query and return current/old setting:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->worldSpaceType);
 
     // New origin type provided?
-    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &originType)) {
-        if (originType < 0 || originType > 1)
-            PsychErrorExitMsg(PsychError_user, "Invalid 'newType' for tracking origin type specified. Must be 0 or 1.");
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &referenceSpaceType)) {
+        XrSpace oldRefSpace = openxr->worldSpace;
+        XrReferenceSpaceCreateInfo refSpaceCreateInfo = {
+            .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+            .next = NULL,
+            .referenceSpaceType = referenceSpaceType,
+            .poseInReferenceSpace = identityPose
+        };
 
-        if (OVR_FAILURE(ovr_SetTrackingOriginType(openxr->hmd, (ovrTrackingOrigin) originType))) {
+        // Lock out potential presenter thread:
+        PsychLockMutex(&(openxr->presenterLock));
+
+        // Create, initialize and assign our new standard space for defining the world reference frame:
+        res = xrCreateReferenceSpace(openxr->hmd, &refSpaceCreateInfo, &openxr->worldSpace);
+        if (!resultOK(res)) {
+            // Failed! Restore old/previous reference space:
+            openxr->worldSpace = oldRefSpace;
+
+            PsychUnlockMutex(&(openxr->presenterLock));
+
             if (verbosity > 0) {
-                ovr_GetLastErrorInfo(&errorInfo);
-                printf("PsychOpenXRCore-ERROR: Setting new tracking origin type failed! %s\n", errorInfo.ErrorString);
+                if (res == XR_ERROR_REFERENCE_SPACE_UNSUPPORTED)
+                    printf("PsychOpenXRCore-ERROR:ReferenceSpaceType(): Requested reference space type %i unsupported by OpenXR runtime.\n",
+                           refSpaceCreateInfo.referenceSpaceType);
+                else
+                    printf("PsychOpenXRCore-ERROR:ReferenceSpaceType(): Creating new reference space failed: %s\n", errorString);
             }
-            PsychErrorExitMsg(PsychError_user, "Setting new tracking origin type failed.");
+
+            PsychErrorExitMsg(PsychError_user, "Setting new reference space (== OpenXR reference space type) failed.");
         }
         else {
+            // Success: Free old/previous reference space:
+            xrDestroySpace(oldRefSpace);
+
+            // Record new type for active space:
+            openxr->worldSpaceType = refSpaceCreateInfo.referenceSpaceType;
+
+            // Assign to 3D projectionLayer:
+            openxr->projectionLayer.space = openxr->worldSpace;
+
             if (verbosity > 3)
-                printf("PsychOpenXRCore-INFO: Set new tracking origin type for device to %i.\n", originType);
+                printf("PsychOpenXRCore-INFO: Set new reference space type for device to %i.\n", refSpaceCreateInfo.referenceSpaceType);
         }
+
+        PsychUnlockMutex(&(openxr->presenterLock));
     }
-*/
+
+    // Retrieve bounding rect of reference space:
+    res = xrGetReferenceSpaceBoundsRect(openxr->hmd, openxr->worldSpaceType, &bounds);
+    if (!resultOK(res)) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR:ReferenceSpaceType(): Retrieving bounds of current reference space failed: %s\n", errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Retrieving bounds of current reference space failed.");
+    }
+
+    // If bounds are available, return them, otherwise return an empty [] rect:
+    if (res != XR_SPACE_BOUNDS_UNAVAILABLE) {
+        // Return width and height of reference space clear and tracked ground rectangle:
+        PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 1, 2, 1, &size);
+        size[0] = bounds.width;
+        size[1] = bounds.height;
+    }
+    else {
+        PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 0, 0, 0, &size);
+    }
+
     return(PsychError_none);
 }
 
@@ -3680,8 +3744,6 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     }
 
     // Create and initialize our standard space for defining the world reference frame:
-    // TODO: Could also optionally allow XR_REFERENCE_SPACE_TYPE_STAGE for room-scale VR, but only after
-    // check if this is supported by runtime, as STAGE support is not mandatory as of OpenXR 1.0.
     refSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
     if (!resultOK(xrCreateReferenceSpace(openxr->hmd, &refSpaceCreateInfo, &openxr->worldSpace))) {
         if (verbosity > 0)
@@ -3691,6 +3753,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Init origin pose to identity:
     openxr->originPoseInPreviousSpace = identityPose;
+    openxr->worldSpaceType = refSpaceCreateInfo.referenceSpaceType;
 
     // TODO: Could have setup of alternate action sets / actions / interaction profile bindings under
     // control of future API and user scripts here, to use as alternative to the setup made in

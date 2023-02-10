@@ -340,10 +340,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
 % request showing the markers.
 % If the driver can control area boundary visibility is highly dependent on the VR
-% driver in use. This flag may get ignored. See driver specific help, e.g.,
+% driver in use. This flag gets ignored by most drivers. See driver specific help, e.g.,
 % "help PsychOculusVR1", for behaviour of a specific driver.
 %
-% Some drivers or hardware setups may not supports VR area boundaries at all, in
+% Some drivers or hardware setups may not support VR area boundaries at all, in
 % which case the function will return empty boundaries.
 %
 % Returns in 'isVisible' the current visibility status of the VR area boundaries.

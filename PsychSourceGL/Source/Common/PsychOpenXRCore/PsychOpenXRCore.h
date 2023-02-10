@@ -73,7 +73,7 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void);
 PsychError PSYCHOPENXRGetStaticRenderParameters(void);
 PsychError PSYCHOPENXRGetTrackersState(void);
 PsychError PSYCHOPENXRPresentFrame(void);
-PsychError PSYCHOPENXRTrackingOriginType(void);
+PsychError PSYCHOPENXRReferenceSpaceType(void);
 PsychError PSYCHOPENXRHapticPulse(void);
 PsychError PSYCHOPENXRGetEyePose(void);
 PsychError PSYCHOPENXRViewType(void);

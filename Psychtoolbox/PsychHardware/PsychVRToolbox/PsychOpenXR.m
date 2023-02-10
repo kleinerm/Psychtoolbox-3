@@ -254,11 +254,10 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % [isVisible, playAreaBounds, OuterAreaBounds] = PsychOpenXR('VRAreaBoundary', hmd [, requestVisible]);
 % - Request visualization of the VR play area boundary for 'hmd' and returns its
-% current extents. This is not supported by OpenXR, therefore the function does
-% nothing, but return backwards compatible dummy values.
+% current extents.
 %
 % 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
-% request showing the markers. This parameter is accepted, but ignored.
+% request showing the markers. This parameter is accepted, but ignored for OpenXR.
 %
 % Returns in 'isVisible' the current visibility status of the VR area boundaries.
 % This driver always returns 0 for false / invisible.
@@ -267,10 +266,13 @@ function varargout = PsychOpenXR(cmd, varargin)
 % column represents the [x;y;z] coordinates of one 3D definition point. Connecting
 % successive points by line segments defines the boundary, as projected onto the
 % floor. Points are listed in clock-wise direction. An empty return argument means
-% that the play area is so far undefined. This driver always returns empty.
+% that the play area is so far undefined. This driver returns empty if the boundaries
+% are unknown. Otherwise it returns the bounding rectangle of the area, as current
+% unextended OpenXR runtimes can only return a rectangle, not more complex boundaries.
 %
 % 'OuterAreaBounds' defines the outer area boundaries in the same way as
-% 'playAreaBounds'. This driver always returns empty.
+% 'playAreaBounds'. This driver currently returns the same as 'playAreaBounds', as
+% current unextended OpenXR only supports that information.
 %
 %
 % input = PsychOpenXR('GetInputState', hmd, controllerType);
@@ -1026,8 +1028,18 @@ if strcmpi(cmd, 'VRAreaBoundary')
     error('VRAreaBoundary: Passed in handle does not refer to a valid and open device.');
   end
 
-  % Return no-op values for this unsupported, but mandated by PsychVRHMD(), function:
-  [varargout{1}, varargout{2}, varargout{3}] = deal(0, [], []);
+  % Query size of play area, build bounding rect of a valid area, otherwise return []:
+  [oldType, spaceSize] = PsychOpenXRCore('ReferenceSpaceType', myhmd.handle);
+  if ~isempty(spaceSize)
+    rw = spaceSize(1);
+    rh = spaceSize(2);
+    playAreaBounds = [[-rw/2; 0; rh/2], [-rw/2; 0; -rh/2], [rw/2; 0; -rh/2], [rw/2; 0; rh/2]];
+  else
+    playAreaBounds = [];
+  end
+
+  % Return 0 for isVisible, because we simply don't know:
+  [varargout{1}, varargout{2}, varargout{3}] = deal(0, playAreaBounds, playAreaBounds);
   return;
 end
 

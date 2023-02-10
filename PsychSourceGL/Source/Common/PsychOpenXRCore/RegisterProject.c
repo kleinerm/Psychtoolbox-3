@@ -65,7 +65,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("GetStaticRenderParameters", &PSYCHOPENXRGetStaticRenderParameters));
     PsychErrorExit(PsychRegister("PresentFrame", &PSYCHOPENXRPresentFrame));
     PsychErrorExit(PsychRegister("Verbosity", &PSYCHOPENXRVerbosity));
-    PsychErrorExit(PsychRegister("TrackingOriginType", &PSYCHOPENXRTrackingOriginType));
+    PsychErrorExit(PsychRegister("ReferenceSpaceType", &PSYCHOPENXRReferenceSpaceType));
     PsychErrorExit(PsychRegister("HapticPulse", &PSYCHOPENXRHapticPulse));
     PsychErrorExit(PsychRegister("CreateRenderTextureChain", &PSYCHOPENXRCreateRenderTextureChain));
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOPENXRGetNextTextureHandle));
