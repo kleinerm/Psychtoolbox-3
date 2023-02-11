@@ -92,6 +92,11 @@ end
 ifi = Screen('GetFlipInterval', win);
 hmdinfo = PsychVRHMD('GetInfo', hmd);
 
+if strcmpi(hmdinfo.type, 'OpenXR') && false
+    % Select different reference space, try the STAGE reference space:
+    PsychOpenXR('ReferenceSpaceType', hmd, 3)
+end
+
 % Retrieve the initial settings for position and size for 2D quad views:
 oldPositionL = PsychVRHMD('View2DParameters', hmd, 0);
 oldPositionR = PsychVRHMD('View2DParameters', hmd, 1);
