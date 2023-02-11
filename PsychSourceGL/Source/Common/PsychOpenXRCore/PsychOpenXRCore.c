@@ -315,7 +315,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "videoRefreshDuration = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode, multiThreaded [, srcTexIds]);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
-    synopsis[i++] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
+    synopsis[i++] = "[tPredictedOnset, tPredictedFutureOnset] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
     synopsis[i++] = "timingSupport = PsychOpenXRCore('TimingSupport' [, openxrPtr]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
@@ -5061,8 +5061,8 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
 
 PsychError PSYCHOPENXRPresentFrame(void)
 {
-    static char useString[] = "[tPredictedOnset, tPredictedFutureOnset, tDebugFlipTime] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
-    //                          1                2                      3                                                 1            2
+    static char useString[] = "[tPredictedOnset, tPredictedFutureOnset] = PsychOpenXRCore('PresentFrame', openxrPtr [, when=0]);";
+    //                          1                2                                                        1            2
     static char synopsisString[] =
     "Present last rendered frame to OpenXR display device 'openxrPtr'.\n\n"
     "This will commit the current set of 2D textures with new rendered content "
@@ -5080,8 +5080,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     "Screen('Flip') return value. A value of 0 means the frame present was skipped. A value of -1 means "
     "presentation failure.\n"
     "'tPredictedFutureOnset' Predicted best-case onset time for the next/future submitted frame, according to compositor.\n"
-    "'tDebugFlipTime' Assumed pageflip/start-of-scanout time for the just submitted frame, only applicable to special debug setups!\n"
-    "\n\n";
+    "\n";
     static char seeAlsoString[] = "";
 
     int rc;
@@ -5094,7 +5093,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -5178,13 +5177,6 @@ PsychError PSYCHOPENXRPresentFrame(void)
 
     // Return "best case scenario" predicted stimulus onset for the next/future presented frame:
     PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedFutureOnset);
-
-    // Return debug timestamp of assumed start of scanout to display for a zero-latency (e.g., OLED)
-    // display without any shutter, global, rolling or otherwise. Mostly only useful for debugging
-    // and testing the driver and OpenXR runtime in artifical test scenarios, e.g., when outputting
-    // to a regular display monitor or special debug configuration:
-    // TODO Remove as pointless?
-    PsychCopyOutDoubleArg(3, kPsychArgOptional, (tPredictedOnset > 0) ? (tPredictedOnset - 0.5 * openxr->frameDuration) : tPredictedOnset);
 
     return(PsychError_none);
 }

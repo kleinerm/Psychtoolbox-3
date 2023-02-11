@@ -670,7 +670,7 @@ if cmd == 1
   end
 
   % Present and timestamp:
-  [predictedOnset, hmd{handle}.predictedFutureOnset, hmd{handle}.debugFlipTime] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
+  [predictedOnset, hmd{handle}.predictedFutureOnset] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, tWhen);
 
   % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
@@ -1300,7 +1300,6 @@ if strcmpi(cmd, 'Open')
 
   % Start with invalid future timestamps or debug timestamp:
   newhmd.predictedFutureOnset = NaN;
-  newhmd.debugFlipTime = 0;
 
   if isempty(OVR)
     % Define global OVR.XXX constants:
