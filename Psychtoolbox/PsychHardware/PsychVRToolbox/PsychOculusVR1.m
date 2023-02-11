@@ -1506,6 +1506,23 @@ if strcmpi(cmd, 'SetLowPersistence')
   return;
 end
 
+if strcmpi(cmd, 'GetStaticRenderParameters')
+  myhmd = varargin{1};
+
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('GetStaticRenderParameters: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % Retrieve projL and projR from driver:
+  [varargout{1}, varargout{2}] = PsychOculusVRCore1('GetStaticRenderParameters', myhmd.handle, varargin{2:end});
+
+  % Get cached values of fovL and fovR, for compatibility with OpenXR driver:
+  varargout{3} = deg2rad(-hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovL(3), -hmd{myhmd.handle}.fovL(4));
+  varargout{3} = deg2rad(-hmd{myhmd.handle}.fovR(1), hmd{myhmd.handle}.fovR(2), hmd{myhmd.handle}.fovR(3), -hmd{myhmd.handle}.fovR(4));
+
+  return;
+end
+
 if strcmpi(cmd, 'SetupRenderingParameters')
   myhmd = varargin{1};
 

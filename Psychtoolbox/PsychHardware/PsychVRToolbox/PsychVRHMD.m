@@ -739,7 +739,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % This allows probing video outputs to find the one which feeds the HMD.
 %
 %
-% [projL, projR] = PsychVRHMD('GetStaticRenderParameters', hmd [, clipNear=0.01][, clipFar=10000.0]);
+% [projL, projR, fovL, fovR] = PsychVRHMD('GetStaticRenderParameters', hmd [, clipNear=0.01][, clipFar=10000.0]);
 % - Retrieve parameters needed to setup the intrinsic parameters of the virtual
 % camera for scene rendering.
 %
@@ -752,7 +752,9 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'projR' is the 4x4 OpenGL projection matrix for the right eye rendering.
 % Please note that projL and projR are usually identical for typical rendering
 % scenarios.
-%
+% 'fovL' Field of view of left camera [leftAngle, rightAngle, upAngle, downAngle].
+% 'fovR' Field of view of right camera [leftAngle, rightAngle, upAngle, downAngle].
+% Angles are expressed in units of radians.
 %
 % PsychVRHMD('Start', hmd);
 % - Start live operations of the 'hmd', e.g., head tracking.
