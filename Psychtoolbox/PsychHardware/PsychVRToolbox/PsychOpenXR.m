@@ -2210,6 +2210,81 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     PsychOpenXRCore('ViewType', handle, 0);
   end
 
+  % Compute and assign default 2D quadView parameters:
+  z = 1; % Default distance along optical axis / line of sight shall be 1 meter.
+
+  % We can only query the XR device for field of view in stereo mode:
+  if hmd{handle}.StereoMode > 0
+    maxeye = 2;
+    [~, ~, fov{1}, fov{2}] = PsychOpenXRCore('GetStaticRenderParameters', handle);
+  else
+    % In mono mode we have to make stuff up. Use the conservative field of
+    % view settings from a Oculus Rift CV-1 when driven by the OculusXR runtime:
+    maxeye = 1;
+    fov{1} = [-0.6209, 0.6209, 0.7270, -0.8379];
+  end
+
+  for eye=1:maxeye
+    % Get size as selected by driver to preserve square pixels for non-square window:
+    [~, size] = PsychOpenXRCore('View2DParameters', handle, eye - 1);
+
+    % Aspect ratio:
+    aspect = size(1) / size(2);
+
+    % Use symmetric FoV calculations by default, as they give better results in practice:
+    if isempty(strfind(hmd{handle}.basicRequirements, 'PerEyeFOV'))
+      % Assume symmetric field of view. Rarely true in practice, but
+      % gives much better results.
+
+      % Total vertical field of view:
+      vfov = fov{eye}(3) - fov{eye}(4); %#ok<NASGU> 
+
+      % Minimal vertical field of view:
+      mvfov = 2 * min(abs(fov{eye}(3:4)));
+
+      % Total horizontal field of view:
+      hfov = fov{eye}(2) - fov{eye}(1); %#ok<NASGU> 
+
+      % Minimal horizontal field of view:
+      mhfov = 2 * min(abs(fov{eye}(1:2))); %#ok<NASGU> 
+
+      % Compute new vertical size to fit into vertical field of view:
+      size(2) = z * 2 * tan(mvfov / 2);
+
+      % Compute matching horizontal size for vertical size, aspect ratio preserving:
+      size(1) = size(2) * aspect;
+      pos = [0, 0, -z];
+    else
+      % Handle asymmetric field of view. Theoretically more correct, but
+      % in practice much worse!
+
+      % Width of components of asymetric horizontal field of view:
+      wl = z * tan(abs(fov{eye}(1))); %#ok<UNRCH> 
+      wr = z * tan(abs(fov{eye}(2)));
+
+      % Total width:
+      w = wl + wr;
+
+      % Corrective x-shift to compensate for asymetry:
+      x = (wl - wr) / 2;
+
+      % Height of components of asymetric vertical field of view:
+      hu = z * tan(abs(fov{eye}(3)));
+      hd = z * tan(abs(fov{eye}(4)));
+
+      % Total height:
+      h = hu + hd;
+
+      % Corrective x-shift to compensate for asymetry:
+      y = (hu - hd) / 2;
+
+      size = [w, h];
+      pos = [x, y, -z];
+    end
+
+    PsychOpenXRCore('View2DParameters', handle, eye - 1, pos, size);
+  end
+
   % Tracked operation requested?
   if ~isempty(strfind(hmd{handle}.basicTask, 'Tracked'))
     % 3D head tracked VR rendering task: Start tracking as a convenience:
