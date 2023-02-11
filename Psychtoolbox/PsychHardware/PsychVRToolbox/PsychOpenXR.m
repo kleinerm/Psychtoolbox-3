@@ -754,7 +754,7 @@ if strcmpi(cmd, 'PrepareRender')
   end
 
   % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
-  [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime);
+  [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
   myhmd.state = state;
 
   % Always return basic tracking status:
@@ -865,7 +865,7 @@ if strcmpi(cmd, 'GetEyePose')
   result.eyeIndex = renderPass;
 
   % Use general tracking function to get eye poses:
-  eyes = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime);
+  eyes = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, 1);
 
   % Select the proper eye pose vector, depending on renderPass:
   if renderPass == 0
