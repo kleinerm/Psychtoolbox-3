@@ -541,8 +541,18 @@ function varargout = PsychOpenXR(cmd, varargin)
 % updeg, downdeg]. If 'fov' is omitted, the device runtime will be asked for a
 % good default field of view and that will be used. The field of view may be
 % dependent on the settings in the device user profile of the currently selected
-% user. Note: This parameter is completely ignored with the current driver on
-% any standard OpenXR 1.0 backend.
+% user. Note: This parameter is ignored with the current driver in 3D mode, ie.
+% basicTask '3DVR' or 'Tracked3DVR' on any standard OpenXR 1.0 backend, as the
+% driver auto-selects optimal field of view for 3D perspective correct rendering.
+% In the 2D modes 'Monoscopic' or 'Stereoscopic', or in 3D mode with stopped loop,
+% the specified field of view will be used for calculating position and size of the 
+% 2D views in use. If omitted the driver will try to auto-detect a meaningful field
+% of view. If that is impossible, it will use the hard-coded values of an Oculus
+% Rift CV-1 HMD as fallback. In all these cases, the 'PerEyeFOV' keyword will alter
+% the method of default view setup from one that only takes the minimal vertical
+% field of view min(updeg, downdeg) into account and calculates horizontal size to
+% preserve stimulus image aspect ratio, to one that takes all field of view parameters
+% into account, even if it causes distortions of shapes.
 %
 % 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
 % at the center of distortion. Defaults to 1.0 if omitted. Lower values can
@@ -1198,6 +1208,9 @@ if strcmpi(cmd, 'Open')
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
 
+  % Usually HMD tracking also works for mono display mode:
+  newhmd.noTrackingInMono = 0;
+
   % Default to multiThreaded allowed:
   newhmd.multiThreaded = 1;
 
@@ -1247,6 +1260,8 @@ if strcmpi(cmd, 'Open')
   if IsWin && strcmp(runtimeName, 'Oculus')
     % The land of awful OpenGL-Direct3D interactions and buggy runtimes...
     newhmd.needWinThreadingWa1 = 1;
+    % HMD tracking does not work for mono display mode as of OculusVR runtime 1.81.0.
+    newhmd.noTrackingInMono = 1;
   else
     % Linux, where things are better, due to use of OpenGL-Vulkan interop,
     % or no need for interop at all, if XR compositors are written in
@@ -1517,6 +1532,29 @@ if strcmpi(cmd, 'SetLowPersistence')
   return;
 end
 
+if strcmpi(cmd, 'GetStaticRenderParameters')
+  myhmd = varargin{1};
+
+  if ~PsychOpenXR('IsOpen', myhmd)
+    error('GetStaticRenderParameters: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % Retrieve projL and projR and FoV's from driver when supported:
+  if (hmd{myhmd.handle}.StereoMode > 0) || ~hmd{myhmd.handle}.noTrackingInMono
+    [varargout{1}, varargout{2}] = PsychOpenXRCore('GetStaticRenderParameters', myhmd.handle, varargin{2:end});
+  else
+    % Fallback! Get dummy "do nothing" unity projection matrices:
+    varargout{1} = diag([1 1 1 1]);
+    varargout{2} = diag([1 1 1 1]);
+  end
+
+  % Get cached values of fovL and fovR:
+  varargout{3} = hmd{myhmd.handle}.fovL;
+  varargout{4} = hmd{myhmd.handle}.fovR;
+
+  return;
+end
+
 if strcmpi(cmd, 'SetupRenderingParameters')
   myhmd = varargin{1};
 
@@ -1546,6 +1584,22 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   else
     fov = [];
   end
+
+  % Cache, so we can use (in default 2D quad view setup) or return it in
+  % 'GetStaticRenderParameters':
+  if ~isempty(fov)
+    if ~isvector(fov) || size(fov, 2) ~= 4 || ~isnumeric(fov)
+      error('SetupRenderingParameters: Invalid field of view fov specified. Not a 4 component row vector with angles in degrees.');
+    end
+
+    % Convert from absolute angles to angles with proper signs (negative
+    % for leftward and downward angles) and to radians as internal unit for
+    % storage and processing:
+    fov = deg2rad([-fov(1), fov(2), fov(3), -fov(4)]);
+  end
+
+  hmd{myhmd.handle}.fovL = fov;
+  hmd{myhmd.handle}.fovR = fov;
 
   if length(varargin) >= 6 && ~isempty(varargin{6})
     pixelsPerDisplay = varargin{6};
@@ -2211,16 +2265,55 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Compute and assign default 2D quadView parameters:
   z = 1; % Default distance along optical axis / line of sight shall be 1 meter.
 
-  % We can only query the XR device for field of view in stereo mode:
   if hmd{handle}.StereoMode > 0
     maxeye = 2;
-    [~, ~, fov{1}, fov{2}] = PsychOpenXRCore('GetStaticRenderParameters', handle);
   else
-    % In mono mode we have to make stuff up. Use the conservative field of
-    % view settings from a Oculus Rift CV-1 when driven by the OculusXR runtime:
     maxeye = 1;
-    fov{1} = [-0.6209, 0.6209, 0.7270, -0.8379];
   end
+
+  verbosefov = 0;
+  if hmd{handle}.switchTo2DViewsOnStop || ~hmd{handle}.use3DMode
+    verbosefov = 1;
+  end
+
+  % User override values for field of view specified in 'SetupRenderingParameters'?
+  if ~isempty(hmd{handle}.fovL) && ~isempty(hmd{handle}.fovR)
+    % Yes. Use userscript provided values:
+    fov{1} = hmd{handle}.fovL;
+    fov{2} = hmd{handle}.fovR;
+    if verbosefov
+      fprintf('PsychOpenXR-INFO: Using user-script provided identical field of view for both eyes for 2D view default parameter calculation.\n');
+    end
+  else
+    % No. Need to find out ourselves:
+    fov{1} = [];
+    fov{2} = [];
+
+    % Can we query values from OpenXR driver?
+    if (hmd{myhmd.handle}.StereoMode > 0) || ~hmd{myhmd.handle}.noTrackingInMono
+      % We can only query the XR device for field of view in stereo mode:
+      [~, ~, fov{1}, fov{2}] = PsychOpenXRCore('GetStaticRenderParameters', handle);
+    end
+
+    % Results from driver now?
+    if ~any(fov{1})
+      % Nope, we have to make stuff up. Use the conservative field of view
+      % settings from a Oculus Rift CV-1 when driven by the OculusXR runtime:
+      fov{1} = [-0.6209, 0.6209, 0.7270, -0.8379];
+      fov{2} = fov{1};
+      if verbosefov
+        fprintf('PsychOpenXR-INFO: No info about field of view available. Using hard-coded Oculus Rift CV-1 identical field of view for both eyes for 2D view default parameter calculation as a fallback.\n');
+      end
+    else
+      if verbosefov
+        fprintf('PsychOpenXR-INFO: Using OpenXR driver reported actual field of view for 2D view default parameter calculation.\n');
+      end
+    end
+  end
+
+  % Cache final fov values for use by 'GetStaticRenderParameters':
+  hmd{handle}.fovL = fov{1};
+  hmd{handle}.fovR = fov{2};
 
   for eye=1:maxeye
     % Get size as selected by driver to preserve square pixels for non-square window:
@@ -2235,23 +2328,26 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % gives much better results.
 
       % Total vertical field of view:
-      vfov = fov{eye}(3) - fov{eye}(4); %#ok<NASGU> 
+      % vfov = fov{eye}(3) - fov{eye}(4); %#ok<NASGU> 
 
       % Minimal vertical field of view:
-      mvfov = 2 * min(abs(fov{eye}(3:4)));
+      mvfov = min(abs(fov{eye}(3:4)));
 
       % Total horizontal field of view:
-      hfov = fov{eye}(2) - fov{eye}(1); %#ok<NASGU> 
+      % hfov = fov{eye}(2) - fov{eye}(1); %#ok<NASGU> 
 
       % Minimal horizontal field of view:
-      mhfov = 2 * min(abs(fov{eye}(1:2))); %#ok<NASGU> 
+      % mhfov = 2 * min(abs(fov{eye}(1:2))); %#ok<NASGU> 
 
       % Compute new vertical viewSize to fit into vertical field of view:
-      viewSize(2) = z * 2 * tan(mvfov / 2);
+      viewSize(2) = z * 2 * tan(mvfov);
 
       % Compute matching horizontal viewSize for vertical viewSize, aspect ratio preserving:
       viewSize(1) = viewSize(2) * aspect;
       pos = [0, 0, -z];
+      if verbosefov && eye == 1
+        fprintf('PsychOpenXR-INFO: 2D view default setup uses minimum vertical field of view and aspect ratio for view size setup.\n');
+      end
     else
       % Handle asymmetric field of view. Theoretically more correct, but
       % in practice much worse!
@@ -2278,6 +2374,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
       viewSize = [w, h];
       pos = [x, y, -z];
+      if verbosefov && eye == 1
+        fprintf('PsychOpenXR-INFO: 2D view default setup uses per-eye (asymmetrical) field of view for view size and position setup.\n');
+      end
     end
 
     PsychOpenXRCore('View2DParameters', handle, eye - 1, pos, viewSize);

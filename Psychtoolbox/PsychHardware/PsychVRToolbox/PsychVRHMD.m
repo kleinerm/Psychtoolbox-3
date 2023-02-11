@@ -620,7 +620,8 @@ function varargout = PsychVRHMD(cmd, varargin)
 % updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
 % good default field of view and that will be used. The field of view may be
 % dependent on the settings in the HMD user profile of the currently selected
-% user. Note: Ignored with the standard OpenXR backend.
+% user. Note: Not always used with the OpenXR backend driver. See 'help PsychOpenXR'
+% in the corresponding section for PsychOpenXR('SetupRenderingParameters').
 %
 % 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
 % at the center of distortion. Defaults to 1.0 if omitted. Lower values can
