@@ -2934,8 +2934,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
 
     // Get optional info requirements mask:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &reqMask);
-    if (reqMask < 1 || reqMask > 3)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'reqMask' specified. Valid values are 1, 2 or 3.");
+    if (reqMask < 0 || reqMask > 3)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'reqMask' specified. Valid values are 0 to 3.");
 
     // Lock protect openxr->predictedDisplayTime and locateXRViews() and return of
     // all views[] info and viewState info below:
@@ -3060,6 +3060,10 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         // device tracking status:
         StatusFlags = 0;
 
+        // device present, connected and online and on users head, displaying us?
+        if (openxr->state == XR_SESSION_STATE_VISIBLE || openxr->state == XR_SESSION_STATE_FOCUSED)
+            StatusFlags |= 128;
+
         // Return head and general tracking status flags:
         PsychSetStructArrayDoubleElement("Status", 0, StatusFlags, status);
 
@@ -3156,6 +3160,10 @@ PsychError PSYCHOPENXRGetTrackingState(void)
             v[2] = handVelocity[i].angularVelocity.z;
             PsychSetStructArrayNativeElement("HandAngularSpeed", i, outMat, status);
         }
+    }
+    else {
+        // Allocate out an empty struct:
+        PsychAllocOutStructArray(2, kPsychArgOptional, 2, FieldCount2, FieldNames2, &status);
     }
 
     return(PsychError_none);
