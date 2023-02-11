@@ -769,10 +769,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 23-Sep-2015  mk  Written.
 
 % Global GL handle for access to OpenGL constants needed in setup:
-global GL;
+global GL; %#ok<NUSED,*GVMIS> 
 
 % Global OVR handle for access to VR runtime constants:
-global OVR;
+global OVR; %#ok<NUSED> 
 
 if nargin < 1 || isempty(cmd)
   help PsychVRHMD;

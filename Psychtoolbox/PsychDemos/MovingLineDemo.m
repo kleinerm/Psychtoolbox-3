@@ -88,7 +88,7 @@ button = 0;
 % Run until left mouse button is pressed:
 while ~button(1)
     % Query mouse:
-    [xm, ym, button] = GetMouse;
+    [~, ~, button] = GetMouse;
 
     % Move line pair by 'xv' unless right mouse button is pressed, which
     % will pause the animation:

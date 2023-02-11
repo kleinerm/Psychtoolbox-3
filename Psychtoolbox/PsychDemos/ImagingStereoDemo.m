@@ -96,7 +96,7 @@ end
 
 if isempty(stereoMode)
     stereoMode = 8;
-end;
+end
 
 if nargin < 2
     usedatapixx = [];
@@ -276,16 +276,16 @@ dots(2, :) = 2*(ymax)*rand(1, numDots) - ymax;
 % lighting conditions and subject. The current settings do ok on a
 % MacBookPro flat panel.
 switch stereoMode
-    case 6,
+    case 6
         SetAnaglyphStereoParameters('LeftGains', windowPtr,  [1.0 0.0 0.0]);
         SetAnaglyphStereoParameters('RightGains', windowPtr, [0.0 0.6 0.0]);
-    case 7,
+    case 7
         SetAnaglyphStereoParameters('LeftGains', windowPtr,  [0.0 0.6 0.0]);
         SetAnaglyphStereoParameters('RightGains', windowPtr, [1.0 0.0 0.0]);
-    case 8,
+    case 8
         SetAnaglyphStereoParameters('LeftGains', windowPtr, [0.4 0.0 0.0]);
         SetAnaglyphStereoParameters('RightGains', windowPtr, [0.0 0.2 0.7]);
-    case 9,
+    case 9
         SetAnaglyphStereoParameters('LeftGains', windowPtr, [0.0 0.2 0.7]);
         SetAnaglyphStereoParameters('RightGains', windowPtr, [0.4 0.0 0.0]);
     otherwise
@@ -435,10 +435,10 @@ while (count < nmax) && ~any(buttons)
     dots(3, :) = -amp.*exp(-(dots(1, :) - center(1)).^2 / (2*sigma*sigma)).*exp(-(dots(2, :) - center(2)).^2 / (2*sigma*sigma));
     
     % Keyboard queries and key handling:
-    [pressed dummy keycode] = KbCheck; %#ok<ASGLU>
+    [pressed, dummy, keycode] = KbCheck; %#ok<ASGLU>
     if pressed
         % SPACE key toggles between non-inverted and inverted display:
-        if keycode(space) && ismember(stereoMode, [6 7 8 9]);
+        if keycode(space) && ismember(stereoMode, [6 7 8 9])
             KbReleaseWait;
             inverted = 1 - inverted;
             if inverted

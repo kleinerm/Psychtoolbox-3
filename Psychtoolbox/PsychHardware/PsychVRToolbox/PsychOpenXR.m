@@ -626,7 +626,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 
 % Global GL handle for access to OpenGL constants needed in setup:
-global GL;
+global GL; %#ok<*GVMIS> 
 global OVR;
 
 persistent firsttime;
@@ -1029,7 +1029,7 @@ if strcmpi(cmd, 'VRAreaBoundary')
   end
 
   % Query size of play area, build bounding rect of a valid area, otherwise return []:
-  [oldType, spaceSize] = PsychOpenXRCore('ReferenceSpaceType', myhmd.handle);
+  [~, spaceSize] = PsychOpenXRCore('ReferenceSpaceType', myhmd.handle);
   if ~isempty(spaceSize)
     rw = spaceSize(1);
     rh = spaceSize(2);
@@ -1257,7 +1257,7 @@ if strcmpi(cmd, 'Open')
 
   % Monado OpenXR runtime does not need frequent tracking to keep
   % projection layers stable and free of jitter/jerk/timeout warnings.
-  if ~isempty(strfind(runtimeName, 'Monado')) %#ok<STREMP>
+  if ~isempty(strfind(runtimeName, 'Monado'))
     % Monado or similar advanced: No need for this - Shaves off some
     % millisecond from a multi-threaded / not client-tracked loop and gives
     % extra visual stability:
@@ -1477,7 +1477,6 @@ if strcmpi(cmd, 'SetFastResponse')
   if ~PsychOpenXR('IsOpen', myhmd)
     error('SetFastResponse: Passed in handle does not refer to a valid and open device.');
   end
-  handle = myhmd.handle;
 
   % FastResponse has no meaningful implementation on the OpenXR runtime, so just
   % return a constant old value of 1 for "fast response always enabled":
@@ -1966,7 +1965,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:
-  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight, fboIds(1), fboIds(2)] = Screen('Hookfunction', win, 'GetDisplayBufferTextures'); %#ok<NASGU>
+  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight, fboIds(1), fboIds(2)] = Screen('Hookfunction', win, 'GetDisplayBufferTextures');
 
   % The MS-Windows workaround needs this extra copy operation:
   if hmd{handle}.multiThreaded && hmd{handle}.needWinThreadingWa1
@@ -2049,7 +2048,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Create left eye / mono OpenXr swapchain:
-  [width, height, numTextures, texChainFormat] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
+  [width, height, ~, texChainFormat] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
 
   % Create 2nd chain for right eye in stereo mode:
   if winfo.StereoMode > 0
@@ -2057,7 +2056,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       sca;
       error('Invalid Screen() StereoMode in use for OpenXR! Must be mode 12.');
     end
-    [width, height, numTextures, texChainFormat] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
+    [width, height, ~, texChainFormat] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
   end
 
   if (texwidth ~= width) || (texheight ~= height)
@@ -2225,10 +2224,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   for eye=1:maxeye
     % Get size as selected by driver to preserve square pixels for non-square window:
-    [~, size] = PsychOpenXRCore('View2DParameters', handle, eye - 1);
+    [~, viewSize] = PsychOpenXRCore('View2DParameters', handle, eye - 1);
 
     % Aspect ratio:
-    aspect = size(1) / size(2);
+    aspect = viewSize(1) / viewSize(2);
 
     % Use symmetric FoV calculations by default, as they give better results in practice:
     if isempty(strfind(hmd{handle}.basicRequirements, 'PerEyeFOV'))
@@ -2247,18 +2246,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % Minimal horizontal field of view:
       mhfov = 2 * min(abs(fov{eye}(1:2))); %#ok<NASGU> 
 
-      % Compute new vertical size to fit into vertical field of view:
-      size(2) = z * 2 * tan(mvfov / 2);
+      % Compute new vertical viewSize to fit into vertical field of view:
+      viewSize(2) = z * 2 * tan(mvfov / 2);
 
-      % Compute matching horizontal size for vertical size, aspect ratio preserving:
-      size(1) = size(2) * aspect;
+      % Compute matching horizontal viewSize for vertical viewSize, aspect ratio preserving:
+      viewSize(1) = viewSize(2) * aspect;
       pos = [0, 0, -z];
     else
       % Handle asymmetric field of view. Theoretically more correct, but
       % in practice much worse!
 
       % Width of components of asymetric horizontal field of view:
-      wl = z * tan(abs(fov{eye}(1))); %#ok<UNRCH> 
+      wl = z * tan(abs(fov{eye}(1))); 
       wr = z * tan(abs(fov{eye}(2)));
 
       % Total width:
@@ -2277,11 +2276,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % Corrective x-shift to compensate for asymetry:
       y = (hu - hd) / 2;
 
-      size = [w, h];
+      viewSize = [w, h];
       pos = [x, y, -z];
     end
 
-    PsychOpenXRCore('View2DParameters', handle, eye - 1, pos, size);
+    PsychOpenXRCore('View2DParameters', handle, eye - 1, pos, viewSize);
   end
 
   % Tracked operation requested?

@@ -82,7 +82,7 @@ while ~KbCheck
     end
     Screen('FillOval', win, [mod(GetSecs, 1) 0 0], CenterRect([0 0 10 10], rect));
   end
-  vbl(end+1) = Screen('Flip', win);
+  vbl(end+1) = Screen('Flip', win); %#ok<AGROW> 
 end
 
 KbStrokeWait;
@@ -90,6 +90,6 @@ sca;
 
 close all;
 plot(1000 * diff(vbl));
-fps = 1 / mean(diff(vbl))
+fps = 1 / mean(diff(vbl)) %#ok<NOPRT,NASGU> 
 
 end

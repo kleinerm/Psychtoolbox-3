@@ -34,7 +34,7 @@ PsychImaging('PrepareConfiguration');
 % hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
 hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingPrecisionIsCritical TimingSupport TimestampingSupport');
 
-[win, rect] = PsychImaging('OpenWindow', screenid, [1 0 0]);
+win = PsychImaging('OpenWindow', screenid, [1 0 0]);
 ifi = Screen('GetFlipInterval', win)
 
 % Render one view for each eye in stereoscopic mode, in an animation loop:
@@ -69,13 +69,12 @@ end
 
 isBad = 0;
 KbReleaseWait;
-tBase = GetSecs + 4;
 de = waitframes * ifi
 for pass=0:1
     tBase = Screen('Flip', win);
     tactual = tBase;
     t1 = GetSecs;
-    for i=1:90
+    for i=1:10
         Screen('FillRect', win, 0);
         DrawFormattedText(win, num2str(i), 'center', 'center', 1);
         tic;

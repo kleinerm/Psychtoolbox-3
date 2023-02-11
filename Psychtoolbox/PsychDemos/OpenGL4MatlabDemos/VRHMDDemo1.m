@@ -61,7 +61,7 @@ function VRHMDDemo1(multiSample, fountain, checkerboard, gpumeasure, debugView, 
 % 10-Sep-2015  mk  Written. Derived from DrawDots3DDemo.m
 
 % GL data structure needed for all OpenGL demos:
-global GL;
+global GL; %#ok<GVMIS> 
 
 if nargin < 1 || isempty(multiSample)
   multiSample = 4;
@@ -180,9 +180,6 @@ try
   % Finish OpenGL rendering into PTB window. This will switch back to the
   % standard 2D drawing functions of Screen and will check for OpenGL errors.
   Screen('EndOpenGL', win);
-
-  % Number of random dots, whose positions are computed in Matlab on CPU:
-  ndots = 100;
 
   % Number of fountain particles whose positions are computed on the GPU:
   nparticles = 10000;
@@ -306,7 +303,7 @@ try
   end
 
   telapsed = 0;
-  fcount = 0;
+  fcount = 1;
 
   % Allocate for up to 1000 seconds at nominal HMD fps:
   fps = Screen('FrameRate', win);
@@ -321,9 +318,6 @@ try
 
   Priority(MaxPriority(win));
 
-  % Get duration of a single frame:
-  ifi = Screen('GetFlipInterval', win);
-
   globalPos = [0, 0, 3];
   heading = 0;
 
@@ -336,7 +330,7 @@ try
   RestrictKeysForKbCheck(KbName('ESCAPE'));
 
   % Initial flip to sync us to VBL and get start timestamp:
-  [vbl, onset] = Screen('Flip', win);
+  [vbl, onset(fcount)] = Screen('Flip', win);
   tstart = vbl;
 
   % VR render loop: Runs until keypress:

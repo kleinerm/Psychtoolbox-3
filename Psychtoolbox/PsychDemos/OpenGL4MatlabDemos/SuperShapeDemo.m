@@ -326,7 +326,7 @@ return
 
 %% this function creates quad_strips with the given input vertices
 function supershape(vertices)
-global GL
+global GL %#ok<*GVMIS> 
 
 for row_ind = 1:size(vertices(:,:,1),1)-1
 
@@ -386,7 +386,7 @@ for theta_ind = 1:length(theta)
         x(theta_ind,phi_ind) = r_theta*cos(theta(theta_ind))*r_phi*cos(phi(phi_ind));
         y(theta_ind,phi_ind) = r_theta*sin(theta(theta_ind))*r_phi*cos(phi(phi_ind));
         z(theta_ind,phi_ind) = r_phi*sin(phi(phi_ind));
-    end;
+    end
 
 end
 

@@ -1,4 +1,4 @@
-function res = VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs)
+function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs)
 % VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay']) - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
@@ -40,10 +40,10 @@ function res = VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReq
 % Monado, OculusVR, SteamVR.
 
 % Constants for use in VR applications:
-global OVR;
+global OVR; %#ok<GVMIS> 
 
 % GL data structure needed for all OpenGL demos:
-global GL;
+global GL; %#ok<GVMIS> 
 
 % No testing of haptic feedback by default, as it sucks up batteries a lot:
 if nargin < 1 || isempty(withHapticFeedback)
@@ -89,7 +89,6 @@ if isempty(hmd)
 end
 
 [win, winRect] = PsychImaging('OpenWindow', screenid, [0 0 1]);
-ifi = Screen('GetFlipInterval', win);
 hmdinfo = PsychVRHMD('GetInfo', hmd);
 
 if strcmpi(hmdinfo.type, 'OpenXR') && false
@@ -148,7 +147,7 @@ if hmdinfo.hapticFeedbackSupported && ~withHapticFeedback
 end
 
 % Fetch play area / guardian boundaries:
-[isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd);
+[~, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd);
 
 fprintf('\n\nPress any key or controller button to continue. Will continue in 10 seconds automatically.\n');
 DrawFormattedText(win, 'Press any key or controller button to continue. Will continue in 10 seconds automatically.', 'center', 'center', [1 1 0], 20);
@@ -599,7 +598,7 @@ if hmdinfo.handTrackingSupported
         glDisable(GL.LIGHTING);
 
         % Change color of guardian lines, depending if guardian grid visible or not:
-        if PsychVRHMD('VRAreaBoundary', hmd);
+        if PsychVRHMD('VRAreaBoundary', hmd)
           glColor3f(1.0, 0.0, 0.0);
         else
           glColor3f(1.0, 1.0, 0.0);
