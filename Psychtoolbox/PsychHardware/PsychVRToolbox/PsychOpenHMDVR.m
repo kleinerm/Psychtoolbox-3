@@ -1295,8 +1295,8 @@ if strcmpi(cmd, 'GetStaticRenderParameters')
   [varargout{1}, varargout{2}] = PsychOpenHMDVRCore('GetStaticRenderParameters', myhmd.handle, varargin{2:end});
 
   % Get cached values of fovL and fovR, for compatibility with OpenXR driver:
-  varargout{3} = deg2rad(-hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovL(3), -hmd{myhmd.handle}.fovL(4));
-  varargout{3} = deg2rad(-hmd{myhmd.handle}.fovR(1), hmd{myhmd.handle}.fovR(2), hmd{myhmd.handle}.fovR(3), -hmd{myhmd.handle}.fovR(4));
+  varargout{3} = deg2rad([-hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovL(3), -hmd{myhmd.handle}.fovL(4)]);
+  varargout{4} = deg2rad([-hmd{myhmd.handle}.fovR(1), hmd{myhmd.handle}.fovR(2), hmd{myhmd.handle}.fovR(3), -hmd{myhmd.handle}.fovR(4)]);
 
   return;
 end
