@@ -17,7 +17,7 @@
  * The runtime must support OpenGL as rendering backend for XR content.
  *
  * The driver was initially derived from PsychOculusVRCore1.
- * Copyright (c) 2022 Mario Kleiner. Licensed to you under the MIT license:
+ * Copyright (c) 2022-2023 Mario Kleiner. Licensed to you under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the

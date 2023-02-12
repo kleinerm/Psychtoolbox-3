@@ -15,7 +15,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % however expose a few functions specific to OpenXR hardware, so you can
 % mix calls to this driver with calls to PsychVRHMD to do some mix & match.
 %
-% For setup instructions for OpenXR, see "help OpenXR". TODO
+% For setup instructions for OpenXR, see "help OpenXR".
 %
 %
 % Usage:

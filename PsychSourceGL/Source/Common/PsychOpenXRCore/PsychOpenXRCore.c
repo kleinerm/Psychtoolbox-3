@@ -250,7 +250,6 @@ PFN_xrConvertTimespecTimeToTimeKHR pxrConvertTimespecTimeToTimeKHR = NULL;
 PFN_xrConvertTimeToTimespecTimeKHR pxrConvertTimeToTimespecTimeKHR = NULL;
 #endif
 
-
 #define GET_INSTANCE_PROC_ADDR(inst, entrypoint)                                                                                                            \
 {                                                                                                                                                           \
     XrResult result;                                                                                                                                        \
@@ -283,7 +282,7 @@ void InitializeSynopsis(void)
     const char **synopsis = synopsisSYNOPSIS;
 
     synopsis[i++] = "PsychOpenXRCore - A Psychtoolbox driver for OpenXR compatible VR/AR/MR/XR hardware.";
-    synopsis[i++] = "This driver allows to use XR devices supported by a suitable OpenXR runtime of version 1 and higher.\n";
+    synopsis[i++] = "This driver allows to use XR devices supported by a suitable OpenXR runtime of version 1.x.\n";
     synopsis[i++] = "Copyright (c) 2022-2023 Mario Kleiner.";
     synopsis[i++] = "The PsychOpenXRCore driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.";
@@ -2172,7 +2171,6 @@ PsychError PSYCHOPENXRGetCount(void)
     return(PsychError_none);
 }
 
-
 PsychError PSYCHOPENXROpen(void)
 {
     static char useString[] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
@@ -3168,7 +3166,6 @@ PsychError PSYCHOPENXRGetTrackingState(void)
 
     return(PsychError_none);
 }
-
 
 PsychError PSYCHOPENXRGetInputState(void)
 {
@@ -4496,111 +4493,6 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
     return(PsychError_none);
 }
 
-// TODO: Maybe convert into a generic object tracking function, e.g., using XR_VARJO_marker_tracking, XR_HTC_vive_wrist_tracker_interaction?
-PsychError PSYCHOPENXRGetTrackersState(void)
-{
-    static char useString[] = "trackers = PsychOpenXRCore('GetTrackersState', openxrPtr);";
-    //                         1                                                 1
-    static char synopsisString[] =
-    "Return info about all connected trackers for OpenXR device 'openxrPtr'.\n\n"
-    "'trackers' is an array of structs, with one struct for each connected tracker camera. "
-    "Each struct contains the following fields, describing static and dynamic properties "
-    "of the corresponding tracking camera:\n\n"
-    "'Status': Sum of +4 = The tracking camera has a valid pose, +32 = The camera is present and online.\n"
-    "'CameraPose' as vector with position [tx,ty,tz] in meters and orientation quaternion [rx,ry,rz,rw] in radians, "
-    "concatenated together as [tx,ty,tz,rx,ry,rz,rw].\n"
-    "'LeveledCameraPose' Like 'CameraPose', but aligned to the gravity vector of the world.\n"
-    "'CameraFrustumHVFov' Horizontal and vertical field of view of the tracking camera in radians.\n"
-    "'CameraFrustumNearFarZInMeters' Near and far limit of the camera view frustum in meters.\n"
-    "\n";
-    static char seeAlsoString[] = "GetTrackingState";
-
-    PsychGenericScriptType *status;
-    const char *FieldNames[] = {"Status", "CameraPose", "LeveledCameraPose", "CameraFrustumHVFov", "CameraFrustumNearFarZInMeters"};
-    const int FieldCount = 5;
-    PsychGenericScriptType *outMat;
-    double *v;
-/*
-    int handle, trackerCount, i;
-    PsychOpenXRDevice *openxr;
-    int StatusFlags = 0;
-    ovrTrackerPose trackerPose;
-    ovrTrackerDesc trackerDesc;
-
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-
-    // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(1));
-    PsychErrorExit(PsychRequireNumInputArgs(1));
-
-    // Make sure driver is initialized:
-    PsychOpenXRCheckInit(FALSE);
-
-    // Get device handle:
-    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
-    openxr = PsychGetXR(handle, FALSE);
-
-    // Number of available tracker cameras:
-    trackerCount = ovr_GetTrackerCount(openxr->hmd);
-
-    PsychAllocOutStructArray(1, kPsychArgOptional, trackerCount, FieldCount, FieldNames, &status);
-
-    for (i = 0; i < trackerCount; i++) {
-        trackerPose = ovr_GetTrackerPose(openxr->hmd, (unsigned int) i);
-        StatusFlags = trackerPose.TrackerFlags & (ovrTracker_Connected | ovrTracker_PoseTracked);
-
-        // Return head and general tracking status flags:
-        PsychSetStructArrayDoubleElement("Status", i, StatusFlags, status);
-
-        // Camera pose:
-        v = NULL;
-        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-        v[0] = trackerPose.Pose.pose.position.x;
-        v[1] = trackerPose.Pose.pose.position.y;
-        v[2] = trackerPose.Pose.pose.position.z;
-
-        v[3] = trackerPose.Pose.pose.orientation.x;
-        v[4] = trackerPose.Pose.pose.orientation.y;
-        v[5] = trackerPose.Pose.pose.orientation.z;
-        v[6] = trackerPose.Pose.pose.orientation.w;
-        PsychSetStructArrayNativeElement("CameraPose", i, outMat, status);
-
-        // Camera leveled pose:
-        v = NULL;
-        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-        v[0] = trackerPose.LeveledPose.pose.position.x;
-        v[1] = trackerPose.LeveledPose.pose.position.y;
-        v[2] = trackerPose.LeveledPose.pose.position.z;
-
-        v[3] = trackerPose.LeveledPose.pose.orientation.x;
-        v[4] = trackerPose.LeveledPose.pose.orientation.y;
-        v[5] = trackerPose.LeveledPose.pose.orientation.z;
-        v[6] = trackerPose.LeveledPose.pose.orientation.w;
-        PsychSetStructArrayNativeElement("LeveledCameraPose", i, outMat, status);
-
-        trackerDesc = ovr_GetTrackerDesc(openxr->hmd, (unsigned int) i);
-
-        // Camera frustum HFov and VFov in radians:
-        v = NULL;
-        PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-        v[0] = trackerDesc.FrustumHFovInRadians;
-        v[1] = trackerDesc.FrustumVFovInRadians;
-        PsychSetStructArrayNativeElement("CameraFrustumHVFov", i, outMat, status);
-
-        // Camera frustum near and far clip plane in meters:
-        v = NULL;
-        PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-        v[0] = trackerDesc.FrustumNearZInMeters;
-        v[1] = trackerDesc.FrustumFarZInMeters;
-        PsychSetStructArrayNativeElement("CameraFrustumNearFarZInMeters", i, outMat, status);
-    }
-*/
-    return(PsychError_none);
-}
-
 // Manual reimplementation of OpenGL's glFrustum(), based on my self-made tried and
 // proven glFrustum.m implementation for the OpenGL-ES use case, which was in turn based
 // on the matrix math and definition for glFrustum() in the official OpenGL spec. This
@@ -4835,7 +4727,7 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
     openxr->predictedDisplayTime = openxr->frameState.predictedDisplayTime;
 
     // Mark frame as not skipped, ie. set tPredictedOnset to greater than zero timestamp:
-    // TODO FIXME Rethink!!! This is certainly wrong!!!
+    // TODO FIXME Rethink!!! This is possibly wrong!!!
     tPredictedOnset = XrTimeToPsychTime(openxr->predictedDisplayTime) - openxr->frameDuration;
 
     result = xrBeginFrame(openxr->hmd, NULL);
@@ -5189,99 +5081,6 @@ PsychError PSYCHOPENXRPresentFrame(void)
     return(PsychError_none);
 }
 
-// TODO: Remove or repurpose for general object tracking? Not used by PsychOpenXR.m anymore:
-PsychError PSYCHOPENXRGetEyePose(void)
-{
-    static char useString[] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
-    //                          1        2                                         1          2             3
-    static char synopsisString[] =
-    "Return current predicted pose vector for an eye for OpenXR device 'openxrPtr'.\n"
-    "'renderPass' is the view render pass for which to provide the data: 0 = First pass, 1 = Second pass.\n"
-    "Eye position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
-    "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
-    "then the prediction is performed for the mid-point of the next possible video frame of the device, ie. "
-    "the most likely presentation time for immediately rendered images.\n\n"
-    "Return value is the vector 'eyePose' which defines the position and orientation for the eye corresponding "
-    "to the requested renderPass ie. 'eyePose' = [posX, posY, posZ, rotX, rotY, rotZ, rotW].\n"
-    "The second return value is the 'eyeIndex', the index of the eye whose view should be rendered. This would "
-    "be 0 for left eye, and 1 for right eye, and could be used to select the target render view via, e.g.,\n"
-    "Screen('SelectStereoDrawBuffer', window, eyeIndex);\n"
-    "Which 'eyeIndex' corresponds to the first or second 'renderPass', ie., if the left eye should be rendered "
-    "first, or if the right eye should be rendered first, depends on the visual scanning order of the device "
-    "display panel - is it top to bottom, left to right, or right to left? This function provides that optimized "
-    "mapping. Using this function to query the parameters for render setup of an eye can provide a bit more "
-    "accuracy in rendering, at the expense of more complex usercode.\n";
-    static char seeAlsoString[] = "";
-
-    int handle, renderPass, eye;
-    PsychOpenXRDevice *openxr;
-    XrTime xrPredictionTime;
-    double *outM;
-    double predictionTime = DBL_MAX;
-
-    // All sub functions should have these two lines:
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
-
-    // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(3));
-    PsychErrorExit(PsychRequireNumInputArgs(2));
-
-    // Make sure driver is initialized:
-    PsychOpenXRCheckInit(FALSE);
-
-    // Get device handle:
-    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
-    openxr = PsychGetXR(handle, FALSE);
-
-    // Get renderPass:
-    PsychCopyInIntegerArg(2, kPsychArgRequired, &renderPass);
-    if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
-
-    // Get eye pose for the renderPass. OpenXR does not provide advantages for seprate render passes,
-    // so renderPass to eye mapping is meaningless for quality, and we just set arbitrarily eye = renderPass:
-    eye = renderPass;
-
-    // Get optional predictionTime:
-    PsychCopyInDoubleArg(3, kPsychArgOptional, &predictionTime);
-
-    // Lock protect openxr->predictedDisplayTime read, and locateXRViews():
-    PsychLockMutex(&(openxr->presenterLock));
-
-    // Got optional target time for predicted tracking state? Default to the
-    // predicted display time of the next video frame:
-    if (predictionTime != DBL_MAX) {
-        xrPredictionTime = PsychTimeToXrTime(predictionTime);
-    }
-    else {
-        xrPredictionTime = openxr->predictedDisplayTime;
-        predictionTime = XrTimeToPsychTime(xrPredictionTime);
-    }
-
-    locateXRViews(openxr, xrPredictionTime);
-    PsychUnlockMutex(&(openxr->presenterLock));
-
-    // Eye pose as raw data:
-    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
-
-    // Position (x,y,z):
-    outM[0] = openxr->view[eye].pose.position.x;
-    outM[1] = openxr->view[eye].pose.position.y;
-    outM[2] = openxr->view[eye].pose.position.z;
-
-    // Orientation as a quaternion (x,y,z,w):
-    outM[3] = openxr->view[eye].pose.orientation.x;
-    outM[4] = openxr->view[eye].pose.orientation.y;
-    outM[5] = openxr->view[eye].pose.orientation.z;
-    outM[6] = openxr->view[eye].pose.orientation.w;
-
-    // Copy out preferred eye render order for info:
-    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) eye);
-
-    return(PsychError_none);
-}
-
 PsychError PSYCHOPENXRHapticPulse(void)
 {
     static char useString[] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
@@ -5441,6 +5240,202 @@ PsychError PSYCHOPENXRHapticPulse(void)
     tNow = pulseEndTime;
     pulseEndTime += duration;
     PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
+
+    return(PsychError_none);
+}
+
+// TODO: Maybe convert into a generic object tracking function, e.g., using XR_VARJO_marker_tracking, XR_HTC_vive_wrist_tracker_interaction?
+PsychError PSYCHOPENXRGetTrackersState(void)
+{
+    static char useString[] = "trackers = PsychOpenXRCore('GetTrackersState', openxrPtr);";
+    //                         1                                                 1
+    static char synopsisString[] =
+    "Return info about all connected trackers for OpenXR device 'openxrPtr'.\n\n"
+    "'trackers' is an array of structs, with one struct for each connected tracker camera. "
+    "Each struct contains the following fields, describing static and dynamic properties "
+    "of the corresponding tracking camera:\n\n"
+    "'Status': Sum of +4 = The tracking camera has a valid pose, +32 = The camera is present and online.\n"
+    "'CameraPose' as vector with position [tx,ty,tz] in meters and orientation quaternion [rx,ry,rz,rw] in radians, "
+    "concatenated together as [tx,ty,tz,rx,ry,rz,rw].\n"
+    "'LeveledCameraPose' Like 'CameraPose', but aligned to the gravity vector of the world.\n"
+    "'CameraFrustumHVFov' Horizontal and vertical field of view of the tracking camera in radians.\n"
+    "'CameraFrustumNearFarZInMeters' Near and far limit of the camera view frustum in meters.\n"
+    "\n";
+    static char seeAlsoString[] = "GetTrackingState";
+
+    PsychGenericScriptType *status;
+    const char *FieldNames[] = {"Status", "CameraPose", "LeveledCameraPose", "CameraFrustumHVFov", "CameraFrustumNearFarZInMeters"};
+    const int FieldCount = 5;
+    PsychGenericScriptType *outMat;
+    double *v;
+/*
+    int handle, trackerCount, i;
+    PsychOpenXRDevice *openxr;
+    int StatusFlags = 0;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, FALSE);
+
+    // Number of available tracker cameras:
+    trackerCount = XXX(openxr->hmd);
+
+    PsychAllocOutStructArray(1, kPsychArgOptional, trackerCount, FieldCount, FieldNames, &status);
+
+    for (i = 0; i < trackerCount; i++) {
+        trackerPose = XXX(openxr->hmd, (unsigned int) i);
+        StatusFlags = trackerPose.TrackerFlags & (XXX);
+
+        // Return head and general tracking status flags:
+        PsychSetStructArrayDoubleElement("Status", i, StatusFlags, status);
+
+        // Camera pose:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+        v[0] = trackerPose.Pose.pose.position.x;
+        v[1] = trackerPose.Pose.pose.position.y;
+        v[2] = trackerPose.Pose.pose.position.z;
+
+        v[3] = trackerPose.Pose.pose.orientation.x;
+        v[4] = trackerPose.Pose.pose.orientation.y;
+        v[5] = trackerPose.Pose.pose.orientation.z;
+        v[6] = trackerPose.Pose.pose.orientation.w;
+        PsychSetStructArrayNativeElement("CameraPose", i, outMat, status);
+
+        // Camera leveled pose:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+        v[0] = trackerPose.LeveledPose.pose.position.x;
+        v[1] = trackerPose.LeveledPose.pose.position.y;
+        v[2] = trackerPose.LeveledPose.pose.position.z;
+
+        v[3] = trackerPose.LeveledPose.pose.orientation.x;
+        v[4] = trackerPose.LeveledPose.pose.orientation.y;
+        v[5] = trackerPose.LeveledPose.pose.orientation.z;
+        v[6] = trackerPose.LeveledPose.pose.orientation.w;
+        PsychSetStructArrayNativeElement("LeveledCameraPose", i, outMat, status);
+
+        trackerDesc = XXX(openxr->hmd, (unsigned int) i);
+
+        // Camera frustum HFov and VFov in radians:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+        v[0] = trackerDesc.FrustumHFovInRadians;
+        v[1] = trackerDesc.FrustumVFovInRadians;
+        PsychSetStructArrayNativeElement("CameraFrustumHVFov", i, outMat, status);
+
+        // Camera frustum near and far clip plane in meters:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+        v[0] = trackerDesc.FrustumNearZInMeters;
+        v[1] = trackerDesc.FrustumFarZInMeters;
+        PsychSetStructArrayNativeElement("CameraFrustumNearFarZInMeters", i, outMat, status);
+    }
+*/
+    return(PsychError_none);
+}
+
+// TODO: Remove or repurpose for general object tracking? Not used by PsychOpenXR.m anymore:
+PsychError PSYCHOPENXRGetEyePose(void)
+{
+    static char useString[] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
+    //                          1        2                                         1          2             3
+    static char synopsisString[] =
+    "Return current predicted pose vector for an eye for OpenXR device 'openxrPtr'.\n"
+    "'renderPass' is the view render pass for which to provide the data: 0 = First pass, 1 = Second pass.\n"
+    "Eye position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
+    "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
+    "then the prediction is performed for the mid-point of the next possible video frame of the device, ie. "
+    "the most likely presentation time for immediately rendered images.\n\n"
+    "Return value is the vector 'eyePose' which defines the position and orientation for the eye corresponding "
+    "to the requested renderPass ie. 'eyePose' = [posX, posY, posZ, rotX, rotY, rotZ, rotW].\n"
+    "The second return value is the 'eyeIndex', the index of the eye whose view should be rendered. This would "
+    "be 0 for left eye, and 1 for right eye, and could be used to select the target render view via, e.g.,\n"
+    "Screen('SelectStereoDrawBuffer', window, eyeIndex);\n"
+    "Which 'eyeIndex' corresponds to the first or second 'renderPass', ie., if the left eye should be rendered "
+    "first, or if the right eye should be rendered first, depends on the visual scanning order of the device "
+    "display panel - is it top to bottom, left to right, or right to left? This function provides that optimized "
+    "mapping. Using this function to query the parameters for render setup of an eye can provide a bit more "
+    "accuracy in rendering, at the expense of more complex usercode.\n";
+    static char seeAlsoString[] = "";
+
+    int handle, renderPass, eye;
+    PsychOpenXRDevice *openxr;
+    XrTime xrPredictionTime;
+    double *outM;
+    double predictionTime = DBL_MAX;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments:
+    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOpenXRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openxr = PsychGetXR(handle, FALSE);
+
+    // Get renderPass:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &renderPass);
+    if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
+
+    // Get eye pose for the renderPass. OpenXR does not provide advantages for seprate render passes,
+    // so renderPass to eye mapping is meaningless for quality, and we just set arbitrarily eye = renderPass:
+    eye = renderPass;
+
+    // Get optional predictionTime:
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &predictionTime);
+
+    // Lock protect openxr->predictedDisplayTime read, and locateXRViews():
+    PsychLockMutex(&(openxr->presenterLock));
+
+    // Got optional target time for predicted tracking state? Default to the
+    // predicted display time of the next video frame:
+    if (predictionTime != DBL_MAX) {
+        xrPredictionTime = PsychTimeToXrTime(predictionTime);
+    }
+    else {
+        xrPredictionTime = openxr->predictedDisplayTime;
+        predictionTime = XrTimeToPsychTime(xrPredictionTime);
+    }
+
+    locateXRViews(openxr, xrPredictionTime);
+    PsychUnlockMutex(&(openxr->presenterLock));
+
+    // Eye pose as raw data:
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
+
+    // Position (x,y,z):
+    outM[0] = openxr->view[eye].pose.position.x;
+    outM[1] = openxr->view[eye].pose.position.y;
+    outM[2] = openxr->view[eye].pose.position.z;
+
+    // Orientation as a quaternion (x,y,z,w):
+    outM[3] = openxr->view[eye].pose.orientation.x;
+    outM[4] = openxr->view[eye].pose.orientation.y;
+    outM[5] = openxr->view[eye].pose.orientation.z;
+    outM[6] = openxr->view[eye].pose.orientation.w;
+
+    // Copy out preferred eye render order for info:
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) eye);
 
     return(PsychError_none);
 }
