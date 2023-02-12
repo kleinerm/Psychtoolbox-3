@@ -882,12 +882,16 @@ if strcmpi(cmd, 'AutoSetupHMD')
     if PsychOculusVR('Supported') && PsychOculusVR('GetCount') > 0
       % Yes. Use that one. This will also inject a proper PsychImaging task
       % for setup of the imaging pipeline:
-      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      try
+        hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-      % Return the handle:
-      varargout{1} = hmd;
-      evalin('caller','global OVR');
-      return;
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR Rift DK1 or DK2 device, despite driver being installed and supposedly ready...\n');
+      end
     end
   end
 
@@ -898,12 +902,16 @@ if strcmpi(cmd, 'AutoSetupHMD')
       % No need for best timing, or OpenXR runtime has good timing
       % facilities, so use that one. This will also inject a proper
       % PsychImaging task for setup of the imaging pipeline:
-      hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      try
+        hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-      % Return the handle:
-      varargout{1} = hmd;
-      evalin('caller','global OVR');
-      return;
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenXR device, despite driver being installed and supposedly ready...\n');
+      end
     end
   end
 
@@ -919,12 +927,16 @@ if strcmpi(cmd, 'AutoSetupHMD')
       % intend to do so, but at least there is the theoretical option...
       %
       % This will also inject a proper PsychImaging task for setup of the imaging pipeline:
-      hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      try
+        hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-      % Return the handle:
-      varargout{1} = hmd;
-      evalin('caller','global OVR');
-      return;
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenHMD VR HMD, despite driver being installed and supposedly ready...\n');
+      end
     end
 
     warning('PsychVRHMD:AutoSetupHMD: Could not find any driver with the requested reliable presentation timing! Choosing OpenXR as least worst option!');
@@ -937,12 +949,16 @@ if strcmpi(cmd, 'AutoSetupHMD')
     % 
     % Supported and online? At least one real HMD connected?
     if exist('PsychOpenXR', 'file') && PsychOpenXR('Supported') && PsychOpenXR('GetCount') > 0
-      hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
-    
-      % Return the handle:
-      varargout{1} = hmd;
-      evalin('caller','global OVR');
-      return;
+      try
+        hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenXR device, despite driver being installed and supposedly ready...\n');
+      end
     end
 
     % We reached the end of the road. No driver with even half-way
@@ -963,36 +979,48 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if PsychOculusVR1('Supported') && PsychOculusVR1('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
-    hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    try
+      hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-    % Return the handle:
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR Rift DK1 or DK2 device, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % Oculus sdk/runtime v0.5 supported and online? At least one real HMD connected?
   if PsychOculusVR('Supported') && PsychOculusVR('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
-    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    try
+      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-    % Return the handle:
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR-1 VR HMD, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % OpenHMD VR supported and online? At least one real HMD connected?
   if PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
-    hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    try
+      hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-    % Return the handle:
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenHMD VR HMD, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % Add probe and autosetup calls for other HMD vendors here...
@@ -1000,17 +1028,25 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % No success with finding any real supported HMD so far. Try to find a driver
   % that at least supports an emulated HMD for very basic testing:
   if PsychOculusVR('Supported')
-    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+    try
+      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR Rift DK1 or DK2 device, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   if PsychOpenHMDVR('Supported')
-    hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+    try
+      hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenHMD VR HMD, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % Add probe for other emulated HMD drivers here ...
