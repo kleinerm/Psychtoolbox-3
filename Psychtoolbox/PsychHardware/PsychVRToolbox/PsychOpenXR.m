@@ -127,6 +127,16 @@ function varargout = PsychOpenXR(cmd, varargin)
 % 
 % [oldPosition, oldSize, oldOrientation] = PsychOpenXR('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
+% For such 2D views you can also specify the distance of the virtual
+% viewscreen in meters in front of the eyes of the subject. By default the
+% distance is 1 meter and the size and position is set up to fill out the
+% field of view in a meaningful way, essentially covering the whole
+% available field of view. By overriding the distance to a smaller or
+% bigger distance than 1 meter, you can "zoom in" to the image, or make
+% sure that also the corners and edges of the image are visible. E.g., the
+% following keyword would place the virtual screen at 2.1 meters distance:
+%
+% '2DViewDistMeters=2.1'
 %
 % 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
 % care about potential significant visual presentation glitches happening if
@@ -2264,6 +2274,21 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Compute and assign default 2D quadView parameters:
   z = 1; % Default distance along optical axis / line of sight shall be 1 meter.
+  za = z;
+
+  % Forced override distance of 2D viewscreen provided?
+  vOvrDist = strfind(hmd{handle}.basicRequirements, '2DViewDistMeters=');
+  if ~isempty(vOvrDist)
+    vOvrDist = sscanf(hmd{handle}.basicRequirements(min(vOvrDist):end), '2DViewDistMeters=%f');
+    if ~isscalar(vOvrDist) || ~isnumeric(vOvrDist) || ~isreal(vOvrDist) || (vOvrDist <= 0)
+      sca;
+      error('Invalid ''2DViewDistMeters='' string in ''basicRequirements'' specified! Must be of the form ''2DViewDistMeters=2.1'' for example for 2.1 meters distance.');
+    end
+
+    % Override default distance: Values > 1 meter will shrink the view in
+    % the field of view of the subject:
+    za = vOvrDist;
+  end
 
   if hmd{handle}.StereoMode > 0
     maxeye = 2;
@@ -2344,7 +2369,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
       % Compute matching horizontal viewSize for vertical viewSize, aspect ratio preserving:
       viewSize(1) = viewSize(2) * aspect;
-      pos = [0, 0, -z];
+      pos = [0, 0, -za];
       if verbosefov && eye == 1
         fprintf('PsychOpenXR-INFO: 2D view default setup uses minimum vertical field of view and aspect ratio for view size setup.\n');
       end
@@ -2373,7 +2398,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       y = (hu - hd) / 2;
 
       viewSize = [w, h];
-      pos = [x, y, -z];
+      pos = [x, y, -za];
       if verbosefov && eye == 1
         fprintf('PsychOpenXR-INFO: 2D view default setup uses per-eye (asymmetrical) field of view for view size and position setup.\n');
       end

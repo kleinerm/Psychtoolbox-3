@@ -113,6 +113,17 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 
 % PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
+% For such 2D views you can also specify the distance of the virtual
+% viewscreen in meters in front of the eyes of the subject. By default the
+% distance is 1 meter and the size and position is set up to fill out the
+% field of view in a meaningful way, essentially covering the whole
+% available field of view. By overriding the distance to a smaller or
+% bigger distance than 1 meter, you can "zoom in" to the image, or make
+% sure that also the corners and edges of the image are visible. E.g., the
+% following keyword would place the virtual screen at 2.1 meters distance:
+%
+% '2DViewDistMeters=2.1'
+%
 % 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
 % care about potential significant visual presentation glitches happening if
 % your script does not run a continuous animation with high framerate, e.g.,
