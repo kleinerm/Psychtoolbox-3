@@ -3,7 +3,7 @@ function linuxmakeitoctave3(mode, neurodebianbuild)
 % This is the GNU/Linux version of makeit to build the Linux
 % mex files for Octave on Linux. It also creates copies of
 % the mex files build against Octave-3 and modifies them to
-% also work on Octave-4.0 - 4.2. Files for Octave 4.4 - 5.2 are
+% also work on Octave-4.0 - 4.2. Files for Octave 4.4 - 7.3 are
 % built and stored into a different target folder.
 %
 %
@@ -32,13 +32,13 @@ if mode == -1
     % everything:
     tic;
 
-    % Build plugin types 0-15 by default:
-    modes = 0:15;
+    % Build plugin types 0-16 by default:
+    modes = 0:16;
 
     if IsARM
-        % Do not build plugin 15 == PsychVulkanCore, 12 == PsychOculusVRCore,
-        % 10 == PsychCV, 4 == Eyelink on ARM / RaspberryPi:
-        modes = setdiff (modes, [4, 10, 12, 15]);
+        % Do not build plugin 16 == PsychOpenXRCore, 15 == PsychVulkanCore,
+        % 12 == PsychOculusVRCore, 10 == PsychCV, 4 == Eyelink on ARM / RaspberryPi:
+        modes = setdiff (modes, [4, 10, 12, 15, 16]);
     end
 
     for mode = modes

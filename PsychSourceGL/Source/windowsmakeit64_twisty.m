@@ -491,7 +491,7 @@ else
         end
     end
 
-    if what == 16
+    if what == 16 && false % DISABLED FOR NOW. NO FUNDED WORK TIME TO FIX THIS UP.
         % Build PsychOpenXRCore.mex for 64-Bit Octave:
         % Needs the official Khronos OpenXR SDK for 64-Bit Windows from
         % https://github.com/KhronosGroup/OpenXR-SDK
