@@ -316,7 +316,7 @@ try
   % Make sure all keys are released:
   KbReleaseWait;
 
-  Priority(MaxPriority(win));
+%  Priority(MaxPriority(win));
 
   globalPos = [0, 0, 3];
   heading = 0;
