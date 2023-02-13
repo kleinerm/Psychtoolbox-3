@@ -1,5 +1,5 @@
-function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs)
-% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay']) - Test input functionality related to VR devices.
+function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, refSpace)
+% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay'][, refSpace]) - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
 % input. After any key press or controller button press, reports live state
@@ -24,10 +24,24 @@ function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs)
 %
 % ForceSize=1230x4560 = Enforce a per-eye image size of 1230x4560 pixels.
 % Use2DViewsWhen3DStopped = Use different display mode for stopped 3D rendering.
+% 2DViewDistMeters=2.1 = Enforce 2D views to be 2.1 meters away from the
+% viewer, instead of the default of 1 meter. Allows scaling of 2D image
+% views.
 % DontCareAboutVisualGlitchesWhenStopped = Don't care about glitches when stopped.
 % ForbidMultiThreading = Do not use multi-threaded presentation ever.
 % DebugDisplay = Also show rendered stimuli on the experimenters monitor.
 % This is the default.
+%
+% The optional parameter 'refSpace', if provided and non-zero, allows to
+% select a specific OpenXR reference space under OpenXR. It is ignored
+% under other drivers. The most interesting values are 1 for head locked, 2
+% for a local reference space, and 3 for a stage reference space. 3 often
+% enables additional goodies, but support for it is not mandatory for an
+% OpenXR runtime, so selecting 3 could fail. However, so far 4 out of 4
+% tested OpenXR runtimes on Linux and Windows did support the stage
+% reference space, which provided a more natural coordinate system and also
+% visualization of the "play area". The driver default is 2 for local, as
+% that is always supported.
 %
 % After a keypress (or Enter/Back button press on the controller),
 % visualizes tracked hand position and orientation of hand controllers and
@@ -58,6 +72,11 @@ end
 % Use DebugDisplay by default, if specialReqs omitted:
 if nargin < 3 || isempty(specialReqs)
     specialReqs = 'DebugDisplay';
+end
+
+% No specific reference space by default - Allow driver to do its thing:
+if nargin < 4 || isempty(refSpace)
+    refSpace = 0;
 end
 
 canary = onCleanup(@sca);
@@ -91,9 +110,9 @@ end
 [win, winRect] = PsychImaging('OpenWindow', screenid, [0 0 1]);
 hmdinfo = PsychVRHMD('GetInfo', hmd);
 
-if strcmpi(hmdinfo.type, 'OpenXR') && false
-    % Select different reference space, try the STAGE reference space:
-    PsychOpenXR('ReferenceSpaceType', hmd, 3)
+if strcmpi(hmdinfo.type, 'OpenXR') && refSpace
+    % Select different reference space:
+    PsychOpenXR('ReferenceSpaceType', hmd, refSpace)
 end
 
 % Retrieve the initial settings for position and size for 2D quad views:
