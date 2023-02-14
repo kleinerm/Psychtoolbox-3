@@ -4833,10 +4833,10 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
     if (!resultOK(result)) {
         if (verbosity > 0) {
             if (latched)
-                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %s\n",
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame for GetSecs time %f [secs] == targetDisplayTime %lld [xrTime units]: %s\n",
                         targetPresentTime, targetDisplayTime, errorString);
             else
-                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame in idle-loop for displayTime %ld [xrTime units]: %s\n",
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame in idle-loop for displayTime %lld [xrTime units]: %s\n",
                         frameEndInfo.displayTime, errorString);
         }
 
@@ -4844,7 +4844,7 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
         success = FALSE;
     }
     else if (verbosity > 6) {
-        fprintf(stderr, "PsychOpenXRCore-INFO:PresentCycle(): xrEndFrame done for predicted onset time %ld xrTime units: %f %s\n",
+        fprintf(stderr, "PsychOpenXRCore-INFO:PresentCycle(): xrEndFrame done for predicted onset time %lld xrTime units: %f %s\n",
                 frameEndInfo.displayTime, latched ? (XrTimeToPsychTime(frameEndInfo.displayTime) - XrTimeToPsychTime(targetDisplayTime)) : 1,
                 latched ? "secs after targetDisplayTime. Frame latched!" : ".");
     }
