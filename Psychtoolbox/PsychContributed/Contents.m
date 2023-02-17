@@ -71,18 +71,22 @@
 %                              of the display, to allow calibration and user testing with
 %                              stable display settings.
 %
-% x64/libusb-1.0.dll           This is the 64-Bit windows version of libusb-1.0 for
-%                              64-Bit Matlab from ...
-%                              http://libusb.org/wiki/windows_backend
-%                              The dll is used by PsychHID on MS-Windows.
+% x64/libusb-1.0.dll           This is the 64-Bit Windows version of libusb-1.0
+%                              for 64-Bit Matlab/Octave/Python from ...
+%                              https://libusb.info
+%                              The dll is used by 64-Bit PsychHID on MS-Windows.
 %                              It is licensed under LGPL v2+. You can get a
 %                              more recent version of this dll from the
 %                              website mentioned above if you like.
 %
-%                              The corresponding source code can be found
+% libusb-1.0.dll               libusb-1.0.dll in the PsychContributed folder itself
+%                              is a corresponding copy for 32-Bit Octave/Python.
+%
+%                              The corresponding source code for both 32 Bit and
+%                              64-Bit libusb-1.0.dll's for MS-Windows can be found
 %                              in the PsychSourceGL/Cohorts/libusb1-win32/
 %                              subfolder after you have downloaded the full
-%                              ptb source (help UseTheSource).
+%                              Psychtoolbox source (help UseTheSource).
 %
 % simplepsychtoolboxsetup.sh   Configure OS X priority. DO NOT USE ANYMORE!
 %

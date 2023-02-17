@@ -88,6 +88,7 @@ New bugs:
 
 * HDR color gamut parsing is broken AGAIN! Now all chroma coords are too low
   by a factor 5. Workaround implemented in PsychVulkanCore to multiply by 5x.
+  -> Fixed by myself in amdvlk release v2.0.155 aka 2020-Q3.4 from August 24th 2020.
 
 * If one switches multiple displays/RandR outputs into direct-display-mode then
   that works, but when one tries to close them again / release the displays:
@@ -99,12 +100,17 @@ New bugs:
     All others get stuck at their last image, until one acquires/releases that one
     display again. Peculiar: Even quitting Octave doesn't release the display!!
 
+  -> Diagnosed to be a X-Server core RandR leasing bug. Fixed by myself in X-Server 21
+     and X-Server 1.20.14. X-Server 21 is in Ubuntu 22.04-LTS and later, so Ubuntu 22.04+
+     is fine. Unfortantely server 1.20.14 was not SRU'd for/as of Ubuntu 20.04.5-LTS, so
+     that remains broken.
+
 * Oh yeah, and while radv does do switching of a direct-display-mode display
   into the requested mode, amdvlk ignores this and always switches to the
   highest capability mode! Bad if the highest mode is also flaky due to
   low link signal quality -- Displays blank out, DP link training fails etc.
 
---> ALL shoddy but work(around)able as of 2020-Q2.6
+--> Last bug remains in amdvlk as of 2020-Q3.4, otherwise fine.
 
 Before that release there were various serious bugs for which i
 provided bug fixes, and one bug report fixed by AMD themselves:
@@ -244,3 +250,16 @@ All taken together, timing and performance is unusable for our very specific pur
 My hope is that macOS 11 would be less broken and more usable in this area, or maybe at least on the ARM M1 Apple proprietary display hardware, but i currently lack the hardware and even more so the funding and time for further testing and investigation on Big Sur. At least MoltenVK gives us a way to utilize this functionality, in case Apple fixes (or fixed) their system in future macOS releases. And our main recommended target platform isn't macOS anyway, but desktop Linux, where these specific problems don't exist and we have excellent timing and control with the FOSS graphics and display stack since over a decade. I assume at some point one of our users will run this new Vulkan/WSI backend code on their macOS 11 or Apple M1 systems and then i'll see if things are as bad on those setups. So far the feature on our side is less than a month old, so time will tell...
 
 End rant ;-)
+
+- Retested on macOS with MoltenVK 1.1.12 on top of Metal: Tested on 12.6.0 Monterey final and AMD on MBP 2017
+  15" Retina with new workarounds in Screen() for new macOS 12 bugs which caused permanent zero timestamps and
+  no stimulus display at all:
+
+  - With workaround, timestamps are still flaky, but may be ok, according to FlipTimingWithPhotoDiodeTest, at least
+    under that tests conditions, with VideoSwitcher timestamping. More stringent testing with Datapixx etc. pending.
+
+  - Still ts failure especially at very beginning of a session.
+
+  - DirectToDisplay mode still totally broken timing-wise and also only reports invald ts.
+
+  - Max perf with no DirectToDisplay is still maxfps = videorefesh / 2, e.g., 30 fps on 60 Hz display.

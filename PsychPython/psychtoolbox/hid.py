@@ -52,7 +52,7 @@ def get_keyboard_indices(name='', serial_number=''):
         devs = devices(device_class=4)  # on win/linux this is just keyboards
     else:
         devs = devices()
-    for ii, dev in enumerate(devs):
+    for dev in devs:
         # filter out non-matches
         # print("{}: {}, {}, {}".format(
         #     dev['product'], dev['usageValue'], dev['usagePageValue'], dev['serialNumber']))
@@ -138,7 +138,7 @@ class Keyboard:
 
     def check(self, scan_list=None):
         """Checks for events """
-        return PsychHID('KbCheck', self.device_id, scan_list)
+        return PsychHID('KbCheck', self.device_number, scan_list)
 
     def _create_queue(self, num_slots=10000, flags=0, win_handle=None):
         PsychHID('KbQueueCreate', self.device_number,

@@ -1,24 +1,83 @@
-function res = VRInputStuffTest
-% VRInputStuffTest - Test input functionality related to VR devices.
+function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, refSpace)
+% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay'][, refSpace]) - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
-% input. After any key press or controller button press, reports live state of
-% buttons, sensors, triggers etc. of connected controllers. Also exercises the
-% haptic feedback functionality if any of left and right touch controllers if
-% the A/B or X/Y buttons are pressed for low/high frequency rumble on right or
-% left touch controller. After a keypress or Home button press on the controller,
-% visualizes tracked hand position and orientation of hand controllers and allows
-% to do some nice visual effects based on trigger / grip button presses, thumbsticks
-% movement etc.
+% input. After any key press or controller button press, reports live state
+% of buttons, sensors, triggers etc. of connected controllers.
 %
-% Tested with XBox controller, Oculus remote, and the two Oculus touch controllers
-% of the Rift CV-1 on Windows-10 and Linux.
+% If the optional parameter 'withHapticFeedback' is set to 1, then also
+% exercises the haptic feedback functionality of any of the left and right
+% hand controllers, if the A/B or X/Y buttons are pressed for low/high
+% frequency rumble on right or left controller. Haptic feedback is not
+% exercised by default, as it empties the controllers batteries relatively
+% fast.
+%
+% The optional parameter 'withMTStressTest' if set to 1 will test
+% single-threading to multi-threading switching on the fly. Multi-threaded
+% mode is less efficient, more prone to skipped deadlines or lower
+% animation rates, but stabilizes visuals in 'Stop'ed 3D mode, and is
+% needed on most OpenXR runtimes to get even a semblance of correct frame
+% presentation timing and timestamping.
+%
+% The optional parameter 'specialReqs' allows to pass in extra
+% basicRequirments into the driver. Meaningful keywords could be:
+%
+% ForceSize=1230x4560 = Enforce a per-eye image size of 1230x4560 pixels.
+% Use2DViewsWhen3DStopped = Use different display mode for stopped 3D rendering.
+% 2DViewDistMeters=2.1 = Enforce 2D views to be 2.1 meters away from the
+% viewer, instead of the default of 1 meter. Allows scaling of 2D image
+% views.
+% DontCareAboutVisualGlitchesWhenStopped = Don't care about glitches when stopped.
+% ForbidMultiThreading = Do not use multi-threaded presentation ever.
+% DebugDisplay = Also show rendered stimuli on the experimenters monitor.
+% This is the default.
+%
+% The optional parameter 'refSpace', if provided and non-zero, allows to
+% select a specific OpenXR reference space under OpenXR. It is ignored
+% under other drivers. The most interesting values are 1 for head locked, 2
+% for a local reference space, and 3 for a stage reference space. 3 often
+% enables additional goodies, but support for it is not mandatory for an
+% OpenXR runtime, so selecting 3 could fail. However, so far 4 out of 4
+% tested OpenXR runtimes on Linux and Windows did support the stage
+% reference space, which provided a more natural coordinate system and also
+% visualization of the "play area". The driver default is 2 for local, as
+% that is always supported.
+%
+% After a keypress (or Enter/Back button press on the controller),
+% visualizes tracked hand position and orientation of hand controllers and
+% allows to do some nice visual effects based on trigger / grip button
+% presses, thumbsticks movement etc.
+%
+% Tested with XBox controller, Oculus remote, and the two Oculus touch
+% controllers of the Oculus Rift CV-1 on Windows-10 and Linux, with the
+% OculusVR v1 runtime on Windows, and with various OpenXR runtimes like
+% Monado, OculusVR, SteamVR.
 
 % Constants for use in VR applications:
-global OVR;
+global OVR; %#ok<GVMIS> 
 
 % GL data structure needed for all OpenGL demos:
-global GL;
+global GL; %#ok<GVMIS> 
+
+% No testing of haptic feedback by default, as it sucks up batteries a lot:
+if nargin < 1 || isempty(withHapticFeedback)
+    withHapticFeedback = 0;
+end
+
+% No single/multi-threading stress test by default:
+if nargin < 2 || isempty(withMTStressTest)
+    withMTStressTest = 0;
+end
+
+% Use DebugDisplay by default, if specialReqs omitted:
+if nargin < 3 || isempty(specialReqs)
+    specialReqs = 'DebugDisplay';
+end
+
+% No specific reference space by default - Allow driver to do its thing:
+if nargin < 4 || isempty(refSpace)
+    refSpace = 0;
+end
 
 canary = onCleanup(@sca);
 
@@ -32,21 +91,38 @@ InitializeMatlabOpenGL;
 % Select screen with highest id as Oculus output display:
 screenid = max(Screen('Screens'));
 
+PsychDebugWindowConfiguration;
+
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 
-hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'DebugDisplay');
+% Request Head-tracked 3D mode and tell driver that we don't care about
+% properly timed presentation or accurate/trustworthy stimulus onset
+% timestamps. We use timestamps for simple performance tests, but they are
+% not critical for our purpose.
+% Optional: Use2DViewsWhen3DStopped DontCareAboutVisualGlitchesWhenStopped ForbidMultiThreading
+hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', ['NoTimingSupport NoTimestampingSupport ' specialReqs]);
 if isempty(hmd)
     fprintf('No VR HMDs connected. Game over!\n');
     return;
 end
 
-PsychDebugWindowConfiguration;
 [win, winRect] = PsychImaging('OpenWindow', screenid, [0 0 1]);
-ifi = Screen('GetFlipInterval', win);
 hmdinfo = PsychVRHMD('GetInfo', hmd);
 
+if strcmpi(hmdinfo.type, 'OpenXR') && refSpace
+    % Select different reference space:
+    PsychOpenXR('ReferenceSpaceType', hmd, refSpace)
+end
+
+% Retrieve the initial settings for position and size for 2D quad views:
+oldPositionL = PsychVRHMD('View2DParameters', hmd, 0);
+oldPositionR = PsychVRHMD('View2DParameters', hmd, 1);
+
 clc;
+
+% Mark our own tracking + rendering loop as stopped for initial section of test/demo:
+PsychVRHMD('Stop', hmd);
 
 if strcmpi(hmdinfo.subtype, 'Oculus-1')
     fprintf('Properties of our subject:\n\n');
@@ -80,10 +156,17 @@ if hmdinfo.VRControllersSupported
         fprintf('Right hand controller connected.\n');
     end
     fprintf('\n\n');
+else
+    controllerTypes = 0;
+end
+
+if hmdinfo.hapticFeedbackSupported && ~withHapticFeedback
+    hmdinfo.hapticFeedbackSupported = 0;
+    fprintf('\nHaptic feedback supported but disabled, to conserve battery life.\n');
 end
 
 % Fetch play area / guardian boundaries:
-[isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd);
+[~, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd);
 
 fprintf('\n\nPress any key or controller button to continue. Will continue in 10 seconds automatically.\n');
 DrawFormattedText(win, 'Press any key or controller button to continue. Will continue in 10 seconds automatically.', 'center', 'center', [1 1 0], 20);
@@ -110,8 +193,13 @@ while 1
     clc;
 
     % Show instructions in HMD on how to continue:
-    DrawFormattedText(win, 'Press BackSpace key on keyboard, or Enter-Button or\nBack-Button on controller', 'center', 'center', [1 1 0]);
+    DrawFormattedText(win, sprintf('Press BackSpace key on keyboard, or Enter-Button or\nBack-Button on controller\n\n\nTime: %f', GetSecs), 'center', 'center', [1 1 0]);
     Screen('Flip', win);
+
+    [~, ~, keycode] = KbCheck(-1);
+    if keycode(KbName('BackSpace'))
+        break;
+    end
 
     % Query and display all input state:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
@@ -122,7 +210,8 @@ while 1
         continue;
     end
 
-    fprintf('Press Back button on remote control or other controllers, or Enter-Button on controller, or backspace key, to finish.\n\n');
+    fprintf('Press Back button on remote control or other controllers, or Enter-Button on controller, or backspace key, to finish.\n');
+    fprintf('Delta now - controller update time in msecs: %f\n\n', 1000 * (GetSecs - istate.Time));
     disp(istate);
 
     if istate.Buttons(OVR.Button_A)
@@ -205,7 +294,6 @@ while 1
         fprintf('Button_Private ');
     end
 
-    [~, ~, keycode] = KbCheck(-1);
     if istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Enter) || keycode(KbName('BackSpace'))
         break;
     end
@@ -410,7 +498,7 @@ if hmdinfo.handTrackingSupported
   KbReleaseWait;
 
   % Realtime scheduling:
-  Priority(MaxPriority(win));
+  %Priority(MaxPriority(win));
 
   fcount = 0;
   globalPos = [0, 0, 3];
@@ -426,6 +514,10 @@ if hmdinfo.handTrackingSupported
   end
 
   HideCursor(screenid);
+
+  % Mark our own tracking + rendering loop as started for remainder of test/demo,
+  % as from here on we do perform head tracking driven 3D rendering and presentation:
+  PsychVRHMD('Start', hmd);
 
   % Initial flip to sync us to VBL and get start timestamp:
   vbl = Screen('Flip', win);
@@ -470,9 +562,13 @@ if hmdinfo.handTrackingSupported
       thumbmult = 0.005;
     end
 
-    globalPos(1) = globalPos(1) - thumbmult * istate.Thumbstick(1,1);
-    globalPos(2) = globalPos(2) - thumbmult * istate.Thumbstick(2,1);
-    globalPos(3) = globalPos(3) + thumbmult * istate.Thumbstick(2,2);
+    if hmdinfo.VRControllersSupported
+      globalPos(1) = globalPos(1) - thumbmult * istate.Thumbstick(1,1);
+      globalPos(2) = globalPos(2) - thumbmult * istate.Thumbstick(2,1);
+      globalPos(3) = globalPos(3) + thumbmult * istate.Thumbstick(2,2);
+      oldPositionL(1) = oldPositionL(1) + 0.001 * istate.Thumbstick(1,2);
+      oldPositionR(1) = oldPositionR(1) - 0.001 * istate.Thumbstick(1,2);
+    end
 
     % Compute a transformation matrix to globally position and orient the
     % observer in the scene. This allows mouse control of observer position
@@ -521,7 +617,7 @@ if hmdinfo.handTrackingSupported
         glDisable(GL.LIGHTING);
 
         % Change color of guardian lines, depending if guardian grid visible or not:
-        if PsychVRHMD('VRAreaBoundary', hmd);
+        if PsychVRHMD('VRAreaBoundary', hmd)
           glColor3f(1.0, 0.0, 0.0);
         else
           glColor3f(1.0, 1.0, 0.0);
@@ -562,13 +658,23 @@ if hmdinfo.handTrackingSupported
       % Visualize users hands / hand controllers:
       for hand = 1:2
         % Position and orientation of hand tracked? Otherwise we don't show them:
-        if state.handStatus(hand) == 3
+        if bitand(state.handStatus(hand), 3) == 3
           % Yes: Lets visualize it:
+
+          % Have fallback if controller trigger and grip buttons unsupported:
+          if hmdinfo.VRControllersSupported
+            tr = istate.Trigger(hand);
+            di = istate.Grip(hand);
+          else
+            tr = 0.1;
+            di = 0;
+          end
+
           glPushMatrix;
           glMultMatrixd(state.globalHandPoseMatrix{hand});
-          glutSolidCone(0.1 * (1.1 - istate.Grip(hand)), -0.4, 10, 10);
+          glutSolidCone(0.1 * (1.1 - di), -0.4, 10, 10);
 
-          if istate.Trigger(hand) > 0.015
+          if tr > 0.015
             % Draw the particle fountain. We use a vertex shader in the shader
             % program glsl to compute the physics:
             glUseProgram(glsl);
@@ -577,7 +683,7 @@ if hmdinfo.handTrackingSupported
             glUniform1f(glGetUniformLocation(glsl, 'Time'), telapsed);
 
             % Assign simulated gravity constant 'g' for proper trajectory:
-            glUniform1f(glGetUniformLocation(glsl, 'Acceleration'), 1 - istate.Trigger(hand));
+            glUniform1f(glGetUniformLocation(glsl, 'Acceleration'), 1 - tr);
 
             % Draw the particles: We have preencoded them into a OpenGL display list
             % above for higher performance of drawing:
@@ -603,7 +709,7 @@ if hmdinfo.handTrackingSupported
       DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
     end
 
-    if hmdinfo.hapticFeedbackSupported
+    if hmdinfo.hapticFeedbackSupported && hmdinfo.VRControllersSupported
       if (istate.Grip(1) > 0.5 || istate.Grip(2) > 0.5) && isempty(pulseEnd)
           % Initiate new pulse: 0.75 seconds, 25% or 100% frequency, 0.8 amplitude:
           if istate.Grip(2) > 0.5
@@ -623,6 +729,34 @@ if hmdinfo.handTrackingSupported
       end
     end
 
+    secs = GetSecs;
+    if hmdinfo.hapticFeedbackSupported && hmdinfo.VRControllersSupported && ...
+       istate.Buttons(OVR.Button_A) && (isempty(pulseEnd) || pulseEnd + 1 < secs)
+        pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_XBox, [], 0.25, 0.8);
+        KbReleaseWait;
+    end
+
+    if ~isempty(pulseEnd) && pulseEnd > secs
+        DrawFormattedText(win, sprintf('t = %f secs.', pulseEnd - secs), 'center', 'center');
+    end
+
+    % MT->ST->MT->... switching stress test, if enabled:
+    if withMTStressTest
+        % Apply horizontal deflection of right thumbstick to change
+        % x-position of the 2D quad views, to change required vergence in
+        % 'Stop' mode when 2D views are used:
+        oldPositionL = PsychVRHMD('View2DParameters', hmd, 0, oldPositionL);
+        oldPositionR = PsychVRHMD('View2DParameters', hmd, 1, oldPositionR);
+
+        if mod(fcount, 360) == 0
+            PsychVRHMD('Stop', hmd);
+        end
+
+        if mod(fcount, 360) == 180
+            PsychVRHMD('Start', hmd);
+        end
+    end
+
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
     % as this is done in the next iteration via glClear() call anyway:
     vbl = Screen('Flip', win, [], 1);
@@ -633,6 +767,8 @@ if hmdinfo.handTrackingSupported
   Priority(0);
 
   % Stats for nerds:
+  fprintf('Final settings for 2D views positionL = [%f, %f, %f] positionR = [%f, %f, %f]\n\n', ...
+          oldPositionL(1), oldPositionL(2), oldPositionL(3), oldPositionR(1), oldPositionR(2), oldPositionR(3));
   fps = fcount / (vbl - tstart);
   fprintf('Average framerate was %f fps. Bye!\n', fps);
 end

@@ -38,11 +38,11 @@
 % of any decent GNU/Linux distribution, so there usually isn't any need for
 % manual setup work on your part.
 %
-% OSX:
-% ----
+% macOS:
+% ------
 %
-% On OSX with GNU/Octave, these are part of Octave, so you don't need
-% to do anything. If you use macOS with Matlab then we recommend installing
+% On macOS with GNU/Octave, these are part of Octave, so you don't need to
+% do anything. If you use macOS with Matlab then we recommend installing
 % GStreamer (help GStreamer) which also provides multi-media support, as
 % GStreamer provides the required libraries. Other sources than GStreamer
 % are HomeBrew, or XQuartz (X11 for macOS). Other sources of this libraries
@@ -60,47 +60,43 @@
 % Windows:
 % --------
 %
-% On MS-Windows with GNU/Octave the libraries are bundled with Octave,
-% no need for you to do anything.
+% On MS-Windows you will need to install the GStreamer multi- media framework -
+% see "help GStreamer" for installation instructions - otherwise Psychtoolbox
+% will use the old lower quality GDI text renderer instead. As of Psychtoolbox
+% version 3.0.19, you *must* install GStreamer v1.20.5 or later (see the download
+% link in "help GStreamer" for the latest tested version). All earlier versions
+% will not work!
 %
-% On MS-Windows with Matlab you will need to install the GStreamer multi-
-% media framework - see "help GStreamer" for installation instructions -
-% otherwise Psychtoolbox will use the old lower quality GDI text renderer
-% instead. As of Psychtoolbox version 3.0.18, you *must* install GStreamer 1.18
-% (see download link in "help GStreamer" for latest tested version), *not* the
-% more recent GStreamer version 1.20 or later, as version 1.20+ is currently
-% incompatible with the text rendering plugin, and would cause the plugin to fail
-% to work!
-%
-% If your version of Matlab bundles an outdated libfreetype.dll, as may be
-% the case with at least R2015a and later, you may need to get rid of that as
-% well, just as on OSX (see above). The file to delete or rename would likely
-% be found in (e.g., for R2015b):
+% If your version of Matlab bundles an outdated libfreetype.dll, as may be the
+% case with at least R2015a and later, you may need to get rid of that as well,
+% just as on macOS (see above). The file to delete or rename would likely to be
+% found in (e.g., for R2015b):
 % C:\Program Files\MATLAB\R2015b\bin\win64\ under a name like libfreetype.dll,
 % or a similar name containing "freetype".
 %
 % The first time a script calls a text drawing function after an operating system
-% update, or the installation of new text fonts, a long pause of many seconds or
-% even minutes may occur, while the so called fontconfig cache gets rebuilt.
+% update, or after the installation of new text fonts, a long pause of many seconds
+% or even minutes may occur, while the so called fontconfig cache gets rebuilt.
 % Patience is the key. If this pause happens not only once, but at each invocation
-% of text drawing, your system may developed a glitch, as described in GitHub
+% of text drawing, your system may have developed a glitch, as described in GitHub
 % issue #429 and #579 on our issue tracker:
+%
 % https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues/429
 % https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues/579
 %
-% The solution is to manually delete the fontconfig cache, e.g., if your user
+% The solution is to manually delete the fontconfig cache. E.g., if your user
 % name would be "paul", you'd likely need to delete the following file:
 % "C:\Users\paul\AppData\Local\fontconfig\cache"
 %
 % Some users find that the location of the cache file could be also in a different
 % place, e.g., following the above example for user "paul" it could be under:
-% "C:\Users\paul\.cache\fontconfig\" so files in that folder would need to be
+% "C:\Users\paul\.cache\fontconfig\", so files in that folder would need to be
 % deleted.
 %
 % More background info about Psychtoolbox's standard text renderer:
 % =================================================================
 %
-% On OSX one can still select Apple's CoreText text renderer via the command
+% On macOS one can still select Apple's CoreText text renderer via the command
 % Screen('Preference','TextRenderer', 0); although Apples text renderer is
 % inferior in essentially any aspect. Apples CoreText renderer would also
 % get automatically selected if the plugin renderer would not work for some
@@ -120,14 +116,14 @@
 % * The FreeType-2 (http://freetype.sourceforge.net/) library.
 % * The FontConfig (http://www.fontconfig.org) library.
 %
-% The FontConfig library is used to find the optimal font and font
-% settings, given a specific font specification by your user code, a process
-% known as "font matching". FontConfig internally uses the FreeType-2
-% library to handle the font files on your system and to gather all needed
-% information for the matching process.
+% The FontConfig library is used to find the optimal font and font settings,
+% given a specific font specification by your user code, a process known as
+% "font mapping". FontConfig internally uses the FreeType-2 library to handle
+% the font files on your system and to gather all needed information for the
+% matching process.
 %
 % After a font and settings have been selected, FreeType-2 is used to load
-% the font and convert it into high-quality character glyphs, then the
+% the font, and to convert it into high-quality character glyphs. Then the
 % OGLFT library is used to convert these glyphs into a format optimized for
 % fast drawing with OpenGL. OGLFT also performs caching of glyphs, text
 % layout, measurement of text dimensions and bounding boxes and the actual

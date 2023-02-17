@@ -42,6 +42,7 @@ function callStack = AssertMex(varargin)
 %                   and Matlab < V7.4 (aka R2007a) no longer supported.
 % 23-Feb-2019 mk    Make more robust in case of wrong path order.
 % 07-Aug-2019 mk    Update for new MSVC 2019 build system on Windows-10 / Win 10 SDK.
+% 13-Feb-2023 mk    Update for PTB 3.0.19.
 
 persistent okNames mexExtensions;
 
@@ -78,19 +79,25 @@ if IsOctave
             end
             
             if IsLinux
-                %fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
+                if ~IsARM
+                    % 64-Bit Intel:
+                    fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles' oext]);
+                else
+                    % 32-Bit ARM:
+                    fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFilesARM' oext]);
+                end
             end
             if IsOSX
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave6OSXFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave7OSXFiles' oext]);
             end
             if IsWindows
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave6WindowsFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave7WindowsFiles' oext]);
             end
         else
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
             fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 5.0.0 or later\n', version);
-            fprintf('on Linux, Octave 6.4 on Windows and macOS.\n');
+            fprintf('on Linux, Octave 7.3 on Windows and macOS.\n');
 
             fprintf('Another reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');

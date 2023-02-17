@@ -316,7 +316,8 @@ PsychError SCREENOpenWindow(void)
 
     specialflags = 0;
     PsychCopyInIntegerArg64(9,FALSE, &specialflags);
-    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychExternalDisplayMethod | kPsychDontUseFlipperThread))))
+    if (specialflags < 0 || (specialflags > 0 &&
+        !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychExternalDisplayMethod | kPsychDontUseFlipperThread | kPsychSkipSecondaryVsyncForFlip))))
         PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
     // Check if this is macOS on a Apple Silicon ARM M1+ SoC with Apple proprietary gpu:

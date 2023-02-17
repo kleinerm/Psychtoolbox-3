@@ -67,6 +67,8 @@
 % Oculus_Health_and_Safety_Warnings.pdf - Info about how to use the Oculus
 %                          VR virtual reality headsets safely.
 %
+% OpenXR                 - Intro to OpenXR and installation and setup instructions.
+%
 % ProceduralShadingAPI   - Documentation useful for procedural shading.
 %
 % ProgrammingTips.html   - A very incomplete programming manual.

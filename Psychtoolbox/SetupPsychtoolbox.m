@@ -306,7 +306,7 @@ if IsOSX
 
     if IsOctave
         % Fix the Octave mex files:
-        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave6OSXFiles64/*.mex 2>&1']);
+        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave7OSXFiles64/*.mex 2>&1']);
     else
         % Fix the Matlab mex files:
         [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/*.mexmaci64']);

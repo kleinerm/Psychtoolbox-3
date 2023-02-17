@@ -105,12 +105,8 @@ function varargout = PsychPowerMate(cmd, varargin)
 %
 % PsychPowerMate('SetBrightness', handle, level);
 % -- Change brightness of the LED of the PowerMate specified by 'handle'
-% to 'level'. Level can be between 0 and 255. Note: This does not currently
-% work on MS-Windows.
-%
-% Note: Currently 'handle' is ignored, so you can not select which one
-% of multiple PowerMate's would get its brightness set and this only
-% works reliably for a single PowerMate.
+% to 'level'. Level can be between 0 and 255. 'handle' is currently ignored
+% on Linux.
 %
 %
 % [button, dialPos] = PsychPowerMate('Get', handle);
@@ -194,6 +190,8 @@ function varargout = PsychPowerMate(cmd, varargin)
 %                  knob motion in the background via our improved keyboard queues,
 %                  which can now track valuator changes and values, and thereby knob
 %                  movement and positions.
+% 25-Oct-2022  mk  Add check and warning if USB control transfers unsupported on macOS.
+% 15-Nov-2022  mk  Reimplement 'SetBrightness' using PsychHID('SetReport'). Now works on all systems.
 
 persistent turnval;
 persistent buttonval;
@@ -365,23 +363,20 @@ if strcmpi(cmd, 'SetBrightness')
     error('Brightness level missing or invalid.');
   end
 
-  % Changing parameters is done via USB control transfers,
-  % so open the USB device, then issue a control transfer,
-  % then close it again.
-  %
-  % Currently we can't select among multiple instances of
-  % the same type of device. Iow. the 'handle' is useless,
-  % the control transfer will affect whatever PowerMate
-  % comes first on the bus.
-  %
-  % The Linux event device provides a standardized way to set
-  % PowerMate properties via EV_MSC, MSC_PULSELED events,
-  % which would allow to select by device, but i'm too lazy
-  % for that cleaner approach atm.
-  usbHandle = PsychHID('OpenUSBDevice', hex2dec ('077d'), hex2dec ('0410'));
   level = min(255, max(0, varargin{2}));
-  PsychHID('USBControlTransfer', usbHandle, hex2dec ('41'), 1, 1, level, 0);
-  PsychHID('CloseUSBDevice', usbHandle);
+
+  if IsLinux
+    % Linux: Do it old school, because the passed in handle is not a HID device
+    % handle, but a handle XINPUT devices or similar:
+    usbHandle = PsychHID('OpenUSBDevice', hex2dec ('077d'), hex2dec ('0410'));
+    PsychHID('USBControlTransfer', usbHandle, hex2dec ('41'), 1, 1, level, 0);
+    PsychHID('CloseUSBDevice', usbHandle);
+  else
+    % Windows, macOS: HID out report instead of USB control transfers, because it
+    % respects the device handle and works cross-platform:
+    PsychHID('SetReport', varargin{1}, 2, 0, uint8(level));
+  end
+
   return;
 end
 

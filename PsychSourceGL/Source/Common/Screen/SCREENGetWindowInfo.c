@@ -143,6 +143,7 @@ static char synopsisString[] =
     "Returns a struct with miscellaneous info for the specified onscreen window.\n\n"
     "\"windowPtr\" is the handle of the onscreen window for which info should be returned.\n\n"
     "\"infoType\" If left out or set to zero, all available information for the 'windowPtr' is returned.\n\n"
+    "If set to -1, only the OpenGL context of the onscreen window is activated (Expert use only!).\n\n"
     "If set to 1, only the rasterbeam position of the associated display device is returned (or -1 if unsupported).\n\n"
     "If set to 2, information about the window server is returned (or -1 if unsupported).\n\n"
     "If set to 3, low-level window server settings are changed according to 'auxArg1'. Do *not* use, "
@@ -266,7 +267,7 @@ PsychError SCREENGetWindowInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-    if (infoType < 0 || infoType > 9) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
+    if (infoType < -1 || infoType > 9) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 
     // Windowserver info requested?
     if (infoType == 2 || infoType == 3) {
@@ -358,6 +359,12 @@ PsychError SCREENGetWindowInfo(void)
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
     onscreen = PsychIsOnscreenWindow(windowRecord);
 
+    // Only want windows OpenGL context activated?
+    if (infoType == -1) {
+        PsychSetGLContext(windowRecord);
+        return(PsychError_none);
+    }
+
     if (onscreen) {
         // Query rasterbeam position: Will return -1 if unsupported.
         PsychGetCGDisplayIDFromScreenNumber(&displayId, windowRecord->screenNumber);
@@ -438,17 +445,19 @@ PsychError SCREENGetWindowInfo(void)
     }
     else if (infoType == 9) {
         // Interop info for special external clients, with which we want to share OpenGL contexts and textures, e.g., OpenXR:
-        const char* FieldNamesInterop[] = { "DeviceContext", "OpenGLContext", "OpenGLDrawable", "OpenGLConfig", "OpenGLVisualId" };
-        const int fieldCountInterop = 5;
+        const char* FieldNamesInterop[] = { "DeviceContext", "OpenGLContext", "OpenGLContextScreen", "OpenGLDrawable", "OpenGLConfig", "OpenGLVisualId" };
+        const int fieldCountInterop = 6;
 
         // This gives access to the OpenGL context and associated drawable, resources and config of our parallel background flipperThread.
         // Normally the flipperThread would use these to implement special functionality like async flips, vrr, framesequential stereo etc.
         // Here the idea is to usually not use the flipperThread, but instead piggyback on / (ab-)use the OpenGL resources normally used
         // for that thread for other purposes, e.g., interop with special external components like the PsychOpenXRCore driver and OpenXR.
+        // Note: For purely single-thread operations without a dedicated context for external use, we also expose Screen's main OpenGL context.
 
         PsychAllocOutStructArray(1, FALSE, -1, fieldCountInterop, FieldNamesInterop, &s);
         PsychSetStructArrayUnsignedInt64Element("DeviceContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.deviceContext, s);
         PsychSetStructArrayUnsignedInt64Element("OpenGLContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.glswapcontextObject, s);
+        PsychSetStructArrayUnsignedInt64Element("OpenGLContextScreen", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.contextObject, s);
         PsychSetStructArrayUnsignedInt64Element("OpenGLDrawable", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.windowHandle, s);
         #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE) && !defined(PTB_USE_WAYLAND)
             // Linux X11/GLX/Xlib only:
@@ -520,6 +529,12 @@ PsychError SCREENGetWindowInfo(void)
                 // Destroy query object:
                 glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
                 windowRecord->gpuRenderTimeQuery = 0;
+
+                // Make sure that any successful query with a result at least records 1 Nanosecond of
+                // used time. Otherwise a context with no gpu activity and zero used time would cause
+                // a zero result, which also means "no result available" and causes user-script hang:
+                if (gpuTimeElapsed == 0)
+                    gpuTimeElapsed = 1;
 
                 // Convert result in Nanoseconds back to seconds, and assign it:
                 windowRecord->gpuRenderTime = (double) gpuTimeElapsed / (double) 1e9;

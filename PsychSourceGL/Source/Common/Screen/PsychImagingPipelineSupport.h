@@ -41,7 +41,7 @@ typedef enum {
     kPsychStereoLeftCompositingBlit =                   3,      // Image processing on the mono channel or left channel (in stereomode).
     kPsychStereoRightCompositingBlit =                  4,      // Ditto for right channel in stereomode. Can add generic image processing here.
     kPsychStereoCompositingBlit =                       5,      // Performs merge operation from two stereo channels to single output in all modes but quad-buffered stereo.
-    kPsychPostCompositingBlit =                         6,      // Not used for now.
+    kPsychMirrorWindowBlit =                            6,      // Perform blit operations to aid implementation of mirror / clone modes, e.g., for master -> slave window blits.
     kPsychFinalOutputFormattingBlit =                   7,      // Performs unified final data conversion/image processing on both output views immediately before hitting framebuffer.
     kPsychUserspaceBufferDrawingPrepare =               8,      // Prepare transition to userspace after 'Flip' command.
     kPsychIdentityBlit=                                 9,      // Standard blit chain, used when nothing else available: Copy images from one buffer to next.
@@ -99,9 +99,9 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, int leftglHandle, int rightglHandle, int glTextureTarget, int format,
                                          int multiSample, int width, int height);
 
-// Get current OpenGL color renderbuffer attachment backing textures for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
+// Get current OpenGL color renderbuffer attachment backing textures and OpenGL FBO ids for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
 psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, int *leftglHandle, int *rightglHandle, int *glTextureTarget, int *format,
-                                         int *multiSample, int *width, int *height);
+                                         int *multiSample, int *width, int *height, int *leftFboHandle, int *rightFboHandle);
 
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_bool asRendertarget, int forImagingmode);

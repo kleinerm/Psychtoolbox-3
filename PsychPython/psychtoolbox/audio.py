@@ -67,7 +67,7 @@ def get_devices(device_type=None, device_index=None):
     :param device_index:
     :return:
     """
-    return PsychPortAudio('GetDevices', device_type, device_index);
+    return PsychPortAudio('GetDevices', device_type, device_index)
 
 
 def tune_engine(yield_interval, mutex_enable, lock_to_core1,

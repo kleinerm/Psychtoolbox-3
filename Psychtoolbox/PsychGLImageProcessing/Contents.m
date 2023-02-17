@@ -105,3 +105,9 @@
 %                                 needs special output formatting, e.g., Bits++ or Brightside HDR.
 % kPsychNeedTwiceWidthWindow    - Tell imaging pipe to create internal buffers twice the real window width. Internal flag, not useful for end-user code.
 % kPsychNeedTripleWidthWindow   - Tell imaging pipe to create internal buffers triple the real window width. Internal flag, not useful for end-user code.
+%
+%
+% Constants for specialflags of Screen('OpenWindow', ..., specialflags);
+% One can 'or' them together:
+%
+% kPsychSkipSecondaryVsyncForFlip - Disable vsync for bufferswaps on secondary/slave windows.

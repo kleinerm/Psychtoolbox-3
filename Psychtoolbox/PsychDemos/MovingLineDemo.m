@@ -72,7 +72,7 @@ end
 PsychImaging('PrepareConfiguration');
 % Try to open us on a VR HMD if one is connected, otherwise use regular
 % display:
-hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse');
+hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse TimingSupport TimestampingSupport');
 win = PsychImaging('OpenWindow', screenid, 128);
 [w, h] = Screen('WindowSize', win);
 ifi = Screen('GetFlipInterval', win);
@@ -88,7 +88,7 @@ button = 0;
 % Run until left mouse button is pressed:
 while ~button(1)
     % Query mouse:
-    [xm, ym, button] = GetMouse;
+    [~, ~, button] = GetMouse;
 
     % Move line pair by 'xv' unless right mouse button is pressed, which
     % will pause the animation:

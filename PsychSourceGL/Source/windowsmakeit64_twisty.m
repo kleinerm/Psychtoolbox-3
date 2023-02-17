@@ -1,6 +1,6 @@
 function windowsmakeit64_twisty(what, onoctave)
-% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-6 and Matlab.
-% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-6 if
+% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-7 and Matlab.
+% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-7 if
 % all relevant SDK's, Compilers and libraries would be installed.
 % This script is customized for MK's build machines "darlene" and "touchy",
 % building against the Windows-10 SDK on Windows-10 64-Bit.
@@ -27,7 +27,7 @@ if what == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for what = 0:15
+    for what = 0:16
         windowsmakeit64_twisty(what);
     end
     elapsedsecs = toc;
@@ -44,7 +44,7 @@ if onoctave == 0
     % Matlab build:
     if what == 0
         % Default: Build Screen with GStreamer-1 support: Needs the
-        % www.gstreamer.freedesktop.org GStreamer-1.18 SDK in the MSVC
+        % www.gstreamer.freedesktop.org GStreamer-1.20.5+ SDK in the MSVC
         % variant for 64-Bit Windows, or a later version of GStreamer. Use
         % this for verbose linker output: /VERBOSE:LIB
         clear Screen
@@ -145,7 +145,7 @@ if onoctave == 0
     if what == 9
         % Build PsychHID:
         clear PsychHID % make sure not in use
-        mex -outdir ..\Projects\Windows\build -output PsychHID -DPTBMODULE_PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -L..\Cohorts\libusb1-win32\MS64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c -ldinput8 kernel32.lib user32.lib winmm.lib -lusb-1.0 setupapi.lib
+        mex -outdir ..\Projects\Windows\build -output PsychHID -DPTBMODULE_PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -L..\Cohorts\libusb1-win32\MS64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c -ldinput8 kernel32.lib user32.lib winmm.lib -lusb-1.0 setupapi.lib
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -243,13 +243,13 @@ if onoctave == 0
         % https://github.com/KhronosGroup/OpenXR-SDK
         % installed side-by-side to the Psychtoolbox-3 folder, so that it
         % shares the same parent folder as Psychtoolbox-3.
-        mex -outdir ..\Projects\Windows\build -output PsychOpenXRCore -DPTBMODULE_PsychOpenXRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include\ -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib openxr_loader.lib
+        mex -outdir ..\Projects\Windows\build -output PsychOpenXRCore -DPTBMODULE_PsychOpenXRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include\ -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
         movefile(['..\Projects\Windows\build\PsychOpenXRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 else
     % Octave build:
     if Is64Bit
-        target = [PsychtoolboxRoot 'PsychBasic\Octave6WindowsFiles64\'];
+        target = [PsychtoolboxRoot 'PsychBasic\Octave7WindowsFiles64\'];
     else
         error('Building on 32-Bit Octave is not supported on Windows atm.');
     end
@@ -381,9 +381,9 @@ else
         % Build PsychHID.mex:
         clear PsychHID
         if Is64Bit
-            mexoctave --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MinGW64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
+            mexoctave --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MinGW64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         else
-            mexoctave --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MinGW32\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
+            mexoctave --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MinGW32\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         end
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], target);
     end
@@ -491,14 +491,14 @@ else
         end
     end
 
-    if what == 16
+    if what == 16 && false % DISABLED FOR NOW. NO FUNDED WORK TIME TO FIX THIS UP.
         % Build PsychOpenXRCore.mex for 64-Bit Octave:
         % Needs the official Khronos OpenXR SDK for 64-Bit Windows from
         % https://github.com/KhronosGroup/OpenXR-SDK
         % installed side-by-side to the Psychtoolbox-3 folder, so that it
         % shares the same parent folder as Psychtoolbox-3.
         try
-            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib openxr_loader.lib
+            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
             movefile(['..\Projects\Windows\build\PsychOpenXRCore.' mexext], target);
         catch
             disp(psychlasterror);

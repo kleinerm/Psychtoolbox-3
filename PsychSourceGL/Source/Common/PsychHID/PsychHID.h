@@ -1,24 +1,25 @@
 /*
-    PsychToolbox3/Source/Common/PsychHID/PsychHID.h
-
-    PROJECTS: PsychHID
-
-    PLATFORMS:  All
-
-    AUTHORS:
-
-        Allen.Ingling@nyu.edu               awi
-        mario.kleiner.de@gmail.com          mk
-
-    HISTORY:
-
-        4/29/03  awi        Created.
-        3/15/05  dgp        Added Get/SetReport
-        3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
-        4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
-        8/23/07  rpw        Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
-        12/17/09 rpw        Added prototype for PsychHIDGetDeviceListByUsages.
-*/
+ * PsychToolbox-3/PsychSourceGL/Source/Common/PsychHID/PsychHID.h
+ *
+ * PROJECTS:    PsychHID
+ *
+ * PLATFORMS:   All
+ *
+ * AUTHORS:
+ *
+ * Allen.Ingling@nyu.edu               awi
+ * mario.kleiner.de@gmail.com          mk
+ *
+ * HISTORY:
+ *
+ * 4/29/03  awi        Created.
+ * 3/15/05  dgp        Added Get/SetReport
+ * 3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
+ * 4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
+ * 8/23/07  rpw        Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
+ * 12/17/09 rpw        Added prototype for PsychHIDGetDeviceListByUsages.
+ *
+ */
 
 //begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychHID
@@ -42,7 +43,7 @@
 // OS/X specific includes:
 #if PSYCH_SYSTEM == PSYCH_OSX
 
-// Includes for Apple's HID utilities which are layered above the HID device interface.  These are taken from
+// Includes for Apple's HID utilities which are layered above the HID device interface. These are taken from
 // Apple's "HID Explorer" example and used for all generic USB-HID interface support:
 #include <Carbon/Carbon.h>
 #include <IOKit/HID/IOHIDKeys.h>
@@ -68,16 +69,15 @@ typedef IOHIDElementRef pRecElement;
 #include "hidapi.h"
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-/* 'interface' is defined as a macro on Windows! We must
- * undefine it to not break the definition of struct recDevice,
- * which contains the "macro" interface as a variable name:
- */
-#if defined(_WIN32) || defined(__CYGWIN__)
-//#include <windows.h>
-#if defined(interface)
-#undef interface
-#endif
-#endif
+    /* 'interface' is defined as a macro on Windows! We must
+     * undefine it to not break the definition of struct recDevice,
+     * which contains the "macro" interface as a variable name:
+     */
+    #if defined(_WIN32) || defined(__CYGWIN__)
+        #if defined(interface)
+            #undef interface
+        #endif
+    #endif
 #endif
 
 // Dummy-Define so recDevice struct def works:
@@ -85,11 +85,11 @@ typedef int recElement;
 
 struct recDevice
 {
-    void * interface;                   // interface to device, NULL = no interface
-    void * queue;                       // device queue, NULL = no queue
-    void * queueRunLoopSource;          // device queue run loop source, NULL == no source
-    void * transaction;                 // output transaction interface, NULL == no interface
-    void * notification;                // notifications
+    void* interface;                    // interface to device, NULL = no interface
+    void* queue;                        // device queue, NULL = no queue
+    void* queueRunLoopSource;           // device queue run loop source, NULL == no source
+    void* transaction;                  // output transaction interface, NULL == no interface
+    void* notification;                 // notifications
     char transport[256];                // device transport (c string)
     long vendorID;                      // id for device vendor, unique across all devices
     long productID;                     // id for particular product, unique across all of a vendors devices
@@ -124,6 +124,7 @@ psych_uint32 HIDCountDevices(void);
 pRecDevice   HIDGetFirstDevice(void);
 pRecDevice   HIDGetNextDevice(pRecDevice pDevice);
 
+// End of Non OSX:
 #endif
 
 // Struct for storing keyboard(-like) events in KbQueue event buffer:
@@ -151,7 +152,6 @@ typedef struct PsychHIDEventRecord_Struct PsychHIDEventRecord;
 struct PsychUSBSetupSpec_Struct {
     int vendorID;               // USB vendor ID.
     int deviceID;               // USB device ID / product ID.
-    // More specs go here...
     int configurationID;        // Index of USB configuration to select when configuring the device.
 };
 
@@ -159,17 +159,9 @@ typedef struct PsychUSBSetupSpec_Struct PsychUSBSetupSpec;
 
 // Structure to keep track of a generic USB device:
 struct PsychUSBDeviceRecord_Struct {
-    int valid;          // 0 = Unused/Free device record, 1 = Active device record.
-
-    // OS-Specific parts of the struct:
-
-#if PSYCH_SYSTEM == PSYCH_OSX
-// OS/X stuff:
-    IOUSBDeviceInterface182** device;   // Actual low-level device specific pointer for OS/X.
-#else
-    // Linux & Windows stuff:
-    void* device;   // libusb device handle for other os'es.
-#endif
+    int valid;                          // 0 = Unused/Free device record, 1 = Active device record.
+    int firstClaimedInterface;          // -1 = No interface claimed yet. Otherwise number of 1st claimed interface.
+    void* device;                       // libusb device handle.
 };
 
 typedef struct PsychUSBDeviceRecord_Struct PsychUSBDeviceRecord;
@@ -208,9 +200,13 @@ PsychError PSYCHHIDGiveMeReports(void);                 // PsychHIDGiveMeReports
 PsychError PSYCHHIDOpenUSBDevice(void);                 // PSYCHHIDOpenUSBDevice.c
 PsychError PSYCHHIDCloseUSBDevice(void);                // PSYCHHIDCloseUSBDevice.c
 PsychError PSYCHHIDUSBControlTransfer(void);            // PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDUSBBulkTransfer(void);               // PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDUSBInterruptTransfer(void);          // PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDUSBClaimInterface(void);             // PSYCHHIDUSBControlTransfer.c
+
 PsychError PSYCHHIDKeyboardHelper(void);                // PSYCHHIDKeyboardHelper.c
 
-//internal function protototypes
+// Internal function protototypes:
 void ConsoleInputHelper(int ccode);                                     // PsychHIDKeyboardHelper.c -- Called from kbqueue handling thread.
 PsychError  PsychHIDReceiveReportsCleanup(void);                        // PsychHIDReceiveReports.c
 PsychError  ReceiveReports(int deviceIndex);                            // PsychHIDReceiveReports.c
@@ -224,8 +220,6 @@ pRecDevice  PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex);       // Psych
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 int         PsychHIDGetIndexFromRecord(pRecDevice deviceRecord, pRecElement elementRecord, HIDElementTypeMask typeMask);// PsychHIDHelpers.c
-//psych_bool     PsychHIDCheckOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);                                      // PsychHIDHelpers.c
-//psych_bool     PsychHIDCheckOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);                          // PsychHIDHelpers.c
 void        PsychHIDGetTypeMaskStringFromTypeMask(HIDElementTypeMask maskValue, char **pStr);                           // PsychHIDHelpers.c
 pRecElement PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(pRecDevice deviceRecord, int elementIndex);         // PsychHIDHelpers.c
 pRecElement PsychHIDGetCollectionRecordFromDeviceRecordAndCollectionIndex(pRecDevice deviceRecord, int elementIndex);   // PsychHIDHelpers.c
@@ -256,36 +250,40 @@ void PsychHIDAllocateReports(int deviceIndex);
 // These must be defined for each OS in their own PsychHIDGenericUSBSupport.c.
 psych_bool  PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, PsychUSBSetupSpec* spec);
 void        PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
-int         PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
+int         PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest,
+                                      psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData, unsigned int timeOutMSecs);
+int         PsychHIDOSBulkTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs);
+int         PsychHIDOSInterruptTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 endPoint, int length, psych_uint8* buffer, int* count, unsigned int timeOutMSecs);
+int         PsychHIDOSClaimInterface(PsychUSBDeviceRecord* devRecord, int interfaceId);
 
 // These must be defined for each OS in their own PsychHIDStandardInterfaces.c:
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    void        PsychHIDInitializeHIDStandardInterfaces(void);
-    void        PsychHIDShutdownHIDStandardInterfaces(void);
-    PsychError  PsychHIDEnumerateHIDInputDevices(int deviceClass);
-    PsychError  PsychHIDOSKbCheck(int deviceIndex, double* scanList);
-    PsychError  PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel);
-    int         PsychHIDGetDefaultKbQueueDevice(void);
+void        PsychHIDInitializeHIDStandardInterfaces(void);
+void        PsychHIDShutdownHIDStandardInterfaces(void);
+PsychError  PsychHIDEnumerateHIDInputDevices(int deviceClass);
+PsychError  PsychHIDOSKbCheck(int deviceIndex, double* scanList);
+PsychError  PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel);
+int         PsychHIDGetDefaultKbQueueDevice(void);
 
-    PsychError  PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, psych_uint64 windowHandle);
-    void        PsychHIDOSKbQueueRelease(int deviceIndex);
-    void        PsychHIDOSKbQueueStop(int deviceIndex);
-    void        PsychHIDOSKbQueueStart(int deviceIndex);
-    void        PsychHIDOSKbQueueFlush(int deviceIndex);
-    void        PsychHIDOSKbQueueCheck(int deviceIndex);
-    void        PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
+PsychError  PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, psych_uint64 windowHandle);
+void        PsychHIDOSKbQueueRelease(int deviceIndex);
+void        PsychHIDOSKbQueueStop(int deviceIndex);
+void        PsychHIDOSKbQueueStart(int deviceIndex);
+void        PsychHIDOSKbQueueFlush(int deviceIndex);
+void        PsychHIDOSKbQueueCheck(int deviceIndex);
+void        PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
 
-    // Helpers for KbQueue event buffer: OS independent, but need C-linkage:
-    psych_bool  PsychHIDCreateEventBuffer(int deviceIndex, int numValuators, int numSlots);
-    psych_bool  PsychHIDDeleteEventBuffer(int deviceIndex);
-    psych_bool  PsychHIDFlushEventBuffer(int deviceIndex);
-    unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags);
-    int         PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs);
-    PsychHIDEventRecord* PsychHIDLastTouchEventFromEventBuffer(int deviceIndex, int touchID);
-    int         PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
+// Helpers for KbQueue event buffer: OS independent, but need C-linkage:
+psych_bool  PsychHIDCreateEventBuffer(int deviceIndex, int numValuators, int numSlots);
+psych_bool  PsychHIDDeleteEventBuffer(int deviceIndex);
+psych_bool  PsychHIDFlushEventBuffer(int deviceIndex);
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags);
+int         PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs);
+PsychHIDEventRecord* PsychHIDLastTouchEventFromEventBuffer(int deviceIndex, int touchID);
+int         PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
 
 #ifdef __cplusplus
 }

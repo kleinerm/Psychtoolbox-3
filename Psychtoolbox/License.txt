@@ -50,14 +50,15 @@
 % open-source license, with the following copyright:
 %
 % Copyright (c) The individual Psychtoolbox core developers:
-%           (c) 1996-2018, David Brainard <brainard@psych.upenn.edu>
-%           (c) 1996-2007, Denis Pelli    <denis.pelli@nyu.edu>
-%                          Allen Ingling  <allen.ingling@nyu.edu>
-%           (c) 2005-2018, Mario Kleiner  <mario.kleiner.de@gmail.com>
+%           (c) 1996-2022, David Brainard <brainard@psych.upenn.edu>
+%           (c) 1996-2022, Denis Pelli    <denis.pelli@nyu.edu>
+%           (c) 1996-2007, Allen Ingling  <allen.ingling@nyu.edu>
+%           (c) 2005-2023, Mario Kleiner  <mario.kleiner.de@gmail.com>
 %
 %           (c) Individual major contributors:
 %           (c) 2006       Richard F. Murray <rfm@yorku.ca>
-%           (c) 2008-2018  Diederick C. Niehorster <dcnieho@gmail.com>
+%           (c) 2008-2022  Diederick C. Niehorster <dcnieho@gmail.com>
+%           (c) 2013-2022  Ian Andolina
 %           (c) 2008-2011  Tobias Wolf <towolf@tuebingen.mpg.de>
 %
 % MIT license:
@@ -170,8 +171,8 @@
 % be found in the Psychtoolbox/PsychHardware/PsychVRToolbox/ subfolder of Psychtoolbox
 % under the filename “LICENSE_OculusSDK1.txt”.
 %
-% The PsychOculusVR() and PsychOculusVR1() high-level drivers use the function
-% qGetR(). The qGetR.m file for converting a rotation/orientation Quaternion into a
+% The different VR high-level drivers indirectly use the function qGetR().
+% The qGetR.m file for converting a rotation/orientation Quaternion into a
 % 3x3 RHS rotation matrix is a modified version of qGetR from the "quaternion"
 % package of  Przemyslaw Baranski downloaded from Mathworks File Exchange at URL:
 %
@@ -184,6 +185,15 @@
 % The PsychOpenHMDVRCore mex driver for VR HMD's, which is licensed under MIT license,
 % uses OpenHMD for control of the VR devices: https://github.com/OpenHMD/OpenHMD
 % OpenHMD is licensed under the Boost 1.0 software license, included below.
+%
+% Our MIT licensed PsychOpenXRCore mex driver builds against the Khronos OpenXR SDK
+% public headers, and links (dynamically on Linux, statically on Windows) against the
+% OpenXR open-source dynamic loader, to implement the interface to a system-installed
+% OpenXR runtime. See https://www.khronos.org/openxr for information about OpenXR.
+% These components are dual-licensed by Khronos under Apache 2.0 and MIT license, copies
+% of which can be found below: SPDX license identifier "Apache-2.0 OR MIT"
+% You can find the source code for the SDK and loader under:
+% https://github.com/KhronosGroup/OpenXR-SDK
 %
 % Support for NVidia NVision stereo emitter/stereo goggles under Linux is
 % implemented by use of libnvstusb from http://sourceforge.net/projects/libnvstusb/

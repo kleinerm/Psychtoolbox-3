@@ -1894,8 +1894,11 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
 
         // outputHandle contains the X11 Window handle of the Psychtoolbox onscreen window.
         #if defined(VK_USE_PLATFORM_XLIB_KHR)
-        // NVidia blob needs its own X-Window, it doesn't want to present into the standard Psychtoolbox onscreen window:
-        if (vulkan->driverProps.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY) {
+        // The NVidia blob needs its own X-Window, it doesn't want to present into the standard Psychtoolbox onscreen window.
+        // But even for the FOSS drivers there are corner cases where things go sideways without a dedicated X-Window, e.g.,
+        // when using mirror mode where primary stimulus is presented by Vulkan, but a slave window presents an experimenter
+        // feedback image (mirroring/cloning) via OpenGL. So the safe thing to do is to always use a dedicated X-Window:
+        {
             unsigned int windowMapEventCount = 0;
             XSetWindowAttributes attr = { 0 };
 

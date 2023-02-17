@@ -10,7 +10,7 @@
 % Psychtoolbox as provided directly by us via DownloadPsychtoolbox et al., even
 % on 64-Bit processors. Whatever is the most recent stable Raspbian + GNU/Octave
 % is what PTB will support, with some jiggle room, as we do not keep close track
-% of development an updates to Raspbian. Raspbian itself also provides versions
+% of development and updates to Raspbian. Raspbian itself also provides versions
 % of Psychtoolbox, installable via "sudo apt install octave-psychtoolbox-3", and
 % 64-Bit versions of Raspbian would ship such packages as 64-Bit packages. Other
 % Linux distributions for RaspberryPi, like Ubuntu for RaspberryPi, will also
@@ -22,8 +22,8 @@
 % beta releases, as the Linux distributions usually ship whatever PTB was the most
 % recent version at a time sometime before the distributions was released. Those
 % packages do not get updates after initial distribution release, not even bug
-% fixes. E.g., Raspbian at early 2021 ships some Psychtoolbox 3.0.15 variant,
-% whereas PTB betas are now at version 3.0.17 or later.
+% fixes. E.g., Raspbian at late 2022 ships some Psychtoolbox 3.0.17 variant,
+% whereas PTB betas are now at version 3.0.19 or later.
 %
 %
 % The RaspberryPi 2B is tested for compatibility with Psychtoolbox. The test system
@@ -61,17 +61,20 @@
 %   with the Chrome webbrowser, and with Psychtoolbox built-in GStreamer based
 %   movie/video/audio playback engine. You can play back movies with sound, or
 %   sound files in common formats like .wav or .mp3 or .ogg audio etc., whatever
-%   is supported by GStreamer's collection of plugins.
+%   is supported by GStreamer's collection of plugins. It also works with our
+%   PsychPortAudio driver.
 %
-%   CAUTION: Audio output over HDMI via our PsychPortAudio driver currently does
-%   not work at all! Audio output over headphone jacks - if any - is supposed to
-%   work, but not tested. Working audio output or input via UAC compliant USB audio
-%   cards.
+% - Working audio output or input via UAC compliant USB audio cards.
 %
 % - Working video capture with external USB connected web cams.
 %
-% - Dual-display support via two micro-HDMI connectors up to 4k UHD resolution.
-%   So far tested is single-display operation, due to lack of a 2nd adapter cable.
+% - Dual-display support via two micro-HDMI connectors up to 4k UHD resolution,
+%   but 4k 3840x2160 resolution is limited to 30 Hz refresh rate by default. A
+%   2560x1440 resolution works at 60 Hz, something like 1920x1080 should be able
+%   to reach 100 Hz or a bit more.
+%
+%   So far tested is single-display operation, due to lack of a 2nd micro-HDMI
+%   adapter cable.
 %
 %   The new VideoCore-6 gpu has slightly higher performance than the older VideoCore
 %   4 gpu in RPi 2 and 3. More importantly, the gpu supports full 32 bit floating
@@ -85,10 +88,14 @@
 %   from VPixx, if you are inclined enough to drive a multi-thousand dollar stimulator
 %   with a 50$ microcomputer. Ofc. while accuracy is excellent, performance is more
 %   limited than with a desktop or laptop graphics card from Intel, AMD or NVidia.
+%
 %   Testing showed that stimuli generated without use of alpha-blending can be output
 %   at the full 16 bit or 14 bit precision of VPixx or CRS visual stimulators, while
 %   stimuli created via alpha blending with 16 bit floating point framebuffers can
 %   achieve up to 11 bit precision, depending on specific stimulus.
+%
+%   Output precision without special stimulators to regular displays are still
+%   limited to 8 bpc maximum, as of Linux 6.2 in February 2023.
 %
 %   Movie playback of full HD video at 24 fps is possible with suitably encoded
 %   movies and proper playback settings. For playback of H264 encoded movies, the
@@ -116,23 +123,12 @@
 %
 %   3. Switch from the firmware kms video driver to the proper fully open-source kms
 %      video driver. For this, edit the file /boot/config.txt - the section at the end,
-%      then reboot. The section should look like this on a RaspberryPi 4 / 400:
+%      then reboot. The section should look like this on a RaspberryPi 1 / 2 / 3 / 4 / 400:
 %
-%      [pi4]
-%      # Enable DRM VC4 V3D driver on top of the dispmanx display stack
-%      dtoverlay=vc4-kms-v3d-pi4
+%      dtoverlay=vc4-kms-v3d
 %      max_framebuffers=2
-%      gpu_mem=256
 %
-%      [all]
-%      gpu_mem=256
-%
-%      You could increase gpu_mem to numbers larger than 256 MB if you run into
-%      graphics performance trouble or other glitches. Important for proper visual
-%      stimulation with proper timing and reliability is that the dtoverlay parameter is
-%      set to vc4-kms-v3d-pi4 instead of vc4-fkms-v3d.
-%
-%      On a RaspberryPi 2 or 3, the dtoverlay parameter should be vc4-kms-v3d instead
+%      It is important that the dtoverlay parameter should be vc4-kms-v3d instead
 %      of vc4-fkms-v3d.
 %
 %   4. On the RaspberryPi 4 / 400 with editions of Raspbian / RaspberryPi OS older than
@@ -143,6 +139,18 @@
 %      angrily about "pageflipping not being used for flips", visual stimulation timing
 %      will be grossly wrong, and you will observe massive tearing artifacts, flicker and
 %      other stimulus anomalies.
+%
+%      On the RaspberryPi 1/2/3, you must disable use of xcompmgr to avoid tearing and
+%      bad visual timing:
+%
+%      In a terminal type: sudo raspi-config
+%      Navigate to Advanced Options > Compositor > xcompmgr composition manager
+%      Choose No
+%      Reboot the Raspberry Pi.
+%
+%      Also run XOrgConfCreator, and XOrgConfSelector to install a custom
+%      xorg.conf file, which will work around a current limitation in Raspbian,
+%      as of November 2022. Logout and login again, or reboot the RaspberryPi.
 %
 %   With all setup steps performed properly, and a reboot for good measure, visual
 %   stimulation should work very well, with robust, trustworthy and sub-millisecond

@@ -2097,6 +2097,9 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
         // Sync and idle the pipeline:
         glFinish();
 
+        // Make sure our main OpenGL context is active for final cleanup:
+        PsychSetGLContext(windowRecord);
+
         // Shutdown only OpenGL related parts of imaging pipeline for this windowRecord, i.e.
         // do the shutdown work which still requires a fully functional OpenGL context and
         // hook-chains:
@@ -3816,13 +3819,17 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         if (windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce)
             sync_to_vbl = false;
 
-        if (vbl_synclevel==2) {
+        if ((vbl_synclevel == 2) || (windowRecord->specialflags & kPsychSkipSecondaryVsyncForFlip)) {
             // We are requested to flip immediately, instead of syncing to VBL. Disable VBL-Sync.
-            PsychOSSetVBLSyncLevel(windowRecord, 0);
+            if (vbl_synclevel == 2)
+                PsychOSSetVBLSyncLevel(windowRecord, 0);
+
             // Disable also for a slave window, if any. Unsupported for async flips.
-            if (windowRecord->slaveWindow && PsychIsMasterThread()) PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
+            if (windowRecord->slaveWindow && (windowRecord->slaveWindow->vSynced) && PsychIsMasterThread())
+                PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
         }
-        else {
+
+        if (vbl_synclevel != 2) {
             // The horror of Apple OS/X: Do a redundant call to enable vsync on the async
             // glswapcontext for async flips despite vsync is already enabled on that context.
             // Otherwise vsync will fail -- Bug found on 10.4.11:
@@ -4216,6 +4223,24 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
         // Take post-swap request line:
         line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+    }   // Following else-if reached if an external display backend is in use on the primary onscreen window.
+    else if (windowRecord->slaveWindow && (windowRecord->imagingMode & kPsychNeedDualWindowOutput)) {
+        // This onscreen window uses an external display backend, e.g., Vulkan, for stimulus presentation,
+        // but also has a secondary slave window for visual feedback, e.g., to the experimenter, attached
+        // and enabled for visual stimulus mirroring/cloning to the OpenGL slave window. At this point, the
+        // slave windows OpenGL backbuffer already contains the to be shown mirror/clone image, and the
+        // main stimulus display will have started stimulus presentation, so all that's left to do is to
+        // perform the OpenGL bufferswap to also show the same stimulus on the feedback slave window.
+        // Do the minimum amount of operations to trigger the OpenGL bufferswap + workarounds sometimes needed:
+        PsychSetGLContext(windowRecord->slaveWindow);
+
+        // Disable vsync for swaps on slaveWindow if requested by specialflags, unless vsync already disabled:
+        if ((windowRecord->specialflags & kPsychSkipSecondaryVsyncForFlip) && (windowRecord->slaveWindow->vSynced) && PsychIsMasterThread())
+            PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
+
+        PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+        PsychLockedTouchFramebufferIfNeeded(windowRecord->slaveWindow);
+        PsychSetGLContext(windowRecord);
     }
 
     // Take postswap request timestamp:
@@ -5947,7 +5972,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         // Process each of the (up to two) streams:
         for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychFrameSequentialStereo ||
                                     stereo_mode == kPsychDualWindowStereo || stereo_mode == kPsychDualStreamStereo ||
-                                    (imagingMode & kPsychNeedDualWindowOutput)) ? 2 : 1); viewid++) {
+                                    ((imagingMode & kPsychNeedDualWindowOutput) && !(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks))) ? 2 : 1); viewid++) {
 
             // Select final drawbuffer if our target is the system framebuffer:
             if (windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid == 0) {
@@ -6031,8 +6056,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         // Restore modelview matrix:
         glPopMatrix();
 
-        // In dual-window stereomode or dual-window output mode, we need to copy the finalizedFBO[1] into the backbuffer of
-        // the slave-window:
+        // In dual-window stereomode or dual-window output mode, we need to copy the finalizedFBO[1] (Stereo) or
+        // finalizedFBO[0] (dual-window output) into the backbuffer of the slave-window:
         if (stereo_mode == kPsychDualWindowStereo || (imagingMode & kPsychNeedDualWindowOutput)) {
             if (windowRecord->slaveWindow == NULL) {
                 if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Skipping master->slave blit operation in dual-window stereo mode or output mode...\n");
@@ -6043,8 +6068,25 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 // blit chain (which was setup in SCREENOpenWindow.c). We blit from windowRecords finalizedFBO[1] - which is a color
                 // texture with the final stimulus image for slaveWindow into finalizedFBO[0], which is just a pseudo-FBO representing
                 // the system framebuffer - and therefore the backbuffer of slaveWindow.
-                // -> This is a bit dirty and convoluted, but its the most efficient procedure for this special case.
-                PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL);
+                // Note that for kPsychNeedDualWindowOutput instead of kPsychDualWindowStereo, we need to invert the source vs. target,
+                // ie. blit into finalizedFBO[1] instead of [0].
+                //
+                // -> This is a bit dirty and convoluted, but it is the most efficient procedure for this special case.
+                if (stereo_mode == kPsychDualWindowStereo) {
+                    PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL);
+                } else {
+                    // We must make sure to blit to the true system framebuffer / OpenGL backbuffer, regardless what other
+                    // mappings are set up in finalizedFBO[1], so enforce a OpenGL FBO id of zero == System framebuffer during
+                    // the blit, and then restore to whatever it was before after the blit:
+                    GLuint oldfbo = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid;
+                    windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid = 0;
+                    if (PsychIsHookChainOperational(windowRecord->slaveWindow, kPsychMirrorWindowBlit))
+                        PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychMirrorWindowBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL);
+                    else
+                        PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL);
+
+                    windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid = oldfbo;
+                }
 
                 // Paranoia mode: A dual-window display configuration must swap both display windows in
                 // close sync with each other and the vertical retraces of their respective display heads. Due

@@ -1,7 +1,7 @@
 function varargout = PsychOculusVR1(cmd, varargin)
 % PsychOculusVR1 - A high level driver for Oculus VR hardware using the Version 1.16+ runtime.
 %
-% Copyright (c) 2018-2021 Mario Kleiner. Licensed under the MIT license.
+% Copyright (c) 2018-2023 Mario Kleiner. Licensed under the MIT license.
 % The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is
 % “Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”
 % A copy of the Oculus SDK license, its terms of use and thereby redistribution
@@ -83,16 +83,25 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % format is used, which is optimized for the gamma response curve of at least the Oculus
 % Rift CV1 display.
 %
+% 'ForceSize=widthxheight' = Enforce a specific fixed size of the stimulus
+% image buffer in pixels, overriding the recommmended value by the runtime,
+% e.g., 'ForceSize=2200x1200' for a 2200 pixels wide and 1200 pixels high
+% image buffer. By default the driver will choose values that provide good
+% quality for the given Oculus display device, which can be scaled up or down
+% with the optional 'pixelsPerDisplay' parameter for a different quality vs.
+% performance tradeoff in the function PsychOpenXR('SetupRenderingParameters');
+% The specified values are clamped against the maximum values supported by
+% the given hardware + driver combination.
+%
 % 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view even
 % when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
 % for wider field of view in these tasks, but requires the usercode to adapt to these
 % different and asymmetric fields of view for each eye, e.g., by selecting proper 3D
 % projection matrices for each eye.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. On the Rift DK1 this does nothing. On the DK2
-% it enables dynamic prediction and timing measurements with the Rifts internal
-% latency tester.
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+% Useless, as this driver always has presentation timing that has to be considered
+% *not trustworthy*, unreliable and unprecise!
 %
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
@@ -231,6 +240,18 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
+% 'ActiveInputs' = Bitmask defining which of the following struct elements do contain
+% meaningful input from actual physical input source devices. This is a more fine-grained
+% reporting of what 'Valid' conveys, split up into categories. The following flags will be
+% logical or'ed together if the corresponding input category is valid, ie. provided with
+% actual input data from some physical input source element, controller etc.:
+%
+% +1  = 'Buttons' gets input from some real buttons or switches, ie. Touch / XBox / Oculus remote controller.
+% +2  = 'Touches' gets input from some real touch sensors or gesture recognizers, e.g., Touch controller.
+% +4  = 'Trigger' gets input from some real analog trigger sensor, e.g., Touch or XBox controller.
+% +8  = 'Grip' gets input from Touch controllers.
+% +16 = 'Thumbstick' gets input from some real thumbstick, e.g., from Touch controllers or XBox controller.
+%
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
@@ -421,11 +442,6 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %              3D scenes with the Horde3D 3D engine or other engines which want
 %              absolute camera pose instead of the inverse matrix.
 %
-% Additionally tracked/predicted head pose is returned in eyePose.localHeadPoseMatrix
-% and the global head pose after application of the 'userTransformMatrix' is
-% returned in eyePose.globalHeadPoseMatrix - this is the basis for computing
-% the camera transformation matrix.
-%
 %
 % trackers = PsychOculusVR1('GetTrackersState', hmd);
 % - Return a struct array with infos about all connected tracking cameras/sensors
@@ -590,7 +606,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
@@ -1219,7 +1235,7 @@ end
 if strcmpi(cmd, 'Open')
   if isempty(firsttime)
     firsttime = 1;
-    fprintf('Copyright (c) 2018 - 2021 Mario Kleiner. Licensed under the MIT license.\n');
+    fprintf('Copyright (c) 2018 - 2023 Mario Kleiner. Licensed under the MIT license.\n');
     fprintf('The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is\n');
     fprintf('“Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”\n');
     fprintf('A copy of the Oculus SDK license, its terms of use and thereby redistribution\n');
@@ -1290,6 +1306,7 @@ if strcmpi(cmd, 'Open')
     OVR.Button_Private = [OVR.Button_VolUp, OVR.Button_VolDown, OVR.Button_Home];
     OVR.Button_RMask = [OVR.Button_A, OVR.Button_B, OVR.Button_RThumb, OVR.Button_RShoulder];
     OVR.Button_LMask = [OVR.Button_X, OVR.Button_Y, OVR.Button_LThumb, OVR.Button_LShoulder, OVR.Button_Enter];
+    OVR.Button_MicMute = 1 + log2(hex2dec('02000000')); % PTB extension, not in original OVR spec.
 
     OVR.Touch_A = OVR.Button_A;
     OVR.Touch_B = OVR.Button_B;
@@ -1441,15 +1458,6 @@ if strcmpi(cmd, 'SetBasicQuality')
   basicQuality = varargin{2};
   basicQuality = min(max(basicQuality, 0), 1);
   hmd{handle}.basicQuality = basicQuality;
-
-  % TODO FIXME: Any special handling for TimingSupport or Tracked3DVR ?
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport')) || ...
-     ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
-    %    PsychOculusVRCore1('SetDynamicPrediction', handle, 1);
-  else
-    %    PsychOculusVRCore1('SetDynamicPrediction', handle, 0);
-  end
-
   return;
 end
 
@@ -1494,6 +1502,23 @@ if strcmpi(cmd, 'SetLowPersistence')
   % the v0.5 SDK. We don't have control over this on the v1.0 runtime anymore.
   % Return constant old setting "Always low persistence":
   varargout{1} = 1;
+
+  return;
+end
+
+if strcmpi(cmd, 'GetStaticRenderParameters')
+  myhmd = varargin{1};
+
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('GetStaticRenderParameters: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % Retrieve projL and projR from driver:
+  [varargout{1}, varargout{2}] = PsychOculusVRCore1('GetStaticRenderParameters', myhmd.handle, varargin{2:end});
+
+  % Get cached values of fovL and fovR, for compatibility with OpenXR driver:
+  varargout{3} = deg2rad([-hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovL(3), -hmd{myhmd.handle}.fovL(4)]);
+  varargout{4} = deg2rad([-hmd{myhmd.handle}.fovR(1), hmd{myhmd.handle}.fovR(2), hmd{myhmd.handle}.fovR(3), -hmd{myhmd.handle}.fovR(4)]);
 
   return;
 end
@@ -1562,6 +1587,28 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore1('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
   end
 
+  % No good way to find the supported maximum, and this driver is on its way
+  % to retirement anyway, so set it to infinity and let nature run its course:
+  hmd{myhmd.handle}.maxrbwidth = Inf;
+  hmd{myhmd.handle}.maxrbheight = Inf;
+
+  % Forced override size of framebuffer provided?
+  rbOvrSize = strfind(basicRequirements, 'ForceSize=');
+  if ~isempty(rbOvrSize)
+    rbOvrSize = sscanf(basicRequirements(min(rbOvrSize):end), 'ForceSize=%ix%i');
+    if length(rbOvrSize) ~= 2 || ~isvector(rbOvrSize) || ~isreal(rbOvrSize)
+      sca;
+      error('SetupRenderingParameters(): Invalid ''ForceSize='' string in ''basicRequirements'' specified! Must be of the form ''ForceSize=widthxheight'' pixels.');
+    end
+
+    % Clamp to valid range and assign:
+    hmd{myhmd.handle}.rbwidth = max(1, min(ceil(rbOvrSize(1) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbwidth));
+    hmd{myhmd.handle}.rbheight = max(1, min(ceil(rbOvrSize(2) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbheight));
+    if hmd{myhmd.handle}.rbwidth ~= rbOvrSize(1) || hmd{myhmd.handle}.rbheight ~= rbOvrSize(2)
+        warning('SetupRenderingParameters(): Had to clamp ''ForceSize=widthxheight'' requested pixelbuffer size to fit into valid range! Result may look funky.');
+    end
+  end
+
   % Debug display of HMD output into onscreen window requested?
   if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
     % No. Set to be created onscreen window to be invisible:
@@ -1626,7 +1673,7 @@ if strcmpi(cmd, 'GetPanelFitterParameters')
   return;
 end
 
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
   screenid = varargin{2};
@@ -1636,6 +1683,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   if isempty(ovrSpecialFlags)
     ovrSpecialFlags = 0;
   end
+  ovrMultiSample = varargin{6};
 
   % The current design iteration requires the PTB parent onscreen windows
   % effective backbuffer (from the pov of the imaging pipeline) to have the
@@ -1665,6 +1713,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   varargout{1} = winRect;
   varargout{2} = ovrfbOverrideRect;
   varargout{3} = ovrSpecialFlags;
+  varargout{4} = ovrMultiSample;
 
   return;
 end
@@ -1681,13 +1730,6 @@ if strcmpi(cmd, 'GetEyeShiftVector')
   end
 
   return;
-end
-
-if strcmpi(cmd, 'Start') || strcmpi(cmd, 'Stop')
-    % Make sure the 'Start' and 'Stop' commands, which are mandatory to support
-    % for backwards compatibility (see PsychVRHMD), do absolutely nothing in this
-    % driver.
-    return;
 end
 
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')
@@ -1916,6 +1958,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Return success result code 1:
   varargout{1} = 1;
+  return;
+end
+
+% Dummy implementation for compatibility with other drivers:
+if strcmpi(cmd, 'View2DParameters')
+  varargout{1} = [NaN, NaN, NaN];
+  varargout{2} = [NaN, NaN];
+  varargout{3} = [NaN, NaN, NaN, Nan];
   return;
 end
 

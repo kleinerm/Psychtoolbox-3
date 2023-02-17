@@ -27,8 +27,8 @@ function [xo, yo] = RemapMouse(win, viewId, xm, ym)
 %   over which a mouse cursor at location (xm,ym) is currently hovering.
 %
 %   If you pass in a (xm,ym) position for which there doesn't exist any
-%   corresponding stimulus pixel position, the values (0,0) will be
-%   returned.
+%   corresponding stimulus pixel position, values outside the window bounds
+%   will be returned, e.g., greater than window width or height, or negative.
 %
 %   If you call this function on a window or view without active geometry
 %   manipulations, it will do nothing and simply return the passed in (xm,
@@ -47,6 +47,7 @@ function [xo, yo] = RemapMouse(win, viewId, xm, ym)
 % 26.12.2011  mk  Written.
 % 12.01.2013  mk  Added panelfitter support.
 % 04.11.2014  mk  Handle Retina modes on OSX and rotation via panelfitter.
+% 03.10.2022  mk  Handle 'AllViews' in absence of 'AllViews' map -> Fallback to 'LeftView'.
 
 % This global array is setup by PsychImaging() when setting up geometric
 % display correction:
@@ -80,19 +81,27 @@ else
     % Apply gains and modulo transform to input (xm,ym):
     xm = mod(xm * ptb_geometry_inverseWarpMap{win}.gx, ptb_geometry_inverseWarpMap{win}.mx);
     ym = mod(ym * ptb_geometry_inverseWarpMap{win}.gy, ptb_geometry_inverseWarpMap{win}.my);
-    
-    if ~isfield(ptb_geometry_inverseWarpMap{win}, viewId)
-        % No inverse map, we're almost done:
-        xo = xm;
-        yo = ym;
-    else
+
+    % Default if map is missing:
+    xo = xm;
+    yo = ym;
+
+    if isfield(ptb_geometry_inverseWarpMap{win}, viewId)
         % Retrieve proper inverse mapping matrix for given viewId:
         map = ptb_geometry_inverseWarpMap{win}.(viewId);
-        
+    elseif strcmpi(viewId, 'AllViews') && isfield(ptb_geometry_inverseWarpMap{win}, 'LeftView')
+        % No map for 'AllViews' but map for 'LeftView' exists. Use as fallback:
+        map = ptb_geometry_inverseWarpMap{win}.('LeftView');
+    else
+        map = [];
+    end
+
+    % Apply inverse map if one exists:
+    if ~isempty(map)
         % Round and map (xm,ym) input mouse position to indices in inverse map:
         xm = min(max(round(xm) + 1, 1), size(map, 2));
         ym = min(max(round(ym) + 1, 1), size(map, 1));
-        
+
         % Lookup corresponding unmapped position from matrix:
         xo = double(map(ym, xm, 1));
         yo = double(map(ym, xm, 2));
@@ -112,18 +121,18 @@ if strcmpi(viewId, 'AllViews') || strcmpi(viewId, 'LeftView') || strcmpi(viewId,
     % corresponds to our effective stimulus position. Query panel fitter
     % parameters into p:
     p = Screen('PanelFitter', win);
-    
+
     % Panelfitter active aka p non-zero?
     if any(p)
         % Remap:
-        
+
         % Non-Zero rotation angle?
         if p(9) ~= 0
             % Yes, need some extra rotation inversion transforms:
             xoff = p(5); yoff = p(6);
             cx = p(10); cy = p(11);
             angle = p(9);
-            
+
             xo = xo - (xoff + cx);
             yo = yo - (yoff + cy);
             rot = atan2(yo, xo) - (angle * pi / 180);
@@ -133,7 +142,7 @@ if strcmpi(viewId, 'AllViews') || strcmpi(viewId, 'LeftView') || strcmpi(viewId,
             xo = xo + (xoff + cx);
             yo = yo + (yoff + cy);
         end
-        
+
         % Invert scaling and offsets:
         xo = ((xo - p(5)) / (p(7) - p(5)) * (p(3) - p(1))) + p(1);
         yo = ((yo - p(6)) / (p(8) - p(6)) * (p(4) - p(2))) + p(2);

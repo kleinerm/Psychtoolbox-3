@@ -42,16 +42,21 @@ screenid = max(Screen('Screens'));
 
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
+
+% We do collect timestamps for benchmarking, but don't require them to be especially precise or trustworthy:
 if ~stereoscopic
   % Setup the HMD to act as a regular "monoscopic" display monitor
   % by displaying the same image to both eyes:
-  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse DebugDisplay', [], [], deviceindex);
+  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse NoTimingSupport NoTimestampingSupport', [], [], deviceindex);
 else
   % Setup for stereoscopic presentation:
-  PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'LowPersistence FastResponse', [], [], deviceindex);
+  PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'LowPersistence FastResponse NoTimingSupport NoTimestampingSupport', [], [], deviceindex);
 end
 
 [win, rect] = PsychImaging('OpenWindow', screenid);
+
+Screen('TextStyle', win, 1);
+Screen('TextSize', win, 100);
 
 if checkerboard
   % Apply regular checkerboard pattern as texture:
@@ -73,12 +78,11 @@ while ~KbCheck
     Screen('FrameRect', win, [1 1 0], [], 20);
     if ~checkerboard
       Screen('FillOval', win, [1 1 1], CenterRect([0 0 700 700], rect));
-      Screen('TextSize', win, 100);
       DrawFormattedText(win, sprintf('HELLO\nWORLD!\n%i', eye), 'center', 'center', [0 1 0]);
     end
-    Screen('FillOval', win, [1 0 0], CenterRect([0 0 10 10], rect));
+    Screen('FillOval', win, [mod(GetSecs, 1) 0 0], CenterRect([0 0 10 10], rect));
   end
-  vbl(end+1) = Screen('Flip', win);
+  vbl(end+1) = Screen('Flip', win); %#ok<AGROW> 
 end
 
 KbStrokeWait;
@@ -86,5 +90,6 @@ sca;
 
 close all;
 plot(1000 * diff(vbl));
+fps = 1 / mean(diff(vbl)) %#ok<NOPRT,NASGU> 
 
 end
