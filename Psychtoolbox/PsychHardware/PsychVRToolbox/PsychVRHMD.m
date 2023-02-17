@@ -19,21 +19,27 @@ function varargout = PsychVRHMD(cmd, varargin)
 % Optional parameters: 'basicTask' what kind of task should be implemented.
 % The default is 'Tracked3DVR', which means to setup for stereoscopic 3D
 % rendering, driven by head motion tracking, for a fully immersive experience
-% in some kind of 3D virtual world. This is the default if omitted. The task
-% 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
+% in some kind of 3D virtual world. This is the default if omitted. '3DVR' sets
+% up for stereoscopic 3D rendering that is not driven by head motion tracking.
+%
+% The task 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
 % head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
 % the HMD is just used as a special kind of standard display monitor.
+%
+% In monoscopic or stereoscopic mode, you can change the imaging parameters, ie.,
+% apparent size and location of the 2D views used with the following command to
+% optimize visual display:
+% 
+% PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
+% The command is fully supported under the OpenXR driver, but does nothing
+% and only returns NaN results on other drivers like the old Oculus,
+% Oculus-1 and OpenHMD drivers.
+%
 %
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
 % 'basicRequirements' string:
 %
-% 'LowPersistence' = Try to keep exposure time of visual images on the retina
-% low if possible, ie., try to approximate a pulse-type display instead of a
-% hold-type display if possible. This has no effect on the Oculus Rift DK1.
-% On the Rift DK2 it will enable low persistence scanning of the OLED display
-% panel, to light up each pixel only a fraction of a video refresh cycle duration.
-% On the Rift CV1, low persistence is always active, so this setting is redundant.
 %
 % 'DebugDisplay' = Show the output which is displayed on the HMD inside the
 % Psychtoolbox onscreen window as well. This will have a negative impact on
@@ -55,6 +61,175 @@ function varargout = PsychVRHMD(cmd, varargin)
 % at least the Oculus Rift CV1 display. On other HMDs or drivers, this option may do
 % nothing and get silently ignored.
 %
+% 'ForceSize=widthxheight' = Enforce a specific fixed size of the stimulus
+% image buffer in pixels, overriding the recommmended value by the runtime,
+% e.g., 'ForceSize=2200x1200' for a 2200 pixels wide and 1200 pixels high
+% image buffer. By default the driver will choose values that provide good
+% quality for the given VR/AR/MR/XR display device, which can be scaled up
+% or down with the optional 'pixelsPerDisplay' parameter for a different
+% quality vs. performance tradeoff in the function PsychVRHMD('SetupRenderingParameters');
+% The specified values are clamped against the maximum values supported by
+% the given hardware + driver combination.
+%
+% 'ForbidMultiThreading' = Forbid any use of multi-threading for visual
+% presentation by the driver for any means or purposes! This is meant to
+% get your setup going in case of severe bugs in proprietary OpenXR
+% runtimes that can cause instability, hangs, crashes or other malfunctions
+% when multi-threading is used. Or if one wants to squeeze out every last
+% bit of performance, no matter the consequences ("Fast and furious mode").
+% On many proprietary OpenXR runtimes, this will prevent any reliable,
+% trustworthy, robust or accurate presentation timing or timestamping, and
+% may cause severe visual glitches under some modes of operation. See the
+% following keywords below for descriptions of various more nuanced
+% approaches to multi-threading vs. single-threading to choose fine-tuned
+% tradeoffs between performance, stability and correctness for your
+% specific experimental needs.
+%
+% 'Use2DViewsWhen3DStopped' = Ask the driver to switch to use of the same 2D views
+% and geometry during the '3DVR' or 'Tracked3DVR' basicTask as would be used
+% for pure 2D display in basicTask 'Stereoscopic' whenever the user script
+% signals it does not execute a tight tracking and animation loop, ie.
+% whenever the script calls PsychVRHMD('Stop', hmd). Switch back to regular
+% 3D projected geometry and views after a consecutive PsychVRHMD('Start', hmd).
+% This is useful if have phases in your experiment session when you want to
+% display non-tracked content, e.g., instructions or feedback to the
+% subject between trials, fixation crosses, etc., or pause script execution
+% for more than a few milliseconds, but still want the visual display to
+% stay stable. If this keyword is omitted, depending on the specific OpenXR
+% runtime in use, the driver will stabilize the regular 3D projected
+% display by use of multi-threaded operation when calling PsychVRHMD('Stop', hmd),
+% and resume single-threaded operation after PsychVRHMD('Start', hmd). This
+% higher overhead mode of operation via multi-threading will possibly have
+% degraded performance, and not only between the 'Stop' and 'Start' calls,
+% but throughout the whole session! This is why it can be advisable to
+% evaulate if use of the 'Use2DViewsWhen3DStopped' keyword is a better
+% solution for your specific experiment paradigm. The switching between 3D
+% projected view and standard 2D stereoscopic view will change the image
+% though, which may disorient the subject for a moment while the subjects
+% eyes need to adapt their accomodation, vergence and focus point. You can
+% change the imaging parameters, ie., apparent size and location of the 2D
+% views used in this mode with the following command to minimize visual
+% disorientation:
+% 
+% PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
+%
+% For such 2D views you can also specify the distance of the virtual
+% viewscreen in meters in front of the eyes of the subject. By default the
+% distance is 1 meter and the size and position is set up to fill out the
+% field of view in a meaningful way, essentially covering the whole
+% available field of view. By overriding the distance to a smaller or
+% bigger distance than 1 meter, you can "zoom in" to the image, or make
+% sure that also the corners and edges of the image are visible. E.g., the
+% following keyword would place the virtual screen at 2.1 meters distance:
+%
+% '2DViewDistMeters=2.1'
+%
+% 'DontCareAboutVisualGlitchesWhenStopped' = Tell the driver that you don't
+% care about potential significant visual presentation glitches happening if
+% your script does not run a continuous animation with high framerate, e.g.,
+% after calling PsychVRHMD('Stop', hmd), pausing, etc. This makes sense if
+% you don't care, or if your script does not ever pause or slow down during
+% a session or at least an ongoing trial. This will avoid multi-threading
+% for glitch prevention in such cases, possibly allowing to side-step
+% certain bugs in proprietary OpenXR runtimes, or to squeeze out higher
+% steady-state performance.
+%
+% 'TimingPrecisionIsCritical' = Signal that visual presentation timing and
+% timestamping of visual stimuli should be given highest importance -
+% essentially above all else. You still need to specify the following
+% keywords relating to the specifics of your timing/timestamping needs, but
+% this specific requirement is a signal to make all tradeoffs, including
+% choice of drivers to use, almost solely based on their timing properties.
+%
+% 'NoTimingSupport' = Signal no need at all for high precision and reliability
+% timing for presentation. If you don't need any timing precision or
+% reliability in your script, specifying this keyword may allow the driver
+% to optimize for higher performance. See 'TimingSupport' explanation right
+% below:
+%
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+% Please note that generally only the special Linux VR/AR/MR/XR drivers are
+% currently capable of robust, reliable, trustworthy and accurate timing,
+% and sometimes even they need special configuration or have some caveats,
+% specifically:
+%
+% - The original PsychOculusVR driver has perfect timing, but only works on
+%   Linux/X11 with a separate X-Screen for the HMD, and only works with the
+%   original Oculus Rift DK1 and DK2 VR HMDs.
+%
+% - The PsychOpenHMDVR driver has perfect timing, but only works on
+%   Linux/X11 with a separate X-Screen for the HMD, and only works with the
+%   subset of VR HMDs supported by OpenHMD, and often various caveats
+%   apply for those HMDs, like imperfect optical undistortion, or lack of
+%   full 6 DoF head tracking - Often only 3 DoF orientation tracking is
+%   supported.
+%
+% - The PsychOculusVR1 driver for the Oculus VR 1.x runtime on MS-Windows
+%   has essentially unreliable/not trustworthy timing and timestamping.
+%
+% - The timing properties of the PsychOpenXR driver are highly dependent on
+%   the OpenXR runtime at use. Citing from the 'help PsychOpenXR':
+%
+%     The current OpenXR specification, as of OpenXR version v1.0.26 from January 2023,
+%     does not provide any means of reliable, trustworthy, accurate timestamping of
+%     presentation, and all so far tested proprietary OpenXR runtime implementations
+%     have severely broken and defective timing support. Only the open-source
+%     Monado OpenXR runtime on Linux provides a reliable and accurate timing
+%     implementation. Therefore this driver has to use a workaround on non-Monado
+%     OpenXR runtimes to achieve at least ok'ish timing if you require it, and
+%     that workaround involves multi-threaded operation. This multi-threading
+%     in turn can severely degrade performance, possibly reducing achievable
+%     presentation framerates to (less than) half of the maximum video refresh
+%     rate of your HMD! For this reason you should only request 'TimingSupport'
+%     on non-Monado if you really need it and be willing to pay the performance
+%     price.
+%     
+%     If you omit this keyword, the driver will try to guess if you need
+%     precise presentation timing for your session or not. As long as you only
+%     call Screen('Flip', window) or Screen('Flip', window, [], ...), ie. don't
+%     specify a requested stimulus onset time, the driver assumes you don't
+%     need precise timing, just presenting as soon as possible after a
+%     Screen('Flip'), and also that you don't care about accurate or trustworthy
+%     or correct presentation timestamps to be returned by Screen('Flip'). Once
+%     you specify a target onset time tWhen, ie. via calling 'Flip' as
+%     Screen('Flip', window, tWhen [, ...]), the driver assumes from then on
+%     and for the rest of the session that you want reasonably accurate
+%     presentation timing. It will then switch to multi-threaded operation with
+%     better timing, but potentially drastically reduced performance.
+%
+% 'TimestampingSupport' = Use high precision and reliability timestamping for presentation.
+% 'NoTimestampingSupport' = Do not need high precision and reliability timestamping for presentation.
+% Those keywords let you specify if you definitely need or don't need
+% trustworthy, reliable, robust, precise presentation timestamps, ie. the
+% 'timestamp' return values of timestamp = Screen('Flip') should be high
+% quality, or if you don't care. If you omit both keywords, the driver will
+% try to guess what you wanted. On most current OpenXR runtimes, use of
+% timestamping will imply multi-threaded operation with the performance
+% impacts and problems mentioned above in the section about 'TimingSupport',
+% that is why it is advisable to explicitely state your needs, to allow the
+% driver to optimize for the best precision/reliability/performance
+% tradeoff on all the runtimes where such a tradeoff is required.
+% Notable exceptions are the Linux PsychOculus and PsychOpenHMDVR
+% drivers when used on separate X-Screens for their HMDs, and some
+% configurations of the Monado OpenXR runtime on Linux, where
+% timestamps are trustworthy without performance tradeoffs or other
+% known problems. The PsychOculusVR1 driver on MS-Windows always
+% provides untrustworthy timestamps, no matter what.
+%
+% 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
+% poses at scanout time. This mostly only makes sense for head-tracked 3D
+% rendering. Depending on 'basicQuality' a more cheap or more expensive
+% procedure is used. On the v1.11 Oculus runtime and Rift CV1, 'TimeWarp'
+% is always active, so this option is redundant.
+%
+% 'LowPersistence' = Try to keep exposure time of visual images on the retina
+% low if possible, ie., try to approximate a pulse-type display instead of a
+% hold-type display if possible. On the Oculus Rift DK2 with the original Oculus
+% runtime on Linux, it will enable low persistence scanning of the OLED
+% display panel, to light up each pixel only a fraction of a video refresh
+% cycle duration. On any other HMD hardware or runtime this setting does
+% not have any effect and is thereby pretty much redundant.
+%
 % 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view, even
 % when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
 % for wider field of view in these tasks, but requires the usercode to adapt to these
@@ -73,25 +248,16 @@ function varargout = PsychVRHMD(cmd, varargin)
 % so stimulus display may change slightly for the same HMD hardware and user-code,
 % compared to older Psychtoolbox-3 releases. This change was crucial to accomodate the
 % rather different imaging properties of the Oculus Rift CV1 and possible other future
-% HMD's.
+% HMD's. Note: This requirement is currently ignored with the standard OpenXR backend,
+% as the OpenXR runtimes decide by themselves what is best here.
 %
 % 'FastResponse' = Try to switch images with minimal delay and fast
 % pixel switching time. This will enable OLED panel overdrive processing
 % on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
-% relatively expensive post processing step. On the Rift CV1, and generally
-% with the new Oculus v1.11+ runtime, this is always active, so 'FastResponse'
-% is redundant on such panels and drivers.
+% relatively expensive post processing step. On any other VR device and
+% runtime other than Oculus Rift DK1/DK2 this option currently has no
+% effect and is therefore redundant.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. On the Rift DK1 this does nothing. On the DK2
-% it enables dynamic prediction and timing measurements with the Rifts internal
-% latency tester. This does nothing anymore on Rift CV1.
-%
-% 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
-% poses at scanout time. This mostly only makes sense for head-tracked 3D
-% rendering. Depending on 'basicQuality' a more cheap or more expensive
-% procedure is used. On the v1.11 Oculus runtime and Rift CV1, 'TimeWarp'
-% is always active, so this option is redundant.
 %
 % These basic requirements get translated into a device specific set of
 % settings. The settings can also be specific to the selected 'basicTask',
@@ -151,6 +317,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 %                             the quality of the VR experience, 0 if no improvement
 %                             is to be expected, so 'GetEyePose' can be avoided
 %                             to save processing time without a loss of quality.
+%                             This will be zero (== no benefit) for all modern runtimes.
 %
 % VRControllersSupported = 1 if use of PsychVRHMD('GetInputState') will provide input
 %                            from actual dedicated VR controllers. Value is 0 if
@@ -184,10 +351,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
 % request showing the markers.
 % If the driver can control area boundary visibility is highly dependent on the VR
-% driver in use. This flag may get ignored. See driver specific help, e.g.,
+% driver in use. This flag gets ignored by most drivers. See driver specific help, e.g.,
 % "help PsychOculusVR1", for behaviour of a specific driver.
 %
-% Some drivers or hardware setups may not supports VR area boundaries at all, in
+% Some drivers or hardware setups may not support VR area boundaries at all, in
 % which case the function will return empty boundaries.
 %
 % Returns in 'isVisible' the current visibility status of the VR area boundaries.
@@ -220,6 +387,19 @@ function varargout = PsychVRHMD(cmd, varargin)
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
+% 'ActiveInputs' = Bitmask defining which of the following struct elements do contain
+% meaningful input from actual physical input source devices. This is a more fine-grained
+% reporting of what 'Valid' conveys, split up into categories. The following flags will be
+% logical or'ed together if the corresponding input category is valid, ie. provided with
+% actual input data from some physical input source element, controller etc.:
+%
+% +1  = 'Buttons' gets input from some real buttons or switches.
+% +2  = 'Touches' gets input from some real touch/proximity sensors or gesture recognizers.
+% +4  = 'Trigger' gets input from some real analog trigger sensor or gesture recognizer.
+% +8  = 'Grip' gets input from some real analog grip sensor or gesture recognizer.
+% +16 = 'Thumbstick' gets input from some real thumbstick, joystick or trackpad or similar 2D sensor.
+% +32 = 'Thumbstick2' gets input from some real secondary thumbstick, joystick or trackpad or similar 2D sensor.
+%
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
@@ -241,6 +421,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.
 % 'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.
 %
+% Some devices driven by an OpenXR runtime may also expose a 'Thumbstick2' field, with same semantic
+% as the 'Thumbstick' 2x2 matrix, but for secondary 2D input sources, e.g., a 2nd thumbstick,
+% joystick or trackpad or similar for each hand-controller. The presence of the 'Thumbstick2' field
+% in the 'input' struct is not guaranteed, unless 'ActiveInputs' contains the +32 flag 'Thumbstick2'.
 %
 % pulseEndTime = PsychVRHMD('HapticPulse', hmd, controllerType [, duration=XX][, freq=1.0][, amplitude=1.0]);
 % - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'
@@ -376,14 +560,14 @@ function varargout = PsychVRHMD(cmd, varargin)
 % to call this function twice, once for each of the two renderpasses, at the
 % beginning of each renderpass.
 %
-% Note: The 'GetEyePose' function may not be implemented in a meaningful/beneficial
-% way for all supported types of HMD. This means that while the function will work
-% on all supported HMDs, there may not be any benefit of using it in terms of
-% performance or quality of the VR experience, because the underlying driver may
-% only emulate / fake the results for compatibility. Currently only the driver for
-% the Oculus VR Rift DK1 and DK2 supports this function in a way that will improve
-% the VR experience, the status for future Oculus HMDs, or HMDs from other vendors
-% is currently unknown. The info struct returned by PsychVRHMD('GetInfo') will return
+% Note: The 'GetEyePose' function is not implemented in a meaningful/beneficial
+% way for modern supported types of HMD. This means that while the function will work
+% on all supported HMDs, there will not be any benefit on most HMDs of using it in
+% terms of performance or quality of the VR experience, because the underlying driver may
+% only emulate / fake the results for compatibility. Currently only the original driver
+% for the Oculus VR Rift DK1 and Rift DK2 supports this function in a way that could
+% improve the VR experience, none of the other drivers does, not even the modern driver
+% for recent Oculus HMDs. The info struct returned by PsychVRHMD('GetInfo') will return
 % info.separateEyePosesSupported == 1 if there is a benefit to be expected from use
 % of this function, or info.separateEyePosesSupported == 0 if no benefit is expected
 % and simply using the data from PsychVRHMD('PrepareRender') will provide results with
@@ -435,11 +619,6 @@ function varargout = PsychVRHMD(cmd, varargin)
 %              3D scenes with the Horde3D 3D engine or other engines which want
 %              absolute camera pose instead of the inverse matrix.
 %
-% Additionally tracked/predicted head pose is returned in eyePose.localHeadPoseMatrix
-% and the global head pose after application of the 'userTransformMatrix' is
-% returned in eyePose.globalHeadPoseMatrix - this is the basis for computing
-% the camera transformation matrix.
-%
 %
 % PsychVRHMD('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
@@ -452,7 +631,8 @@ function varargout = PsychVRHMD(cmd, varargin)
 % updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
 % good default field of view and that will be used. The field of view may be
 % dependent on the settings in the HMD user profile of the currently selected
-% user.
+% user. Note: Not always used with the OpenXR backend driver. See 'help PsychOpenXR'
+% in the corresponding section for PsychOpenXR('SetupRenderingParameters').
 %
 % 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
 % at the center of distortion. Defaults to 1.0 if omitted. Lower values can
@@ -462,6 +642,38 @@ function varargout = PsychVRHMD(cmd, varargin)
 % PsychVRHMD('SetBasicQuality', hmd, basicQuality);
 % - Set basic level of quality vs. required GPU performance.
 %
+%
+% [oldPosition, oldSize, oldOrientation] = PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
+% - Query or assign 2D quad view parameters for eye 'eye' of the hmd.
+% Such 2D quad views are used in 'Monoscopic' (same view for both eyes), or
+% 'Stereoscopic' mode (one view per eye), as well as in 3D modes when a script is
+% 'Stop'ed and the user asked for use of these 2D quad views instead of projective
+% views.
+% This returns the current or previous settings for position and size in
+% 'oldPosition' and 'oldSize'.
+% 'eye' Mandatory: 0 = Left eye or monoscopic view, 1 = right eye in stereo mode.
+% Optionally you can specify new settings, as follows:
+% 'position' 3D position of the center of the virtual viewscreen, relative to the
+% eye of the subject. Unit is meters, e.g., [0, 0, -0.5] would center the view at
+% x,y offset zero relative to the optical axis, and 0.5 meters away from the eye.
+% Iow. the center of the viewscreen aligns with the straightforward looking
+% direction of the eye, but the screen floats at 0.5 meters distance. If this
+% parameter is left empty [] or omitted, then the position does not change.
+% Default position at session startup is centered and at a comfortable viewing
+% distance away, so staring straight forward with parallel eyes, e.g., like when
+% looking at an infinite point in space, would cause the center of the stimulus
+% image to be located at your fixation direction.
+% 'size' Size of the virtual viewscreen in meters. E.g., [0.8, 1] would have the
+% screen at an apparent width of 0.8 meters and an apparent height of 1 meter. If
+% the parameter is omitted or left empty [], the size won't be changed. Default
+% size is 1 meter high and the width adjusted to preserve the aspect ratio of the
+% Psychtoolbox onscreen window into which your script draws, so a drawn circle is
+% actually circular instead of elliptic.
+% 'orientation' A 4 component vector encoding a quaternion for orientation in
+% space, ie. a [rx, ry, rz, rw] vector. Or for the most simple and most
+% frequent use case: A rotation angle in degrees around the z-axis aka
+% optical axis aka line of sight, e.g., 22.3 for a 22.3 degrees rotation.
+% 
 %
 % oldSetting = PsychVRHMD('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
@@ -525,7 +737,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychVRHMD('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychVRHMD('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
@@ -539,18 +751,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % This allows probing video outputs to find the one which feeds the HMD.
 %
 %
-% [headToEyeShiftv, headToEyeShiftMatrix] = PsychVRHMD('GetEyeShiftVector', hmd, eye);
-% - Retrieve 3D translation vector [tx, ty, tz] that defines the 3D position of the given
-% eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
-% reference frame. This is needed to translate a global head pose into a eye
-% pose, e.g., to translate the output of PsychOculusVR('GetEyePose') into actual
-% tracked/predicted eye locations for stereo rendering.
-%
-% In addition to the 'headToEyeShiftv' vector, a corresponding 4x4 translation
-% matrix is also returned in 'headToEyeShiftMatrix' for convenience.
-%
-%
-% [projL, projR] = PsychVRHMD('GetStaticRenderParameters', hmd [, clipNear=0.01][, clipFar=10000.0]);
+% [projL, projR, fovL, fovR] = PsychVRHMD('GetStaticRenderParameters', hmd [, clipNear=0.01][, clipFar=10000.0]);
 % - Retrieve parameters needed to setup the intrinsic parameters of the virtual
 % camera for scene rendering.
 %
@@ -563,7 +764,9 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'projR' is the 4x4 OpenGL projection matrix for the right eye rendering.
 % Please note that projL and projR are usually identical for typical rendering
 % scenarios.
-%
+% 'fovL' Field of view of left camera [leftAngle, rightAngle, upAngle, downAngle].
+% 'fovR' Field of view of right camera [leftAngle, rightAngle, upAngle, downAngle].
+% Angles are expressed in units of radians.
 %
 % PsychVRHMD('Start', hmd);
 % - Start live operations of the 'hmd', e.g., head tracking.
@@ -578,10 +781,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 23-Sep-2015  mk  Written.
 
 % Global GL handle for access to OpenGL constants needed in setup:
-global GL;
+global GL; %#ok<NUSED,*GVMIS> 
 
 % Global OVR handle for access to VR runtime constants:
-global OVR;
+global OVR; %#ok<NUSED> 
 
 if nargin < 1 || isempty(cmd)
   help PsychVRHMD;
@@ -656,54 +859,168 @@ if strcmpi(cmd, 'AutoSetupHMD')
   end
 
   % Probe sequence:
-  hmd = [];
+  hmd = []; %#ok<NASGU> 
+
+  % Does user need highest timing/timestamp precision and trustworthiness?
+  if ~isempty(strfind(basicRequirements, 'TimingPrecisionIsCritical')) %#ok<STREMP> 
+    fprintf('PsychVRHMD: INFO: Prioritizing visual stimulation timing above all else in driver selection, as requested.\n');
+    needTiming = 1;
+  else
+    needTiming = 0;
+  end
+
+  if needTiming
+    % Try to ensure best timing for users of Oculus Rift DK1 or DK2 if the
+    % old v0.5 Oculus runtime is installed, active and a DK1 or DK2 is
+    % connected. The original driver is the best driver wrt. quality,
+    % low-level control and timing for these old HMD's, better than any
+    % OpenXR, OculusVR-1 or OpenHMD driver. At least on Linux/X11 with a
+    % separate X-Screen for the HMD, and for Windows as of January 2023 if
+    % one can find the needed OculusVR v0.5 runtime somewhere...
+
+    % Oculus sdk/runtime v0.5 supported and online? At least one real HMD connected?
+    if PsychOculusVR('Supported') && PsychOculusVR('GetCount') > 0
+      % Yes. Use that one. This will also inject a proper PsychImaging task
+      % for setup of the imaging pipeline:
+      try
+        hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR Rift DK1 or DK2 device, despite driver being installed and supposedly ready...\n');
+      end
+    end
+  end
 
   % OpenXR supported and online? At least one real HMD connected?
   if exist('PsychOpenXR', 'file') && PsychOpenXR('Supported') && PsychOpenXR('GetCount') > 0
-    % Yes. Use that one. This will also inject a proper PsychImaging task
-    % for setup of the imaging pipeline:
-    hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    % Yes. what about timing needs and capabilities of OpenXR driver?
+    if ~needTiming || (PsychOpenXRCore('TimingSupport') > 0)
+      % No need for best timing, or OpenXR runtime has good timing
+      % facilities, so use that one. This will also inject a proper
+      % PsychImaging task for setup of the imaging pipeline:
+      try
+        hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-    % Return the handle:
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenXR device, despite driver being installed and supposedly ready...\n');
+      end
+    end
+  end
+
+  % Need precise timing and no previous driver was up to it?
+  if needTiming
+    % OpenHMD VR supported and online? At least one real HMD connected?
+    if PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
+      % Yes. Use that one. It has great timing under Linux/X11 with a
+      % separate X-Screen, but restricted functionality (e.g., often no or
+      % limited positional tracking) and potentially lower image quality
+      % for many supported HMD's, as of OpenHMD v0.3. We don't ship the
+      % driver on Windows or macOS as of PTB 3.0.19 early 2023, and don't
+      % intend to do so, but at least there is the theoretical option...
+      %
+      % This will also inject a proper PsychImaging task for setup of the imaging pipeline:
+      try
+        hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenHMD VR HMD, despite driver being installed and supposedly ready...\n');
+      end
+    end
+
+    warning('PsychVRHMD:AutoSetupHMD: Could not find any driver with the requested reliable presentation timing! Choosing OpenXR as least worst option!');
+
+    % No dice. The last option is a bog standard OpenXR without any timing
+    % enabled OpenXR runtime. At least we can use PsychOpenXRCore's builtin
+    % multi-threading hacks to get not too catastrophic timing precision in
+    % some cases -- hangs or crashes thoug with some buggy OpenXR
+    % runtimes...
+    % 
+    % Supported and online? At least one real HMD connected?
+    if exist('PsychOpenXR', 'file') && PsychOpenXR('Supported') && PsychOpenXR('GetCount') > 0
+      try
+        hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+        % Return the handle:
+        varargout{1} = hmd;
+        evalin('caller','global OVR');
+        return;
+      catch
+        fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenXR device, despite driver being installed and supposedly ready...\n');
+      end
+    end
+
+    % We reached the end of the road. No driver with even half-way
+    % acceptable timing support. OculusVR-1 with its awful timing and
+    % timestamping is not an option! Give up!
+    warning('PsychVRHMD:AutoSetupHMD: Could not find any driver with the requested reliable presentation timing! Game over!');
+
+    % Return an empty handle to signal lack of VR HMD support to caller,
+    % so caller can cope with it somehow:
+    varargout{1} = [];
     return;
   end
+
+  % No need for great timing - continue conventional probe sequence if we
+  % made it up to here...
 
   % Oculus runtime v1.11+ supported and online? At least one real HMD connected?
   if PsychOculusVR1('Supported') && PsychOculusVR1('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
-    hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    try
+      hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-    % Return the handle:
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR Rift DK1 or DK2 device, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % Oculus sdk/runtime v0.5 supported and online? At least one real HMD connected?
   if PsychOculusVR('Supported') && PsychOculusVR('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
-    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    try
+      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-    % Return the handle:
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR-1 VR HMD, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % OpenHMD VR supported and online? At least one real HMD connected?
   if PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
-    hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    try
+      hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
-    % Return the handle:
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenHMD VR HMD, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % Add probe and autosetup calls for other HMD vendors here...
@@ -711,17 +1028,25 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % No success with finding any real supported HMD so far. Try to find a driver
   % that at least supports an emulated HMD for very basic testing:
   if PsychOculusVR('Supported')
-    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+    try
+      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OculusVR Rift DK1 or DK2 device, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   if PsychOpenHMDVR('Supported')
-    hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
-    varargout{1} = hmd;
-    evalin('caller','global OVR');
-    return;
+    try
+      hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+      return;
+    catch
+      fprintf('PsychVRHMD:AutoSetupHMD: Failed to open OpenHMD VR HMD, despite driver being installed and supposedly ready...\n');
+    end
   end
 
   % Add probe for other emulated HMD drivers here ...

@@ -6,6 +6,7 @@
 # then plays it back until the end, or until a key is pressed.
 # The test will be subjec to change without notice, it is throwaway test code.
 #
+# (c) 2019 Jon Peirce - Licensed under MIT license.
 # (c) 2018 Mario Kleiner - Licensed under MIT license.
 
 from psychtoolbox import audio, hid

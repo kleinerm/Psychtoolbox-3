@@ -365,7 +365,7 @@ char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
     "StereoLeftCompositingBlit",
     "StereoRightCompositingBlit",
     "StereoCompositingBlit",
-    "PostCompositingBlit",
+    "MirrorWindowBlit",
     "FinalOutputFormattingBlit",
     "UserspaceBufferDrawingPrepare",
     "IdentityBlitChain",
@@ -385,7 +385,7 @@ char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
     "Perform generic user-defined image processing on image content of left-eye (or mono) buffer.",
     "Perform generic user-defined image processing on image content of right-eye buffer.",
     "Internal(preinitialized): Compose left- and right-eye view into one combined image for all stereo modes except quad-buffered flip-frame stereo.",
-    "Not yet used.",
+    "Perform blit operations to aid implementation of mirror / clone modes, e.g., for master window -> slave window blits.",
     "Perform post-processing indifferent of stereo mode, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators...",
     "Operations to be performed immediately after Screen('Flip') in order to prepare drawing commands of users script.",
     "Internal(preinitialized): Only for internal use. Only modify for debugging and testing of pipeline itself!",
@@ -727,20 +727,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         // The right-view channel is represented by a slave window and its associated context. We
         // create a framebuffer object and attach it to finalizedFBO[1]. This way, the final left view
         // stimulus image gets blitted directly into the system framebuffer for this window, but the
-        // right view stimulus gets blitted into our real finalizedFBO[1]. PsychPreflipOperations() will
-        // perform a last blitcopy operation at the end of pipeline processing, where it copies the content
+        // right view stimulus gets blitted into the finalizedFBO[1]. PsychPreflipOperations() will
+        // perform a last blit-copy operation at the end of pipeline processing, where it copies the content
         // of finalizedFBO[1] into the real system framebuffer for the onscreen window which represents the
-        // user visible right view.
+        // user visible right view. It switches to the OpenGL context for the right view slave window before
+        // the blit, so blitting finalizedFBO[1] into the system framebuffer blits into the slave windows /
+        // right view windows back buffer. This bounce buffer trick works, because the OpenGL contexts of
+        // both windows share resources, ie. OpenGL textures, framebuffer objects etc., and thereby finalizedFBO
+        // content.
         //
-        // In dual window output mode, we may only have one merged/composited stereo view or even only
-        // a single monoscopic view, but we still distribute that view to both finalizedFBO's aka different
-        // onscreen windows backbuffers, possibly with separate output formatting / postprocessing.
+        // In dual window output mode, as opposed to dual window stereo mode, we only have one single monoscopic view,
+        // which we want to copy to the secondary slave window, as a copy/clone/mirror image. However, we need to
+        // switch to finalizedFBO[0] as bounce buffer in this case, as the whole imaging pipeline - configured for
+        // mono/single-stream processing - blits the final image into finalizedFBO[0]:
         if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
             // Failed!
             PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
         }
 
-        windowRecord->finalizedFBO[1]=fbocount;
+        windowRecord->finalizedFBO[((windowRecord->stereomode == kPsychDualWindowStereo) ? 1 : 0)] = fbocount;
         fbocount++;
     }
 
@@ -1153,11 +1158,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         fbocount++;
     }
 
-    // If dualwindow output is requested and preConversionFBO[1] isn't assigned yet,
-    // we set it to the same FBO as preConversionFBO[0], so the image data of our one
-    // single image buffer is distributed to both output pipes for output conversion and
-    // display:
-    if ((imagingmode & kPsychNeedDualWindowOutput) && (windowRecord->preConversionFBO[1] == -1)) {
+    // If dualwindow output is requested and preConversionFBO[1] isn't assigned yet, or is the system fb,
+    // then we set it to the same FBO as preConversionFBO[0], so the image data of our one single image
+    // buffer is distributed to both output pipes for output conversion and display:
+    if ((imagingmode & kPsychNeedDualWindowOutput) && (windowRecord->preConversionFBO[1] <= 0)) {
         windowRecord->preConversionFBO[1] = windowRecord->preConversionFBO[0];
     }
 
@@ -1174,7 +1178,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             // can directly hook our finalizedFBO's sinks into the original source drawBufferFBO's and thereby
             // to their OpenGL FBO's as already allocated & setup above in stage 1 setup:
             windowRecord->finalizedFBO[0] = windowRecord->drawBufferFBO[0];
-            windowRecord->finalizedFBO[1] = windowRecord->drawBufferFBO[1];
+            windowRecord->finalizedFBO[1] = (windowRecord->drawBufferFBO[1] >= 0) ? windowRecord->drawBufferFBO[1] : windowRecord->finalizedFBO[1];
 
             // Disable MSAA flag which signals the sink should provide or expect MSAA textures, as no MSAA used:
             imagingmode &= ~kPsychSinkIsMSAACapable;
@@ -1200,7 +1204,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
                 // framebuffer aka drawBufferFBO's and thereby to their OpenGL FBO's as already allocated
                 // and setup above in stage 1 setup:
                 windowRecord->finalizedFBO[0] = windowRecord->drawBufferFBO[0];
-                windowRecord->finalizedFBO[1] = windowRecord->drawBufferFBO[1];
+                windowRecord->finalizedFBO[1] = (windowRecord->drawBufferFBO[1] >= 0) ? windowRecord->drawBufferFBO[1] : windowRecord->finalizedFBO[1];
 
                 // Disable MSAA flag which signals the sink should provide or expect MSAA textures if no MSAA used:
                 if (multiSample <= 0)
@@ -1753,14 +1757,26 @@ static psych_bool PsychUnshareFinalizedFBOIfNeeded(PsychWindowRecordType *window
         // precision loss!
         //
         // So lets check if the imported format meets or exceeds the current
-        // precision. If not, then we'd need to split up into 2 separate buffers.
+        // precision and range requirements of the drawBufferFBO. If not, then
+        // we'd need to split up into 2 separate buffers at a slight performance
+        // loss due to one extra framebuffer copy.
         PsychFBO *dfbo = windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]];
 
-        if ((((GLenum) formatSpec != dfbo->format) &&
-             ((formatSpec == GL_RGBA8) || (formatSpec == GL_RGB10_A2) ||
-              (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) ||
-              (formatSpec == GL_RGBA16 && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2 || dfbo->format == GL_RGB10_A2)) ||
-              (formatSpec == GL_RGBA16_SNORM && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2))))) {
+        // First we check if there is a format mismatch -> no mismatch, no trouble. (condition line 1)
+        // Then we check if the format is in the white-list of formats we can handle under suitable conditions. If not -> unshare! (condition line 2)
+        // Of the formats which are fine in principle, we check for specific problematic format combinations which would cause
+        // degradation of value range, and/or clamping, and/or alpha-channel loss, and/or precision loss (remaining conditions, one per line),
+        // and unshare if that is the case:
+        if (((GLenum) formatSpec != dfbo->format) /* Mismatched formats -> possible problem */ && (
+            (formatSpec != GL_RGBA8 && formatSpec != GL_SRGB8_ALPHA8 && formatSpec != GL_RGB10_A2 && formatSpec != GL_RGBA16F && formatSpec != GL_RGBA16 && formatSpec != GL_RGBA16_SNORM && formatSpec != GL_RGBA32F) /* white-list of possible-in-principle formats */ ||
+            ( /* Format was in white-list of in-principle-possible formats -> Check if special unshare triggers exist: */
+            (formatSpec == GL_RGBA8) /* Target 8 bpc unorm, but db has higher precision/range */ ||
+            (formatSpec == GL_SRGB8_ALPHA8 && !(dfbo->format == GL_RGBA8)) /* Target can do 8 bpc unorm easily. However, db of 10 bpc unorm might be a stretch? Higher than 10 bpc precision is definitely unattainable */ ||
+            (formatSpec == GL_RGB10_A2) /* Target 10 bpc unorm for color, but alpha channel less than 8 bit precision for alpha blending, for a db of either higher precision or range, or with need for 8 bit alpha */ ||
+            (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* fp16 can only store linear 11 bpc, but db has higher precision -> would degrade precision */ ||
+            (formatSpec == GL_RGBA16  && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* 16 bpc unorm insufficient for fp32 in range or precision, but also for fp16 and snorm16, as both are signed, but unorm is not */ ||
+            (formatSpec == GL_RGBA16_SNORM && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* 16 bpc snorm can't represent fp32 in range or precision, fp16 for out of [-1;1] interval values, or 16 bpc unorm wrt. precision */ ))
+           ) {
             // Future finalizedFBO / interop format is insufficient in range, sign or precision
             // to store drawBufferFBO content faithfully. Need to allocate dedicated PsychFBO and
             // hook it up to finalizedFBO:
@@ -1849,7 +1865,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
         return(FALSE);
     }
 
-    if (viewid > 0 && !(windowRecord->stereomode & kPsychDualStreamStereo)) {
+    if (viewid > 0 && !(windowRecord->stereomode == kPsychDualStreamStereo)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: Tried to setup right eye buffer in a purely monoscopic configuration! Skipped.\n");
         return(FALSE);
     }
@@ -2112,7 +2128,7 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFBO);
     glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFBO);
 
-    for (viewid = 0; viewid < ((windowRecord->stereomode & kPsychDualStreamStereo) ? 2 : 1) && (fborc == GL_FRAMEBUFFER_COMPLETE_EXT); viewid++) {
+    for (viewid = 0; viewid < ((windowRecord->stereomode == kPsychDualStreamStereo) ? 2 : 1) && (fborc == GL_FRAMEBUFFER_COMPLETE_EXT); viewid++) {
         // Are finalizedFBO and drawBufferFBO using the same backing PsychFBO? If yes,
         // and they are incompatible, then unshare them, fail if this fails:
         if (!PsychUnshareFinalizedFBOIfNeeded(windowRecord, viewid, format, width, height)) {
@@ -2141,6 +2157,8 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
 
         // Attach the new texture as color buffer zero:
         glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, (GLenum) glTextureTarget, (GLuint) ((viewid == 0) ? leftglHandle : rightglHandle), 0);
+
+        PsychTestForGLErrors();
 
         // Check for framebuffer completeness:
         fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -2186,10 +2204,12 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
             }
 
             if (PsychPrefStateGet_Verbosity() > 1)
-                printf("PTB-WARNING: PsychSetPipelineExportTexture: Framebuffer viewid=%i incomplete [%s]! Reverting to old textures.\n", viewid, fbodiag);
+                printf("PTB-WARNING: PsychSetPipelineExportTexture: Framebuffer viewid=%i incomplete for new texture %i [%s]! Reverting to previous texture %i\n", viewid,
+                       (viewid == 0) ? leftglHandle : rightglHandle, fbodiag, fbo->coltexid);
 
             // Reattach old texture:
             glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, fbo->textarget, fbo->coltexid, 0);
+            PsychTestForGLErrors();
         }
         else {
             // Success: Assign new values:
@@ -2215,30 +2235,30 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
 /* PsychGetPipelineExportTexture()
  *
  * Get current OpenGL color renderbuffer attachment backing textures for the PsychFBO's
- * of the finalizedFBO[0/1] output render buffers.
+ * of the finalizedFBO[0/1] output render buffers, and also the associated OpenGL FBO handles.
  *
  * Returns TRUE on success, FALSE on failure.
  */
 psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, int *leftglHandle, int *rightglHandle, int *glTextureTarget, int *format,
-                                         int *multiSample, int *width, int *height)
+                                         int *multiSample, int *width, int *height, int *leftFboHandle, int *rightFboHandle)
 {
     PsychFBO *fbo;
 
-    if (!(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks)) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychGetPipelineExportTexture: No kPsychNeedFinalizedFBOSinks! Skipped.\n");
+    // Nothing to query if imaging pipeline is off or only used for fast offscreen window support:
+    if (windowRecord->imagingMode == 0 || windowRecord->imagingMode == kPsychNeedFastOffscreenWindows) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychGetPipelineExportTexture: Imaging pipeline not fully enabled, so not usable! Skipped.\n");
+
         return(FALSE);
     }
 
+    // The PsychFBO* for finalizedFBO's are always valid and point to something valid:
     fbo = windowRecord->fboTable[windowRecord->finalizedFBO[0]];
 
     *leftglHandle = (int) fbo->coltexid;
-    if (windowRecord->stereomode & kPsychDualStreamStereo) {
-        *rightglHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid;
-    }
-    else {
-        *rightglHandle = 0;
-    }
-
+    *rightglHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid;
+    *leftFboHandle = (int) fbo->fboid;
+    *rightFboHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid;
     *glTextureTarget = (int) fbo->textarget;
     *format = (int) fbo->format;
     *multiSample = (int) fbo->multisample;
@@ -4066,6 +4086,10 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
                     scissor_ignore = TRUE;
                 }
             }
+            else if (hookfunc->hookfunctype == kPsychBuiltinFunc && strstr(hookfunc->idString, "Builtin:ActivateOpenGLContext")) {
+                // Enable associated GL context with no other side effects:
+                PsychSetGLContext(windowRecord);
+            }
             else {
                 // Normal hook function - Process this hook function:
                 if (!PsychPipelineExecuteHookSlot(windowRecord, hookId, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, &mysrcfbo1, &mysrcfbo2, &mydstfbo, &mynxtfbo)) {
@@ -4555,6 +4579,18 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
     return;
 }
 
+static void resetTexUnit(void)
+{
+    glDisable(GL_TEXTURE_1D);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_TEXTURE_3D);
+    glDisable(GL_TEXTURE_RECTANGLE_EXT);
+    glBindTexture(GL_TEXTURE_1D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_3D, 0);
+    glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+}
+
 psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
     psych_bool rc = TRUE;
@@ -4562,6 +4598,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     GLenum glerr;
     char* pstrpos = NULL;
     int texunit, texid;
+    psych_bool needTexPopAttrib = FALSE;
 
     // Select proper blitter function:
 
@@ -4594,11 +4631,19 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
     // TODO: Common setup code for texturing, filtering, alpha blending, z-test and such...
 
+    // If any texture setup is used, store previous state on attrib stack, disable everything
+    // to avoid interference by current, potentially incompatible, settings:
+    if (strstr(hookfunc->pString1, "TEXTURE") != NULL) {
+        needTexPopAttrib = TRUE;
+        glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT);
+    }
+
     // Setup code for 1D textures:
     pstrpos = hookfunc->pString1;
     while ((pstrpos=strstr(pstrpos, "TEXTURE1D"))) {
         if (2==sscanf(pstrpos, "TEXTURE1D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_1D);
             glBindTexture(GL_TEXTURE_1D, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_1D target of texunit %i\n", texid, texunit);
@@ -4611,6 +4656,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     while ((pstrpos=strstr(pstrpos, "TEXTURE2D"))) {
         if (2==sscanf(pstrpos, "TEXTURE2D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_2D);
             glBindTexture(GL_TEXTURE_2D, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_2D target of texunit %i\n", texid, texunit);
@@ -4623,6 +4669,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     while ((pstrpos=strstr(pstrpos, "TEXTURERECT2D"))) {
         if (2==sscanf(pstrpos, "TEXTURERECT2D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_RECTANGLE_EXT);
             glBindTexture(GL_TEXTURE_RECTANGLE_EXT, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_RECTANGLE_EXT target of texunit %i\n", texid, texunit);
@@ -4635,6 +4682,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
     while ((pstrpos=strstr(pstrpos, "TEXTURE3D"))) {
         if (2==sscanf(pstrpos, "TEXTURE3D(%i)=%i", &texunit, &texid)) {
             glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+            resetTexUnit();
             glEnable(GL_TEXTURE_3D);
             glBindTexture(GL_TEXTURE_3D, texid);
             if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_3D target of texunit %i\n", texid, texunit);
@@ -4682,49 +4730,9 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
     // TODO: Common teardown code for texturing, filtering and such...
 
-    // Teardown code for 1D textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURE1D"))) {
-        if (2==sscanf(pstrpos, "TEXTURE1D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_1D, 0);
-            glDisable(GL_TEXTURE_1D);
-        }
-        pstrpos++;
-    }
-
-    // Teardown code for 2D textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURE2D"))) {
-        if (2==sscanf(pstrpos, "TEXTURE2D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glDisable(GL_TEXTURE_2D);
-        }
-        pstrpos++;
-    }
-
-    // Teardown code for 2D rectangle textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURERECT2D"))) {
-        if (2==sscanf(pstrpos, "TEXTURERECT2D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
-            glDisable(GL_TEXTURE_RECTANGLE_EXT);
-        }
-        pstrpos++;
-    }
-
-    // Teardown code for 3D textures:
-    pstrpos = hookfunc->pString1;
-    while ((pstrpos=strstr(pstrpos, "TEXTURE3D"))) {
-        if (2==sscanf(pstrpos, "TEXTURE3D(%i)=%i", &texunit, &texid)) {
-            glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
-            glBindTexture(GL_TEXTURE_3D, 0);
-            glDisable(GL_TEXTURE_3D);
-        }
-        pstrpos++;
-    }
+    // Teardown code for textures:
+    if (needTexPopAttrib)
+        glPopAttrib();
 
     glActiveTextureARB(GL_TEXTURE0_ARB);
 

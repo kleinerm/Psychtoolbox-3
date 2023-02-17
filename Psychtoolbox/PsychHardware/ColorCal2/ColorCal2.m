@@ -23,8 +23,11 @@ function varargout = ColorCal2(command, varargin)
 % communication.
 %
 %
-% OSX: OSX 10.12 or later is required for this function to work. For older
-% OSX versions, look for instructions on the CRS Ltd. website.
+% macOS: macOS 10.12 or later is required for this function to work. For
+% older macOS versions, look for instructions on the CRS Ltd. website.
+% Access to all ColorCal2 functionality needs a 3rd party libusb-1.0.dylib
+% installed - seee 'help PsychHID'. Without that, the same serial port
+% method is used as on MS-Windows, with a bit more limited functionality.
 %
 %
 % LINUX: If you want to use this function without the need to run Matlab or
@@ -93,7 +96,9 @@ function varargout = ColorCal2(command, varargin)
 %      quitting Octave or Matlab will also close the connection, so this is
 %      not strictly needed.
 %
-% All the following commands are not supported on MS-Windows, only on Linux and OSX:
+% All the following commands are not supported on MS-Windows, only on Linux
+% and macOS, and on macOS they need a 3rd party installed libusb-1.0.dylib
+% (see 'help PsychHID'):
 %
 %
 % 'GetRawData' - Returns the raw data for all three light channels, the
@@ -147,6 +152,7 @@ function varargout = ColorCal2(command, varargin)
 %             This uses code derived from the Matlab sample code by CRS, incorporated in a
 %             modified form with permission of CRS under our usual MIT license.
 % 02.09.2020  Make more robust against weirdly behaving display panels. (Mario Kleiner)
+% 25.10.2022  Allow IOPort fallback if USBControlTransfers are unsupported on macOS. (Mario Kleiner)
 
 persistent usbHandle;
 persistent portHandle;
@@ -166,17 +172,32 @@ end
 % Connect to the ColorCal2 if we haven't already.
 if isempty(usbHandle) && isempty(portHandle)
     if ~IsWin
-        % Not Windows: Can use efficient USB control transfers:
+        % Not MS-Windows: Maybe we can use efficient USB control transfers?
+        % Can't do this on Windows, because MS-Windows security mechanisms
+        % will prevent low-level USB access to the ColorCal2.
         LoadPsychHID;
-        usbHandle = PsychHID('OpenUSBDevice', 2145, 4097);
-    else
-        % Windows: Need to use limited virtual COM port method:
+
+        % USB low-level access supported? Always true on Linux, but on
+        % macOS it needs a manually installed 3rd party provided
+        % libusb-1.0.dylib, e.g., from HomeBrew, otherwise unavailable:
+        if PsychHID('OpenUSBDevice', -1, -1)
+            % Yes. Try to open USB device for low-level access:
+            usbHandle = PsychHID('OpenUSBDevice', 2145, 4097);
+        else
+            fprintf('ColorCal2: libusb-1.0.dylib unavailable (see ''help PsychHID''). Will try to use less capable serial port method, like on MS-Windows.\n');
+            fprintf('ColorCal2: Some functions will operate more slowly, and some will not work, e.g., LEDOn, LEDOff, ...\n');
+        end
+    end
+
+    % Did we manage to establish low-level USB access?
+    if isempty(usbHandle)
+        % No: Need to use limited virtual COM port / serial port method:
         portString = [];
         configfile = [PsychtoolboxConfigDir 'ColorCal2Config.txt'];
         if ~exist(configfile, 'file')
-            fprintf('ColorCal2: Could not find a ColorCal2 config file under [%s]. Trying to probe correct virtual COM port.\n', configfile);
+            fprintf('ColorCal2: Could not find a ColorCal2 config file under [%s]. Trying to probe correct virtual COM port or serial port.\n', configfile);
         else
-            % File exists -> We want to access a Bits#. Parse file for a port name string:
+            % File exists. Parse file for a port name string:
             fid = fopen(configfile);
             fileContentsWrapped = fgets(fid);
             fclose(fid);
@@ -189,11 +210,11 @@ if isempty(usbHandle) && isempty(portHandle)
             end
         end
 
-        % On Windows we use virtual COM ports, aka serial port
-        % communication instead, to work around the lack of a
-        % proper USB HID driver.
+        % On Windows or limited macOS we use virtual COM ports, aka serial
+        % port communication instead, to work around the lack of a proper
+        % USB HID driver.
         verb = IOPort('Verbosity', 1);
-        portString = FindSerialPort(portString, 1);
+        portString = FindSerialPort(portString);
         portHandle = IOPort('OpenSerialPort', portString, 'ReceiveTimeout=5.0');
         IOPort('Verbosity', verb);
     end

@@ -40,7 +40,7 @@ function MorphDemo(textureon, dotson, normalson, stereomode)
 % Dr. Quoc C. Vuong, MPI for Biological Cybernetics, Tuebingen, Germany.
 
 morphnormals = 1;
-global win;
+global win; %#ok<*GVMIS> 
 
 % Octave's new plotting backend 'fltk' interferes with Screen(),
 % due to internal use of OpenGL. Problem is it changes the
@@ -48,7 +48,7 @@ global win;
 % don't protect ourselves against this yet. Switch plotting backend
 % to good'ol gnuplot to work around this issue until we fix it properly
 % inside Screen():
-if IsOctave && exist('graphics_toolkit')
+if IsOctave && exist('graphics_toolkit') %#ok<EXIST> 
     graphics_toolkit ('gnuplot');
 end
 
@@ -77,7 +77,7 @@ normalson %#ok<NOPRT>
 
 if nargin < 4 || isempty(stereomode)
     stereomode = 0;
-end;
+end
 stereomode %#ok<NOPRT>
 
 % Response keys: Mapping of keycodes to keynames.
@@ -110,7 +110,7 @@ if dotson~=3 && dotson~=4
    rect = [];
 else
    rect = [0 0 500 500];
-end;
+end
 
 % Go for it!
 PsychImaging('PrepareConfiguration');
@@ -131,7 +131,7 @@ if ( textureon==1 )
     texid = Screen('MakeTexture', win, texture);
 
     % Retrieve a standard OpenGL texture handle and target from Psychtoolbox for use with MOGL:
-    [gltexid gltextarget, uscale, vscale] = Screen('GetOpenGLTexture', win, texid, size(texture, 1), size(texture, 2));
+    [gltexid, gltextarget, uscale, vscale] = Screen('GetOpenGLTexture', win, texid, size(texture, 1), size(texture, 2));
 
     % Swap (u,v) <-> (v,u) to account for the transposed images read via Matlab imread():
     texcoords(2,:) = objs{1}.texcoords(1,:);
@@ -157,7 +157,7 @@ if ( textureon==1 )
         % power-of-two textures, not rectangle textures:
         texcoords(1,:) = texcoords(1,:) * size(texture,1);
         texcoords(2,:) = texcoords(2,:) * size(texture,2);
-    end;
+    end
 end
 
 % Reset moglmorpher:
@@ -189,7 +189,7 @@ if perpixellighting==1
     glsl=LoadGLSLProgramFromFiles([shaderpath 'Pointlightshader'],1);
     % ...and activate the shader program:
     glUseProgram(glsl);
-end;
+end
 
 if ( textureon==1 )
     % Setup texture mapping for our face texture:
@@ -430,13 +430,13 @@ while ((GetSecs - t) < 60)
 
     if 0
         % Test morphed geometry readback:
-        mverts = moglmorpher('getGeometry');
+        mverts = moglmorpher('getGeometry'); %#ok<UNRCH> 
         scatter3(mverts(1,:), mverts(2,:), mverts(3,:));
         drawnow;
     end
 
     % Check for keyboard press:
-    [KeyIsDown, endrt, KeyCode] = KbCheck;
+    [KeyIsDown, ~, KeyCode] = KbCheck;
     if KeyIsDown
         if ( KeyIsDown==1 && KeyCode(closer)==1 )
             zz=zz-0.1;
@@ -532,7 +532,7 @@ if (dotson == 1 || dotson == 3)
     % Reset settings for shape rendering:
     glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);        
     glEnable(GL.LIGHTING);
-end;
+end
 
 if (dotson == 2)
     % Draw connecting lines to visualize the underlying geometry:
@@ -548,7 +548,7 @@ if (dotson == 2)
     % Reset settings for shape rendering:
     glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);        
     glEnable(GL.LIGHTING);
-end;
+end
 
 if (normalson > 0)
     % Draw surface normal vectors on top of object:
@@ -562,7 +562,7 @@ if (normalson > 0)
     % Reset settings for shape rendering:
     glEnable(GL.LIGHTING);
     glColor4f(0,0,1,1);
-end;
+end
 
 if (dotson == 3 || dotson == 4)
    % Compute and retrieve projected screen-space vertex positions:
@@ -572,7 +572,7 @@ if (dotson == 3 || dotson == 4)
    vpos(:,2)=RectHeight(Screen('Rect', win)) - vpos(:,2);
    plot(vpos(:,1), vpos(:,2), '.');
    drawnow;
-end;
+end
 
 % Restore modelview matrix:
 glPopMatrix;

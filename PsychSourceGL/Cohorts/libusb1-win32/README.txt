@@ -1,88 +1,55 @@
 This subfolder libusb1-win32 contains the precompiled binary snapshot
-and source code of the current libusb-1.0 for MS-Windows snapshot.
+and source code of the current libusb-1.0 for MS-Windows snapshot, as
+Well as a copy for Apple macOS, built on macOS 11.6.1 with assumed
+deployment target macOS 11.
 
-libusb_2011.07.20.7z contains the precompiled binary snapshot from
-20-July-2011. libusb-pbatard-3f01384.zip contains the corresponding
-snapshot of the git source tree for the binaries.
+libusb-1.0.26-binaries.7z contains the precompiled binary snapshot for
+libusb v1.0.26, downloaded at 11-November-2022, from
+https://github.com/libusb/libusb/releases/download/v1.0.26/libusb-1.0.26-binaries.7z
 
-The binary zip file is also fully extracted in this folder to allow
-rebuilding PsychHID et al.
+
+libusb-1.0.26.tar.bz2, downloaded at 11-November-2022, from
+https://github.com/libusb/libusb/releases/download/v1.0.26/libusb-1.0.26.tar.bz2
+contains the corresponding snapshot of the git source tree for the binaries.
+
+Some of the contents of the binary zip file, specifically the libusb.h
+header include file, the libusb-1.0.dll runtime / link library DLL's,
+and the corresponding import libraries, all in variants for MinGW
+and MSVC 2015+, both 32-Bit Intel and 64-Bit Intel, are also extracted
+into this folder / subfolders, to allow rebuilding PsychHID et al. for
+32-Bit / 64-Bit Octave (MinGW 32/64), 32-Bit / 64-Bit Python (MS32 / MS64)
+and 64-Bit Matlab (MS64) subfolders.
 
 The relevant 32-Bit runtime DLL for actual use with 32-Bit versions of
-Octave and Matlab R2007a and later on MS-Windows is stored in the
+Octave, Matlab R2007a and later, and Python on MS-Windows is stored in the
 PTB distro as Psychtoolbox/PsychContributed/libusb-1.0.dll
 
-libusb-1.0 is licensed under LGPLv2+. It is dynamically linked against
-the PsychHID driver for low-level USB access support, e.g., usb
-control transfers. It is included and distributed here unmodified from
-its original source. The source code is included to satisfy our
-obligations to distribute the source code if we include the binaries.
-If you have any interest in this you should probably always get the
-latest binaries and/or source from the www.libusb.org website, as our
-current snapshot may be quite old and outdated at any given point in time.
+The relevant 64-Bit runtime DLL for actual use with 64-Bit versions of
+Octave, Matlab R2014b and later, and Python on MS-Windows is stored in the
+PTB distro as Psychtoolbox/PsychContributed/x64/libusb-1.0.dll
 
-Now follow the original content of this readme file:
-====================================================
+The macOS dylib for building/linking or runtime is stored under libusb-1.0.dylib
+in this main folder. It is for 64-Bit Intel cpu architecture only and meant
+to support building the PsychHID Python extension without need for new external
+dependencies. The Octave and Matlab builds are setup to expect a /usr/local/
+Installation, e.g., provided conveniently by HomeBrew. weak_linking is
+recommended, so runtime libs are not mandatory on Python for rarely needed
+functionality. This is for now mostly for building PsychHID.pyex without failure.
 
+libusb-1.0 is licensed under LGPLv2+. See the file COPYING.txt for a copy
+of the license text.
 
-              libusb 1.0 Windows binary snapshot - README
+It is dynamically linked against the PsychHID driver for low-level USB
+access support, e.g., usb control/interrupt/bulk/... transfers. It is
+included and distributed here unmodified from its original source. The
+source code is included to satisfy our obligations to distribute the
+source code if we include the binaries. If you have any interest in this,
+you should probably always get the latest binaries and/or source from the
+upstream projects main website...
 
-   *********************************************************************
-   *  The latest version of this snapshot can always be downloaded at: *
-   *  http://libusb.org/wiki/windows_backend#LatestBinarySnapshots     *
-   *********************************************************************
+https://libusb.info
 
-o Visual Studio:
-  - Open existing or create a new project for your application
-  - Copy libusb.h, from the include\libusb-1.0\ directory, into your project and
-    make sure that the location where the file reside appears in the 'Additional
-    Include Directories' section (Configuration Properties -> C/C++ -> General).
-  - Copy the relevant .lib file from MS32\ or MS64\ and add 'libusb-1.0.lib' to
-    your 'Additional Dependencies' (Configuration Properties -> Linker -> Input)
-    Also make sure that the directory where libusb-1.0.lib resides is added to
-    'Additional Library Directories' (Configuration Properties -> Linker
-    -> General)
-  - If you use the static version of the libusb-1.0 library, make sure that
-    'Runtime Library' is set to 'Multi-threaded DLL (/MD)' (Configuration
-    Properties -> C/C++ -> Code Generation).
-    NB: If your application requires /MT (Multi-threaded/libCMT), you need to
-    recompile a static libusb 1.0 library from source.
-  - Compile and run your application. If you use the DLL version of libusb-1.0,
-    remember that you need to have a copy of the DLL either in the runtime
-    directory or in system32
-
-o WDK/DDK:
-  - The following is an example of a sources files that you can use to compile
-    a libusb 1.0 based console application. In this sample ..\libusb\ is the
-    directory where you would have copied libusb.h as well as the relevant 
-    libusb-1.0.lib
-
-	TARGETNAME=your_app
-	TARGETTYPE=PROGRAM
-	USE_MSVCRT=1
-	UMTYPE=console
-	INCLUDES=..\libusb;$(DDK_INC_PATH)
-	TARGETLIBS=..\libusb\libusb-1.0.lib
-	SOURCES=your_app.c
-
-  - Note that if you plan to use libCMT instead of MSVCRT (USE_LIBCMT=1 instead
-    of USE_MSVCRT=1), you will need to recompile libusb to use libCMT. This can
-    easily be achieved, in the DDK environment, by running 'ddk_build /MT'
-
-o MinGW/cygwin
-  - Copy libusb.h, from include/libusb-1.0/ to your default include directory,
-    and copy the MinGW32/ or MinGW64/ .a files to your default library directory.
-    Or, if you don't want to use the default locations, make sure that you feed
-    the relevant -I and -L options to the compiler.
-  - Add the '-lusb-1.0' linker option when compiling.
-
-o Additional information:
-  - The libusb 1.0 API documentation can be accessed at:
-    http://libusb.sourceforge.net/api-1.0/modules.html
-  - For some libusb samples (including source), please have a look in examples/
-  - For additional information on the libusb 1.0 Windows backend please visit:
-    http://libusb.org/wiki/windows_backend
-  - The MinGW and MS generated DLLs are fully interchangeable, provided that you
-    use the import libs provided or generate one from the .def also provided.
-  - If you find any issue, please visit http://libusb.org/ and follow the
-    instructions from the 'Support' & 'Bug and feature Requests'
+..., as our snapshot included here may be quite old and outdated at any
+given point in time. We only rarely upgrade libusb to more recent versions.
+E.g., the current upgrade to v1.0.26 happened in November 2022, eleven (!)
+years after the previous upgrade to a version older than v1.0.9 !

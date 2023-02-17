@@ -604,13 +604,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             noInterop = 0;
 
             % Disable Direct-To-Display mode, it is buggy as hell, at least
-            % on macOS 10.15.7 with AMD Radeon Pro 560. Not that it works
-            % much better with this hack, it is only a bit better. At the
-            % same time, this hack supposedly adds one frame of extra
-            % latency, but our measurements show that even without it,
-            % there is one frame of extra latency, contrary to what the
-            % docs wrt. Direct-to-Display mode say. Broken stuff all
-            % around on the iToys operating system:
+            % as tested on macOS 10.15.7 and 12.6 with AMD Radeon Pro 560.
+            % Not that it works much better with this hack, it is only a
+            % bit better. At the same time, this hack supposedly adds one
+            % frame of extra latency, but our measurements show that even
+            % without it, there is one frame of extra latency, contrary to
+            % what the docs wrt. Direct-to-Display mode say. Broken stuff
+            % all around on the iToys operating system:
             flags = mor(flags, 2);
         else
             flags = mor(flags, 1);
@@ -900,15 +900,29 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     hdrInfo = PsychVulkanCore('GetHDRProperties', vwin);
     gpuIndex = hdrInfo.GPUIndex;
 
-    % Mesa opens-source AMD radv or Intel anvil driver of Mesa version < 20.1.2 in use for fullscreen direct display mode?
-    if isFullscreen && ismember(devs(gpuIndex).DriverId, [3, 6]) && (devs(gpuIndex).DriverVersionRaw < bitshift (20, 22) + bitshift (1, 12) + 2)
-        % These pre-20.1.2 drivers have a bug where in direct display mode they won't release the
-        % display unless the complete Vulkan instance is destroyed. Iow. we need a full driver
-        % shutdown:
+    % Mesa open-source Vulkan drivers of Mesa version < 22.2.4 in use for fullscreen direct display mode and
+    % target video output windowRect doesn't have top-left corner at (0,0)?
+    if isFullscreen && any(windowRect(1:2)) && ismember(devs(gpuIndex).DriverId, [3, 6, 13, 18:20, 22:23]) && ...
+       (devs(gpuIndex).DriverVersionRaw < bitshift (22, 22) + bitshift (2, 12) + 4)
+        % Yes. At least as of Mesa version 22.3-devel and earlier (tested Mesa 22.3-git, 22.0.5, 21.2.6),
+        % these drivers have an internal caching bug in their WSI, where in direct display mode they will
+        % fail on any run after the first run in a session (vkQueuePresent() fails with VK_ERROR_SURFACE_LOST),
+        % unless either the fullscreen output window was covering a video output with viewport (x,y) starting
+        % at X-Screen position (0,0), ie. viewport top-left == X-Screen top-left. This is due to some erroneous
+        % caching of internal per DRM/KMS output (wsi_display_connector->active) state, retaining stale settings
+        % from the first session, which leads to omitting a required drmModeSetCrtc() full modeset on first
+        % present -> Boom!
+        %
+        % The bug has been diagnosed and fixed by myself and will be part of Mesa 22.2.4 and later, but won't
+        % get backported further, so we need a workaround for at least Debian 11, Ubuntu 20.04-LTS
+        % and Ubuntu 22.04.1-LTS, Ubuntu 22.10 and possibly also Ubuntu 22.04.2-LTS.
+        %
+        % The workaround is a full driver shutdown -> VKInstance destruction -> Stale cache reset -> Ok:
         vulkan{win}.needsMesaDDMWa = 1;
         fprintf('PsychVulkan-WARNING: Need to enable full-driver-shutdown workaround for buggy Mesa Vulkan driver!\n');
-        fprintf('PsychVulkan-WARNING: This may fail badly on multi-window configurations and is a bad hack!\n');
-        fprintf('PsychVulkan-WARNING: Please upgrade to Mesa version 20.1.2 or later to get rid of this hack.\n');
+        fprintf('PsychVulkan-WARNING: This could cause problems on multi-window Vulkan configurations and is a bad hack!\n');
+        fprintf('PsychVulkan-WARNING: Windows placed in the origin (0,0) of their respective X-Screen are not affected.\n');
+        fprintf('PsychVulkan-WARNING: Please upgrade to Mesa version 22.2.4 or later to get rid of this hack.\n');
     else
         vulkan{win}.needsMesaDDMWa = 0;
     end

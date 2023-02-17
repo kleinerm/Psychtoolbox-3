@@ -194,6 +194,9 @@ psych_bool PsychHIDWarnAccessDenied(const char* callerName)
     printf("PsychHID-ERROR:    then reopen the GUI, go back to step 5 and *check* the checkbox again. Unchecking\n");
     printf("PsychHID-ERROR:    and then checking the checkbox again, and closing and reopening the security GUI and\n");
     printf("PsychHID-ERROR:    Matlab/Octave/Terminal inbetween usually fixes these issues caused by Apple macOS GUI bugs.\n");
+    printf("PsychHID-ERROR:    It may also be neccessary to delete the item from the list by marking it and then using the\n");
+    printf("PsychHID-ERROR:    - (Minus) button at the bottom of the list view. Closing the GUI, reopening and readding the\n");
+    printf("PsychHID-ERROR:    Matlab/Octave/Terminal item to the list by clicking the + (Plus) button.\n");
     printf("PsychHID-ERROR: 9. If it still doesn't work, retry the procedure - rinse, wash, repeat.\n");
     printf("PsychHID-ERROR: 10. If it works without errors, retry if your own scripts or our demos now work again.\n");
     printf("PsychHID-ERROR: 11. If none of this works, you may be able to buy paid support from us: 'help PsychPaidSupportAndServices'.\n\n\n");
@@ -276,10 +279,6 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     // Make sure our keyboard query mechanism is not blocked for security reasons, e.g.,
     // secure password entry field active in another process, i.e., EnableSecureEventInput() active.
     if (PsychHIDWarnInputDisabled("PsychHID('KbCheck')")) return(PsychError_none);
-
-    // Check for Catalina+ input monitoring permissions being denied:
-    if (PsychHIDWarnAccessDenied("PsychHID('KbCheck')"))
-        PsychErrorExitMsg(PsychError_user, "KbCheck failed due to macOS security restrictions.");
 
     // Step through the elements of the device.  Set flags in the return array for down keys.
     // Note: Since Apples macOS 10.15 Catalina trainwreck, HIDGetNextDeviceElement() and IOHIDElement_GetValue()
@@ -739,7 +738,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
     // The CFRunLoop of the thread in KbQueueWorkerThreadMain() is the one that executes here:
     IOHIDQueueRef queue = (IOHIDQueueRef) sender;
     IOHIDValueRef valueRef = NULL;
-    int deviceIndex = (int) target;
+    int deviceIndex = (int) (size_t) target;
     double timestamp;
     int eventValue;
     long keysUsage = -1;
@@ -910,7 +909,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 
 // Async processing thread for keyboard events:
 static void *KbQueueWorkerThreadMain(void *inarg) {
-    int deviceIndex = (int) inarg;
+    int deviceIndex = (int) (size_t) inarg;
     int rc;
 
     // Assign a name to ourselves, for debugging:
@@ -983,10 +982,6 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     // Initialize keyboardLayout and kbdType, used by the keyboard queue thread for mapping keycodes to cooked characters:
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
     __block CFDataRef uchr = NULL;
-
-    // Check for Catalina+ input monitoring permissions being denied:
-    if (PsychHIDWarnAccessDenied("PsychHID('KbQueueCreate')"))
-        PsychErrorExitMsg(PsychError_user, "Failed to create keyboard queue for detecting key presses due to macOS security restrictions.");
 
     // Since the macOS 10.15 Catalina trainwreck, TISGetInputSourceProperty() must execute on the main thread, or crash, because Apple bs!
     if (currentKeyboard)

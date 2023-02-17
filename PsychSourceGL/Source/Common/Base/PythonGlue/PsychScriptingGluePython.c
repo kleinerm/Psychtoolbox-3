@@ -50,18 +50,18 @@
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
 
-// Import NumPy array handling functions: Require at least NumPy v 1.7, released
-// in February 2013:
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+// Import NumPy array handling functions: Require at least NumPy v 1.13.0, released
+// in June 2017:
+#define NPY_NO_DEPRECATED_API NPY_1_13_API_VERSION
 #include <numpy/arrayobject.h>
-// Define after include, to avoid compiler warning and pass runtime loader compat check:
-#undef NPY_FEATURE_VERSION
-#define NPY_FEATURE_VERSION NPY_1_7_API_VERSION
 
-// Can not use NPY_TITLE_KEY macro if compat limited api is selected.
-// However, i have no clue what we'd use it for, so there...
-#ifdef Py_LIMITED_API
-#undef NPY_TITLE_KEY
+#if defined(Py_LIMITED_API) && defined(__GNUC__) && (__GNUC__ < 10) && !defined(__clang__)
+#error \
+"This version of gcc has a bug and cannot compile this code \
+with Py_LIMITED_API enabled. Either build without Py_LIMITED_API \
+or upgrade gcc to a version >= 10.1 and try again. Ubuntu 20.04, \
+e.g., ships a suitable compiler package named gcc-10. \
+See https://github.com/numpy/numpy/issues/16970 for details."
 #endif
 
 // Define this to 1 if you want lots of debug-output for the Python-Scripting glue.
@@ -127,28 +127,7 @@ static PyMethodDef GlobalPythonMethodsTable[] = {
     {NULL, NULL, 0, NULL}
 };
 
-// Python 2 init code -- Python 2.6+ is required for PTB modules:
-#if PY_MAJOR_VERSION < 3
-#define _PPYINIT(n) PyMODINIT_FUNC init ## n(void)
-
-// This is the entry point - module init function, called at module import:
-// PTBMODULENAME is -DPTBMODULENAME myname defined by the build script to the
-// name of the module, e.g., GetSecs.
-PPYINIT(PTBMODULENAME)
-{
-    modulefilename[0] = 0;
-
-    // Add a help string with module synopsis to 1st function - our main dispatch function:
-    GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
-
-    // Initialize module:
-    module = Py_InitModule(PPYNAME(PTBMODULENAME), GlobalPythonMethodsTable);
-}
-// End of Python 2.x specific init code
-#endif
-
 // Python 3 init code:
-#if PY_MAJOR_VERSION >= 3
 #define _PPYINIT(n) PyMODINIT_FUNC PyInit_ ## n(void)
 
 // Defined in PsychScriptingGluePython.c
@@ -176,7 +155,9 @@ static struct PyModuleDef module_definition = {
     PyModuleDef_HEAD_INIT,                                                      // Base instance.
     PPYNAME(PTBMODULENAME),                                                     // Module name.
     "The " PPYNAME(PTBMODULENAME) " Psychtoolbox module for Python 3.\n"        // Help text.
-    "Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license.",
+    "Copyright (c) 2018-2023 Mario Kleiner.\n"
+    "Copyright (c) 2022-2023 Alex Forrence.\n"
+    "Licensed under the MIT license.",
     -1,                                                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
     GlobalPythonMethodsTable,                                                   // Function dispatch table, shared with Python 2.
     NULL,                                                                       // m_slots
@@ -200,9 +181,6 @@ PPYINIT(PTBMODULENAME)
     return(module);
 }
 
-// End of Python 3.x specific init code
-#endif
-
 // END OF MODULE INITIALIZATION FOR PYTHON:
 
 // Return filename of the module definition file - the shared library:
@@ -210,11 +188,7 @@ const char* PsychGetPyModuleFilename(void)
 {
     // Get full filesystem path/name of the module definition file, ie. the library:
     if (module && !modulefilename[0]) {
-        #if PY_MAJOR_VERSION >= 3
-            PyObject *fname = PyModule_GetFilenameObject(module);
-        #else
-            PyObject *fname = NULL;
-        #endif
+        PyObject *fname = PyModule_GetFilenameObject(module);
 
         if (fname)
             mxGetString(fname, modulefilename, sizeof(modulefilename) - 1);
@@ -462,14 +436,15 @@ PyObject* mxCreateString(const char* instring)
     #endif
 
     if (!ret) {
-        #if PY_MAJOR_VERSION < 3
-        // Fallback to standard C string decoding:
-        ret = PyString_FromString(instring);
-        #else
         // Try decoding assuming current system locale setting:
         ret = PyUnicode_DecodeLocale(instring, "surrogateescape");
         PyErr_Clear();
 
+        // If Py_LIMITED_API is enabled, it means we're compiling on
+        // at least Python 3.7. If that's the case, we can skip the
+        // next two checks, which deal with incompatibilties in earlier
+        // Python versions
+        #ifndef Py_LIMITED_API
         // Retry with strict error handler, because of backwards incompatible
         // change in Python 3.6 -> 3.7 (sigh):
         if (!ret) {
@@ -585,18 +560,13 @@ int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
     if (!mxIsChar(arrayPtr))
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
 
-    #if PY_MAJOR_VERSION < 3
-        // Python 2: Gives a new reference to a unicode object. Converts bytes -> unicode as needed:
-        arrayPtr = PyObject_Unicode(arrayPtr);
-    #else
-        // Python 3: No PyObject_Unicode(), distinguish unicode input vs. bytes 8-bit legacy string input:
-        if (PyUnicode_Check(arrayPtr))
-            // Provide it as Latin1 8-bit "bytes" string from unicode, giving a new reference:
-            arrayPtr = PyUnicode_AsLatin1String(arrayPtr);
-        else
-            // Is already a 8-bit "bytes" string. Increment refcount, to counteract decref below:
-            Py_INCREF(arrayPtr);
-    #endif
+    // Python 3: No PyObject_Unicode(), distinguish unicode input vs. bytes 8-bit legacy string input:
+    if (PyUnicode_Check(arrayPtr))
+        // Provide it as Latin1 8-bit "bytes" string from unicode, giving a new reference:
+        arrayPtr = PyUnicode_AsLatin1String(arrayPtr);
+    else
+        // Is already a 8-bit "bytes" string. Increment refcount, to counteract decref below:
+        Py_INCREF(arrayPtr);
 
     // Got a 8-bit "bytes" string?
     if (arrayPtr) {
@@ -810,19 +780,11 @@ static psych_bool firstTime = TRUE;
 PsychError PsychExitPythonGlue(void);
 void ScreenCloseAllWindows(void);
 
-// Is this awful, or what? Hackery needed to handle NumPy for Python 3 vs 2:
-#if PY_MAJOR_VERSION >= 3
 void* init_numpy(void)
 {
     import_array();
     return(NULL);
 }
-#else
-void init_numpy(void)
-{
-    import_array();
-}
-#endif
 
 void PsychExitRecursion(void)
 {
@@ -2671,7 +2633,7 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if (PyUnicode_Check(ppyPtr))
-            strLen = (psych_uint64) PyUnicode_GetSize(ppyPtr) + 1;
+            strLen = (psych_uint64) PyUnicode_GetLength(ppyPtr) + 1;
         else
             strLen = (psych_uint64) PyBytes_Size(ppyPtr) + 1;
 
@@ -2870,7 +2832,7 @@ double PsychGetNanValue(void)
  * getConfigDir = FALSE => Return PsychtoolboxRoot().
  *
  * This function may fail to retrieve the path, in which case it returns an empty null-terminated string, i.e., strlen() == 0.
- * On successfull recovery of the path, returns a const char* to a readonly string which encodes the path.
+ * On successful recovery of the path, returns a const char* to a readonly string which encodes the path.
  *
  */
 const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
@@ -3073,24 +3035,18 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
  * Simple function evaluation by the Python scripting environment.
  * This asks the runtime environment to execute/evaluate the given string 'cmdstring',
  * passing no return arguments back, except an error code.
- *
- * CAUTION: If Py_LIMITED_API is used for being able to build one set of modules
- *          for all Python 3.2+ versions, then this function will not work / be
- *          unavailable!
  */
 int PsychRuntimeEvaluateString(const char* cmdstring)
 {
-#ifndef Py_LIMITED_API
-    PyObject* res;
-    res = PyRun_String(cmdstring, Py_file_input, PyEval_GetGlobals(), PyEval_GetLocals());
-    if (res) {
-        // Success! We don't have a use for the res'ults object yet, so just unref it:
-        Py_XDECREF(res);
-        return(0);
+    PyObject* code = Py_CompileString(cmdstring, "PTB", Py_file_input);
+    if (code) {
+        PyObject* res = PyEval_EvalCode(code, PyEval_GetGlobals(), PyEval_GetLocals());
+        Py_DECREF(code);
+        if (res) {
+            Py_DECREF(res);
+            return(0);
+        }
     }
-#else
-	printf("PTB-WARNING: Module tried to call PsychRuntimeEvaluateString(%s),\nwhich is *unsupported* in Py_LIMITED_API mode!!!\n", cmdstring);
-#endif
     // Failed:
     return(-1);
 }

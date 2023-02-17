@@ -95,11 +95,9 @@ double PsychOSRefTimeToMonotonicTime(double refInputTime);
 // to main thread but wait synchronously for completion.
 //
 // Needed to deal with some dumb macOS restriction of only calling certain functions
-// from the applications main thread, often related to GUI processing via Coca/NSWindow etc.
-// TODO: if (!pthread_main_np()) ... is another option used lately by Apple in XQuartz, so maybe
-// more future-proof in light of latest deprecation bullshit of dispatch_get_current_queue().
+// from the application main thread, often related to GUI processing via Coca/NSWindow etc.
 #define DISPATCH_SYNC_ON_MAIN(ARG) do {                                 \
-    if (dispatch_get_main_queue() != dispatch_get_current_queue()) {    \
+    if (pthread_main_np() != 1) {    \
         dispatch_sync(dispatch_get_main_queue(), ^ARG);                 \
     } else {                                                            \
         ARG;                                                            \

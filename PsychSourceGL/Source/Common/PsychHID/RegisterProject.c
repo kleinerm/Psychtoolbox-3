@@ -61,15 +61,20 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("RawState",  &PSYCHHIDGetRawState));
     PsychErrorExit(PsychRegister("KbCheck",  &PSYCHHIDKbCheck));
 
+    PsychErrorExit(PsychRegister("KeyboardHelper", &PSYCHHIDKeyboardHelper));
+
     PsychErrorExit(PsychRegister("GetReport",  &PSYCHHIDGetReport));
     PsychErrorExit(PsychRegister("ReceiveReports",  &PSYCHHIDReceiveReports));
     PsychErrorExit(PsychRegister("ReceiveReportsStop",  &PSYCHHIDReceiveReportsStop));
     PsychErrorExit(PsychRegister("GiveMeReports",  &PSYCHHIDGiveMeReports));
     PsychErrorExit(PsychRegister("SetReport",  &PSYCHHIDSetReport));
+
     PsychErrorExit(PsychRegister("OpenUSBDevice", &PSYCHHIDOpenUSBDevice));
     PsychErrorExit(PsychRegister("CloseUSBDevice", &PSYCHHIDCloseUSBDevice));
     PsychErrorExit(PsychRegister("USBControlTransfer", &PSYCHHIDUSBControlTransfer));
-    PsychErrorExit(PsychRegister("KeyboardHelper", &PSYCHHIDKeyboardHelper));
+    PsychErrorExit(PsychRegister("USBBulkTransfer", &PSYCHHIDUSBBulkTransfer));
+    PsychErrorExit(PsychRegister("USBInterruptTransfer", &PSYCHHIDUSBInterruptTransfer));
+    PsychErrorExit(PsychRegister("USBClaimInterface", &PSYCHHIDUSBClaimInterface));
 
     PsychSetModuleAuthorByInitials("awi");
     PsychSetModuleAuthorByInitials("dgp");

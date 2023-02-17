@@ -51,11 +51,17 @@ if nargin < 1 || isempty(expertmode)
 end
 
 % Which X-Server version is in use?
+xversion = [0, 0, 0];
 [rc, text] = system('xdpyinfo | grep ''X.Org version''');
 if rc == 0
   xversion = sscanf (text, 'X.Org version: %d.%d.%d');
 else
-  xversion = [0, 0, 0];
+  % No xdpyinfo installed by default, e.g., on RaspberryPi OS, or failed?
+  % Try again at old traditional xorg log location:
+  [rc, text] = system('grep ''X.Org X Server '' /var/log/Xorg.0.log');
+  if rc == 0
+    xversion = sscanf (text, 'X.Org X Server %d.%d.%d');
+  end
 end
 
 fprintf('Detected X-Server version %i.%i.%i\n', xversion(1), xversion(2), xversion(3));
@@ -482,7 +488,7 @@ end
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && ...
-   usegamma == -1 && asyncflipsecondaries ~= 'y'
+   usegamma == -1 && asyncflipsecondaries ~= 'y' && ~IsARM
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -552,7 +558,8 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && asyncflipsecondaries ~= 'y' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && usegamma == -1
+   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && ...
+   usegamma == -1 && ~IsARM
   % Done writing the file:
   fclose(fid);
 else
@@ -625,7 +632,8 @@ else
     % values for the gpu driving that single X-Screen.
     WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrrsupport, dri3, [], [], []);
 
-    if ismember('y', depth30bpp) || ismember('0', depth30bpp) || strcmp(xdriver, 'nvidia')
+    if ismember('y', depth30bpp) || ismember('0', depth30bpp) || strcmp(xdriver, 'nvidia') || ...
+       (strcmp(xdriver, 'modesetting') && IsARM)
       fprintf(fid, 'Section "Screen"\n');
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
@@ -694,6 +702,14 @@ function WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrr
       dri3 = '2';
     end
     fprintf(fid, '  Option      "DRI" "%s"\n', dri3);
+  end
+
+  % RaspberryPi with VideoCore4 needs AccelMethod override to glamor, because
+  % RaspberryPi OS 11, as of late 2022, disables glamor, and thereby any
+  % hardware acceleration for OpenGL on VideoCore4 to conserve RAM, something
+  % that doesn't fly with our use case:
+  if strcmp(xdriver, 'modesetting') && IsARM
+    fprintf(fid, '  Option      "AccelMethod" "glamor"\n');
   end
 
   % modesetting ddx in use and explicit UseGammaLUT setup wanted?

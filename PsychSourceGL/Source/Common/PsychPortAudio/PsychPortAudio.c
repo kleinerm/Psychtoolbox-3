@@ -31,6 +31,8 @@
 
 #include "PsychPortAudio.h"
 
+unsigned int verbosity = 4;
+
 // This is a define of the PulseAudio host api id. It will be 16, once a portaudio
 // version with PulseAudio support is officially released. Define it here, so we
 // can already build a driver that is able to handle paPulseAudio quirks:
@@ -46,6 +48,11 @@
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #include "pa_win_wasapi.h"
+#if defined(__LP64__) || defined(_WIN64)
+#define PORTAUDIO_DLLNAME "portaudio_x64.dll"
+#else
+#define PORTAUDIO_DLLNAME "portaudio_x86.dll"
+#endif
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -149,17 +156,29 @@ typedef struct PseudoAlsaStreamExt {
 typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
-#if PSYCH_SYSTEM == PSYCH_LINUX
+// Only dynamically bind PaUtil_SetDebugPrintFunction on non-macOS, as on
+// macOS we link portaudio statically so this would not work:
+#if PSYCH_SYSTEM != PSYCH_OSX
 void (*myPaUtil_SetDebugPrintFunction)(PaUtilLogCallback  cb) = NULL;
 
-// Wrapper implementation, as many libportaudio.so implementations seem to lack this function :(:
+// Wrapper implementation, as many libportaudio library implementations seem to lack this function,
+// causing linker / mex load time failure if we'd depend on it:(:
 void PsychPAPaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
 {
-    // Try to get function dynamically:
-    myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
+    // Try to get/link function dynamically:
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // Windows:
+        myPaUtil_SetDebugPrintFunction = (void*) GetProcAddress(GetModuleHandle(PORTAUDIO_DLLNAME), "PaUtil_SetDebugPrintFunction");
+    #else
+        // Linux and macOS:
+        myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
+    #endif
 
+    // Call if function is supported, otherwise we no-op:
     if (myPaUtil_SetDebugPrintFunction)
         myPaUtil_SetDebugPrintFunction(cb);
+    else if ((verbosity > 5) && (cb != NULL))
+        printf("PTB-DEBUG: PortAudio library lacks PaUtil_SetDebugPrintFunction(). Low-Level PortAudio debugging output unavailable.\n");
 
     return;
 }
@@ -312,7 +331,6 @@ typedef struct PsychPADevice {
 
 PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
 unsigned int  audiodevicecount = 0;
-unsigned int  verbosity = 4;
 double        yieldInterval = 0.001;            // How long to wait in calls to PsychYieldIntervalSeconds().
 psych_bool    uselocking = TRUE;                // Use Mutex locking and signalling code for thread synchronization?
 psych_bool    lockToCore1 = TRUE;               // NO LONGER USED: Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
@@ -2014,10 +2032,9 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(int latencyclass)
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    #ifdef PTB_USE_ASIO
-    // Try ASIO first. It's supposed to be the lowest latency Windows API on soundcards that suppport it.
+    // Try ASIO first. It is supposed to be the lowest latency Windows API on soundcards that suppport it, iff a 3rd party ASIO
+    // enabled portaudio dll would be used to enable it. Psychtoolbox own portaudio dll does not support ASIO at all.
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
-    #endif
 
     // Then Vistas new WASAPI, which is supposed to be usable since around Windows-7 and pretty good since Windows-10:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
@@ -2146,10 +2163,10 @@ void PsychPortAudioInitialize(void)
 
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Sanity check dynamic portaudio dll loading on Windows:
-        if ((NULL == LoadLibrary("portaudio_x86.dll")) && (NULL == LoadLibrary("portaudio_x64.dll"))) {
+        if (NULL == LoadLibrary(PORTAUDIO_DLLNAME)) {
             // Failed:
             printf("\n\nPTB-ERROR: Tried to initialize PsychPortAudio's PortAudio engine. This didn't work,\n");
-            printf("PTB-ERROR: because i couldn't find or load the required portaudio_x86.dll or portaudio_x64.dll library.\n");
+            printf("PTB-ERROR: because i couldn't find or load the required %s library.\n", PORTAUDIO_DLLNAME);
             printf("PTB-ERROR: Please make sure to call the InitializePsychSound function before first use of\n");
             printf("PTB-ERROR: PsychPortAudio, otherwise this error will happen.\n\n");
             PsychErrorExitMsg(PsychError_user, "Failed to initialize due to portaudio DLL loading problem. Call InitializePsychSound first! Aborted.");
@@ -2187,7 +2204,7 @@ void PsychPortAudioInitialize(void)
         }
         else {
             if(verbosity>2) {
-                printf("PTB-INFO: Using modified %s\n", Pa_GetVersionText());
+                printf("PTB-INFO: Using %s\n", Pa_GetVersionText());
             }
         }
 
@@ -2265,13 +2282,22 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "two of the 16 channels to use for playback. 'selectchannels' is a one row by 'channels' matrix with mappings "
     "for pure playback or pure capture. For full-duplex mode (playback and capture), 'selectchannels' must be a "
     "2 rows by max(channels) column matrix. row 1 will define playback channel mappings, whereas row 2 will then "
-    "define capture channel mappings. In any case, the number in the i'th column will define which physical device "
+    "define capture channel mappings. Ideally, the number in the i'th column will define which physical device "
     "channel will be used for playback or capture of the i'th PsychPortAudio channel (the i'th row of your sound "
-    "matrix). Numbering of physical device channels starts with zero! Example: Both, playback and simultaneous "
-    "recording are requested and 'channels' equals 2, ie, two playback channels and two capture channels. If you'd "
-    "specify 'selectchannels' as [0, 6 ; 12, 14], then playback would happen to device channels zero and six, "
-    "sound would be captured from device channels 12 and 14. Please note that channel selection is currently "
-    "only supported on some sound cards. The parameter is silently ignored on non-capable hardware or driver software.\n\n"
+    "matrix), but note various significant limitations on MS-Windows! Numbering of physical device channels starts "
+    "with zero! Example: Both, playback and simultaneous recording are requested and 'channels' equals 2, ie. two "
+    "playback channels and two capture channels. If you'd specify 'selectchannels' as [0, 6 ; 12, 14], then playback "
+    "would happen to device channels zero and six, sound would be captured from device channels 12 and 14.\n"
+    "Limitations: Please note that 'selectchannels' is currently only supported on macOS and on Windows WASAPI and only "
+    "with some sound cards in some configurations. The parameter is silently ignored on non-capable hardware/driver/operating "
+    "system software, or in unsupported configurations, e.g., it will do nothing on Linux, or on Windows with other sound "
+    "backends than WASAPI. On Windows, channel mapping only works for sound playback, not for sound capture. On Windows, "
+    "you can only select which physical sound channels are used, but not to which logical sound channel they are assigned. "
+    "This means that effectively the entries in the 'selectchannels' row vector will get sorted in ascending order, e.g., "
+    "a vector of [12, 0, 4, 2] for a 4 channel setup will be interpreted as if it were [0, 2, 4, 12]! This is a limitation "
+    "of the Windows sound system, nothing we could do about it.\n"
+    "All these limitations of 'selectchannels' make your scripts quite non-portable to different operating systems and "
+    "sound cards if you choose to use this parameter, so use with caution!\n\n"
     "'specialFlags' Optional flags: Default to zero, can be or'ed or added together with the following flags/settings:\n"
     "1 = Never prime output stream. By default the output stream is primed. Don't bother if you don't know what this means.\n"
     "2 = Always clamp audio data to the valid -1.0 to 1.0 range. Clamping is enabled by default.\n"
@@ -2671,9 +2697,12 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     channelMask |= (PaWinWaveFormatChannelMask) (1 << ((int) mychannelmap[i * m]));
 
                 if (verbosity > 3) {
+                    int j = 0;
+
                     printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
-                    for (i = 0; i < mynrchannels[0]; i++)
-                        printf("%i --> %i : ", i + 1, (int) mychannelmap[i * m]);
+                    for (i = 0; (i < sizeof(PaWinWaveFormatChannelMask) * 8) && (j < mynrchannels[0]); i++)
+                        if (channelMask & (1 << i))
+                            printf("%i --> %i : ", ++j, i);
 
                     printf("\n\n");
                 }
@@ -2700,10 +2729,14 @@ PsychError PSYCHPORTAUDIOOpen(void)
                         outwasapiapisettings.channelMask = channelMask;
                         break;
                     */
+
+                    default: // Unsupported backend for channel mapping:
+                        if (verbosity > 3)
+                            printf("PTB-INFO: 'selectchannels' mapping for audio playback is ignored on this hardware + driver combo.\n");
                 }
             }
 
-            // Windows api's can't do channel mapping on the capture side, i think?
+            // Windows builtin sound api's can't do channel mapping on the capture side:
             if ((mode & kPortAudioCapture) && (verbosity > 3)) {
                 printf("PTB-INFO: Audio capture enabled, but 'selectchannels' mapping for audio capture is ignored on this hardware + driver combo.\n");
             }
@@ -2859,7 +2892,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
             lowlatency = 0.05;  // Choose some half-way safe tradeoff: 50 msecs.
             break;
 
-        #ifdef PTB_USE_ASIO
         case paASIO:
             // ASIO: A value of zero would set safe (and high latency!) defaults. Too small values get
             // clamped to a safe minimum by the driver, so we select a very small positive value, say
@@ -2867,7 +2899,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
             // we play a bit safer and go for 5 msecs:
             lowlatency = (latencyclass >= 2) ? 0.001 : 0.005;
             break;
-        #endif
 
         case paALSA:
             // For ALSA we choose 10 msecs by default, lowering to 5 msecs if exp. requested. Experience
@@ -5622,25 +5653,17 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     "'deviceIndex'.\n\n"
     "Each struct contains information about its associated PortAudio device. The optional "
     "parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
-    #ifdef PTB_USE_ASIO
-    "1=Windows/DirectSound, 2=Windows/MME, 3=Windows/ASIO, 11=Windows/WDMKS, 13=Windows/WASAPI, "
-    #else
     "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
-    #endif
     "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, probably 16=Linux/PulseAudio, 5=MacOSX/CoreAudio.\n\n"
-    "On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
+    "On macOS you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
     "On Linux you may have the choice between ALSA, JACK, PulseAudio and OSS. ALSA or JACK provide very low "
-    "latencies and very good timing, OSS is an older system which is less capable but not very "
-    "widespread in use anymore. On MS-Windows you'll have the choice between up to 5 different "
+    "latencies and very good timing, OSS is an older system which is less capable and not in "
+    "widespread in use anymore. On MS-Windows you'll have the choice between multiple different "
     "audio subsystems:\n"
-    #ifdef PTB_USE_ASIO
-    "- If you buy a sound card with ASIO drivers, then you can pick that API for low latency. It "
-    "should give you comparable performance to OS/X or Linux.\n"
-    #endif
     "WASAPI (on Windows-Vista and later), or WDMKS (on Windows-2000/XP) should provide ok latency.\n"
     "DirectSound is the next worst choice if you have hardware with DirectSound support.\n"
     "If everything else fails, you'll be left with MME, a completely unusable API for precise or "
-    "low latency timing.\n"
+    "low latency timing. Current PsychPortAudio only provides reasonably precise timing with WASAPI.\n"
     "\n";
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";

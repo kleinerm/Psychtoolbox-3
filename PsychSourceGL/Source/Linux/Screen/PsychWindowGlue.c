@@ -1629,46 +1629,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         if (DPMSQueryExtension(dpy, &dummy, &dummy)) DPMSDisable(dpy);
     }
 
-    // Check for availability of VSYNC extension:
-
-    // First we try if the MESA variant of the swap control extensions is available. It has two advantages:
-    // First, it also provides a function to query the current swap interval. Second it allows to set a
-    // zero swap interval to dynamically disable sync to retrace, just as on OS/X and Windows:
-    if (strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")) {
-        // Bingo! Bind Mesa variant of setup call to sgi setup call, just to simplify the code
-        // that actually uses the setup call -- no special cases or extra code needed there :-)
-        // This special glXSwapIntervalSGI() call will simply accept an input value of zero for
-        // disabling vsync'ed bufferswaps as a valid input parameter:
-        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalMESA");
-
-        // Additionally bind the Mesa query call:
-        glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB((const GLubyte *) "glXGetSwapIntervalMESA");
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLX_MESA_swap_control extension for control of vsync.\n");
-    }
-    else {
-        // Unsupported. Disable the get call:
-        glXGetSwapIntervalMESA = NULL;
-    }
-
-    // Special case: Buggy ATI driver: Supports the VSync extension and glXSwapIntervalSGI, but provides the
-    // wrong extension namestring "WGL_EXT_swap_control" (from MS-Windows!), so GLEW doesn't auto-detect and
-    // bind the extension. If this special case is present, we do it here manually ourselves:
-    if ((glXSwapIntervalSGI == NULL) && (strstr((const char *) glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL)) {
-        // Looks so: Bind manually...
-        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalSGI");
-    }
-
-    // Extension finally supported?
-    if (glXSwapIntervalSGI==NULL || ( strstr((const char *) glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
-        strstr((const char *) glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
-        // No, total failure to bind extension:
-        glXSwapIntervalSGI = NULL;
-
+    // Check for availability of VSYNC and swap control extensions:
+    if (!glxewIsSupported("GLX_EXT_swap_control") && !glxewIsSupported("GLX_MESA_swap_control") && !glxewIsSupported("GLX_SGI_swap_control")) {
+        // No swap control extension at all!
         if (PsychPrefStateGet_Verbosity() > 1) {
             printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
             printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
             printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somehow in a manner that is\n");
             printf("PTB-WARNING: dependent on the type of gfx-card and driver. Google is your friend...\n");
+        }
+    }
+    else if (!glxewIsSupported("GLX_EXT_swap_control") && !glxewIsSupported("GLX_MESA_swap_control")) {
+        // None of the good swap control extensions.
+        // As GLX_MESA_swap_control is supported by Mesa since around 2003, but afaik not by proprietary drivers, we can
+        // only hit this with a proprietary driver (NVidia, AMD) that is very ancient ie. before 2013:
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Your graphics driver would not allow me to disable syncing wrt. vertical retrace if needed.\n");
+            printf("PTB-INFO: Your proprietary graphics driver must be pretty old. Consider upgrading if you need\n");
+            printf("PTB-INFO: vsync disable ability, e.g., for efficient display mirroring, good timing in windowed mode, etc.\n");
+            printf("PTB-INFO: NVidia proprietary drivers generally support this since at least the year 2011, ATI since at least 2013.\n");
         }
     }
 
@@ -4047,42 +4026,58 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
-    int error, myinterval;
-
-    // Enable rendering context of window:
-    PsychSetGLContext(windowRecord);
-
-    // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
-    windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
+    int error, myinterval = -1000;
 
     // Sync counter available means desktop compositor via NetWM in use, so disable actual
     // vsync for the copy-swap from onscreen window backbuffer to redirection surface Pixmap:
     if (windowRecord->targetSpecific.syncCounter[1])
         swapInterval = 0;
 
-    // Try to set requested swapInterval if swap-control extension is supported on
-    // this Linux machine. Otherwise this will be a no-op...
-    // Note: On Mesa, glXSwapIntervalSGI() is actually a redirected call to glXSwapIntervalMESA()!
-    if (glXSwapIntervalSGI) {
+    // Most efficient and cross-vendor GLX_EXT_swap_control supported in Mesa since v20.3.0 from December 2020, NVidia/ATI proprietary since at least year 2013:
+    if (glxewIsSupported("GLX_EXT_swap_control")) {
+        PsychLockDisplay();
+        glXSwapIntervalEXT(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, swapInterval);
+        glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_SWAP_INTERVAL_EXT, (unsigned int*) &myinterval);
+        PsychUnlockDisplay();
+    }
+    else if (glxewIsSupported("GLX_MESA_swap_control")) {
+        // Need rendering context of window:
+        PsychSetGLContext(windowRecord);
+        PsychLockDisplay();
+        error = glXSwapIntervalMESA(swapInterval);
+        myinterval = glXGetSwapIntervalMESA();
+        PsychUnlockDisplay();
+
+        if (error && (PsychPrefStateGet_Verbosity() > 1))
+            printf("\nPTB-WARNING: glXSwapIntervalMESA() FAILED to %s synchronization to vertical retrace! Error=%i\n", (swapInterval > 0) ? "enable" : "disable", error);
+    }
+    else if (glxewIsSupported("GLX_SGI_swap_control")) {
+        // Hopefully never hit this ancient GLX_SGI_swap_control thing anymore: Does not allow disable of vsync or query of actual setting.
+        // Need rendering context of window:
+        PsychSetGLContext(windowRecord);
         PsychLockDisplay();
         error = glXSwapIntervalSGI(swapInterval);
         PsychUnlockDisplay();
-        if (error) {
-            if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval > 0) ? "enable" : "disable");
-        }
+
+        if (error == 0)
+            myinterval = swapInterval;
+
+        if (error && (PsychPrefStateGet_Verbosity() > 1))
+            printf("\nPTB-WARNING: glXSwapIntervalSGI() FAILED to %s synchronization to vertical retrace! Error=%i\n", (swapInterval > 0) ? "enable" : "disable", error);
     }
 
-    // If Mesa query is supported, double-check if the system accepted our settings:
-    if (glXGetSwapIntervalMESA) {
-        PsychLockDisplay();
-        myinterval = glXGetSwapIntervalMESA();
-        PsychUnlockDisplay();
-        if (myinterval != swapInterval) {
-            if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting [Req %i != Actual %i])!\n\n", (swapInterval > 0) ? "enable" : "disable", swapInterval, myinterval);
-        }
+    if (myinterval != -1000) {
+        // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
+        windowRecord->vSynced = (myinterval > 0) ? TRUE : FALSE;
+
+        // Did the system accept our settings?
+        if ((myinterval != swapInterval) && (PsychPrefStateGet_Verbosity() > 1))
+            printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting [Req %i != Actual %i])!\n\n",
+                  (swapInterval > 0) ? "enable" : "disable", swapInterval, myinterval);
     }
 
-    return;
+    if (PsychPrefStateGet_Verbosity() > 10)
+        printf("PTB-DEBUG: PsychOSSetVBLSyncLevel(win %i, interval %i) => New interval %i => vsync %i\n", windowRecord->windowIndex, swapInterval, myinterval, windowRecord->vSynced);
 }
 
 /*

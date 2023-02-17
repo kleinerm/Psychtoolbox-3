@@ -58,6 +58,16 @@ function varargout = PsychOculusVR(cmd, varargin)
 % scanning of the OLED display panel, to light up each pixel only a fraction
 % of a video refresh cycle duration.
 %
+% 'ForceSize=widthxheight' = Enforce a specific fixed size of the stimulus
+% image buffer in pixels, overriding the recommmended value by the runtime,
+% e.g., 'ForceSize=2200x1200' for a 2200 pixels wide and 1200 pixels high
+% image buffer. By default the driver will choose values that provide good
+% quality for the given Rift DK-1/DK-2 display device, which can be scaled
+% up or down with the optional 'pixelsPerDisplay' parameter for a different
+% quality vs. performance tradeoff in the function PsychOpenXR('SetupRenderingParameters');
+% The specified values are clamped against the maximum values supported by
+% the given hardware + driver combination.
+%
 % 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view even
 % when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
 % for wider field of view in these tasks, but requires the usercode to adapt to these
@@ -69,10 +79,12 @@ function varargout = PsychOculusVR(cmd, varargin)
 % on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
 % relatively expensive post processing step.
 %
-% 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements. On the Rift DK1 this does nothing. On the DK2
-% it enables dynamic prediction and timing measurements with the Rifts internal
-% latency tester.
+% 'TimingSupport' = Use high precision and reliability timing for presentation.
+% This driver always uses high precision timing and timestamping, at least if you
+% present to your Rift DK1/DK2 HMD via a dedicated X-Screen on a multi-X-Screen
+% setup under Linux X11. However, specifying it will enable some additional
+% optimizations on the Oculus Rift DK2, taking advantage of some builtin
+% hardware features.
 %
 % 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
 % poses at scanout time. This mostly only makes sense for head-tracked 3D
@@ -189,7 +201,14 @@ function varargout = PsychOculusVR(cmd, varargin)
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
+% This is always 1, as any kind of connected keyboard can emulate at least 'Buttons', by
+% using KbCheck to query keys and map them to "fake buttons".
+%
+% 'ActiveInputs' = 1, signifying the presence of a valid 'Buttons' input due to emulation
+% by KbCheck on any connected keyboard.
+%
 % 'Time' Time of last input state change of controller.
+%
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
 % reports pressed (1) or released (0) state of a specific button. Use the OVR.Button_XXX
@@ -472,7 +491,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
@@ -789,6 +808,7 @@ if strcmpi(cmd, 'GetInputState')
   end
 
   rc.Valid = 1;
+  rc.ActiveInputs = 1; % Emulated 'Buttons' via KbCheck.
 
   [anykey, rc.Time, keyCodes] = KbCheck(-1);
   rc.Buttons = zeros(1, 32);
@@ -1041,6 +1061,7 @@ if strcmpi(cmd, 'Open')
     OVR.Button_Private = [OVR.Button_VolUp, OVR.Button_VolDown, OVR.Button_Home];
     OVR.Button_RMask = [OVR.Button_A, OVR.Button_B, OVR.Button_RThumb, OVR.Button_RShoulder];
     OVR.Button_LMask = [OVR.Button_X, OVR.Button_Y, OVR.Button_LThumb, OVR.Button_LShoulder, OVR.Button_Enter];
+    OVR.Button_MicMute = 1 + log2(hex2dec('02000000')); % PTB extension, not in original OVR spec.
 
     OVR.Touch_A = OVR.Button_A;
     OVR.Touch_B = OVR.Button_B;
@@ -1372,6 +1393,23 @@ if strcmpi(cmd, 'SetLowPersistence')
   return;
 end
 
+if strcmpi(cmd, 'GetStaticRenderParameters')
+  myhmd = varargin{1};
+
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('GetStaticRenderParameters: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % Retrieve projL and projR from driver:
+  [varargout{1}, varargout{2}] = PsychOculusVRCore('GetStaticRenderParameters', myhmd.handle, varargin{2:end});
+
+  % Get cached values of fovL and fovR, for compatibility with OpenXR driver:
+  varargout{3} = deg2rad([-hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovL(3), -hmd{myhmd.handle}.fovL(4)]);
+  varargout{4} = deg2rad([-hmd{myhmd.handle}.fovR(1), hmd{myhmd.handle}.fovR(2), hmd{myhmd.handle}.fovR(3), -hmd{myhmd.handle}.fovR(4)]);
+
+  return;
+end
+
 if strcmpi(cmd, 'SetupRenderingParameters')
   myhmd = varargin{1};
 
@@ -1436,6 +1474,29 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
   end
 
+  % This driver only ever supports the Oculus Rift DK-1 and DK-2, with the
+  % DK-2 having the higher resolution panel. Therefore set twice the Rift DK2
+  % HMD panel resolution as reasonable maximum for the renderbuffers:
+  hmd{myhmd.handle}.maxrbwidth = 2 * 960;
+  hmd{myhmd.handle}.maxrbheight = 2 * 1080;
+
+  % Forced override size of framebuffer provided?
+  rbOvrSize = strfind(basicRequirements, 'ForceSize=');
+  if ~isempty(rbOvrSize)
+    rbOvrSize = sscanf(basicRequirements(min(rbOvrSize):end), 'ForceSize=%ix%i');
+    if length(rbOvrSize) ~= 2 || ~isvector(rbOvrSize) || ~isreal(rbOvrSize)
+      sca;
+      error('SetupRenderingParameters(): Invalid ''ForceSize='' string in ''basicRequirements'' specified! Must be of the form ''ForceSize=widthxheight'' pixels.');
+    end
+
+    % Clamp to valid range and assign:
+    hmd{myhmd.handle}.rbwidth = max(1, min(ceil(rbOvrSize(1) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbwidth));
+    hmd{myhmd.handle}.rbheight = max(1, min(ceil(rbOvrSize(2) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbheight));
+    if hmd{myhmd.handle}.rbwidth ~= rbOvrSize(1) || hmd{myhmd.handle}.rbheight ~= rbOvrSize(2)
+        warning('SetupRenderingParameters(): Had to clamp ''ForceSize=widthxheight'' requested pixelbuffer size to fit into valid range! Result may look funky.');
+    end
+  end
+
   return;
 end
 
@@ -1475,13 +1536,14 @@ if strcmpi(cmd, 'GetPanelFitterParameters')
   return;
 end
 
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
   screenid = varargin{2};
   winRect = varargin{3};
   ovrfbOverrideRect = varargin{4};
   ovrSpecialFlags = varargin{5};
+  ovrMultiSample = varargin{6};
 
   % Yes. Trying to display on a screen with more than one video output?
   if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
@@ -1509,6 +1571,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   varargout{1} = winRect;
   varargout{2} = ovrfbOverrideRect;
   varargout{3} = ovrSpecialFlags;
+  varargout{4} = ovrMultiSample;
 
   return;
 end
@@ -2081,6 +2144,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Return success result code 1:
   varargout{1} = 1;
+  return;
+end
+
+% Dummy implementation for compatibility with other drivers:
+if strcmpi(cmd, 'View2DParameters')
+  varargout{1} = [NaN, NaN, NaN];
+  varargout{2} = [NaN, NaN];
+  varargout{3} = [NaN, NaN, NaN, Nan];
   return;
 end
 

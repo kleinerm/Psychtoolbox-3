@@ -1,5 +1,5 @@
-function res = CV1Test(useRTbox)
-% res = CV1Test([useRTbox=0]) - A timing test script for HMDs by use of a photometer.
+function res = CV1Test(waitframes, useRTbox)
+% res = CV1Test([waitframes=90][, useRTbox=0]) - A timing test script for HMDs by use of a photometer.
 %
 % Needs the RTBox, and a photo-diode or such, e.g., a ColorCal-II,
 % connected to the TTL trigger input.
@@ -13,31 +13,32 @@ function res = CV1Test(useRTbox)
 % between white flashes.
 %
 
-if nargin < 1 || isempty(useRTbox)
+if nargin < 2 || isempty(useRTbox)
     useRTbox = 0;
 end
 
-waitframes = 90;
+if nargin < 1 || isempty(waitframes)
+    waitframes = 90;
+end
 
 % Setup unified keymapping and unit color range:
 PsychDefaultSetup(2);
 
 % Select screen with highest id as Oculus output display:
 screenid = max(Screen('Screens'));
-%PsychDebugWindowConfiguration([],0.75);
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 % Setup the HMD to act as a regular "monoscopic" display monitor
-% by displaying the same image to both eyes:
-% PsychDebugWindowConfiguration; hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
-hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic');
-PsychOculusVR1('Verbosity', 3);
-Screen('Preference','Verbosity', 3);
+% by displaying the same image to both eyes. We need reliable timing and
+% timestamping support for this test script:
+% hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
+hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingPrecisionIsCritical TimingSupport TimestampingSupport');
 
-[win, rect] = PsychImaging('OpenWindow', screenid);
-ifi = Screen('GetFlipInterval', win);
+win = PsychImaging('OpenWindow', screenid, [1 0 0]);
+ifi = Screen('GetFlipInterval', win)
 
 % Render one view for each eye in stereoscopic mode, in an animation loop:
+res.getsecs = [];
 res.vbl = [];
 res.failFlag = [];
 res.tBase = [];
@@ -66,14 +67,62 @@ if useRTbox
     end
 end
 
+isBad = 0;
+KbReleaseWait;
+de = waitframes * ifi
+for pass=0:1
+    tBase = Screen('Flip', win);
+    tactual = tBase;
+    t1 = GetSecs;
+    for i=1:10
+        Screen('FillRect', win, 0);
+        DrawFormattedText(win, num2str(i), 'center', 'center', 1);
+        tic;
+        if pass == 0
+            dt = i * de;
+            tWhen = tBase + dt;
+        else
+            tWhen = tactual + de;
+        end
+
+        tactual = Screen('Flip', win, tWhen);
+        fprintf('After flip delay %f secs : Frame %i reported %f vs. requested %f. Delta %f msecs: ', toc, i, tactual, tWhen, 1000 * (tactual - tWhen));
+        if abs(tactual - tWhen) > 1.2 * ifi
+            fprintf('BAD!');
+            isBad = isBad + 1;
+        end
+        fprintf('\n');
+
+        if KbCheck
+            break;
+        end
+    end
+
+    t2 = GetSecs;
+    fps = i / (t2 - t1)
+    WaitSecs(1);
+end
+%KbStrokeWait;
+sca;
+
+if isBad > 0
+    fprintf('\nBAD timing in %i trials.\n', isBad);
+else
+    fprintf('\nALL GOOD.\n');
+end
+
+return;
+
+tBase = GetSecs;
+
 while ~KbCheck
     Screen('FillRect', win, 0);
-    tBase = Screen('Flip', win);
-    %Screen('Flip', win);
-    %tBase = WaitSecs(0.5);
+%    WaitSecs('UntilTime', tBase + (waitframes + 5) * ifi);
+    res.getsecs(end+1) = GetSecs;
+    tBase = Screen('Flip', win, tBase + (waitframes + 5) * ifi);
     res.tBase(end+1) = tBase;
     Screen('FillRect', win, 1);
-    res.vbl(end+1) = Screen('Flip', win, tBase + (waitframes - 0.5) * ifi);
+    res.vbl(end+1) = Screen('Flip', win, tBase + waitframes * ifi);
 
     % Measure real onset time:
     if useRTbox
@@ -108,8 +157,8 @@ while ~KbCheck
 end
 
 % Backup save for safety:
-save('OculusTimingResults.mat', 'res', '-V6');
-
+%save('VRTimingResults.mat', 'res', '-V6');
+%KbStrokeWait;
 sca;
 
 close all;

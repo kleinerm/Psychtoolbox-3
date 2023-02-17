@@ -39,4 +39,5 @@ void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel);
 char* PsychCocoaGetFullUsername(void);
 double PsychCocoaGetBackingStoreScaleFactor(void* window);
 void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord);
+psych_bool PsychCocoaMetalWorkaround(PsychWindowRecordType *windowRecord);
 #endif

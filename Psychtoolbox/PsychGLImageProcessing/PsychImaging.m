@@ -1222,29 +1222,61 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %
 % * 'MirrorDisplayTo2ndOutputHead' Mirror the content of the onscreen
-%   window to given 2nd screen, ie., to a 2nd output connector (head)
-%   of a dualhead graphics card. This should give the same result as if one
+%   window to the given 2nd screen, ie., to a 2nd video output (head) of a
+%   multi-display setup. This should give roughly the same result as if one
 %   switches the graphics card into "Mirror mode" or "Clone mode" via the
-%   display settings panel of your operating system.
+%   display settings panel of your operating system, but with different
+%   tradeoffs. The disadvantage compared to use of an operating system provided
+%   mirror mode is that it requires more gpu processing, adding one millisecond to
+%   potentially multiple milliseconds of processing time to each Screen('Flip').
 %
-%   This function only works for monoscopic displays, ie., it can not be
-%   used simultaneously with any stereo display mode. The reason is that it
-%   internally uses stereomode 10 with a few modifications to get its job
-%   done, so obviously neither mode 10 nor any other mode can be used
-%   without interference.
+%   The advantage is that it allows for proper visual stimulation timing and for
+%   higher animation framerates in various configurations in which the operating
+%   system provided mechanisms would cause impaired timing and drastically reduced
+%   or erratic framerates, especially when the subject visual stimulation display
+%   and the experimenter feedback mirror display do not have perfectly synchronized
+%   video refesh cycles, e.g., because the two displays are not the same model and
+%   vendor, or can't be set to the same video resolution and refresh rate, or
+%   can't be connected both to the same type of video link (e.g. not both via
+%   DisplayPort), or operating system limitations prevent synchronized scanout.
+%   Non-synchronized video refresh can cause broken timing, strong judder of
+%   animations or severely reduced framerate, e.g., if a 60 Hz experimenter
+%   display throttles all animations down to 60 fps, even though the subjects
+%   stimulus display is configured for 120 Hz operation. This mode will run the
+%   main window for stimulus presentation with proper timing and vsync, whereas
+%   it runs the experimenter feedback "mirror" display without vsync, allowing
+%   for tearing artifacts to happen, in exchange for optimal timing and performance
+%   on the main display.
 %
-%   Only use this function for mirroring onto the 2nd head of a dual-head
-%   graphics card under MacOS/X, or if you need to mirror onto a 2nd head
-%   on MS-Windows and can't use "desktop spanning" mode on Windows to
-%   achieve dual display output. If possible on your setup and OS, rather use
-%   'MirrorDisplayToSingleSplitWindow' (see below). That mode should work
-%   well on dual-head graphics cards on MS-Windows or GNU/Linux, as well as
+%   Another advantage is that this allows to display an overlay window on top of
+%   the visual stimulus mirror image, to supply some additional debug information
+%   to the experimenter. Operating system provided mirror modes don't allow for
+%   such overlays.
+%
+%   This function only works for monoscopic displays and single-window stereo
+%   modes (steremode 2 - 9 and some PsychImaging modes), it can not be used with
+%   frame-sequential or dual-window / dual-stream stereo display modes, as it
+%   internally uses the machinery for stereomode 10 with a few modifications to
+%   get its job done, so obviously neither dual-window mode 10 nor any similar
+%   mode can be used without interference.
+%
+%   This function is typically used for mirroring onto a secondary display of a
+%   multi-display setup on Apple macOS, or if you need to mirror on Microsoft
+%   Windows and can't use "desktop spanning" mode on Windows to achieve dual
+%   display output. On Linux/X11, this can be useful in combination with the
+%   Vulkan display backend, ie. the 'UseVulkanDisplay' task. On Linux or Windows
+%   with a properly synchronized dual-display setup, rather use the task
+%   'MirrorDisplayToSingleSplitWindow' (see below). That task should work
+%   well on in synchronized mode, and is more efficient. It would also work well
 %   in conjunction with a hardware display splitter attached to a single
 %   head on any operating system. It has the advantage of consuming less
 %   memory and compute ressources, so it is potentially faster or provides
-%   a more reliable overall timing.
+%   a more reliable overall timing. On modern Linux distributions with X-Server
+%   version 21 or later, e.g., Ubuntu 22.04-LTS or later, that more efficient
+%   mode can also be made to work, after special setup with XOrgConfCreator, on
+%   unsynchronized displays.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayTo2ndOutputHead', mirrorScreen [, mirrorRectangle]);
+%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayTo2ndOutputHead', mirrorScreen [, mirrorRectangle=[]][, specialFlags=0][, useOverlay=0]);
 %
 %   The content of the onscreen window shall be shown not only on the
 %   display associated with the screen given to PsychImaging('OpenWindow',
@@ -1254,6 +1286,17 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   mirror image shall not fill the whole 'mirrorScreen', but only a
 %   subregion 'mirrorRectangle'.
 %
+%   'specialFlags' are optional flags to customize the mirror window, similar to
+%   the specialFlags parameter of PsychImaging('OpenWindow', ...., specialFlags).
+%   Cfe. flags like kPsychGUIWindow and kPsychGUIWindowWMPositioned to turn the
+%   experimenter feedback mirror window into a regular desktop GUI window that
+%   can be moved and resized.
+%
+%   Optionally you can set the 'useOverlay' flag to 1, to request use of an
+%   overlay window on top of the mirror window. The function ...
+%   overlaywin = PsychImaging('GetMirrorOverlayWindow', win);
+%   ... will return a window handle overlaywin for a given onscreen window win,
+%   and you can then use overlaywin for drawing content into that overlay.
 %
 % * 'MirrorDisplayToSingleSplitWindow' Mirror the content of the onscreen
 %   window to the right half of the desktop (if desktop spanning on a
@@ -1261,11 +1304,58 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   if a display splitter (e.g., Matrox Dualhead2Go (TM)) is attached to a
 %   single head of a graphics card. This should give the same result as if one
 %   switches the graphics card into "Mirror mode" or "Clone mode" via the
-%   display settings panel of your operating system.
+%   display settings panel of your operating system. It offers the same tradeoffs
+%   and advantages as explained above for 'MirrorDisplayTo2ndOutputHead' mode.
+%   The 'MirrorDisplayToSingleSplitWindow' task may be a bit more efficient than
+%   'MirrorDisplayTo2ndOutputHead', but it requires either use of a modern Linux
+%   distribution like Ubuntu 22.04-LTS with X-Server 21, and some configuration
+%   with XOrgConfCreator, or the use of two display devices of identical
+%   model from the same vendor, set to exactly the same video mode
+%   (resolution and refresh rate), and identical video connections, so the
+%   video refresh cycles of both the stimulus presentation display, and the
+%   experimenter feedback mirror display are perfectly synchronized with
+%   each other. Otherwise timing and performance will be less than optimal!
+%   If you can't meet these conditions then the 'MirrorDisplayTo2ndOutputHead'
+%   task is the better choice, at expense of higher gpu load.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayToSingleSplitWindow');
+%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayToSingleSplitWindow' [, useOverlay=0][, mirrorDestination]);
 %
-%   Optionally, you can add the command...
+%   Optionally you can set the 'useOverlay' flag to 1, to request use of an
+%   overlay window on top of the mirrored stimulus. The function ...
+%   overlaywin = PsychImaging('GetMirrorOverlayWindow', win);
+%   ... will return a window handle overlaywin for a given onscreen window win,
+%   and you can then use overlaywin for drawing content into that overlay.
+%
+%   Optionally you can provide the 'mirrorDestination' parameter to specify
+%   where the mirror image should go within the onscreen window, and which
+%   size it has. By default, the mirror image will fill out the right half
+%   of the onscreen window, an appropriate choice if your mirror display
+%   monitor has the same resolution as the stimulus display monitor and
+%   both are arranged side-by-side in a dual-display setup. For different
+%   monitor arrangements, e.g., triple-display setups or similar, of for
+%   different selected mirror monitor resolutions, a future Psychtoolbox
+%   release may also select a proper location and size for the mirror
+%   image. But for now, if your mirror monitor has a different resolution
+%   than the stimulus monitor, you need to manually specify the mirror
+%   monitors resolution, ie. width x height in pixels as mirrorDestination
+%   parameter, a two-component row vector of form [width, height]., so the
+%   mirror image can get appropriately scaled to the resolution of the
+%   mirror monitor. On Linux you will also need to use the SetResolution()
+%   function to set a horizontal resolution that is twice the horizontal
+%   resolution of your stimulus monitor(s). E.g., if your stimulus monitor
+%   is 2560x1440 resolution and your mirror monitor is 1280x1024 pixels,
+%   and both are attached to Psychtoolbox screen 1 (aka X-Screen 1), you'd
+%   have to call SetResolution(1, 2*2560, 1440); before 'OpenWindow', and
+%   specify 'mirrorDestination' as [1280, 1024]. A setup with three
+%   monitors, two stimulus monitors next to each other at 2560x1440 pixels
+%   each, plus one mirror monitor of 1280x1024 right to the both stimulus
+%   monitors would instead require a call to
+%   SetResolution(1, 2 * (2560 + 2560), 1440). Note that setups which
+%   require specification of 'mirrorDestination' may not work at all at the
+%   moment on systems other than Linux.
+%
+%   Optionally, if you don't need the imaging pipeline and don't need the overlay
+%   for experimenter feedback, ie. you let 'useOverlay' = 0, you can add ...
 %   PsychImaging('AddTask', 'General', 'DontUsePipelineIfPossible');
 %   ... if you don't intend to use the imaging pipeline for anything else
 %   than display mirroring. This will allow further optimizations.
@@ -1535,6 +1625,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % is opened in videomode 'M16WithOverlay'.
 %
 %
+% overlaywin = PsychImaging('GetMirrorOverlayWindow', win);
+% - Will return the handle to the mirror 'overlaywin'dow associated with the
+% given 'win'dow, if any. Will abort with an error message if the 'win'dow
+% doesn't have an associated mirror overylay, because the 'win'dow was not
+% configured for mirror mode, or for use of an overlay on its mirror window.
+% Cfe. the PsychImaging stimulus mirroring tasks 'MirrorDisplayTo2ndOutputHead'
+% and 'MirrorDisplayToSingleSplitWindow' for use cases.
+%
+%
 %
 % The following commands are only for specialists:
 %
@@ -1636,6 +1735,7 @@ global psych_gpgpuapi;
 
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
+global ptb_MirrorOverlayWindows;
 global isASideBySideConfig;
 global screenRestoreCmd;
 global maxreqarg;
@@ -1644,6 +1744,7 @@ if isempty(configphase_active)
     configphase_active = 0;
     ptb_outputformatter_icmAware = 0;
     maxreqarg = 10;
+    ptb_MirrorOverlayWindows = [];
 end
 
 if nargin < 1 || isempty(cmd)
@@ -1786,6 +1887,24 @@ if strcmpi(cmd, 'OpenWindow')
     % Set override framebuffer rect to "none" by default:
     ovrfbOverrideRect = [];
 
+    % Override numbuffers -- always 2:
+    numbuffers = 2;
+
+    if nargin < 7 || isempty(varargin{6})
+        stereomode = 0;
+    else
+        stereomode = varargin{6};
+    end
+
+    if nargin < 8 || isempty(varargin{7})
+        multiSample = []; % User defers choice of MSAA to us.
+    else
+        multiSample = varargin{7};
+        if ~isscalar(multiSample) || ~isreal(multiSample)
+            error('PsychImaging(''OpenWindow''): Invalid multisample value specified. Not an integer scalar.');
+        end
+    end
+
     % Running on a VR headset?
     if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
         % Yes:
@@ -1801,17 +1920,13 @@ if strcmpi(cmd, 'OpenWindow')
             error('PsychImaging(''OpenWindow''): Invalid HMD handle specified for UseVRHMD task. No such device opened.');
         end
 
-        % Compute special OpenWindow overrides for winRect, framebuffer rect, and specialflags, as needed:
-        [winRect, ovrfbOverrideRect, ovrSpecialFlags] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+        % Compute special OpenWindow overrides for winRect, framebuffer rect, specialflags and MSAA, as needed:
+        [winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample);
     end
 
-    % Override numbuffers -- always 2:
-    numbuffers = 2;
-
-    if nargin < 7 || isempty(varargin{6})
-        stereomode = 0;
-    else
-        stereomode = varargin{6};
+    % If multiSample is still "use default" choice, then override it to our default of 0 for "no MSAA":
+    if isempty(multiSample)
+        multiSample = 0;
     end
 
     % Compute correct imagingMode - Settings for current configuration and return it:
@@ -1883,12 +1998,6 @@ if strcmpi(cmd, 'OpenWindow')
         end
     end
 
-    if nargin < 8 || isempty(varargin{7})
-        multiSample = 0;
-    else
-        multiSample = varargin{7};
-    end
-
     if nargin < 9 || isempty(varargin{8})
         imagingovm = 0;
     else
@@ -1901,6 +2010,19 @@ if strcmpi(cmd, 'OpenWindow')
         specialFlags = ovrSpecialFlags;
     else
         specialFlags = varargin{9};
+    end
+
+    % Display mirroring to separate slave window requested?
+    if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
+        % Yes. Try to disable vsync for OpenGL bufferswaps on that "mirror" window, as
+        % we don't want it to throttle the main stimulus presentation to the potentially
+        % lower video refresh rate or drifting video refresh cycle of the "mirror" display,
+        % as high performance and proper timing on the subject stimulus display is way more
+        % important than a bit of tearing on what is basically just an experimenter monitor:
+        if isempty(specialFlags)
+            specialFlags = 0;
+        end
+        specialFlags = mor(specialFlags, kPsychSkipSecondaryVsyncForFlip);
     end
 
     if nargin < 11 || isempty(varargin{10})
@@ -2118,7 +2240,7 @@ if strcmpi(cmd, 'OpenWindow')
                 % Check if rotation angle is -90, +90, -270, +270, ... degrees,
                 % ie. the image is effectively tilted by 90 degrees clockwise
                 % or counter-clockwise:
-                if (round(rotAngle / 90) == (rotAngle / 90)) && (mod(round(rotAngle / 90), 2) > 0)
+                if ismember(stereomode, [0]) && (round(rotAngle / 90) == (rotAngle / 90)) && (mod(round(rotAngle / 90), 2) > 0)
                     % Yes. This is classic panel rotation. Exchange width and
                     % height of clientRect, so it is "rotated" accordingly and
                     % the various scaling and centering strategies will
@@ -2363,25 +2485,32 @@ if strcmpi(cmd, 'OpenWindow')
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of a valid secondary screen "slavescreen"!');
         end
 
-        if stereomode == 10
-            fprintf('PsychImaging: WARNING! You simultaneously requested display mirroring to 2nd output head and dual display stereomode 10.\n');
-            fprintf('PsychImaging: WARNING! These are mutually exclusive! Will choose stereomode 10 instead of mirroring.\n');
-        end
-
-        if stereomode == 1
+        if ~ismember(stereomode, [0, 2:9])
             sca;
-            error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
+            error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable stereomode %i! This is not supported.', stereomode);
         end
 
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the display should get mirrored:
         slavewinrect = reqs{rows, 4};
-        if isempty(slavewinrect), slavewinrect = []; end
+        if isempty(slavewinrect)
+            slavewinrect = []; % From empty string to empty vector.
+        end
+
+        % Get optional slavewinflags, e.g., kPsychGUIWindow:
+        slavewinflags = reqs{rows, 5};
+        if isempty(slavewinflags)
+            slavewinflags = []; % From empty string to empty vector.
+        end
 
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
-        % chain properly:
-        slavewin = Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput);
+        % chain properly. Suppress sync tests and verbose output during open:
+        oldverbose = Screen('Preference', 'Verbosity', 1);
+        oldskip = Screen('Preference', 'SkipSyncTests', 2);
+        slavewin = Screen('OpenWindow', slavescreenid, 30, slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput, slavewinflags);
+        Screen('Preference', 'SkipSyncTests', oldskip);
+        Screen('Preference', 'Verbosity', oldverbose);
     end
 
     % Dualwindow output requested? [Essentially the same as display
@@ -2664,6 +2793,27 @@ if strcmpi(cmd, 'GetOverlayWindow')
 
     % rc is the 'win'dowhandle, winRect is its Screen('Rect'):
     [rc, winRect] = BitsPlusPlus('GetOverlayWindow', varargin{:});
+
+    return;
+end
+
+if strcmpi(cmd, 'GetMirrorOverlayWindow')
+    % Assign onscreen window index:
+    if length(varargin) < 1 || isempty(varargin{1}) || ~isa(varargin{1}, 'double') || Screen('WindowKind', varargin{1}) ~= 1
+        error('PsychImaging "GetMirrorOverlayWindow" called without valid onscreen window handle.');
+    end
+    win = varargin{1};
+
+    if win < 1 || win > length(ptb_MirrorOverlayWindows)
+        error('PsychImaging "GetMirrorOverlayWindow": No overlay associated with given onscreen window.');
+    end
+
+    if ptb_MirrorOverlayWindows(win) == 0
+        error('PsychImaging "GetMirrorOverlayWindow": No overlay associated with given onscreen window.');
+    end
+
+    % Ok, this 'win'dow has an overlay: Return its offscreen 'win'dow handle:
+    rc = ptb_MirrorOverlayWindows(win);
 
     return;
 end
@@ -2951,7 +3101,6 @@ if ~isempty(find(mystrcmp(reqs, 'DualWindowStereo')))
     % Yes: Must use stereomode 10.
     stereoMode = 10;
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedDualWindowOutput);
 end
 
 % Does usercode or internal code request a stereomode?
@@ -3486,6 +3635,7 @@ return;
 % actual pipeline setup of the hook chains:
 function rc = PostConfiguration(reqs, win, clearcolor, slavewin)
 global ptb_outputformatter_icmAware;
+global ptb_MirrorOverlayWindows;
 global GL;
 global ptb_geometry_inverseWarpMap;
 global psych_gpgpuapi; %#ok<NUSED>
@@ -3662,7 +3812,7 @@ if leftLRFlip || leftUDFlip
     [xg,yg] = meshgrid(hv, vv);
     curmap(:,:,1) = xg;
     curmap(:,:,2) = yg;
-    ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
+    ptb_geometry_inverseWarpMap{win}.('LeftView') = int16(curmap);
 end
 
 if winfo.StereoMode > 0
@@ -3703,7 +3853,7 @@ if winfo.StereoMode > 0
         [xg,yg] = meshgrid(hv, vv);
         curmap(:,:,1) = xg;
         curmap(:,:,2) = yg;
-        ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
+        ptb_geometry_inverseWarpMap{win}.('RightView') = int16(curmap);
     end
 end
 
@@ -5100,6 +5250,8 @@ end
 
 % --- GPU based mirroring of left half of onscreen window to right half requested? ---
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
+    floc = find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow'));
+    [rows ~] = ind2sub(size(reqs), floc);
 
     % Simply set up the left finalizer chain with a glCopyPixels command
     % that copies the left half of the system backbuffer to the right half
@@ -5114,46 +5266,156 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
     % commands depend on this:
     if bitand(winfo.ImagingMode, kPsychNeedFastBackingStore) > 0
         % Yes: Use proper offsets for active imaging pipeline:
-        myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w, h, w, h);
+        ow = w;
     else
         % No: Need different x-offset for glRasterPos2f, because the good
-        % ol' fixed function pipeline uses different viewport / projection
+        % old fixed function pipeline uses different viewport / projection
         % matrix etc.:
-        myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w/2, h, w, h);
+        ow = w / 2;
+    end
+
+    % Setup scaling (and location tbd. in the future) of mirror target region,
+    % width default of full scaling to half width right half of window for mirror image:
+    sfx = 1;
+    sfy = 1;
+
+    % Get optional region spec for mirror target region:
+    mirrordst = reqs{rows, 4};
+    if ~isempty(mirrordst)
+        % Parameter specified as non-default: Valid format?
+
+        % Currently we only accept numeric row-vectors:
+        if isnumeric(mirrordst) && isreal(mirrordst) && isrow(mirrordst)
+            % Of length two elements for [width, height] of the mirror region:
+            if length(mirrordst) == 2
+                % width and height must be at least 1 pixel:
+                if any(mirrordst < 1)
+                    sca;
+                    error('PsychImaging: MirrorDisplayToSingleSplitWindow: Invalid mirrorDestination parameter [width, height] vector, width or height < 1 pixel!');
+                end
+
+                % Extract width x height:
+                dstw = mirrordst(1);
+                dsth = mirrordst(2);
+            else
+                sca;
+                error('PsychImaging: MirrorDisplayToSingleSplitWindow: Invalid mirrorDestination parameter provided: Not a two element [width, height] vector!');
+            end
+        else
+            sca;
+            error('PsychImaging: MirrorDisplayToSingleSplitWindow: Invalid mirrorDestination parameter provided: Not a numeric row vector!');
+        end
+
+        % Compute scaling factors from stimulus image to mirror region:
+        sfx = dstw / w;
+        sfy = dsth / h;
     end
 
     % Attach blit command sequence to finalizer chain:
-    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorSplitWindowToSplitWindow', myblitstring);
+    blitstring = sprintf('glPixelZoom(%f, %f); glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144); ', sfx, sfy, ow, h * sfy, w, h);
+
+    % Overlay for mirror window requested?
+    if reqs{rows, 3} == 1
+        % Need fast FBO backed offscreen windows for overlay support:
+        if ~bitand(winfo.ImagingMode, kPsychNeedFastOffscreenWindows + kPsychNeedFastBackingStore)
+            % No-go:
+            sca;
+            error('PsychImaging: MirrorDisplayToSingleSplitWindow: Experimenter overlay can not be used if fast offscreen windows are disabled!');
+        end
+
+        % Create Offscreen window for the overlay. It has the same size as
+        % the onscreen window, and the same pixeldepth, but a completely black
+        % background with alpha value zero -- fully transparent by default.
+        % The specialflags 32 setting protects the overlay offscreen window
+        % from accidental batch-deletion by usercode calling Screen('Close'):
+        overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 w h], [], 32);
+        ptb_MirrorOverlayWindows(win) = overlaywin;
+
+        % 'GetWindowInfo' binds the FBO of our Offscreen window, so we can get its fbo
+        % id in overlayfbo:
+        Screen('GetWindowInfo', overlaywin);
+        overlayfbo = glGetIntegerv(GL.READ_FRAMEBUFFER_BINDING);
+
+        % Build blitter command string: We use a glCopyPixels() from the overlaywin
+        % overlayfbo as read framebuffer, to the active draw framebuffer. glCopyPixels
+        % allows alpha testing or blending, whereas glBlitFramebuffer would not. Then
+        % enable alpha testing around the blit, so all overlay pixels with non-zero
+        % alpha overwrite the mirror image pixels:
+        blitstring = [blitstring sprintf(['glAlphaFunc(516, 0.0); glEnable(3008); rfbo = glGetIntegerv(36010); ' ...
+                     'glBindFramebufferEXT(36008, %i); glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144); ' ...
+                     'glBindFramebufferEXT(36008, rfbo); glDisable(3008); glPixelZoom(1, 1);'], overlayfbo, ow, h * sfy, w, h)];
+    else
+        blitstring = [blitstring 'glPixelZoom(1, 1);'];
+    end
+
+    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorDisplayToSingleSplitWindow', blitstring);
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 end
 % --- End of GPU based mirroring of left half of onscreen window to right half requested? ---
 
-% --- GPU based mirroring of onscreen window to secondary display head requested? ---
+% --- GPU based mirroring from master onscreen window to slave mirror window requested? ---
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
-    % Yes: We need to replicate the framebuffer of the master onscreen
-    % window to the slave windows framebuffer.
+    floc = find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead'));
+    [rows ~] = ind2sub(size(reqs), floc);
 
-    % What we do: We use the right finalizer blit chain to copy the
-    % contents of the master window's system backbuffer (which is bound
-    % during execution of the right finalizer blit chain) to the
-    % colorbuffer texture of the special finalizedFBO[1] - the shadow
-    % framebuffer FBO of the slave window. Once we did this, the processing
-    % code of kPsychNeedDualWindowOutput in Screens
-    % PsychPreFlipOperations() routine will take care of the rest -->
-    % Blitting that FBO's and its texture to the system backbuffer of the
-    % slave window, thereby cloning the master windows framebuffer to the
-    % slave windows framebuffer:
-    % TODO FIXME: We assume that texture handle '1' denotes the color
-    % attachment texture of finalizedFBO[1]. This is true if this is the
-    % first opened onscreen window (ie., 99% of the time). If that
-    % assumption doesn't hold, we will guess the wrong texture handle and
-    % bad things will happen!
+    % Enable dedicated blit chain for mirror windows:
+    Screen('HookFunction', slavewin, 'Enable', 'MirrorWindowBlit');
+    Screen('HookFunction', slavewin, 'Reset', 'MirrorWindowBlit');
+
+    % If the slavewin mirror window has a different size than the master window that
+    % is mirrored, we need to setup special override viewport and projection matrix:
     [w, h] = Screen('WindowSize', win, 1);
-    myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
-    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
-    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
+    [sw, sh] = Screen('WindowSize', slavewin, 1);
+    if w ~= sw || h ~= sh
+        sw = floor(sw);
+        sh = floor(sh);
+        Screen('Hookfunction', slavewin, 'AppendMFunction', 'MirrorWindowBlit', 'Setup special viewports', ...
+                sprintf('glViewport(0, 0, %i, %i); glMatrixMode(5889); glLoadIdentity(); gluOrtho2D(0, %i, %i, 0); glMatrixMode(5888);', sw, sh, sw, sh));
+    end
+
+    % Add blit command for master window -> slave window to copy the mirror image:
+    Screen('HookFunction', slavewin, 'AppendBuiltin', 'MirrorWindowBlit', 'Builtin:IdentityBlit', ...
+            sprintf('OvrSize:%i:%i', sw, sh));
+
+    % Overlay for mirror window requested?
+    if reqs{rows, 6} == 1
+        % Get texture target type of the finalizedFBO's in use, as currently the
+        % imaging pipelines 'Builtin:IdentityBlit' builtin function will always
+        % generate texture coordinates for blitting which are suitable only for
+        % that texture target. Iow. Our overlay window overlaywin must use a
+        % FBO backing texture of the same texture target, or things will go sideways:
+        [~, ~, ttarget] = Screen('HookFunction', win, 'GetDisplayBufferTextures');
+
+        % Create Offscreen window for the overlay. It has the same size as
+        % the onscreen window, and the same pixeldepth, but a completely black
+        % background with alpha value zero -- fully transparent by default.
+        % The specialflags 32 setting protects the overlay offscreen window
+        % from accidental batch-deletion by usercode calling Screen('Close'):
+        if ttarget == GL.TEXTURE_2D
+            % Need a GL.TEXTURE_2D backing texture:
+            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 w h], [], 32 + 1);
+            samplerstring = 'TEXTURE2D';
+        else
+            % Need a GL.TEXTURE_RECTANGLE backing texture:
+            overlaywin = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 w h], [], 32);
+            samplerstring = 'TEXTURERECT2D';
+        end
+
+        ptb_MirrorOverlayWindows(win) = overlaywin;
+
+        % Retrieve low-level OpenGL texture handle to the window:
+        overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
+
+        % Append blitter command for a one-to-one blit of the overlay window
+        % texture to the target buffer. We need to enable alpha testing, so the
+        % overlay only occludes the mirrored image where the overlay has a non-zero alpha:
+        Screen('Hookfunction', slavewin, 'AppendMFunction', 'MirrorWindowBlit', 'Setup Alphatest for Overlay', 'glAlphaFunc(516, 0.0); glEnable(3008);');
+        Screen('Hookfunction', slavewin, 'AppendBuiltin', 'MirrorWindowBlit', 'Builtin:IdentityBlit', ...
+               sprintf('%s(0)=%i:OvrSize:%i:%i', samplerstring, overlaytex, sw, sh));
+        Screen('Hookfunction', slavewin, 'AppendMFunction', 'MirrorWindowBlit', 'Teardown Alphatest for Overlay', 'glDisable(3008);');
+    end
 end
-% --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
+% --- End of GPU based mirroring from master onscreen window to slave mirror window requested? ---
 
 % --- Datapixx in use? ---
 if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
