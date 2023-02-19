@@ -3771,6 +3771,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     switch (vulkan->deviceProps.vendorID) {
         case 0x8086: // Intel gpu: Verified to work with tiled rendering on Iris as of Mesa 21.0.0-devel + OpenGL interop patchset.
         case 0x10de: // NVidia gpu: At least proprietary drivers allow tiled rendering:
+        case 0x14e4: // Broadcom gpu: Verified to work with tiled rendering on VideoCore-6 / RaspberryPi 4/400.
             if ((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) {
                 window->interopTextureTiled = TRUE;
                 break;

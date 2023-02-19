@@ -1877,8 +1877,15 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // Are all required OpenGL extensions supported?
     if (!glewIsSupported("GL_EXT_memory_object") || !glewIsSupported("GL_EXT_direct_state_access") ||
         (!glewIsSupported("GL_EXT_memory_object_fd") && !glewIsSupported("GL_EXT_memory_object_win32"))) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL memory object extensions! Skipped.\n");
-        return(FALSE);
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL memory object extensions [%i %i %i].\n",
+                   glewIsSupported("GL_EXT_memory_object"), glewIsSupported("GL_EXT_memory_object_fd"), glewIsSupported("GL_EXT_direct_state_access"));
+
+        // Skip abort and continue on Broadcom VideoCore 6 under zink driver.
+        // Its GL_EXT_direct_state_access lacks some functions, so above check
+        // fails, but the stuff we need here actually works at least as of Mesa 23:
+        if (!strstr((char*) glGetString(GL_RENDERER), "zink (V3D 4.2)"))
+            return(FALSE);
     }
 
     // Backup current fbo assignments before we mess with them:

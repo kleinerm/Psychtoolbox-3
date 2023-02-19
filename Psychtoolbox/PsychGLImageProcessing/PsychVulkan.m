@@ -575,7 +575,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         end
     end
 
-    if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) %#ok<STREMP>
+    if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) || isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_direct_state_access')) %#ok<STREMP>
         % If no specific Vulkan gpu was requested, select the first non-AMD/NVidia
         % gpuIndex on Linux or Windows: AMD and NVidia OpenGL fully support
         % OpenGL interop, so if we end here then the render-gpu can not be an
