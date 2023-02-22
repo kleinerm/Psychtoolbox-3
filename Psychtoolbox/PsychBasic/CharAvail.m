@@ -117,7 +117,7 @@ else
                 warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar(2) may work for keystroke suppression, but GetChar() etc. will not work.\n');
             else
                 % 32-Bit OSX, or MS-Windows:
-                warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+                warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar/CharAvail/FlushEvents etc. and keyboard queues is mutually exclusive!');
             end
             
             % We fall through to KeyboardHelper to enable input
