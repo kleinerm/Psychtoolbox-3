@@ -13,7 +13,7 @@ function kbNameResult = KbName(arg)
 %  * If no argument is supplied then KbName waits one second and then
 %    calls KbCheck.  KbName then returns a cell array holding the names of
 %    all keys which were down at the time of the KbCheck call. The
-%    one-second delay preceeding the call to KbCheck avoids catching the
+%    one-second delay preceding the call to KbCheck avoids catching the
 %    <return> keypress used to execute the KbName function.
 %
 %  * If arg is 'UnifyKeyNames', KbName will switch its internal naming
@@ -863,7 +863,7 @@ elseif ischar(arg)      % argument is a character, so find the code
         end
     end
 
-% we have a cell arry of strings so iterate over the cell array and recur on each element.
+% we have a cell array of strings so iterate over the cell array and recur on each element.
 elseif isa(arg, 'cell')
     kbNameResult = [];
     cnt = 1;

@@ -90,7 +90,7 @@ vbl = lastvbl + (dt * ifi);
 
 % If this system supports beamposition queries then we can estimate the
 % real visual onset time from the 'vbl' time by adding the duration of the
-% VBL. If the system doesnt support them, then 'vbl' is our best estimate
+% VBL. If the system doesn't support them, then 'vbl' is our best estimate
 % of onset. On Linux with FOSS drivers, the 'vbl' *is* already the onset
 % timestamp, so no correction needed. Need for correction can be derived
 % from SpecialFlags setting 16 (~ No OS builtin vblank timestamping).
