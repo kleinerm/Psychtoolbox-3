@@ -1,3 +1,5 @@
 [codespell]
 skip = .git,*.pdf,*.svg
-# ignore-words-list = 
+# globalYg, globalY -- variables
+# ans -- matlab talking to us
+ignore-words-list = globalyg,ans,globaly
