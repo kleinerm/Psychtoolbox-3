@@ -102,7 +102,7 @@ function varargout = Screen(varargin)
 % Stopping programs:
 %
 % Ctrl-C halts any program.  (Type a "c" while holding down the "Ctrl"
-% key). Sometimes, Ctrl-C fails to halt progams executing in a Matlab process
+% key). Sometimes, Ctrl-C fails to halt programs executing in a Matlab process
 % run with the "-nojvm" option. To halt a runaway Psychtoolbox script in
 % Psychtoolbox you might resort to the Windows Task Manager to kill
 % the Matlab process.  (Use Ctrl-Alt-Delete to open a window from which
@@ -111,7 +111,7 @@ function varargout = Screen(varargin)
 % Windows:
 %
 % Ctrl-Alt-Delete allows you to launch the Windows task manager, which
-% reduces the Psychtoolbox onscreen windows when it opens. (Simultaneosly
+% reduces the Psychtoolbox onscreen windows when it opens. (Simultaneously
 % press the "Ctrl", "Alt", and "Delete" keys.)  There are also simpler ways of
 % reducing the Psychtoolbox window which are specific to particular
 % versions of Windows.

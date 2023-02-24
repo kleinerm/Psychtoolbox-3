@@ -18,7 +18,7 @@ function ifi = VideoRefreshFromMeasurement(window, samples)
 % 1. On MacOS/X it tries to use low-level VBL interrupt timestamps.
 % 2. If that fails it tries to get the measurement from the beamposition
 %    measurement method.
-% 3. If that fails it returns the measurment from
+% 3. If that fails it returns the measurement from
 %    Screen('GetFlipInterval').
 %
 

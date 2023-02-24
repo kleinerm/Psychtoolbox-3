@@ -121,11 +121,11 @@ function kbNameResult = KbName(arg)
 %   02/07/02    awi     added Windows keycodes
 %   02/10/02    awi     modified to return key names within a cell array in the case
 %                       where no arguments are passed to KbName and it calls KbCheck.
-%   02/10/02    awi     Modifed comments for changes made to Windows version.
+%   02/10/02    awi     Modified comments for changes made to Windows version.
 %   04/10/02    awi     Cosmetic
 %                       -Fixed bug where "MAC2"  case was not in quotes
 %                       -Fixed bug where Mac loop searching for empty cells overran max index.
-%   09/27/02    awi     Wrapped an index in Find() becasue Matlab will no longer index
+%   09/27/02    awi     Wrapped an index in Find() because Matlab will no longer index
 %                       matrices with logicals.
 %   06/18/03    awi     Complete rewrite featuring recursive calls to KbName, new key names, and
 %                       a shared execution path for all platforms.  The key codes have been renamed
@@ -135,7 +135,7 @@ function kbNameResult = KbName(arg)
 %                       for a table of USB HID keycodes and key names.
 %   06/24/03    awi     Added keycodes for OS 9 KbCheck
 %   06/25/03    awi     -Lowered all keycodes by 1 to match official USB table.  Previously
-%                       the KbCheck keycodes were the offical USB keycodes + 1 because
+%                       the KbCheck keycodes were the official USB keycodes + 1 because
 %                       the USB table is zero-indexed whereas Matlab matrices are one-indexed.
 %                       As a consequence of this change KbName and KbCheck will not handle keycode
 %                       0, but that is ok because keycode 0 is not really used for anything.
@@ -678,7 +678,7 @@ elseif isa(arg,'double') || isa(arg,'uint8')
             kbNameResult=kk{arg};
         end;
     else
-        %multiple numerical values, we iterate accross the list and recur
+        %multiple numerical values, we iterate across the list and recur
         %on each element.
         for i = 1:length(arg)
             kbNameResult{i}=KbName(arg(i));
