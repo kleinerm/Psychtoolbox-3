@@ -31,18 +31,15 @@ function PropixxImageUndistortionThrowaway(calibfilename, flipmethod, corrmethod
 %
 % On Linux with the open-source graphics drivers, flipmethod 2 will
 % increase stability due to the ability to do non-blocking but still
-% vsynced flips without the overhead of AsyncFlipBegin et al. If you
-% can enable triplebuffering in the graphics driver (intel or nouveau)
-% that will give another boost on Linux. If you can use DRI3/Present,
-% even better (Requires XOrg 1.16.3 or later, Mesa 10.3.4 or later, iow.
-% a Ubuntu 15.04 distro or later for ease of setup).
+% vsynced flips without the overhead of AsyncFlipBegin et al.
 %
-% On Linux with the proprietary graphics drivers, or on OSX or Windows,
-% 'AsyncFlipBegin' flips should get you a bit of extra stability if you
-% are lucky, albeit not as good as with Linux + FOSS drivers.
+% On Linux with the proprietary NVidia graphics driver, or on macOS or Windows,
+% where you can't use flipmethod 2, flipmethod 1 for use of 'AsyncFlipBegin'
+% flips should get you a bit of extra stability if you are lucky, although not
+% as good as flipmethod 2 with Linux + FOSS drivers.
 %
-% On Linux with proprietary drivers or on Windows you may be able to get
-% a bit more stability if your graphics driver supports triplebuffering.
+% On Linux with proprietary NVidia driver, or on Windows, you may be able to
+% get a bit more stability if your graphics driver supports triplebuffering.
 % However, time stamping and other correctness tests wouldn't work anymore,
 % so you'd need some other means to verify timing.
 %
@@ -51,7 +48,7 @@ function PropixxImageUndistortionThrowaway(calibfilename, flipmethod, corrmethod
 % to simply buy the fastest graphics card money can buy and then make
 % your stimuli simple enough so it can cope with them.
 %
-% In general your graphics card must be able to do all processing within
+% In general, your graphics card must be able to do all processing within
 % much less than 8.33 msecs for Propixx fast modes to work, so reasonable
 % stimulus design and a fast graphics card is important. Above special
 % flipmethod's or the use of properly setup Linux can buy you a few msecs
@@ -62,6 +59,7 @@ function PropixxImageUndistortionThrowaway(calibfilename, flipmethod, corrmethod
 % History:
 % 14-Mar-2015  mk  Initial incomplete prototype for testing.
 % 17-Mar-2015  mk  Bits of tweaking, some performance tips in help.
+% 25-Feb-2023  mk  Bits of help text updates.
 
 if nargin < 2 || isempty(flipmethod)
     % flipmethod 0 is the most safe, but also the least
