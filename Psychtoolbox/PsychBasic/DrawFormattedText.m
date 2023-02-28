@@ -66,7 +66,7 @@ function [nx, ny, textbounds, wordbounds] = DrawFormattedText(win, tstring, sx, 
 % read right to left
 %
 % The optional argument 'winRect' allows to specify a [left top right bottom]
-% rectange, in which the text should be centered/placed etc. By default,
+% rectangle, in which the text should be centered/placed etc. By default,
 % the rectangle of the whole 'win'dow is used.
 %
 % The function employs clipping by default. Text lines that are detected as
@@ -180,7 +180,7 @@ if IsOctave
     % take care of this in the code, but necessary casts() also trigger
     % an out-of-range warning in Octave, which we can't selectively disable,
     % as it lacks a unique warning id (duh!). Therefore disable all warnings
-    % on Octave and reenable to previous setting whenever the we exit, and
+    % on Octave and re-enable to previous setting whenever the we exit, and
     % therefore the canary variable reenablewarn goes out of scope:
     warningstate = warning('query');
     warning('off');
@@ -272,9 +272,9 @@ else
 end
 
 while ~isempty(newlinepos)
-    % Replace first occurence of '\n' by ASCII or double code 10 aka 'repchar':
+    % Replace first occurrence of '\n' by ASCII or double code 10 aka 'repchar':
     tstring = [ tstring(1:min(newlinepos)-1) repchar tstring(min(newlinepos)+2:end)];
-    % Search next occurence of linefeed (if any) in new expanded string:
+    % Search next occurrence of linefeed (if any) in new expanded string:
     newlinepos = strfind(char(tstring), '\n');
 end
 
@@ -345,7 +345,7 @@ if ~yPosIsBaseline
     baselineHeight = 0;
 end
 
-% Keep current text color if noone provided:
+% Keep current text color if no one provided:
 if nargin < 5 || isempty(color)
     color = [];
 end

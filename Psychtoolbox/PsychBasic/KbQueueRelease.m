@@ -6,7 +6,7 @@ function KbQueueRelease(deviceIndex)
 %
 % This routine is called automatically at clean-up (e.g., when 
 % 'clear mex' is invoked and can be omitted expense of keeping 
-% memory allocated and an additional thread running unnecesarily
+% memory allocated and an additional thread running unnecessarily
 %_________________________________________________________________________
 %
 % See also: KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck,

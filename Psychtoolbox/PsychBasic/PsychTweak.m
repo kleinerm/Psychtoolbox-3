@@ -9,7 +9,7 @@ function varargout = PsychTweak(cmd, varargin)
 % executing this function.
 %
 % Currently the function mostly implements tweaks for MS-Windows to allow
-% to cope with the brokeness of the system, especially in the domain of
+% to cope with the brokenness of the system, especially in the domain of
 % timing and timestamping.
 %
 %
@@ -32,7 +32,7 @@ function varargout = PsychTweak(cmd, varargin)
 %
 % PsychTweak('ScreenVerbosity', verbosity);
 %
-% -- Set initial level of verbosity for Screen(). This can be overriden via
+% -- Set initial level of verbosity for Screen(). This can be overridden via
 % Screen('Preference','Verbosity'). The default verbosity is 3 = Errors,
 % Warnings and some Info output.
 %

@@ -31,7 +31,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % deltaY) since last query, as reported by the OS with unknown reliability in
 % unknown units, but probably pixels - use with caution! On MS-Windows, the first
 % two entries will return info about "physical" mouse cursor position (PhysicalX,
-% PhysicalY), as reported by the OS Win32 api function GetPhysicalCursorPos()
+% physically), as reported by the OS Win32 api function GetPhysicalCursorPos()
 % with unknown reliability in unknown units, so use caution!
 %
 % The optional 'valinfo' struct array contains one struct per valuator.

@@ -135,7 +135,7 @@ function [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(varargin)
 % Default value is 1.
 %
 % The optional argument 'winRect' allows to specify a [left top right
-% bottom] rectange, in which the text should be placed etc. By default, the
+% bottom] rectangle, in which the text should be placed etc. By default, the
 % rectangle of the whole 'win'dow is used.
 %
 % 'resetStyle'. If true, we reset the base text style to normal before
@@ -286,7 +286,7 @@ if IsOctave
     % take care of this in the code, but necessary casts() also trigger
     % an out-of-range warning in Octave, which we can't selectively disable,
     % as it lacks a unique warning id (duh!). Therefore disable all warnings
-    % on Octave and reenable to previous setting whenever the we exit, and
+    % on Octave and re-enable to previous setting whenever the we exit, and
     % therefore the canary variable reenablewarn goes out of scope:
     warningstate = warning('query');
     warning('off');
@@ -360,9 +360,9 @@ returnChar = cast(10,class(tstring));
 if char(10) ~= '\n' 
     newlinepos = strfind(char(tstring), '\n');
     while ~isempty(newlinepos)
-        % Replace first occurence of '\n' by ASCII or double code 10 aka 'repchar':
+        % Replace first occurrence of '\n' by ASCII or double code 10 aka 'repchar':
         tstring = [ tstring(1:min(newlinepos)-1) returnChar tstring(min(newlinepos)+2:end)];
-        % Search next occurence of linefeed (if any) in new expanded string:
+        % Search next occurrence of linefeed (if any) in new expanded string:
         newlinepos = strfind(char(tstring), '\n');
     end
 end
@@ -616,7 +616,7 @@ for p=1:numlines
     px(qSubStr) = lc+off-lWidthOff(1,p);    % NB: we've been calculating with pixel/paint positions, go back to text cursor position to have the pixels end up where we want them
     
     if p>1
-        % add baseline skip for current line if not first line, thats the
+        % add baseline skip for current line if not first line, that's the
         % carriage return. See note above about how Word does text layout.
         idx = find(qSubStr,1,'first');
         py(idx:end) = py(idx) + round((.22*lBaseLineSkip(p-1)+.78*lBaseLineSkip(p))*vSpacing);
@@ -968,7 +968,7 @@ if ~isempty(tagis)
     if ~isempty(tagt)
         currStyle = codes.style(1);
         for p=1:length(tagt)
-            % the below code snippet is a comment, decribing what the line
+            % the below code snippet is a comment, describing what the line
             % below does
             % switch formatCodes{p}
             %     case 'i'
@@ -1020,7 +1020,7 @@ if ~isempty(tagis)
                     if any(color=='.') || any(qComma)
                         assert(all(isstrprop(color,'digit')|color=='.'|qComma),'DrawFormattedText2: color tag argument must be specified as comma-separated floating point values, or hexadecimal values')
                     else
-                        assert(any(length(color)==[1 2 6 8]),'DrawFormattedText2: if color tag argument is a hexidecimal value, it should have length 1, 2, 6, or 8')
+                        assert(any(length(color)==[1 2 6 8]),'DrawFormattedText2: if color tag argument is a hexadecimal value, it should have length 1, 2, 6, or 8')
                         assert(all(isstrprop(color,'xdigit')),'DrawFormattedText2: color tag argument must be specified as hexadecimal values, or comma-separated floating point values')
                     end
                     % find new color or add to table
@@ -1177,7 +1177,7 @@ function DoFormatChange(win,switches,fmt)
 % rows in switches / columns in format:
 % 1: style, 2: color, 3: font, 4: size
 
-% font and style: if we cange font, always set style with the same
+% font and style: if we change font, always set style with the same
 % command. Always works and sometimes needed with some exotic fonts
 % (see Screen('TextFont?') )
 if switches(3)

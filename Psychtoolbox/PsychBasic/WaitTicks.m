@@ -23,7 +23,7 @@ function WaitTicks(wait)
 % OS X: ___________________________________________________________________
 %
 % "Ticks" functions are deprecated, use "Secs" functions instead;  To
-% measure time, use GetSecs insted of GetTicks. To delay, use WaitSecs
+% measure time, use GetSecs instead of GetTicks. To delay, use WaitSecs
 % instead of WaitTicks.  
 %
 % "Secs" functions are provided for OS 9, Windows, and OS X and are more precise
