@@ -12,7 +12,7 @@ function ret = RestrictKeysForKbCheck(enablekeys)
 % RestrictKeysForKbCheck([4, 6, 7]);
 %
 % Calling RestrictKeysForKbCheck([]); ie., with an empty vector, will
-% reenable all keys.
+% re-enable all keys.
 %
 % Caution: This setting is reset to "empty" during a "clear all" command,
 % ie., all keys will be enabled again after a "clear all"!

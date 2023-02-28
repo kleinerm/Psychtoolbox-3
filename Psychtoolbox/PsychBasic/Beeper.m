@@ -20,7 +20,7 @@ function Beeper(frequency, fVolume, durationSec);
 % 2006-02-02 - cburns
 %   -   Scaled down the volume of the sound to match the system volume better.  It was at maximum volume.
 %       Would scare you enough to rip the bite bar off it's mount!
-%       And switched to useing the sound() function, instead of the soundsc() function
+%       And switched to using the sound() function, instead of the soundsc() function
 %       which, by default, maximizes the volume.
 %   -   Update, using the PsychToolbox Snd function which should return immediately.
 %       Were experiencing delays with sound function

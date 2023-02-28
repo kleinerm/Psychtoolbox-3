@@ -35,7 +35,7 @@ function FlushEvents(varargin)
 %
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
 % 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
-% 06/20/19 mk   Try to protect against KDE focus stealing nastyness via kbqueues.
+% 06/20/19 mk   Try to protect against KDE focus stealing nastiness via kbqueues.
 
 global OSX_JAVA_GETCHAR;
 

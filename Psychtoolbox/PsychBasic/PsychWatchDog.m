@@ -74,7 +74,7 @@ if ~isempty(heartbeat)
         return;
     end
     
-    % Set timeout hearbeat interval value:
+    % Set timeout heartbeat interval value:
     heartbeatinterval = heartbeat;
     panicdeadline     = GetSecs + heartbeatinterval;
 

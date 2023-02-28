@@ -11,7 +11,7 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 
 %    keyCode        A 256-element logical array.  Each bit
 %                   within the logical array represents one keyboard key. 
-%                   If a key is pressed, its bit is set, othewise the bit 
+%                   If a key is pressed, its bit is set, otherwise the bit 
 %                   is clear. To convert a keyCode to a vector of key  
 %                   numbers use FIND(keyCode). To find a key's keyNumber 
 %                   use KbName or KbDemo.
@@ -55,7 +55,7 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % ListenChar(2); command at the beginning of your script and a
 % ListenChar(0); to the end of your script to enable/disable transmission of
 % keypresses to Matlab. If your script should abort and your keyboard is
-% dead, press CTRL+C to reenable keyboard input -- It is the same as
+% dead, press CTRL+C to re-enable keyboard input -- It is the same as
 % ListenChar(0). See 'help ListenChar' for more info.
 %
 % GetChar and CharAvail are character-oriented (and slow), whereas KbCheck
@@ -125,7 +125,7 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 7/7/00  dgp  Cosmetic.
 % 6/17/02 awi  ****** OS X-specific fork from the OS 9 version *******
 %                Added conditional invocation of PsychHID on OSX
-% 7/12/04 awi  Cosmetic.  Separted platform-specific help. Use IsOSX now. 
+% 7/12/04 awi  Cosmetic.  Separated platform-specific help. Use IsOSX now. 
 % 10/4/05 awi Note here cosmetic changes by dbp on unknown date between 7/12/04 and 10/4/05.  
 % 10/24/06 mk Windows and Linux implementation: Use built-in helper code in Screen.
 % 10/24/06 mk Add code for disabling "stuck keys".

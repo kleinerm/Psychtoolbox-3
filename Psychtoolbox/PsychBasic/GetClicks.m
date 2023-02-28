@@ -20,7 +20,7 @@ function [clicks,x,y,whichButton,clickSecs] = GetClicks(w, interClickSecs, mouse
 % You can also specify an override interval in the optional argument
 % 'interClickSecs' for a given call to GetClicks. A setting of zero would
 % disable multi-click detection, ie., only wait for first mouse-click or
-% press, then return immediatly.
+% press, then return immediately.
 %
 % If the optional parameter 'untilTime' is provided, GetClicks will only wait
 % for the first click until that time and then return, regardless if the 1st click
@@ -46,7 +46,7 @@ function [clicks,x,y,whichButton,clickSecs] = GetClicks(w, interClickSecs, mouse
 %          mk   the semantic and description of OS-9 GetClicks().
 % 6/17/06  mk   We also pass the windowPtr - argument on Windows now, because
 %          mk   now GetMouse.m is able to accept this argument.
-% 02/08/09 mk   Report id of pressed button, allow for varible interclick,
+% 02/08/09 mk   Report id of pressed button, allow for variable interclick,
 %               as suggested by Diederick Niehorster. Reduce rtwait to 2
 %               msecs but use WaitSecs('YieldSecs') waits to prevent
 %               overload.
@@ -56,7 +56,7 @@ function [clicks,x,y,whichButton,clickSecs] = GetClicks(w, interClickSecs, mouse
 % Inter-click interval (in secs.) for multiple mouse-clicks.
 global ptb_mouseclick_timeout;
 
-% Setup default click timeout if noone set:
+% Setup default click timeout if no one set:
 if isempty(ptb_mouseclick_timeout)
     ptb_mouseclick_timeout = 0.5; % Default timeout for multi-clicks is 500 msecs.
 end

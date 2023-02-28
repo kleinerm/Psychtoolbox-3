@@ -263,7 +263,7 @@ end
 if isempty(ptb_snd_oldstyle)
     % Nope, check if the special "old style" marker file exists:
     if exist([PsychtoolboxConfigDir 'Snd_use_oldstyle.txt'], 'file')
-        % User explicitely wants old-style implementation via
+        % User explicitly wants old-style implementation via
         % Matlab/Octave sound() function:
         ptb_snd_oldstyle = 1;
 
