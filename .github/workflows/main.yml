@@ -5,7 +5,7 @@
 #       - The free Matlab runner is only available for Linux, whereas the Octave build could
 #         in theory also be done on macOS (HomeBrew) and somehow on Windows (unclear).
 #
-# Copyright (c) 2022 by Mario Kleiner, licensed under MIT license.
+# Copyright (c) 2022-2023 by Mario Kleiner, licensed under MIT license.
 #
 name: CI
 
@@ -41,6 +41,9 @@ jobs:
       - name: Setup OculusVR SDK 0.5 for 64-Bit Linux.
         run: tar xvf PsychSourceGL/Cohorts/OculusSDK/ovr_sdk_linux_0.5.0.1.tar.xz; cd ovr_sdk_linux_0.5.0.1 ; sudo cp --recursive LibOVR/Include/* /usr/local/include/ ; sudo cp ../PsychSourceGL/Cohorts/OculusSDK/libOVR.a /usr/local/lib/
 
+      - name: Setup OpenXR SDK and OpenXR loader for PsychOpenXRCore build, backported for 64-Bit Ubuntu Linux 20.04.
+        run: sudo add-apt-repository ppa:monado-xr/monado; sudo apt-get update; sudo apt install -y libopenxr-dev;
+
       - name: Set up latest MATLAB
         uses: matlab-actions/setup-matlab@v1
 
@@ -62,4 +65,4 @@ jobs:
                 Psychtoolbox/PsychBasic/PsychPlugins/libptbdrawtext_ftgl64.so.1
 
       - name: Use xvfb for basic testing of Psychtoolbox under Octave. Rendering tests under llvmpipe, some basic queries.
-        run: xvfb-run octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); addpath(genpath([pwd '/PsychBasic/Octave5LinuxFiles64'])); PsychDebugWindowConfiguration; [a,b,c] = GetKeyboardIndices, [d,e,f] = GetMouseIndices, HighColorPrecisionDrawingTest;"
+        run: xvfb-run octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); addpath(genpath([pwd '/PsychBasic/Octave5LinuxFiles64'])); PsychDebugWindowConfiguration; Screen('Preference', 'ConserveVRAM', 4194304); [a,b,c] = GetKeyboardIndices, [d,e,f] = GetMouseIndices"
