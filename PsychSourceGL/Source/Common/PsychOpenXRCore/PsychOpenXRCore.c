@@ -4933,9 +4933,6 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("PsychOpenXRCorePresenterThread");
 
-    // Signal startup completed to main thread:
-    PsychSignalCondition(&(openxr->presentedSignal));
-
     // Try to lock, block until available if not available:
     if ((rc = PsychLockMutex(&(openxr->presenterLock)))) {
         // A regular printf() would be no-opped, as we try printing from outside the main interpreter thread.
@@ -4943,6 +4940,9 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
         fprintf(stderr, "PsychOpenXRCore-ERROR: In PresenterThreadMain(): First mutex_lock in init failed  [%s].\n", strerror(rc));
         return(NULL);
     }
+
+    // Signal startup completed to main thread:
+    PsychSignalCondition(&(openxr->presentedSignal));
 
     // XR compositor timeout prevention loop: Repeats infinitely, until we receive a
     // shutdown request and terminate ourselves. PresentCycle() will execute once per
