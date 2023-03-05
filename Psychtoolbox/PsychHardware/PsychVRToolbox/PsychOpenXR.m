@@ -696,7 +696,7 @@ if cmd == 1
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
 
   % PresentFrame successfull and not skipped?
-  if predictedOnset > 0
+  if predictedOnset >= 0
     % Get fresh set of backing textures for next Screen() post-flip drawing/render
     % cycle from the OpenXR texture swap chains:
     texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);

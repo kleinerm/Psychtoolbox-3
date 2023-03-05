@@ -4638,6 +4638,7 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
     // Skip if no frame present cycle is wanted:
     if (!openxr->needFrameLoop) {
         success = TRUE;
+        tPredictedOnset = 0;
         goto present_out;
     }
 
@@ -5012,16 +5013,16 @@ PsychError PSYCHOPENXRPresentFrame(void)
         printf("PsychOpenXRCore-INFO:PresentFrame: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
                openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
 
-    if (openxr->needFrameLoop) {
-        // During single-threaded presentation, we need to latch the to-be-presented frame to the
-        // OpenXR runtime / swapchain, in multi-threaded mode the presenterThread will do that:
-        if (!isMultithreaded(openxr)) {
-            if (!resultOK(releaseTextureHandles(openxr))) {
-                if (verbosity > 0)
-                    printf("PsychOpenXRCore-ERROR: Failed to release current swapchain images: %s\n", errorString);
-            }
+    // During single-threaded presentation, we need to latch the to-be-presented frame to the
+    // OpenXR runtime / swapchain, in multi-threaded mode the presenterThread will do that:
+    if (!isMultithreaded(openxr)) {
+        if (!resultOK(releaseTextureHandles(openxr))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to release current swapchain images: %s\n", errorString);
         }
-    
+    }
+
+    if (openxr->needFrameLoop) {
         // Get optional presentation target time and clamp it to be never more than
         // 10 seconds in the past, to simplify timing code in the present operations
         // and thread:
