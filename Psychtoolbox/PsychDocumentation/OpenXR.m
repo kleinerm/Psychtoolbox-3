@@ -57,7 +57,12 @@
 % stimulus onset timestamping. We are investigating a future solution for
 % reliable and trustworthy timestamping for the open-source MonadoXR
 % runtime on Linux and hope to find a solution there in the foreseeable
-% future, stay tuned...
+% future, stay tuned. For now, as of Psychoolbox 3.0.19.1 we have a hack
+% that only works on a modified version of Monado + a modified version of
+% Mesa, on AMD or Intel gpu's under Linux. The hack has various restrictions
+% and impacts performance. It is also not quite plug and play to set up.
+% See 'help PsychOpenXR', the section about the Monado metrics hack, for
+% instructions.
 %
 % Testing also showed that all tested proprietary OpenXR runtimes, ie.
 % OculusVR and SteamVR, violate the OpenXR specs stimulus timing
@@ -101,7 +106,8 @@
 % potentially timing enhanced MonadoXR implementation, once such a thing
 % exists. Then a fallback to PsychOpenHMDVR for OpenHMD on Linux/X11 with
 % separate X-Screen for a OpenHMD supported HMD, then back to standard
-% OpenXR as a last resort measure.
+% OpenXR as a last resort measure, in which case timestamps will not be
+% reliable or trustworthy at all!
 %
 %
 % Basic Setup:

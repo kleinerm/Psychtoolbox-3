@@ -102,6 +102,15 @@
 #define XR_USE_TIMESPEC
 #include <X11/Xlib.h>
 #include <GL/glx.h>
+
+// Includes for use of nanopb for parsing of metrics protocol buffers produced
+// by recent (late 2022) Monado OpenXR runtime on Linux:
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <pb_decode.h>
+#include <pb_common.h>
+#include "monado_metrics.pb.h"
 #endif
 
 // On Windows we use Win32 interfacing to get our OpenGL rendering contexts:
@@ -175,6 +184,13 @@ typedef struct PsychOpenXRDevice {
     double                              VRtimeoutSecs;
     int                                 srcTexIds[2];
     int                                 srcFboIds[2];
+    psych_int64                         frameIndex;
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    pb_istream_t                        pbstream;
+    FILE*                               pbfile;
+    #endif
+
     #ifdef XR_USE_PLATFORM_WIN32
     HDC                                 deviceContext;
     HGLRC                               openGLContext;
@@ -285,6 +301,14 @@ void InitializeSynopsis(void)
     synopsis[i++] = "This driver allows to use XR devices supported by a suitable OpenXR runtime of version 1.x.\n";
     synopsis[i++] = "Copyright (c) 2022-2023 Mario Kleiner.";
     synopsis[i++] = "The PsychOpenXRCore driver is licensed to you under the terms of the MIT license.";
+    synopsis[i++] = "";
+    synopsis[i++] = "For some experimental Monado specific timestamping implementation, the driver currently";
+    synopsis[i++] = "also contains a statically included copy of the nanopb protobuffer parsing library";
+    synopsis[i++] = "(URL: https://jpa.kapsi.fi/nanopb) which is licensed under the zlib license, and statically ";
+    synopsis[i++] = "included copies of some files from the FOSS Monado OpenXR runtime (https://monado.freedesktop.org), ";
+    synopsis[i++] = "which are licensed under the Boost Software License BSL-1.0 - SPDX-License-Identifier: BSL-1.0.";
+    synopsis[i++] = "The statically included files can be found in the nanopb subfolder of the PsychOpenXRCore source folder.";
+    synopsis[i++] = "";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.";
     synopsis[i++] = "";
     synopsis[i++] = "Usage:";
@@ -576,6 +600,251 @@ static double XrTimeToPsychTime(XrTime xrTime)
 
     return(outTime);
 }
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+
+// ----------------------------------------------------------------------------
+// Helper functions for nanopb based protobuffer message fifo parsing of Monado
+// metrics logging data for the purpose of Linux+Monado specific timestamping
+// ----------------------------------------------------------------------------
+static const pb_msgdesc_t* decode_unionmessage_type(pb_istream_t *stream)
+{
+    pb_wire_type_t wire_type;
+    uint32_t tag;
+    bool eof;
+
+    while (pb_decode_tag(stream, &wire_type, &tag, &eof)) {
+        if (wire_type == PB_WT_STRING) {
+            pb_field_iter_t iter;
+            if (pb_field_iter_begin(&iter, monado_metrics_Record_fields, NULL) &&
+                pb_field_iter_find(&iter, tag))
+            {
+                /* Found our field. */
+                return iter.submsg_desc;
+            }
+        }
+
+        /* Wasn't our field.. */
+        if (pb_skip_field(stream, wire_type)) {
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG: Metrics parse SKIPPED wire_type %d.\n", wire_type);
+        }
+        else if (verbosity > 6) {
+            printf("PsychOpenXRCore-DEBUG: Metrics parse FAILSKIPPED wire_type %d.\n", wire_type);
+        }
+    }
+
+    return NULL;
+}
+
+static bool decode_unionmessage_contents(pb_istream_t *stream, const pb_msgdesc_t *messagetype, void *dest_struct)
+{
+    pb_istream_t substream;
+    bool status;
+
+    if (!pb_make_string_substream(stream, &substream))
+        return false;
+
+    status = pb_decode(&substream, messagetype, dest_struct);
+    pb_close_string_substream(stream, &substream);
+
+    return status;
+}
+
+static bool monadoMetricsCallback(pb_istream_t *stream, uint8_t *buf, size_t count)
+{
+    FILE *file = (FILE*) stream->state;
+    bool status;
+
+    if (buf == NULL) {
+        while (count-- && fgetc(file) != EOF);
+        return count == 0;
+    }
+
+    status = (fread(buf, 1, count, file) == count);
+
+    if (feof(file))
+        stream->bytes_left = 0;
+
+    return status;
+}
+
+static double executeMonadoMetricsCycle(PsychOpenXRDevice *openxr, psych_int64 targetFrameIndex)
+{
+    static uint64_t oldSessionId = 0;              // Last reported OpenXR session id.
+    static uint64_t waitedForClientFrame = 0;      // We wait for 1st actual XR device present of this client frame.
+    static uint64_t waitedTargetTimeNsecs = 0;     // Target (desired) present time of the waitedForClientFrame / waitedForSystemFrame.
+    static uint64_t waitedForSystemFrame = 0;      // We wait on present of this system frame to detect actual stimulus onset.
+
+    const pb_msgdesc_t *type;
+    uint64_t dummysize;
+    double tNow;
+    psych_bool status, done = FALSE;
+    pb_istream_t* pbstream = &openxr->pbstream;
+    uint64_t onsetTimeNsecs = 0;
+
+    // Offset used by Monado to convert flip completion time to display time in nanoseconds. Currently 4 msecs hard-coded in Monado:
+    const double scanoutStartToPhotonsOffsetNsecs = 4000000;
+
+    // Metrics timestamping disabled or unsupported? Return no-op -1 in that case:
+    if (!openxr->pbfile)
+        return(-1);
+
+    while (!done) {
+        status = false;
+
+        // Decode and throw away varint with message size info:
+        pb_decode_varint(pbstream, &dummysize);
+
+        // Decode type of message:
+        type = decode_unionmessage_type(pbstream);
+
+        tNow = PsychGetAdjustedPrecisionTimerSeconds(NULL);
+
+        // Choose suitable decoder call:
+        if (type == monado_metrics_Version_fields) {
+            // Protocol version: We only support version 1.1 at the moment:
+            monado_metrics_Version msg = {};
+
+            status = decode_unionmessage_contents(pbstream, type, &msg);
+
+            if (verbosity > 3)
+                printf("PsychOpenXRCore-INFO: Using Monado metrics protocol version: %d.%d\n", msg.major, msg.minor);
+
+            if ((msg.major != 1 || msg.minor != 1) && (verbosity >= 2))
+                printf("PsychOpenXRCore-WARNING: Not required version 1.1. Expect possible severe trouble due to miscommunication Monado <-> PsychOpenXRCore!\n");
+        }
+        else if (type == monado_metrics_SystemFrame_fields) {
+            // Something not so important. Eat up and ignore:
+            monado_metrics_SystemFrame msg = {};
+
+            status = decode_unionmessage_contents(pbstream, type, &msg);
+
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG:[%f]: Got monado_metrics_SystemFrame\n", tNow);
+        }
+        else if (type == monado_metrics_SystemGpuInfo_fields) {
+            // Something not so important. Eat up and ignore:
+            monado_metrics_SystemGpuInfo msg = {};
+
+            status = decode_unionmessage_contents(pbstream, type, &msg);
+
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG:[%f]: Got monado_metrics_SystemGpuInfo\n", tNow);
+        }
+        else if (type == monado_metrics_SessionFrame_fields) {
+            // MonadoXR compositor has received our latest submitted XR frame for future display:
+            monado_metrics_SessionFrame msg = {};
+
+            status = decode_unionmessage_contents(pbstream, type, &msg);
+
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG:[%f]: %s Received session frame:    session_id %ld :: session_frame_id %ld :: predicted_display_time_ns %ld :: display_time_ns %ld\n",
+                       tNow, msg.discarded ? "Discarded" : "Got",  msg.session_id, msg.frame_id, msg.predicted_display_time_ns, msg.display_time_ns);
+
+            if (msg.session_id > oldSessionId) {
+                if (verbosity > 3)
+                    printf("PsychOpenXRCore-INFO: [%f]: New OpenXR session %ld started -- Resetting.\n", tNow, msg.session_id);
+
+                oldSessionId = msg.session_id;
+                waitedForClientFrame = 0;
+                waitedTargetTimeNsecs = 0;
+                waitedForSystemFrame = 0;
+            }
+
+            // Ignore all frames older than targetFrameIndex:
+            if (msg.frame_id == targetFrameIndex) {
+                if (verbosity > 5)
+                    printf("PsychOpenXRCore-INFO: [%f]: New frame %ld from client %s for future initial present at desired_present_time_ns %ld\n", tNow,
+                           msg.frame_id, msg.discarded ? "DISCARDED" : "submitted", msg.display_time_ns);
+
+                // Discarded frames are finished early with return code 0 == Discarded:
+                if (msg.discarded)
+                    return(0);
+
+                if (waitedForClientFrame != 0) {
+                    if (verbosity > 1)
+                        printf("PsychOpenXRCore-INFO: [%f]: New frame %ld from client while old one %ld still pending initial present...\n",
+                               tNow, msg.frame_id, waitedForClientFrame);
+                }
+
+                waitedForClientFrame = msg.frame_id;
+                waitedTargetTimeNsecs = msg.display_time_ns;
+                waitedForSystemFrame = 0;
+            }
+        }
+        else if (type == monado_metrics_Used_fields) {
+            // Info about a submitted frame currently latched for presentation at next flip:
+            monado_metrics_Used msg = {};
+
+            status = decode_unionmessage_contents(pbstream, type, &msg);
+
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG:[%f]: Got monado_metrics_Used:      session_id %ld :: session_frame_id %ld :: system_frame_id %ld :: when %ld nsecs\n", tNow,
+                       msg.session_id, msg.session_frame_id, msg.system_frame_id, msg.when_ns);
+
+            // If no client frame from us is registered for waiting yet, ignore this record:
+            if (waitedForClientFrame > 0 && waitedForSystemFrame == 0) {
+                // Client frame picked for XR present cycle the 1st time?
+                if (msg.session_frame_id == waitedForClientFrame) {
+                    if (verbosity > 5)
+                        printf("PsychOpenXRCore-INFO: [%f]: New frame %ld from client about to do initial present in system frame %ld.\n", tNow,
+                                msg.session_frame_id, msg.system_frame_id);
+
+                    waitedForSystemFrame = msg.system_frame_id;
+                }
+            }
+        }
+        else if (type == monado_metrics_SystemPresentInfo_fields) {
+            // New image present completed on the HMD, ie. kms pageflipped onto scanout and
+            // reported by VK_GOOGLE_display_timing et al.:
+            monado_metrics_SystemPresentInfo msg = {};
+
+            status = decode_unionmessage_contents(pbstream, type, &msg);
+
+            if (verbosity > 6)
+                printf("PsychOpenXRCore-DEBUG:[%f]: Got monado_metrics_SystemPresentInfo: frame_id %ld :: desired_present_time_ns %ld vs. actual_present_time_ns %ld :: Delta %ld\n",
+                       tNow, msg.frame_id, msg.desired_present_time_ns, msg.actual_present_time_ns, msg.actual_present_time_ns - msg.desired_present_time_ns);
+
+            // If no client frame from us is registered for waiting yet, ignore this record:
+            if (waitedForClientFrame > 0 && waitedForSystemFrame > 0) {
+                // Waited for initial present of a new client frame?
+                if (msg.frame_id == waitedForSystemFrame) {
+                    // Yes, this is the first present of our waitedForClientFrame. Present completion!
+                    onsetTimeNsecs = msg.actual_present_time_ns + scanoutStartToPhotonsOffsetNsecs;
+
+                    // Bingo!
+                    done = TRUE;
+
+                    if (verbosity > 5)
+                        printf("PsychOpenXRCore-INFO: [%f]: Frame %ld from client presented in system frame %ld at time %ld nsecs. Delay wrt. desired onset time %f msecs.\n",
+                               tNow, waitedForClientFrame, waitedForSystemFrame, onsetTimeNsecs, (double) (onsetTimeNsecs - waitedTargetTimeNsecs) / 1e6);
+
+                    // Invalidate and update:
+                    waitedForClientFrame = 0;
+                    waitedTargetTimeNsecs = 0;
+                    waitedForSystemFrame = 0;
+                }
+            }
+        }
+
+        // Trouble in decode?
+        if (!status) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Metrics message decode failed: %s\n", PB_GET_ERROR(pbstream));
+
+            return(-1);
+        }
+    }
+
+    // Success: Convert from CLOCK_MONOTONIC nanoseconds to GetSecs CLOCK_REALTIME seconds and add
+    // the offset from start-of-scanout time to photon time when the display lights up with new image:
+    return(PsychOSMonotonicToRefTime(((double) onsetTimeNsecs) / 1e9));
+}
+#else
+// Unsupported on non-Linux:
+static double executeMonadoMetricsCycle(PsychOpenXRDevice *openxr, psych_int64 targetFrameIndex) { return(-1); }
+#endif
 
 static int enumerateXRDevices(XrInstance instance) {
     XrSystemId systemId = XR_NULL_SYSTEM_ID;
@@ -1693,7 +1962,7 @@ static psych_bool processXREvents(XrInstance pollInstance)
                             // End session:
                             psych_bool thread_was_active = isMultithreaded(openxr);
                             PsychOpenXRStopPresenterThread(openxr);
-                            
+
                             if (!resultOK(xrEndSession(openxr->hmd))) {
                                 // Failed - Error return:
                                 if (verbosity > 0)
@@ -1976,6 +2245,18 @@ void PsychOpenXRClose(int handle)
             openxr->frameState.shouldRender = FALSE;
             openxr->targetPresentTime = PsychGetAdjustedPrecisionTimerSeconds(NULL) - 10;
             PresentExecute(openxr, FALSE);
+
+            #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Shutdown our Monado proprietary timestamping, if it is active:
+            if (openxr->pbfile) {
+                // Close fifo file for Monado metrics timestamping:
+                fclose(openxr->pbfile);
+                openxr->pbfile = NULL;
+
+                if (verbosity > 4)
+                    printf("PsychOpenXRCore-DEBUG: Shutdown Monado metrics timestamping.\n");
+            }
+            #endif
 
             if (verbosity > 4)
                 printf("PsychOpenXRCore-DEBUG: xrRequestExitSession().\n");
@@ -2965,82 +3246,82 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         // of the functions and long delays are unlikely, mostly only in case of massive out-of-memory
         // situations, in which we are screwed anyway. But yeah, it would be conceptually better to
         // drop the mutex already after locateXRViews -- which requires substantial refactoring though...
-    
+
         PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount1, FieldNames1, &status);
-    
+
         // Timestamp for when this prediction is valid:
         openxr->sensorSampleTime = predictionTime;
         PsychSetStructArrayDoubleElement("Time", 0, predictionTime, status);
-    
+
         // device tracking status:
         StatusFlags = 0;
-    
+
         // Active orientation tracking?
         if (openxr->viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT && openxr->viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_TRACKED_BIT)
             StatusFlags |= 1;
-    
+
         // Active position tracking?
         if (openxr->viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT && openxr->viewState.viewStateFlags & XR_VIEW_STATE_POSITION_TRACKED_BIT)
             StatusFlags |= 2;
-    
+
         // Pose at least somewhat valid, ie. orientation or position valid? Could also be just inferred, not tracked, but is considered somewhat valid/useful:
         if (openxr->viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT || openxr->viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT)
             StatusFlags |= 4;
-    
+
         // device present, connected and online and on users head, displaying us?
         if (openxr->state == XR_SESSION_STATE_VISIBLE || openxr->state == XR_SESSION_STATE_FOCUSED)
             StatusFlags |= 128;
-    
+
         // Return head and general tracking status flags:
         PsychSetStructArrayDoubleElement("Status", 0, StatusFlags, status);
-    
+
         // Return session status flags:
         StatusFlags = 0;
         if (openxr->state == XR_SESSION_STATE_VISIBLE || openxr->state == XR_SESSION_STATE_FOCUSED) StatusFlags |= 1;
         if (openxr->needFrameLoop) StatusFlags |= (2 + 4);
         if (openxr->lossPending) StatusFlags |= 8;
         if (openxr->userExit) StatusFlags |= 16;
-    
+
         PsychSetStructArrayDoubleElement("SessionState", 0, StatusFlags, status);
-    
+
         // CalibratedOrigin:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
         v[0] = openxr->originPoseInPreviousSpace.position.x;
         v[1] = openxr->originPoseInPreviousSpace.position.y;
         v[2] = openxr->originPoseInPreviousSpace.position.z;
-    
+
         v[3] = openxr->originPoseInPreviousSpace.orientation.x;
         v[4] = openxr->originPoseInPreviousSpace.orientation.y;
         v[5] = openxr->originPoseInPreviousSpace.orientation.z;
         v[6] = openxr->originPoseInPreviousSpace.orientation.w;
         PsychSetStructArrayNativeElement("CalibratedOrigin", 0, outMat, status);
-    
+
         // Left eye pose as raw data:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    
+
         // Position (x,y,z):
         v[0] = openxr->view[0].pose.position.x;
         v[1] = openxr->view[0].pose.position.y;
         v[2] = openxr->view[0].pose.position.z;
-    
+
         // Orientation as a quaternion (x,y,z,w):
         v[3] = openxr->view[0].pose.orientation.x;
         v[4] = openxr->view[0].pose.orientation.y;
         v[5] = openxr->view[0].pose.orientation.z;
         v[6] = openxr->view[0].pose.orientation.w;
         PsychSetStructArrayNativeElement("EyePoseLeft", 0, outMat, status);
-    
+
         // Right eye pose as raw data:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    
+
         // Position (x,y,z):
         v[0] = openxr->view[1].pose.position.x;
         v[1] = openxr->view[1].pose.position.y;
         v[2] = openxr->view[1].pose.position.z;
-    
+
         // Orientation as a quaternion (x,y,z,w):
         v[3] = openxr->view[1].pose.orientation.x;
         v[4] = openxr->view[1].pose.orientation.y;
@@ -3071,7 +3352,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         if (openxr->needFrameLoop) StatusFlags |= (2 + 4);
         if (openxr->lossPending) StatusFlags |= 8;
         if (openxr->userExit) StatusFlags |= 16;
-    
+
         PsychSetStructArrayDoubleElement("SessionState", 0, StatusFlags, status);
     }
 
@@ -3691,7 +3972,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     if (PsychAllocInIntegerListArg(9, kPsychArgOptional, &numTexHandles, &srcTexIds)) {
         if (numTexHandles != 4)
             PsychErrorExitMsg(PsychError_user, "Invalid 'srcTexIds' list provided. Must be a vector with integer handles of length 4.");
-    
+
         // Assign for use with certain workarounds:
         openxr->srcTexIds[0] = srcTexIds[0];
         openxr->srcTexIds[1] = srcTexIds[1];
@@ -3744,6 +4025,9 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
         PsychErrorExitMsg(PsychError_system, "OpenXR session creation for OpenGL rendered XR failed.");
     }
 
+    // Reset submitted frame counter:
+    openxr->frameIndex = 0;
+
     // Try to query video refresh rate of the device from runtime:
     if (pxrGetDisplayRefreshRateFB && resultOK(pxrGetDisplayRefreshRateFB(openxr->hmd, &displayRefreshRate))) {
         if (displayRefreshRate > 0)
@@ -3767,6 +4051,33 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Return video refresh duration of the XR display:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->frameDuration);
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    // Monado proprietary metrics hack for timestamping requested?
+    if (strstr(instanceProperties.runtimeName, "Monado") && getenv("XRT_METRICS_FILE") && strlen(getenv("XRT_METRICS_FILE"))) {
+        // Yes.
+
+        // Init: Try to open metrics fifo/pipe:
+        errno = 0;
+        openxr->pbfile = fopen(getenv("XRT_METRICS_FILE"), "rb");
+        if (!openxr->pbfile) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Could not open Monado metrics protobuffer file '%s' [%s]! Monado timestamping disabled.\n",
+                       getenv("XRT_METRICS_FILE"), strerror(errno));
+        }
+        else if (verbosity > 2)
+            printf("PsychOpenXRCore-INFO: Monado metrics timestamping enabled for this session.\n");
+
+        // Increase fifo pipe size to default maximum allowed value of 1 MB on Linux:
+        if ((fcntl(fileno(openxr->pbfile), F_SETPIPE_SZ, 1024 * 1024) != 1024 * 1024) && (verbosity > 1))
+            printf("PsychOpenXRCore-WARNING: Could not increase Monado metrics fifo size to maximum of 1MB. Expect trouble on long waits between flips in single-treaded mode!\n");
+
+        // Turn it into a nanopb stream / init stream:
+        openxr->pbstream.callback = &monadoMetricsCallback;
+        openxr->pbstream.state = openxr->pbfile;
+        openxr->pbstream.bytes_left = SIZE_MAX;
+    }
+    #endif
 
     // Create and initialize our standard space for rendering the views in device reference frame:
     XrReferenceSpaceCreateInfo refSpaceCreateInfo = {
@@ -3900,15 +4211,18 @@ PsychError PSYCHOPENXRTimingSupport(void)
     "Return available level of precise timing and timestamping support for OpenXR device 'openxrPtr'. "
     "If 'openxrPtr' is omitted, a more basic, general assessment of the OpenXR runtimes capabilities "
     "is returned.\n"
-    "Standard, unextended OpenXR-1 runtimes, as of February 2023, do not support reliable visual onset "
-    "timestamping and most tested runtimes don't support reliable onset timing either. These runtimes "
+    "Standard unextended OpenXR-1 runtimes, as of February 2023, do not support reliable visual onset "
+    "timestamping, and most tested runtimes don't support reliable onset timing either. These runtimes "
     "will return zero, hinting at the need for multi-threading tricks for bearable precision.\n"
     "The open-source Monado runtime does support precise onset timing, and may support some better "
-    "onset timestamping for special customized Monado versions or future Monado versions. This would "
+    "onset timestamping for special customized Linux+Monado versions, or future Monado versions. This would "
     "be reported by a combination of one or more non-zero flags, as described below.\n"
     "The returned 'timingSupport' can be the logical OR of one of these flags:\n"
-    "0 = None. Only use of multi-threading will allow for basic timing and timestamping.\n"
-    "1 = Some more reliable/trustworthy/accurate timing and timestamping precision available.\n"
+    "0 = None. Only use of multi-threading will allow for basic timing and\n"
+    "    timestamping, but still of limited trustworthiness!\n"
+    "1 = Some more reliable/trustworthy/accurate timing and timestamping precision\n"
+    "    available, however, likely with drawbacks like significantly reduced\n"
+    "    performance.\n"
     "\n";
     static char seeAlsoString[] = "PresentFrame PresenterThreadEnable";
 
@@ -3927,16 +4241,25 @@ PsychError PSYCHOPENXRTimingSupport(void)
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
 
+    // Default to response "No timing support":
+    timingSupport = 0;
+
     // Get optional device handle, needed for more precise reporting:
     if (PsychCopyInIntegerArg(1, kPsychArgOptional, &handle)) {
         openxr = PsychGetXR(handle, FALSE);
         // TODO: As of now, no timing support in any OpenXR runtime:
-        timingSupport = 0;
     }
     else {
         // TODO: As of now, no timing support in any OpenXR runtime:
-        timingSupport = 0;
     }
+
+    // Special Monado metrics logging based timestamping hack, only on Linux with
+    // a slightly enhanced and recent (year 2023+ main branch) Monado and some
+    // special config available? If so, we report some basic enhanced timestamping:
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    if (strstr(instanceProperties.runtimeName, "Monado") && getenv("XRT_METRICS_FILE") && strlen(getenv("XRT_METRICS_FILE")))
+        timingSupport = 1;
+    #endif
 
     // Return timingSupport mask:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, timingSupport);
@@ -4303,7 +4626,7 @@ static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
         typedef void (*PFNGLCOPYIMAGESUBDATAPROC)(GLuint srcName, GLenum srcTarget, GLint srcLevel, GLint srcX, GLint srcY, GLint srcZ, GLuint dstName, GLenum dstTarget, GLint dstLevel, GLint dstX, GLint dstY, GLint dstZ, GLsizei srcWidth, GLsizei srcHeight, GLsizei srcDepth);
         static PFNGLBINDFRAMEBUFFERPROC myglBindFramebuffer = NULL;
         static PFNGLCOPYIMAGESUBDATAPROC myglCopyImageSubData = NULL;
-        
+
         // Windows OpenXR runtimes usually use the OpenGL-DirectX/Direct3D interop extension WGL_NV_DX_interop, which
         // has substantial limitations wrt. using the shared Direct3D resource (converted into a OpenGL GL_TEXTURE_2D
         // texture handle) on multiple OpenGL contexts, which make sharing the texture across our OpenXR OpenGL work
@@ -4623,7 +4946,7 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 {
     int eyeIndex;
     psych_bool success = TRUE;
-    double tPredictedOnset = 0;
+    double tPredictedOnset = -2;
     XrResult result;
 
     // Workaround for broken MS-Windows OpenXR runtimes. Manually manage the OpenGL
@@ -4647,7 +4970,9 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         // to absolute XrTime targetDisplayTime. Otherwise select targetDisplayTime as now:
         XrTime targetDisplayTime = (openxr->targetPresentTime < DBL_MAX) ? PsychTimeToXrTime(openxr->targetPresentTime) : PsychTimeToXrTime(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 
-        if (openxr->targetPresentTime < DBL_MAX)
+        // To my current knowledge, only Monado handles frameEndInfo.displayTime properly, so all other
+        // runtimes need a manual wait here:
+        if ((openxr->targetPresentTime < DBL_MAX) && !strstr(instanceProperties.runtimeName, "Monado"))
             PsychWaitUntilSeconds(openxr->targetPresentTime);
 
         // If targetDisplayTime is earlier than earliest next possible display time predictedDisplayTime, then set it
@@ -4701,9 +5026,21 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
             goto present_fail;
         }
         else if (verbosity > 6) {
-            printf("PsychOpenXRCore-INFO: xrEndFrame done for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %f secs ahead.\n",
-                   openxr->targetPresentTime, targetDisplayTime, XrTimeToPsychTime(targetDisplayTime) - XrTimeToPsychTime(openxr->predictedDisplayTime));
+            printf("PsychOpenXRCore-INFO: [%f]: xrEndFrame done for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %f secs ahead.\n",
+                   PsychGetAdjustedPrecisionTimerSeconds(NULL), openxr->targetPresentTime, targetDisplayTime,
+                   XrTimeToPsychTime(targetDisplayTime) - XrTimeToPsychTime(openxr->predictedDisplayTime));
         }
+
+        success = TRUE;
+
+        // Increment counter of submitted client XR frames:
+        openxr->frameIndex++;
+
+        // On Monado we must do a wait iff Monado specific metrics timestamping is not used, because standard Monado will
+        // properly schedule frame onset as per displayTime, but won't block until frame onset, so we need an active wait
+        // to guesstimate the right time to xrWaitFrame to get some semblance of a timestamp:
+        if ((openxr->targetPresentTime < DBL_MAX) && (tPredictedOnset == -2) && strstr(instanceProperties.runtimeName, "Monado") && !openxr->pbfile)
+            PsychWaitUntilSeconds(openxr->targetPresentTime);
     }
 
     // Do the frame present cycle:
@@ -4727,9 +5064,18 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
     // Latch new predictedDisplayTime for all consumers:
     openxr->predictedDisplayTime = openxr->frameState.predictedDisplayTime;
 
-    // Mark frame as not skipped, ie. set tPredictedOnset to greater than zero timestamp:
-    // TODO FIXME Rethink!!! This is possibly wrong!!!
-    tPredictedOnset = XrTimeToPsychTime(openxr->predictedDisplayTime) - openxr->frameDuration;
+    // If no onset timestamp is assigned yet, give the Monado metrics timestamping
+    // hack a chance. It will return -1 on unsupported, 0 if frame is reported as
+    // dropped or skipped, and > 0 for an actual frame onset timestamp:
+    if (!inInit && success && (tPredictedOnset == -2))
+        tPredictedOnset = executeMonadoMetricsCycle(openxr, openxr->frameIndex);
+
+    // If we made it up to here and no valid onset timestamp was assigned yet, then
+    // mark frame as not skipped, ie. set tPredictedOnset to greater than zero timestamp:
+    // Note that this is likely somewhat wrong, but the best we can do on OpenXR runtimes
+    // without builtin timestamping support:
+    if (tPredictedOnset < 0)
+        tPredictedOnset = XrTimeToPsychTime(openxr->predictedDisplayTime) - openxr->frameDuration;
 
     result = xrBeginFrame(openxr->hmd, NULL);
     if (!resultOK(result)) {
@@ -4758,6 +5104,7 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
     int eyeIndex;
     psych_bool latched = FALSE;
     psych_bool success = TRUE;
+    double tOnsetTimestamp = -1;
     double targetPresentTime = openxr->targetPresentTime;
 
     if (!openxr->sessionActive) {
@@ -4834,39 +5181,28 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
     if (!resultOK(result)) {
         if (verbosity > 0) {
             if (latched)
-                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame for GetSecs time %f [secs] == targetDisplayTime %lld [xrTime units]: %s\n",
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame for GetSecs time %f [secs] == targetDisplayTime %ld [xrTime units]: %s\n",
                         targetPresentTime, targetDisplayTime, errorString);
             else
-                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame in idle-loop for displayTime %lld [xrTime units]: %s\n",
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to xrEndFrame in idle-loop for displayTime %ld [xrTime units]: %s\n",
                         frameEndInfo.displayTime, errorString);
         }
 
         // Mark as failed:
         success = FALSE;
     }
-    else if (verbosity > 6) {
-        fprintf(stderr, "PsychOpenXRCore-INFO:PresentCycle(): xrEndFrame done for predicted onset time %lld xrTime units: %f %s\n",
-                frameEndInfo.displayTime, latched ? (XrTimeToPsychTime(frameEndInfo.displayTime) - XrTimeToPsychTime(targetDisplayTime)) : 1,
-                latched ? "secs after targetDisplayTime. Frame latched!" : ".");
-    }
+    else {
+        if (verbosity > 6)
+            fprintf(stderr, "PsychOpenXRCore-INFO: [%f] PresentCycle(): xrEndFrame done for predicted onset time %ld xrTime units: %f %s\n",
+                    PsychGetAdjustedPrecisionTimerSeconds(NULL), frameEndInfo.displayTime,
+                    latched ? (XrTimeToPsychTime(frameEndInfo.displayTime) - XrTimeToPsychTime(targetDisplayTime)) : 1,
+                    latched ? "secs after targetDisplayTime. Frame latched!" : ".");
 
-    // After releasing/latching most recent stimuli to swapchain and xrEndFrame
-    // submitting them to the XR compositor, acquire new swapchain images for next
-    // render cycle of our client on the main thread:
-    if (latched) {
-        // Set returned onset timestamp to -1 for failure or 0 for skipped present:
-        if (!success)
-            openxr->tPredictedOnset = -1;
-        else if (frameEndInfo.layerCount == 0)
-            openxr->tPredictedOnset = 0;
+        // So far successfull:
+        success = TRUE;
 
-        result = acquireTextureHandles(openxr);
-        if (!resultOK(result)) {
-            if (verbosity > 0)
-                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to acquireTextureHandles(): %s\n", errorString);
-
-            success = FALSE;
-        }
+        // Increment counter of submitted client XR frames:
+        openxr->frameIndex++;
     }
 
     // Start next frame present cycle:
@@ -4890,10 +5226,38 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
         goto presentcycle_fail;
     }
 
+    if (success) {
+        // Give the Monado metrics timestamping hack a chance. It will return -1
+        // on unsupported, 0 if frame is reported as dropped or skipped, and > 0
+        // for an actual frame onset timestamp:
+        tOnsetTimestamp = executeMonadoMetricsCycle(openxr, openxr->frameIndex);
+    }
+
     PsychLockMutex(&(openxr->presenterLock));
 
     // Latch new predictedDisplayTime for all consumers under mutex protection:
     openxr->predictedDisplayTime = openxr->frameState.predictedDisplayTime;
+
+    // After releasing/latching most recent stimuli to swapchain and xrEndFrame
+    // submitting them to the XR compositor, acquire new swapchain images for next
+    // render cycle of our client on the main thread:
+    if (latched) {
+        // Set returned onset timestamp to -1 for failure or 0 for skipped present:
+        if (!success)
+            openxr->tPredictedOnset = -1;
+        else if (frameEndInfo.layerCount == 0)
+            openxr->tPredictedOnset = 0;
+        else if (tOnsetTimestamp >= 0)
+            openxr->tPredictedOnset = tOnsetTimestamp;
+
+        result = acquireTextureHandles(openxr);
+        if (!resultOK(result)) {
+            if (verbosity > 0)
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to acquireTextureHandles(): %s\n", errorString);
+
+            success = FALSE;
+        }
+    }
 
     PsychUnlockMutex(&(openxr->presenterLock));
 
