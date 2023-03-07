@@ -5214,8 +5214,53 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
         .next = NULL
     };
 
+    if (latched) {
+        // Set returned onset timestamp to -1 for failure, or to 0 for skipped present:
+        if (!success)
+            openxr->tPredictedOnset = -1;
+        else if (frameEndInfo.layerCount == 0)
+            openxr->tPredictedOnset = 0;
+
+        result = acquireTextureHandles(openxr);
+        if (!resultOK(result)) {
+            if (verbosity > 0)
+                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to acquireTextureHandles(): %s\n", errorString);
+
+            success = FALSE;
+        }
+    }
+
     // Wait for next compositor sync, with lock dropped:
     PsychUnlockMutex(&(openxr->presenterLock));
+
+    if (success) {
+        // Give the Monado metrics timestamping hack a chance. It will return -1
+        // on unsupported, 0 if frame is reported as dropped or skipped, and > 0
+        // for an actual frame onset timestamp. We must always run executeMonadoMetricsCycle,
+        // to keep the metrics fifo drained:
+        tOnsetTimestamp = executeMonadoMetricsCycle(openxr, openxr->frameIndex);
+
+        // New XR stimulus frame latched this cycle?
+        if (latched) {
+            // If a new XR stimulus frame was latched this cycle, and some actual
+            // layer visual content was submitted, and executeMonadoMetricsCycle()
+            // returned a valid timestamp (or 0 for a skipped/dropped frame), then
+            // update the stimulus onset timestamp returned to the user script:
+            if (tOnsetTimestamp >= 0) {
+                if (frameEndInfo.layerCount > 0)
+                    openxr->tPredictedOnset = tOnsetTimestamp;
+
+                // Signal completed presentation of the new stimulus frame to the
+                // main-thread, to complete 'PresentFrame' aka Screen('Flip') with
+                // proper timestamps:
+                PsychSignalCondition(&(openxr->presentedSignal));
+
+                // Reset latched state, so we don't PsychSignalCondition() again
+                // below:
+                latched = FALSE;
+            }
+        }
+    }
 
     result = xrWaitFrame(openxr->hmd, &frameWaitInfo, &openxr->frameState);
     if (!resultOK(result)) {
@@ -5226,38 +5271,10 @@ static psych_bool PresentCycle(PsychOpenXRDevice* openxr)
         goto presentcycle_fail;
     }
 
-    if (success) {
-        // Give the Monado metrics timestamping hack a chance. It will return -1
-        // on unsupported, 0 if frame is reported as dropped or skipped, and > 0
-        // for an actual frame onset timestamp:
-        tOnsetTimestamp = executeMonadoMetricsCycle(openxr, openxr->frameIndex);
-    }
-
     PsychLockMutex(&(openxr->presenterLock));
 
     // Latch new predictedDisplayTime for all consumers under mutex protection:
     openxr->predictedDisplayTime = openxr->frameState.predictedDisplayTime;
-
-    // After releasing/latching most recent stimuli to swapchain and xrEndFrame
-    // submitting them to the XR compositor, acquire new swapchain images for next
-    // render cycle of our client on the main thread:
-    if (latched) {
-        // Set returned onset timestamp to -1 for failure or 0 for skipped present:
-        if (!success)
-            openxr->tPredictedOnset = -1;
-        else if (frameEndInfo.layerCount == 0)
-            openxr->tPredictedOnset = 0;
-        else if (tOnsetTimestamp >= 0)
-            openxr->tPredictedOnset = tOnsetTimestamp;
-
-        result = acquireTextureHandles(openxr);
-        if (!resultOK(result)) {
-            if (verbosity > 0)
-                fprintf(stderr, "PsychOpenXRCore-ERROR:PresentCycle(): Failed to acquireTextureHandles(): %s\n", errorString);
-
-            success = FALSE;
-        }
-    }
 
     PsychUnlockMutex(&(openxr->presenterLock));
 
