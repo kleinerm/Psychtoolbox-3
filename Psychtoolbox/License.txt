@@ -195,6 +195,14 @@
 % You can find the source code for the SDK and loader under:
 % https://github.com/KhronosGroup/OpenXR-SDK
 %
+% For some experimental Monado specific timestamping implementation, the driver currently
+% also contains a statically included copy of the nanopb protobuffer parsing library
+% (URL: https://jpa.kapsi.fi/nanopb) which is licensed under the zLib license, and statically
+% included copies of some files from the FOSS Monado OpenXR runtime from https://monado.freedesktop.org,
+% which are licensed under the Boost Software License BSL-1.0 - SPDX-License-Identifier: BSL-1.0.
+% These statically included files can be found in the nanopb subfolder of the PsychOpenXRCore
+% source folder, with detailed copyright and license information included.
+%
 % Support for NVidia NVision stereo emitter/stereo goggles under Linux is
 % implemented by use of libnvstusb from http://sourceforge.net/projects/libnvstusb/
 % This library is licensed under LGPLv2 license. The source code for our
@@ -1725,6 +1733,31 @@
 % respect.
 %
 % End of Simplified Pixabay license text.
+%
+% =========================================================================
+%
+% The zLib License:
+%
+% This software is provided 'as-is', without any express or
+% implied warranty. In no event will the authors be held liable
+% for any damages arising from the use of this software.
+%
+% Permission is granted to anyone to use this software for any
+% purpose, including commercial applications, and to alter it and
+% redistribute it freely, subject to the following restrictions:
+%
+% 1. The origin of this software must not be misrepresented; you
+%    must not claim that you wrote the original software. If you use
+%    this software in a product, an acknowledgment in the product
+%    documentation would be appreciated but is not required.
+%
+% 2. Altered source versions must be plainly marked as such, and
+%    must not be misrepresented as being the original software.
+%
+% 3. This notice may not be removed or altered from any source
+%    distribution.
+%
+% End of the zLib license text.
 %
 % =========================================================================
 %

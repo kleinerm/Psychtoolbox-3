@@ -280,7 +280,7 @@ end
 if mode==16
     % Build PsychOpenXRCore.mex:
     try
-        mex --output ../Projects/Linux/build/PsychOpenXRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenXRCore/*.c -lc -lrt -ldl -lopenxr_loader
+        mex --output ../Projects/Linux/build/PsychOpenXRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore -ICommon/PsychOpenXRCore/nanopb Linux/Base/*.c Common/Base/*.c Common/PsychOpenXRCore/*.c Common/PsychOpenXRCore/nanopb/*.c -lc -lrt -ldl -lopenxr_loader
     catch
         disp(psychlasterror);
     end
