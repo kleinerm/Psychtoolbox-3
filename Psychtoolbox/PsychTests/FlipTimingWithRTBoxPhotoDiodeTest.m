@@ -1,5 +1,5 @@
-function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder, usevulkan, bpc)
-% FlipTimingWithRTBoxPhotoDiodeTest([configFile][, targetFolder][, usevulkan=0][, bpc=8])
+function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder, usevulkan, bpc, useXR)
+% FlipTimingWithRTBoxPhotoDiodeTest([configFile][, targetFolder][, usevulkan=0][, bpc=8][, useXR=0])
 %
 % Test visual stimulus onset timing accuracy and visual stimulus onset
 % timestamping precision and robustness under varying loads, conditions and
@@ -37,6 +37,9 @@ function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder, usevulkan, 
 % and 16 bpc for a RGBA16F floating point framebuffer. Defaults to 8 bpc,
 % which is the only precision that is guaranteed to be supported on all
 % operating systems, graphics cards and displays.
+%
+% 'useXR' If 1, try to test timing on a supported VR/AR/MR/XR display via
+% PsychVRHMD(). Might be fiddly and low performance, but not impossible.
 %
 % Mandatory variables in the config file, part of the struct variable 'conf':
 % ---------------------------------------------------------------------------
@@ -270,13 +273,20 @@ end
 Screen('Preference', 'VBLTimestampingMode', conf.VBLTimestampingMode);
 fprintf('Enabling VBLTimestampingMode %i.\n', conf.VBLTimestampingMode);
 
-if useRTbox == 2
+if useRTbox == 2 && ~useXR
     % Switch Videoswitcher into high precision luminance + trigger mode:
     PsychVideoSwitcher('SwitchMode', res.screenId, 1);
 end
 
 try
     PsychImaging('PrepareConfiguration');
+
+    if useXR
+        hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingSupport TimestampingSupport');
+        if isempty(hmd)
+            error('Asked for XR/VR/AR device testing, but could not init such a device.');
+        end
+    end
 
     if usevulkan
         % Use PsychVulkan display backend instead of standard OpenGL:
@@ -633,7 +643,8 @@ try
                     res.measuredTime(i) = mytstamp;
                 end
 
-                if (IsOSX && usevulkan) || (IsLinux && ~IsWayland && ~isempty(getenv('PSYCH_EXPERIMENTAL_NETWMTS')) && (Screen('Preference', 'WindowShieldingLevel') < 2000))
+                if (IsOSX && usevulkan) || useXR || ...
+                    (IsLinux && ~IsWayland && ~isempty(getenv('PSYCH_EXPERIMENTAL_NETWMTS')) && (Screen('Preference', 'WindowShieldingLevel') < 2000))
                     % Current macOS 10.15.7 Metal will not give us low
                     % enough flip latency to flip back to black within one
                     % video refresh cycle due to system compositor design
@@ -645,6 +656,8 @@ try
                     % be wrong:
                     % Same problem is prone to happen on Linux/X11 with NetWM timing if
                     % desktop compositor is intentionally enabled for testing.
+                    % Typical VR/MR/XR compositors are also too slow, so
+                    % need this handling.
                     PsychRTBox('Clear', rtbox);
                 end
 
@@ -781,8 +794,8 @@ try
             % Close connection to box:
             PsychRTBox('CloseAll');
 
-            if useRTbox == 2
-                % Switch Videoswitcher into high precision luminance + trigger mode:
+            if useRTbox == 2 && ~useXR
+                % Switch Videoswitcher into standard passthrough mode:
                 PsychVideoSwitcher('SwitchMode', res.screenId, 1);
             end
         else
