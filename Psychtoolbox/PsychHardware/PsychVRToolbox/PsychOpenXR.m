@@ -1397,12 +1397,11 @@ if strcmpi(cmd, 'Open')
       % timestamping. Unfortunately when monado-service has been started with
       % Metrics output to our fifo file, we need to read data from that fifo
       % pretty much constantly, as otherwise the fifo - which has a limited capacity
-      % of 64 kB will get full and block quite quickly and things to sideways! The
-      % only way to guarantee frequent enough reads is to driver this with our MT
+      % of 1 MB - will get full and block quite quickly and things to sideways! The
+      % only way to guarantee frequent enough reads is to drive this with our MT
       % thread, so we need MT at all time as soon as Monado metrics mode is active:
       newhmd.needMTForTimestamping = 0;
       newhmd.needMTForMonadoMetricsFifo = 1;
-      fprintf('PsychOpenXR-INFO: Monado supports metrics timestamping in this session. Will need permanent multi-threading.\n');
     end
   else
     % Less advanced: Need tracking update, and multi-threading if the
@@ -1898,7 +1897,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % Set as fbOverrideRect for window:
   ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
 
-  fprintf('PsychOpenXR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with XR device direct output mode.\n', ...
+  fprintf('PsychOpenXR-INFO: Overriding onscreen window framebuffer size to %i x %i pixels for use with XR device direct output mode.\n', ...
           clientRes(1), clientRes(2));
 
   % Skip all visual timing sync tests and calibrations, as display timing
@@ -2063,6 +2062,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     fprintf('PsychOpenXR-INFO: can determine need for proper timing. Performance will be mildly reduced throughout the session. Please use the keywords\n');
     fprintf('PsychOpenXR-INFO: TimestampingSupport or NoTimestampingSupport in the basicRequirements parameter to give me a clue about what you want, for\n');
     fprintf('PsychOpenXR-INFO: both potentially higher timestamp trustworthiness and potentially better performance.\n');
+  end
+
+  if hmd{handle}.needMTForMonadoMetricsFifo
+    fprintf('PsychOpenXR-INFO: Monado supports metrics timestamping in this session. Will need permanent multi-threading.\n');
   end
 
   % Derive initial master multiThreaded mode from current MT requirements:
