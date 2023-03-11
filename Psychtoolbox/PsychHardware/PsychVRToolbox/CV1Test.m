@@ -228,6 +228,21 @@ if useRTbox
         end
     end
 
+    if strcmpi(hmdinfo.type, 'OpenXR') && strcmpi(hmdinfo.subtype(1:7), 'SteamVR')
+        % SteamVR/OpenXR with Monado Linux plugin? If so assume this is a
+        % Oculus Rift CV-1 driven via Monado, although it could be some
+        % other Monado supported HMD as well...
+        if strcmpi(hmdinfo.modelName, 'SteamVR/OpenXR : monado')
+            % Rift CV-1 has a global shutter, implemented via blinking
+            % backlight, which flashes up at the end of the scanout cycle,
+            % iow. the image actually visually shows as photons with
+            % roughly one active scanout duration delay. Estimated to about
+            % ~8 msecs in a 11.111 msecs / 90 Hz refresh cycle.
+            % (Note the counter-intuitive but correct negative sign!):
+            scanoutToPhotonOffset = scanoutToPhotonOffset - 0.008;
+        end
+    end
+
     res.tBase = res.tBase - scanoutToPhotonOffset;
     res.vbl = res.vbl - scanoutToPhotonOffset;
 
