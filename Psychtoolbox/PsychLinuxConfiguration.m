@@ -735,7 +735,27 @@ fprintf('\n\n\n');
 
 % Matlab version 8.4 (R2014b) or later?
 if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXIST>
-  % Yes: If R2014b detects a Mesa OpenGL renderer as default system OpenGL
+  % Yes.
+
+  % Latest Matlab bundles a totally crippled libvulkan.so.1 Vulkan loader
+  % that overrides the good system installed Vulkan loader and sabotages
+  % our PsychVulkan support. Apparently competent people are hard to hire...
+  % Try to detect this and and rename the file:
+  libvulkan = ([matlabroot '/bin/glnxa64/libvulkan.so.1']);
+  if exist(libvulkan, 'file')
+    cmd = ['sudo mv ' libvulkan ' ' libvulkan '.DISABLED'];
+    fprintf('\nThis Matlab version ships a broken libvulkan.so.1 library. Renaming it to disable it...\n');
+    fprintf('You may have to enter your administrator password to execute the following command:\n%s\n\n', cmd);
+    system(cmd);
+
+    if exist(libvulkan, 'file')
+      warning('Failed to rename Matlabs broken libvulkan.so.1. PsychVulkan will not work!');
+    else
+      fprintf('Success. Vulkan should work now.\n');
+    end
+  end
+
+  % If R2014b detects a Mesa OpenGL renderer as default system OpenGL
   % library, it will blacklist it and switch to its own utterly outdated
   % Mesa X11 software renderer (Version 7.2 !!). This is utterly inadequate
   % for our purpose, therefore lets reconfigure Matlab to force it to use the
