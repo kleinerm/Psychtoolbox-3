@@ -1,6 +1,8 @@
 function osxmakeitoctave3(mode)
 % This is the MacOSX version of makeit: It is meant for building PTB for
-% 64-Bit Octave-7.3 on macOS 12.6 Monterey or later, using the 12.x SDK.
+% 64-Bit Octave-8.1 on macOS 12.6 Monterey or later, using the 12.x SDK.
+% Note we still store mex files in the folder for Octave 7, for backward
+% compatibility during the PTB 3.0.19 series.
 %
 % The rpath Octave version independent encoding is done by the helper
 % function osxsetoctaverpath().
@@ -65,6 +67,7 @@ if mode==0
     -weak_library,/Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgthread-2.0.dylib,\
     -weak_library,/Library/Frameworks/GStreamer.framework/Versions/Current/lib/libglib-2.0.dylib,\
     -weak_library,/usr/local/lib/libdc1394.dylib,\
+    -rpath,/Library/Frameworks/GStreamer.framework/Versions/Current/lib,\
     -framework,CoreServices,-framework,CoreFoundation,-framework,ApplicationServices,-framework,CoreAudio,-framework,OpenGL,-framework,CoreVideo,\
     -framework,IOKit,-framework,SystemConfiguration,-framework,Carbon,-framework,CoreText,-framework,QuartzCore,\
     -framework,CoreDisplay,-F/System/Library/PrivateFrameworks,-framework,DisplayServices,\
@@ -274,7 +277,7 @@ function mex(varargin)
       outargs = {outargs{:}, filtered};
     end
   end
-  
+
   args = cellstr(char(outargs));
   mkoctfile (args{:});
 end
