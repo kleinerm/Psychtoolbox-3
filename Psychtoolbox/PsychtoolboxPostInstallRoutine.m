@@ -77,6 +77,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 10/29/2020 64-Bit Octave 5.2.0 support for Windows and OSX. (MK)
 % ??/??/2021 64-Bit Octave 6.1.0 support for Windows and OSX. (MK)
 % 02/05/2023 64-Bit Octave 7.3.0 support for Windows and OSX. (MK)
+% 03/12/2023 64-Bit Octave 8.1.0 support for OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -409,8 +410,8 @@ if IsOctave
                 fprintf('Press any key to confirm you read and understand this message.\n');
                 pause;
             end
-        elseif ismember(octavemajorv, [6,7]) && IsOSX
-            % Octave 6 and 7 can share the same mex files built against Octave 7:
+        elseif ismember(octavemajorv, [6,7,8]) && IsOSX
+            % Octave 6 - 8 can share the same mex files built against Octave 7:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave7'];
         else
             % Everything else (aka other OS'es) goes by Octave major version:
@@ -464,7 +465,7 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if  (IsOSX && (~ismember(octavemajorv, [6,7]))) || ...
+    if  (IsOSX && (~ismember(octavemajorv, [6,7,8]))) || ...
         (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, [1,2,3,4]))) || ...
         (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 7)))
         fprintf('\n\n===============================================================================================\n');
@@ -474,7 +475,7 @@ if IsOctave
             fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x or 7.x series.\n');
             fprintf('WARNING: You can get Psychtoolbox for other, or more recent, versions of Octave from NeuroDebian.\n');
         elseif IsOSX
-            fprintf('WARNING: only using Octave 6 or Octave 7 with this version of Psychtoolbox.\n');
+            fprintf('WARNING: only using Octave 6 or Octave 7 or Octave 8 with this version of Psychtoolbox.\n');
         else
             % On Windows we only care about 7.x atm:
             fprintf('WARNING: only using Octave 7 with this version of Psychtoolbox.\n');
