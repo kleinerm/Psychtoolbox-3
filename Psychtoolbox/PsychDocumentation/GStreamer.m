@@ -95,7 +95,7 @@
 %
 % also lightly tested, probably with higher performance and more modern, is v1.22.0.
 %
-% <https://gstreamer.freedesktop.org/data/pkg/windows/1.22.0/msvc/gstreamer-1.0-msvc-x86_64-1.22.0.msi>
+% <https://gstreamer.freedesktop.org/data/pkg/windows/1.22.1/msvc/gstreamer-1.0-msvc-x86_64-1.22.1.msi>
 %
 % You *must* install the MSVC variants of GStreamer, not the MinGW64 variants!
 %
@@ -107,7 +107,7 @@
 % also tested, probably higher performance andmore modern, but known to crash with
 % VideoRecordingDemo.m at least with the MacBookPro 2017 builtin camera, is v1.22.0.
 %
-% <https://gstreamer.freedesktop.org/data/pkg/osx/1.22.0/gstreamer-1.0-1.22.0-universal.pkg>
+% <https://gstreamer.freedesktop.org/data/pkg/osx/1.22.1/gstreamer-1.0-1.22.1-universal.pkg>
 %
 % When the installer asks you to select the components it should install,
 % select a "Full installation" or "Complete installation", or if those
