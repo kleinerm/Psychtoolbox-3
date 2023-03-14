@@ -521,7 +521,7 @@ static XrTime PsychTimeToXrTime(double refTime)
         LARGE_INTEGER qpc;
 
         // Map refTime in GetSecs to QPC:
-        qpc.QuadPart = (refTime * PsychGetKernelTimebaseFrequencyHz());
+        qpc.QuadPart = (LONGLONG) (refTime * PsychGetKernelTimebaseFrequencyHz());
 
         // Map QPC time to XrTime:
         if (!resultOK(pxrConvertWin32PerformanceCounterToTimeKHR(xrInstance, &qpc, &outTime))) {
@@ -2467,7 +2467,6 @@ PsychError PSYCHOPENXROpen(void)
         "'runtimeName' returns the name of the OpenXR runtime.\n";
     static char seeAlsoString[] = "GetCount Close";
 
-    XrResult result;
     PsychOpenXRDevice* openxr;
     int deviceIndex = 0;
     int handle = 0;
@@ -3809,7 +3808,7 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     if (eyeIndex < 0 || eyeIndex > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
 
     result = xrEnumerateViewConfigurationViews(xrInstance, openxr->systemId, openxr->viewType, 0, &vc, NULL);
-    if (!resultOK(result) || (vc < eyeIndex + 1)) {
+    if (!resultOK(result) || ((int) vc < eyeIndex + 1)) {
         if (verbosity > 0) {
             if (result == XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED)
                 printf("PsychOpenXRCore-ERROR: View enumeration failed: Requested view configuration type not supported by OpenXR runtime and device.\n");
@@ -3827,7 +3826,7 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     }
 
     result = xrEnumerateViewConfigurationViews(xrInstance, openxr->systemId, openxr->viewType, vc, &vc, views);
-    if (!resultOK(result) || (vc < eyeIndex + 1)) {
+    if (!resultOK(result) || ((int) vc < eyeIndex + 1)) {
         if (verbosity > 0) {
             if (result == XR_ERROR_VIEW_CONFIGURATION_TYPE_UNSUPPORTED)
                 printf("PsychOpenXRCore-ERROR: View enumeration failed: Requested view configuration type not supported by OpenXR runtime and device.\n");
@@ -3898,7 +3897,6 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     "refresh rate is returned as one of the most common values for consumer HMDs.\n";
     static char seeAlsoString[] = "Open Close";
 
-    XrResult result;
     int i, numTexHandles;
     int handle;
     int use3DMode;
@@ -4294,13 +4292,12 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     static char seeAlsoString[] = "GetNextTextureHandle";
 
     int handle, eyeIndex;
-    int width, height, out_Length, floatFormat, numMSAASamples;
+    int width, height, floatFormat, numMSAASamples;
     float aspectRatio;
     uint32_t nFormats, i;
     int64_t *swapchainFormats = NULL;
     int64_t imageFormat = -1;
     PsychOpenXRDevice *openxr;
-    XrResult result;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4726,7 +4723,7 @@ static XrResult acquireTextureHandles(PsychOpenXRDevice *openxr)
         XrSwapchainImageWaitInfo waitTexInfo = {
             .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
             .next = NULL,
-            .timeout = 1e9
+            .timeout = (XrDuration) 1e9
         };
 
         result = xrWaitSwapchainImage(openxr->textureSwapChain[eyeIndex], &waitTexInfo);
@@ -5039,8 +5036,13 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         // On Monado we must do a wait iff Monado specific metrics timestamping is not used, because standard Monado will
         // properly schedule frame onset as per displayTime, but won't block until frame onset, so we need an active wait
         // to guesstimate the right time to xrWaitFrame to get some semblance of a timestamp:
-        if ((openxr->targetPresentTime < DBL_MAX) && (tPredictedOnset == -2) && strstr(instanceProperties.runtimeName, "Monado") && !openxr->pbfile)
-            PsychWaitUntilSeconds(openxr->targetPresentTime);
+        if ((openxr->targetPresentTime < DBL_MAX) && (tPredictedOnset == -2) && strstr(instanceProperties.runtimeName, "Monado")) {
+            // On Linux we may be able to use metrics timestamping on Monado, so can skip the wait, on other OS'es we can't:
+            #if PSYCH_SYSTEM == PSYCH_LINUX
+            if (!openxr->pbfile)
+            #endif
+                PsychWaitUntilSeconds(openxr->targetPresentTime);
+        }
     }
 
     // Do the frame present cycle:
