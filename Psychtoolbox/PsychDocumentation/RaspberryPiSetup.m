@@ -112,6 +112,15 @@
 %   content at good framerates works if you do everything right wrt. playback parameters
 %   and encoding. Otherwise your mileage may vary both wrt. performance and reliability.
 %
+%   It is also possible to enable experimental Vulkan display support, although this
+%   is of no meaningful benefit right now (as of March 2023), and just yields you lower
+%   performance and broken visual stimulation timing and timestamps. The way to enable
+%   this is to follow the following instructions on how to use PiKISS to install an
+%   up to date Vulkan driver for the RPi 4+. It is important to install a driver from
+%   Mesa 23.1 or later: https://qengineering.eu/install-vulkan-on-raspberry-pi.html
+%   After that, you can launch Octave from the command line with the use of the
+%   zink OpenGL driver via the following: MESA_LOADER_DRIVER_OVERRIDE=zink octave
+%
 %
 %   If you use Psychtoolbox with Raspbian, these setup steps are strongly recommended:
 %
