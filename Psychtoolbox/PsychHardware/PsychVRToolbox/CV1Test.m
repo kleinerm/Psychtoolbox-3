@@ -31,8 +31,11 @@ PsychImaging('PrepareConfiguration');
 % Setup the HMD to act as a regular "monoscopic" display monitor
 % by displaying the same image to both eyes. We need reliable timing and
 % timestamping support for this test script:
-% hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');TimingPrecisionIsCritical
-hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', ' TimingSupport TimestampingSupport');
+% hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
+hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingPrecisionIsCritical TimingSupport TimestampingSupport');
+if isempty(hmd)
+    error('No supported XR device found. Game over!');
+end
 
 win = PsychImaging('OpenWindow', screenid, [0 0 0]);
 ifi = Screen('GetFlipInterval', win)
@@ -218,27 +221,21 @@ if useRTbox
 
         % Monado with a Oculus Rift CV-1?
         if strcmpi(hmdinfo.modelName, 'Monado: Rift (CV1) (OpenHMD)')
-            % Rift CV-1 has a global shutter, implemented via blinking
-            % backlight, which flashes up at the end of the scanout cycle,
-            % iow. the image actually visually shows as photons with
-            % roughly one active scanout duration delay. Estimated to about
-            % ~8 msecs in a 11.111 msecs / 90 Hz refresh cycle.
-            % (Note the counter-intuitive but correct negative sign!):
+            % Rift CV-1 has a OLED with essentially "rolling shutter".
+            % Estimated to about ~8 msecs in a 11.111 msecs / 90 Hz refresh
+            % cycle. (Note the counter-intuitive but correct negative sign!):
             scanoutToPhotonOffset = scanoutToPhotonOffset - 0.008;
         end
     end
 
-    if strcmpi(hmdinfo.type, 'OpenXR') && strcmpi(hmdinfo.subtype(1:7), 'SteamVR')
+    if strcmpi(hmdinfo.type, 'OpenXR') && ~isempty(strfind(hmdinfo.subtype, 'SteamVR'))
         % SteamVR/OpenXR with Monado Linux plugin? If so assume this is a
         % Oculus Rift CV-1 driven via Monado, although it could be some
         % other Monado supported HMD as well...
         if strcmpi(hmdinfo.modelName, 'SteamVR/OpenXR : monado')
-            % Rift CV-1 has a global shutter, implemented via blinking
-            % backlight, which flashes up at the end of the scanout cycle,
-            % iow. the image actually visually shows as photons with
-            % roughly one active scanout duration delay. Estimated to about
-            % ~8 msecs in a 11.111 msecs / 90 Hz refresh cycle.
-            % (Note the counter-intuitive but correct negative sign!):
+            % Rift CV-1 has a OLED with essentially "rolling shutter".
+            % Estimated to about ~8 msecs in a 11.111 msecs / 90 Hz refresh
+            % cycle. (Note the counter-intuitive but correct negative sign!):
             scanoutToPhotonOffset = scanoutToPhotonOffset - 0.008;
         end
     end
@@ -267,7 +264,7 @@ if useRTbox
     title('Difference flip - measured [msecs]:');
 
     figure;
-    histogram(dT, 100);
+    hist(dT, 100);
     title('Difference histogram flip - measured [msecs]:');
 
     ifi = ifi * 1000;
