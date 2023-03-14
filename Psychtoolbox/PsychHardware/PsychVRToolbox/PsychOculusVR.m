@@ -1795,7 +1795,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glClientActiveTexture(GL.TEXTURE0);
   glEnableClientState(GL.TEXTURE_COORD_ARRAY);
   glTexCoordPointer(2, GL.FLOAT, 0, texR);
-  
+
   % TexCoord set 1 encodes coordinates for the Green color channel:
   glClientActiveTexture(GL.TEXTURE1);
   glEnableClientState(GL.TEXTURE_COORD_ARRAY);
@@ -1824,7 +1824,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glDisableClientState(GL.TEXTURE_COORD_ARRAY);
 
   glDisableClientState(GL.VERTEX_ARRAY);
-  
+
   % Left eye display list done.
   glEndList;
 
@@ -1860,7 +1860,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glClientActiveTexture(GL.TEXTURE0);
   glEnableClientState(GL.TEXTURE_COORD_ARRAY);
   glTexCoordPointer(2, GL.FLOAT, 0, texR);
-  
+
   % TexCoord set 1 encodes coordinates for the Green color channel:
   glClientActiveTexture(GL.TEXTURE1);
   glEnableClientState(GL.TEXTURE_COORD_ARRAY);
@@ -1889,7 +1889,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glDisableClientState(GL.TEXTURE_COORD_ARRAY);
 
   glDisableClientState(GL.VERTEX_ARRAY);
-  
+
   % Right eye display list done.
   glEndList;
 
@@ -1940,7 +1940,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Insert it at former position of the old shader:
   posstring = sprintf('InsertAt%iShader', slot);
-  
+
   % xOffset and yOffset encode the viewport location and size for the left-eye vs.
   % right eye view in the shared output window - or the source renderbuffer if both eyes
   % would be rendered into a shared texture. However, the meshes provided by the SDK
@@ -2151,7 +2151,7 @@ end
 if strcmpi(cmd, 'View2DParameters')
   varargout{1} = [NaN, NaN, NaN];
   varargout{2} = [NaN, NaN];
-  varargout{3} = [NaN, NaN, NaN, Nan];
+  varargout{3} = [NaN, NaN, NaN, NaN];
   return;
 end
 
