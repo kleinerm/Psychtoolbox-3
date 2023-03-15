@@ -120,7 +120,7 @@ static mwSize mxGetNOnly(const mxArray *arrayPtr);
 static mxArray *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p);
 
 //declarations for functions exported from code module
-EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[]);
+PTB_EXPORT void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[]);
 
 // firstTime: This flag defines if this is the first invocation of the module
 // since it was (re-)loaded:
@@ -186,7 +186,7 @@ psych_bool PsychUseCMemoryLayoutIfOptimal(psych_bool tryEnableCMemoryLayout)
  *    Main entry point for Matlab and Octave. Serves as a dispatch and handles
  *    first time initialization.
  *
- *    EXP is a macro defined within Psychtoolbox source to be nothing
+ *    PTB_EXPORT is a macro defined within Psychtoolbox source to be nothing
  *    except on win where it is the declaration which tells the linker to
  *    make the function visible from outside the DLL.
  *
@@ -208,7 +208,7 @@ psych_bool PsychUseCMemoryLayoutIfOptimal(psych_bool tryEnableCMemoryLayout)
  *        Modules should now register in subfunction mode to support the build-in 'version' command.
  *
  */
-EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
+PTB_EXPORT void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
 {
     psych_bool          isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
     PsychFunctionPtr    fArg[2], baseFunction;
