@@ -88,10 +88,10 @@ if IsOctave
                 end
             end
             if IsOSX
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave7OSXFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave8OSXFiles' oext]);
             end
             if IsWindows
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave7WindowsFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave8WindowsFiles' oext]);
             end
         else
             % Correct file with correct extension, still load failure:

@@ -25,7 +25,7 @@ function osxsetoctaverpath(mexfname, mexpath)
     % location of mex files - and apply the rpath editing to each mex file there:
     if nargin < 1 || isempty(mexfname)
         if nargin < 2 || isempty(mexpath)
-            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave7OSXFiles64/'];
+            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFiles64/'];
         end
 
         d = dir (mexpath);
