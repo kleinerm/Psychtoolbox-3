@@ -7743,9 +7743,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: library has not been deleted or renamed by selecting 'System OpenGL' during installation of Octave,\n");
             printf("PTB-INFO: so it is enforcing software rendering.\n");
             printf("PTB-INFO: You have to delete or rename that file and then restart Octave for this to work.\n");
-            printf("PTB-INFO: E.g., on Octave-8.1 at its standard installation location, the file to delete or rename would be likely this:\n");
-            printf("PTB-INFO: C:\\Program Files\\GNU Octave\\Octave-8.1.0\\mingw64\\bin\\opengl32.dll\n");
-            printf("PTB-INFO: C:\\Program Files\\GNU Octave\\Octave-8.1.0\\mingw64\\bin\\opengl_switch.exe can be used to do this for you.\n\n");
+            printf("PTB-INFO: E.g., on Octave-7.3 at its standard installation location, the file to delete or rename would be likely this:\n");
+            printf("PTB-INFO: C:\\Program Files\\GNU Octave\\Octave-7.3.0\\mingw64\\bin\\opengl32.dll\n");
+            //printf("PTB-INFO: C:\\Program Files\\GNU Octave\\Octave-8.1.0\\mingw64\\bin\\opengl_switch.exe can be used to do this for you.\n\n");
             #endif
             // Disable all sync tests and display timing calibrations, unless usercode already did something similar:
             if (PsychPrefStateGet_SkipSyncTests() < 1) PsychPrefStateSet_SkipSyncTests(2);

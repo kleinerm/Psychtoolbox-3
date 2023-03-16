@@ -423,7 +423,9 @@ if IsOctave
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave8'];
         else
             % Everything else (aka other OS'es) goes by Octave major version:
-            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
+            %rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
+            % Override - Always use the Octave8WindowsFiles64 folder, although for actual Octave7 mex files:
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave8'];
         end
 
         % Add proper OS dependent postfix:
@@ -474,7 +476,7 @@ if IsOctave
     end
 
     if  (IsOSX && (~ismember(octavemajorv, [6,7,8]))) || ...
-        (IsWin && (octavemajorv ~= 8 || ~ismember(octaveminorv, [1,2,3,4]))) || ...
+        (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, [3]))) || ...
         (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 8)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
@@ -485,8 +487,8 @@ if IsOctave
         elseif IsOSX
             fprintf('WARNING: only using Octave 6 or Octave 7 or Octave 8 with this version of Psychtoolbox.\n');
         else
-            % On Windows we only care about 8.x atm:
-            fprintf('WARNING: only using Octave 8 with this version of Psychtoolbox.\n');
+            % On Windows we only care about 7.3 atm:
+            fprintf('WARNING: only using Octave 7.3 with this version of Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
