@@ -2,3 +2,14 @@ include README
 include PsychSourceGL/License.txt
 recursive-include PsychSourceGL *.c
 recursive-include PsychSourceGL *.h
+
+# Windows dependencies
+include PsychSourceGL/Cohorts/libusb1-win32/MS32/dll/libusb-1.0.*
+include PsychSourceGL/Cohorts/libusb1-win32/MS64/dll/libusb-1.0.*
+include Psychtoolbox/PsychSound/portaudio_x64.dll
+include PsychSourceGL/Cohorts/PortAudio/portaudio_x64.lib
+
+# macOS dependencies
+include PsychSourceGL/Cohorts/libusb1-win32/libusb-1.0.dylib
+include PsychSourceGL/Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
+include PsychSourceGL/Cohorts/PortAudio/libportaudio_osx_64.a
