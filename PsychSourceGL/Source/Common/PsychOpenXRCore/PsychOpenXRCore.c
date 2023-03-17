@@ -4970,7 +4970,7 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         // To my current knowledge, only Monado handles frameEndInfo.displayTime properly, so all other
         // runtimes need a manual wait here:
         if ((openxr->targetPresentTime < DBL_MAX) && !strstr(instanceProperties.runtimeName, "Monado"))
-            PsychWaitUntilSeconds(openxr->targetPresentTime);
+            PsychWaitUntilSeconds(openxr->targetPresentTime - openxr->frameDuration);
 
         // If targetDisplayTime is earlier than earliest next possible display time predictedDisplayTime, then set it
         // to earliest possible display time. This is crucial for xrEndFrame() to not fail completely under SteamVR:
