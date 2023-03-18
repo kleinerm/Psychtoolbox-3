@@ -115,6 +115,16 @@ if strcmpi(hmdinfo.type, 'OpenXR') && refSpace
     PsychOpenXR('ReferenceSpaceType', hmd, refSpace)
 end
 
+% OpenXR and Use2DViewsWhen3DStopped requested for stopped 3D rendering?
+if strcmpi(hmdinfo.type, 'OpenXR') && ~isempty(strfind(specialReqs, 'Use2DViewsWhen3DStopped')) %#ok<STREMP> 
+    % Set some default position for the 2D views that matches kleinerm's
+    % eyes well and provides matching imaging geometry between 3D
+    % projection layers and 2D quadviews, at least as tested with HTC Vive Pro Eye
+    % under SteamVR:
+    PsychVRHMD('View2DParameters', hmd, 0, [-0.098726, 0.000000, -1.000000]);
+    PsychVRHMD('View2DParameters', hmd, 1, [+0.098726, 0.000000, -1.000000]);
+end
+
 % Retrieve the initial settings for position and size for 2D quad views:
 oldPositionL = PsychVRHMD('View2DParameters', hmd, 0);
 oldPositionR = PsychVRHMD('View2DParameters', hmd, 1);
