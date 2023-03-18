@@ -1457,14 +1457,16 @@ static psych_bool createDefaultXRInputConfig(XrInstance xrInstance)
             { .action = openxr__gripValueAction[1], .binding = gripClickPath[1] },
             { .action = openxr__thumbStick2DAction[0], .binding = trackpadPath[0] },
             { .action = openxr__thumbStick2DAction[1], .binding = trackpadPath[1] },
-            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),
-            BBIND(OVR_Button_Enter, "/user/hand/right/input/menu/click"),
+            BBIND(OVR_Button_Enter, "/user/hand/left/input/menu/click"),        // For consistency with Oculus touch left.
+            BBIND(OVR_Button_Home, "/user/hand/right/input/menu/click"),        // For consistency with Oculus touch right.
+            BBIND(OVR_Button_A, "/user/hand/right/input/trigger/click"),        // Unusual to map on right trigger, but gives us a A button.
+            BBIND(OVR_Button_X, "/user/hand/left/input/trigger/click"),         // Unusual to map on left trigger, but gives us a B button.
+            BBIND(OVR_Button_B, "/user/hand/right/input/system/click"),         // Map B and Y to right/left system buttons. These will often not
+            BBIND(OVR_Button_Y, "/user/hand/left/input/system/click"),          // work, as they are blocked by runtime, e.g., on SteamVR+Windows.
             BBIND(OVR_Button_LThumb, "/user/hand/left/input/trackpad/click"),
             BBIND(OVR_Button_RThumb, "/user/hand/right/input/trackpad/click"),
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
             TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
-            BBIND(OVR_Button_Home, "/user/hand/left/input/system/click"),
-            BBIND(OVR_Button_Home, "/user/hand/right/input/system/click"),
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_controller", ARRAY_SIZE(viveBinding), viveBinding))
@@ -1638,8 +1640,8 @@ static psych_bool createDefaultXRInputConfig(XrInstance xrInstance)
         XrActionSuggestedBinding viveProBinding[] = {
             BBIND(OVR_Button_VolDown, "/user/head/input/volume_down/click"),
             BBIND(OVR_Button_VolUp, "/user/head/input/volume_up/click"),
-            BBIND(OVR_Button_MicMute, "/user/head/input/mute_mic/click"),
-            BBIND(OVR_Button_Home, "/user/head/input/system/click"),
+            BBIND(OVR_Button_MicMute, "/user/head/input/mute_mic/click"),       // Does not work on SteamVR+Windows.
+            BBIND(OVR_Button_Home, "/user/head/input/system/click"),            // Does not work on SteamVR+Windows.
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_pro", ARRAY_SIZE(viveProBinding), viveProBinding))
@@ -5495,7 +5497,7 @@ PsychError PSYCHOPENXRHapticPulse(void)
     int handle;
     psych_int64 controllerType;
     PsychOpenXRDevice *openxr;
-    double duration, tNow, freq, amplitude, pulseEndTime;
+    double duration, freq, amplitude, pulseEndTime;
     XrPath outpath;
     XrResult result;
 
@@ -5621,7 +5623,6 @@ PsychError PSYCHOPENXRHapticPulse(void)
 
     // Predict "off" time:
     PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
-    tNow = pulseEndTime;
     pulseEndTime += duration;
     PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
 
