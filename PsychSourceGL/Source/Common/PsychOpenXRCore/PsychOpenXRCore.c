@@ -2045,7 +2045,7 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     }
 
     if (verbosity >= 4)
-        printf("PsychOpenXRCore-INFO: At startup there are %i OpenXR instance extensions available.\n", instanceExtensionsCount);
+        printf("PsychOpenXRCore-INFO: At startup there are %i OpenXR instance extensions available:\n", instanceExtensionsCount);
 
     XrExtensionProperties *instanceExtensions = malloc(sizeof(XrExtensionProperties) * instanceExtensionsCount);
     for (i = 0; i < instanceExtensionsCount; i++) {
@@ -2060,6 +2060,13 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
 
         free(instanceExtensions);
         goto instance_init_out;
+    }
+
+    if (verbosity >= 4) {
+        for (i = 0; i < instanceExtensionsCount; i++)
+            printf("PsychOpenXRCore-INFO: %i. instance extension '%s'.\n", i, instanceExtensions[i].extensionName);
+
+        printf("\n");
     }
 
     // Check if minimum set of required instance extensions exist and enable/request them, if so:
