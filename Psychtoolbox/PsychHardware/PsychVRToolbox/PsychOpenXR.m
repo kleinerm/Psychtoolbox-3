@@ -1294,7 +1294,7 @@ if strcmpi(cmd, 'Open')
     fprintf('Khronos under Apache 2.0 and MIT license: SPDX license identifier “Apache-2.0 OR MIT”\n\n');
   end
 
-  [handle, modelName, runtimeName] = PsychOpenXRCore('Open', varargin{:});
+  [handle, modelName, runtimeName, hasEyeTracking] = PsychOpenXRCore('Open', varargin{:});
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOpenXR;
@@ -1309,6 +1309,7 @@ if strcmpi(cmd, 'Open')
   newhmd.hapticFeedbackSupported = 1;
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
+  newhmd.eyeTrackingSupported = hasEyeTracking;
 
   % Usually HMD tracking also works for mono display mode:
   newhmd.noTrackingInMono = 0;
