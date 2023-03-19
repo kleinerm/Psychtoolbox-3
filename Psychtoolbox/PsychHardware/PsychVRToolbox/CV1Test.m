@@ -238,6 +238,15 @@ if useRTbox
             % cycle. (Note the counter-intuitive but correct negative sign!):
             scanoutToPhotonOffset = scanoutToPhotonOffset - 0.008;
         end
+
+        % SteamVR/OpenXR on MS-Windows with HTC Vive Pro Eye?
+        if strcmpi(hmdinfo.modelName, 'Vive OpenXR: Vive SRanipal')
+            % Vive Pro Eye has a 90 Hz OLED with essentially "rolling shutter".
+            % The measurement is 2 msecs earlier than flip mid-display ts
+            % with the specific photometer setup of kleinerm, so lets
+            % compensate for that to simplify data analysis:
+            scanoutToPhotonOffset = scanoutToPhotonOffset + 0.002;
+        end
     end
 
     res.tBase = res.tBase - scanoutToPhotonOffset;
