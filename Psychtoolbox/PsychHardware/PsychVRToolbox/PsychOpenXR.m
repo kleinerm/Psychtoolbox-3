@@ -869,7 +869,7 @@ if strcmpi(cmd, 'PrepareRender')
   end
 
   % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
-  [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
+  [state, touch, gaze] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
   hmd{myhmd.handle}.state = state;
 
   % Always return basic tracking status:
@@ -938,6 +938,150 @@ if strcmpi(cmd, 'PrepareRender')
       % Compute inverse matrix, maybe useable for collision testing / virtual grasping of virtual bjects:
       % Provides a transform that maps absolute geometry into geometry as "seen" from the pov of the hand.
       result.globalHandPoseInverseMatrix{i} = inv(result.globalHandPoseMatrix{i});
+    end
+  end
+
+  if bitand(reqmask, 4)
+    % Store raw gaze data provided by eyetracker driver in gazeRaw, can be empty:
+    result.gazeRaw = gaze;
+
+    if ~isempty(gaze)
+      % Process each entry:
+      for i = 1:length(gaze)
+        result.gazeStatus(i) = gaze(i).Status;
+        result.gazeTime(i) = gaze(i).Time;
+        result.gazeConfidence(i) = NaN;
+        result.gazeEyeOpening(i) = NaN;
+        result.gazeEyePupilDiameter(i) = NaN;
+        result.gazeEyeConvergenceDistance = NaN;
+
+        % Gaze tracked for this eye?
+        if (gaze(i).Status == 3) && ~bitand(myhmd.eyeTrackingSupported, 4)
+          % Compute and return local gaze orientation matrix, encoding an
+          % eye local reference frame, within the reference frame of the
+          % XR display device (HMD):
+          gazeM = eyePoseToCameraMatrix(gaze(i).GazePose);
+        else
+          % Not tracked or 3rd party eyetracker api. Init to a neutral identity matrix:
+          gazeM = diag([1 1 1 1]);
+        end
+
+        % Invert the y-Rotation subvector: Why? I don't know! But without
+        % it, vertical gaze vector is wrong with the HTC Vive Pro Eye.
+        % Maybe a HTC SRAnipal runtime bug?
+        gazeM(2, 1:3) = -gazeM(2, 1:3);
+
+        result.gazeMat{i} = gazeM;
+
+        % Compute gaze ray in XR device (HMD) local reference frame:
+        result.gazeRayLocal{i}.gazeC = gazeM(1:3, 4);
+        result.gazeRayLocal{i}.gazeD = gazeM(1:3, 3);
+
+        % XR display device (HMD) tracking info available?
+        if bitand(reqmask, 1)
+          % Compute global gaze orientation matrix and gaze ray:
+          gazeM = result.globalHeadPoseMatrix * gazeM;
+          result.gazeGlobalMat{i} = gazeM;
+          result.gazeRayGlobal{i}.gazeC = gazeM(1:3, 4);
+          result.gazeRayGlobal{i}.gazeD = gazeM(1:3, 3);
+        end
+
+        % Try to compute 2D gaze points in onscreen window coordinates:
+        handle = myhmd.handle;
+        use2DViews = PsychOpenXRCore('ViewType', hmd{handle}.handle) == 0;
+        [winw, winh] = Screen('WindowSize', hmd{handle}.win);
+
+        if use2DViews
+          % Map gaze vectors to 2D views, which are symetric:
+
+          % Get local gaze ray definition:
+          tv = result.gazeRayLocal{i}.gazeC;
+          dv = result.gazeRayLocal{i}.gazeD;
+
+          % Get view parameters and compute definition matrix for quadView plane:
+          if hmd{handle}.StereoMode > 0 && i == 2
+            % Right eye in stereo mode - Choose right eye view:
+            [vpos, vsize, vorient] = PsychOpenXRCore('View2DParameters', hmd{handle}.handle, 1);
+          else
+            % Left eye or cyclops eye in stereo mode, or pure mono mode - Choose left eye / mono view:
+            [vpos, vsize, vorient] = PsychOpenXRCore('View2DParameters', hmd{handle}.handle, 0);
+          end
+
+          MV = eyePoseToCameraMatrix([vpos, vorient]);
+          % Solve ray - plane intersection between gaze ray and quadView plane:
+          GM = [MV(1:3, 1), MV(1:3, 2), -dv];
+          GB = tv - MV(1:3, 4);
+          gaze3D = (GM \ GB)'; % Faster and more accurate implementation of gaze3D = (inv(GM) * GB)';
+
+          % Map to normalized 2D (x,y) position in view, range [0;1] inside views area:
+          gaze2D = (((gaze3D(1:2) ./ (vsize / 2)) / 2) + 0.5);
+          gaze2D(1) = gaze2D(1) * winw;
+          gaze2D(2) = (1 - gaze2D(2)) * winh;
+
+          % Assign as output:
+          result.gazePos{i} = gaze2D;
+        elseif bitand(reqmask, 1)
+          % Map gaze vectors to 3D projection layers, which are often asymetric:
+
+          % Get local gaze ray definition:
+          tv = result.gazeRayGlobal{i}.gazeC;
+          dv = result.gazeRayGlobal{i}.gazeD;
+
+          % MT defines shift of 10 meters along negative z-axis of camera
+          % reference frame:
+          clipNear = 10;
+          MT = diag([1 1 1 1]);
+          MT(3,4) = -clipNear;
+
+          % Define plane of projectionLayer to be -10 meters away from the
+          % optical center of the virtual camera, ie. translated by MT. Why
+          % 10 meters? Because small values give numerical instability and
+          % wrong results:
+
+          % Left eye view, mono view or cyclops view - anything other than right eye?
+          if i ~= 2
+            % Left eye/projectionLayer field of view:
+            fov = hmd{handle}.fovL;
+            MV = result.cameraView{1} * MT;
+          else
+            % Right eye/projectionLayer field of view:
+            fov = hmd{handle}.fovR;
+            MV = result.cameraView{2} * MT;
+          end
+
+          % Solve ray - plane intersection between gaze ray and projectionLayer plane:
+          GM = [MV(1:3, 1), MV(1:3, 2), -dv];
+          GB = tv - MV(1:3, 4);
+          gaze3D = (GM \ GB)'; % Faster and more accurate implementation of gaze3D = (inv(GM) * GB)';
+
+          % Compute left/right/up/down distance in projectionLayer plane
+          % away from (0,0) 2D center, in meters. Instead of the real
+          % plane, we use a bigger plane that is 10 meters shifted away, to
+          % avoid numerical problems down the road. This takes the
+          % asymetric view frustum of projectionLayers into account:
+          lw = tan(fov(1)) * clipNear;
+          rw = tan(fov(2)) * clipNear;
+          th = tan(fov(3)) * clipNear;
+          bh = tan(fov(4)) * clipNear;
+
+          % Width and height of plane in meters:
+          aw = rw - lw;
+          ah = th - bh;
+
+          % Map to normalized 2D (x,y) position in view, range [0;1] inside views area:
+          gaze2D = (gaze3D(1:2) - [lw, bh]) ./ [aw, ah];
+          gaze2D(1) = gaze2D(1) * winw;
+          gaze2D(2) = (1 - gaze2D(2)) * winh;
+
+          % Assign as output:
+          result.gazePos{i} = gaze2D;
+        else
+          % Assign empty output:
+          result.gazePos{i} = [];
+        end
+      end
+    else
+      warning('PsychOpenXR:PrepareRender: Eye gaze tracking data requested, but gaze tracking not supported or enabled!');
     end
   end
 
@@ -1313,6 +1457,7 @@ if strcmpi(cmd, 'Open')
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
   newhmd.eyeTrackingSupported = hasEyeTracking;
+  newhmd.needEyeTracking = 0;
 
   % Usually HMD tracking also works for mono display mode:
   newhmd.noTrackingInMono = 0;
@@ -1772,6 +1917,16 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel) %#ok<*STREMP>
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+  end
+
+  % Eye gaze tracking requested?
+  if ~isempty(strfind(basicRequirements, 'Eyetracking'))
+    if ~hmd{myhmd.handle}.eyeTrackingSupported
+      warning('PsychOpenXR:SetupRenderingParameters: ''Eyetracking'' requested in ''basicRequirements'', but this XR system does not support eye tracking!');
+      hmd{myhmd.handle}.needEyeTracking = 0;
+    else
+      hmd{myhmd.handle}.needEyeTracking = 1;
+    end
   end
 
   return;
@@ -2525,6 +2680,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     PsychOpenXRCore('View2DParameters', handle, eye - 1, pos, viewSize);
+  end
+
+  % Eye tracking wanted in this session and supported by system?
+  if hmd{handle}.needEyeTracking && hmd{handle}.eyeTrackingSupported
+    % Tracking api specific setup:
+
   end
 
   % Tracked operation requested?
