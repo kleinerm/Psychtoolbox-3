@@ -31,7 +31,6 @@ PsychImaging('PrepareConfiguration');
 % Setup the HMD to act as a regular "monoscopic" display monitor
 % by displaying the same image to both eyes. We need reliable timing and
 % timestamping support for this test script:
-% hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'HUD=0 DebugDisplay');
 hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingPrecisionIsCritical TimingSupport TimestampingSupport');
 if isempty(hmd)
     error('No supported XR device found. Game over!');

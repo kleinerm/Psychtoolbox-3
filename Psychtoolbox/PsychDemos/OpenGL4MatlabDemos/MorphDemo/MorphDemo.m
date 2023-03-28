@@ -115,7 +115,7 @@ end
 % Go for it!
 PsychImaging('PrepareConfiguration');
 % Use a VR HMD if available for head tracked stereoscopic 3D presentation:
-hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
+hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR');
 [win , winRect] = PsychImaging('OpenWindow', screenid, 0, rect, [], [], stereomode);
 
 if ~isempty(hmd)

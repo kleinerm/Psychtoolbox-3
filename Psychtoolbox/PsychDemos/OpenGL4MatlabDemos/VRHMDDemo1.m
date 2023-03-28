@@ -107,7 +107,7 @@ try
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
   % We do collect timestamps for benchmarking, but don't require them to be especially precise or trustworthy:
-  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', ['LowPersistence TimeWarp FastResponse NoTimingSupport NoTimestampingSupport' debugView], 0);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', ['NoTimingSupport NoTimestampingSupport' debugView], 0);
   if isempty(hmd)
     fprintf('No VR-HMD available, giving up!\n');
     return;

@@ -105,7 +105,7 @@ if imaging
     PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 
     if stereoMode == 103
-        PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'DebugDisplay');
+        PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'NoTimingSupport NoTimestampingSupport DebugDisplay');
         stereoMode = -1;
     end
 
