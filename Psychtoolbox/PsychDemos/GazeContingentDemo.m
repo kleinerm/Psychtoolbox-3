@@ -1,4 +1,4 @@
-function GazeContingentDemo(mode, ms, myimgfile)
+function GazeContingentDemo(mode, ms, myimgfile, usehmd)
 %
 % ___________________________________________________________________
 %
@@ -29,35 +29,37 @@ function GazeContingentDemo(mode, ms, myimgfile)
 hurryup=0;
 
 % Setup default mode to color vs. gray.
-if nargin < 1
+if nargin < 1 || isempty(mode)
     mode = 1;
-end;
+end
 
 % Setup default aperture size to 2*200 x 2*200 pixels.
-if nargin < 2
+if nargin < 2 || isempty(ms)
     ms=200;
-end;
+end
 
 basepath = [ PsychtoolboxRoot 'PsychDemos' filesep ];
 
 % Use default demo images, if no special image was provided.
-if nargin < 3
+if nargin < 3 || isempty(myimgfile)
     myimgfile= [basepath 'konijntjes1024x768.jpg'];
-end;
+end
 
 myblurimgfile= [basepath 'konijntjes1024x768blur.jpg'];
 mygrayimgfile= [basepath 'konijntjes1024x768gray.jpg'];
 
+if nargin < 4 || isempty(usehmd)
+    usehmd = 0;
+end
+
+% No gaze tracking by default:
+gazetracking = 0;
+
 try
-    fprintf('GazeContingentDemo (%s)\n', datestr(now));
+    fprintf('GazeContingentDemo (%s)\n', datestr(now)); %#ok<TNOW1,DATST> 
     fprintf('Press a key or click on mouse to stop demo.\n');
-    
-    % This script calls Psychtoolbox commands available only in OpenGL-based
-    % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-    % only OpenGL-based Psychtoolbox.)  The Psychtoolbox command AssertOpenGL will issue
-    % an error message if someone tries to execute this script on a computer without
-    % an OpenGL Psychtoolbox
-    AssertOpenGL;
+
+    PsychDefaultSetup(1);
 
     % Get the list of screens and choose the one with the highest screen number.
     % Screen 0 is, by definition, the display with the menu bar. Often when
@@ -65,34 +67,39 @@ try
     % the stimulus display.  Chosing the display with the highest display number is
     % a best guess about where you want the stimulus displayed.
     screenNumber=max(Screen('Screens'));
+    backgroundcolor = GrayIndex(screenNumber);
 
     % Open a double buffered fullscreen window.
-    [w, wRect]=Screen('OpenWindow',screenNumber);
-    
-    % Find the color values which correspond to white and black.  Though on OS
-    % X we currently only support true color and thus, for scalar color
-    % arguments,
-    % black is always 0 and white 255, this rule is not true on other platforms will
-    % not remain true on OS X after we add other color depth modes.
-    white=WhiteIndex(screenNumber);
-    black=BlackIndex(screenNumber);
-    gray=GrayIndex(screenNumber); % returns as default the mean gray value of screen
+    PsychImaging('PrepareConfiguration');
+    if usehmd
+        hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'NoTimingSupport NoTimestampingSupport DebugDisplay');
+        if isempty(hmd)
+            fprintf('User wants to use HMD, but no HMD detected. Game over!\n');
+            return;
+        end
+    end
 
-    % Set background color to gray:
-    backgroundcolor = gray;
-    
+    [w, wRect] = PsychImaging('OpenWindow', screenNumber, backgroundcolor);
+
+    % Enable gaze tracking driven rendering if HMD with eye tracking is available:
+    if usehmd
+        hmdinfo = PsychVRHMD('GetInfo', hmd);
+        if hmdinfo.eyeTrackingSupported
+            gazetracking = 1;
+        end
+    end
+
     % Load image file:
     fprintf('Using image ''%s''\n', myimgfile);
     imdata=imread(myimgfile);
     imdatablur=imread(myblurimgfile);
     imdatagray=imread(mygrayimgfile);
-    
-    %     crop image if it is larger then screen size. There's no image scaling
-    %     in maketexture
-    [iy, ix, id]=size(imdata);
+
+    % Crop image if it is larger then screen size. There's no image scaling
+    % in maketexture
+    [iy, ix,~]=size(imdata);
     [wW, wH]=WindowSize(w);
-	% wW=wRect(3);
-	% wH=wRect(4);
+
     if ix>wW || iy>wH
         disp('Image size exceeds screen size');
         disp('Image will be cropped');
@@ -105,6 +112,7 @@ try
         cl=0;
         cr=0;
     end
+
     if iy>wH
         ct=round((iy-wH)/2);
         cb=(iy-wH)-ct;
@@ -117,7 +125,7 @@ try
     imdata=imdata(1+ct:iy-cb, 1+cl:ix-cr,:);
     imdatablur=imdatablur(1+ct:iy-cb, 1+cl:ix-cr,:);
     imdatagray=imdatagray(1+ct:iy-cb, 1+cl:ix-cr,:);
-    
+
     % Compute image for foveated region and periphery:
     switch (mode)
         case 1
@@ -145,8 +153,8 @@ try
             % Unknown mode! We force abortion:
             fprintf('Invalid mode provided!');
             abortthisbeast
-    end;
-    
+    end
+
     % Build texture for foveated region:
     foveatex=Screen('MakeTexture', w, foveaimdata);
     tRect=Screen('Rect', foveatex);
@@ -160,12 +168,13 @@ try
     transLayer=2;
     [x,y]=meshgrid(-ms:ms, -ms:ms);
     maskblob=ones(2*ms+1, 2*ms+1, transLayer) * backgroundcolor;
+
     % Layer 2 (Transparency aka Alpha) is filled with gaussian transparency
     % mask.
     xsd=ms/2.2;
     ysd=ms/2.2;
     maskblob(:,:,transLayer)=round(255 - exp(-((x/xsd).^2)-((y/ysd).^2))*255);
-    
+
     % Build a single transparency mask texture:
     masktex=Screen('MakeTexture', w, maskblob);
     mRect=Screen('Rect', masktex);
@@ -173,9 +182,7 @@ try
     fprintf('Size image texture: %d x %d\n', RectWidth(tRect), RectHeight(tRect));
     fprintf('Size  mask texture: %d x %d\n', RectWidth(mRect), RectHeight(mRect));
 
-    % Set background color to 'backgroundcolor' and do initial flip to show
-    % blank screen:
-    Screen('FillRect', w, backgroundcolor);
+    % Do initial flip to show blank screen:
     Screen('Flip', w);
 
     % The mouse-cursor position will define gaze-position (center of
@@ -193,12 +200,15 @@ try
     % Wait until all keys on keyboard are released:
     KbReleaseWait;
 
-    mxold=0;
-    myold=0;
-    
-    oldvbl=Screen('Flip', w);
+    mxold = 0;
+    myold = 0;
+    mx = mxold;
+    my = myold;
+
     tavg = 0;
     ncount = 0;
+
+    oldvbl = Screen('Flip', w);
     
     % Infinite display loop: Whenever "gaze position" changes, we update
     % the display accordingly. Loop aborts on keyboard press or mouse
@@ -206,13 +216,21 @@ try
     while (ncount < 10000)                
         % Query current mouse cursor position (our "pseudo-eyetracker") -
         % (mx,my) is our gaze position.
-        if (hurryup==0)
-            [mx, my, buttons]=GetMouse(w);
+        if hurryup == 0
+            if gazetracking
+                state = PsychVRHMD('PrepareRender', hmd, [], 4);
+                if state.gazeStatus(1) >= 3
+                    mx = state.gazePos{1}(1);
+                    my = state.gazePos{1}(2);
+                end
+            else
+                [mx, my, buttons] = GetMouse(w);
+            end
         else
             % In benchmark mode, we just do a quick sinusoidal motion
             % without query of the mouse:
             mx=500 + 500*sin(ncount/10); my=300;
-        end;
+        end
         
         % We only redraw if gazepos. has changed:
         if (mx~=mxold || my~=myold)            
@@ -260,12 +278,14 @@ try
                 % higher refresh rates! For benchmark purpose, we disable
                 % syncing to retrace if hurryup is == 1.
                 vbl = Screen('Flip', w, 0, 2, 2*hurryup);
-                vbl = GetSecs;
+                if hurryup
+                    vbl = GetSecs; %#ok<UNRCH> 
+                end
                 tavg = tavg + (vbl-oldvbl);
                 oldvbl=vbl;
                 ncount = ncount + 1;
-            end;
-        end;
+            end
+        end
 
         % Keep track of last gaze position:
         mxold=mx;
@@ -278,8 +298,8 @@ try
         % Abort demo on keypress our mouse-click:
         if KbCheck || any(buttons) % break out of loop
             break;
-        end;
-    end;
+        end
+    end
 
     % Display full image a last time, just for fun...
     Screen('BlendFunction', w, GL_ONE, GL_ZERO);
