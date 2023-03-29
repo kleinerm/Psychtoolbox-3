@@ -229,6 +229,15 @@ if onoctave == 0
         movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
+    if what == 14 && false
+        % Build PsychOpenHMDVRCore.mexa64:
+        % Needs the OpenHMD v0.3.0+ SDK installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed to OpenHMD.
+        mex -outdir ..\Projects\Windows\build -output PsychOpenHMDVRCore -DPTBMODULE_PsychOpenHMDVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -I..\..\..\OpenHMD -L..\..\..\OpenHMD -ICommon\Base -IWindows\Base -ICommon\PsychOpenHMDVRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenHMDVRCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib -lhidapi -lopenhmd-0
+        movefile(['..\Projects\Windows\build\PsychOpenHMDVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
     if what == 15
         % Build PsychVulkanCore for 64-Bit Matlab:
         % Needs the official Vulkan SDK for 64-Bit Windows for at least
@@ -477,6 +486,16 @@ else
             % Empty. We just want to make sure the delete() call below is executed
             % in both success and failure case.
         end
+    end
+
+    if what == 14 && false
+        % Build PsychOpenHMDVRCore.mex:
+        % Build PsychOpenHMDVRCore.mexa64:
+        % Needs the OpenHMD v0.3.0+ SDK installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed to OpenHMD.
+        mexoctave --output ..\Projects\Windows\build\PsychOpenHMDVRCore.mex -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -I..\..\..\OpenHMD -L..\..\..\OpenHMD -ICommon\Base -IWindows\Base -ICommon\PsychOpenHMDVRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenHMDVRCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib -lhidapi -lopenhmd-0
+        movefile(['..\Projects\Windows\build\PsychOpenHMDVRCore.' mexext], target);
     end
 
     if what == 15
