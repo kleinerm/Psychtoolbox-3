@@ -4132,6 +4132,13 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     openxr->originPoseInPreviousSpace = identityPose;
     openxr->worldSpaceType = refSpaceCreateInfo.referenceSpaceType;
 
+    for (i = 0; i < 2; i++) {
+        // These are used to receive head/eye position + orientation information from 3D 6-DoF head tracking
+        // and possibly eye tracking later on to establish the virtual cameras location/pose/FoV:
+        openxr->view[i].type = XR_TYPE_VIEW;
+        openxr->view[i].next = NULL;
+    }
+
     // TODO: Could have setup of alternate action sets / actions / interaction profile bindings under
     // control of future API and user scripts here, to use as alternative to the setup made in
     // createDefaultXRInputConfig()?
@@ -4550,12 +4557,7 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     openxr->textureHeight = height;
     openxr->numMSAASamples = numMSAASamples;
 
-    // Initialize views, projection views and quad views with what can be statically initialized:
-
-    // These are used to receive head/eye position + orientation information from 3D 6-DoF head tracking
-    // and possibly eye tracking later on to establish the virtual cameras location/pose/FoV:
-    openxr->view[eyeIndex].type = XR_TYPE_VIEW;
-    openxr->view[eyeIndex].next = NULL;
+    // Initialize projection views and quad views with what can be statically initialized:
 
     // Quad views are used for monoscopic or stereoscopic rendering usually without taking
     // head tracking / pose into account. These quads float in a head-locked fixed position
