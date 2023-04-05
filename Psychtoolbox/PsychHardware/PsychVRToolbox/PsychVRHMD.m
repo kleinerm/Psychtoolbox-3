@@ -924,7 +924,8 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % Need precise timing and no previous driver was up to it?
   if needTiming
     % OpenHMD VR supported and online? At least one real HMD connected?
-    if PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
+    % Override: As of PTB 3.0.19.1, don't use it anymore - it is just too fickly...
+    if false && PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
       % Yes. Use that one. It has great timing under Linux/X11 with a
       % separate X-Screen, but restricted functionality (e.g., often no or
       % limited positional tracking) and potentially lower image quality
