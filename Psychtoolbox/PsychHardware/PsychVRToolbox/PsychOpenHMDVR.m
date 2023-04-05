@@ -1143,6 +1143,26 @@ if strcmpi(cmd, 'Open')
   varargout{1} = newhmd;
   varargout{2} = modelName;
 
+  if IsLinux && ~IsWayland
+    pause(4);
+    screenid = max(Screen('Screens'));
+    [rc, outputs] = system(sprintf('xrandr --screen %i | grep connected | cut -d '' '' -f1', screenid));
+    pause(1);
+    if rc == 0
+      while ~isempty(outputs)
+        [output, outputs] = strtok(outputs);
+        if ~isempty(output)
+          system(sprintf('xrandr --screen %i --output %s --set non-desktop 0', screenid, output))
+          %pause(1);
+          %system(sprintf('xrandr --screen %i --output %s --auto', screenid, output))
+        end
+      end
+
+      pause(2);
+      clear Screen;
+    end
+  end
+
   return;
 end
 
@@ -1507,7 +1527,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % the HMD, so lets do a output off->on cycle instead to only affect the actual
   % output which needs a DPMS off -> on, which happens as side-effect of the off
   % on cycle:
-  if IsLinux
+  if IsLinux && ~isempty(strfind(myhmd.modelName, 'Rift'))
       cmd = sprintf('xrandr --screen %i --output %s --off', screenid, scanout.name);
       % Works also, but more intrusive on multi-display setups: cmd = sprintf('xset dpms force standby');
       system(cmd);
