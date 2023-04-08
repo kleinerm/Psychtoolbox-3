@@ -210,11 +210,16 @@ static XrInstanceProperties instanceProperties;
 #define XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME "XR_HTC_vive_focus3_controller_interaction"
 #endif
 
+#ifndef XR_EXT_DPAD_BINDING_EXTENSION_NAME
+#define XR_EXT_DPAD_BINDING_EXTENSION_NAME "XR_EXT_dpad_binding"
+#endif
+
 // Supported instance extensions:
 static psych_bool has_XR_EXT_hp_mixed_reality_controller = FALSE;
 static psych_bool has_XR_HTC_vive_cosmos_controller_interaction = FALSE;
 static psych_bool has_XR_HTC_vive_focus3_controller_interaction = FALSE;
 static psych_bool has_XR_EXT_eye_gaze_interaction = FALSE;
+static psych_bool has_XR_EXT_dpad_binding = FALSE;
 
 // Shared debug messenger for the whole process:
 XrDebugUtilsMessengerEXT debugMessenger = XR_NULL_HANDLE;
@@ -877,7 +882,7 @@ static int enumerateXRDevices(XrInstance instance) {
 
     if (has_XR_EXT_eye_gaze_interaction)
         availableSystems[numAvailableDevices].next = &eyeGazeAvailable[numAvailableDevices];
-        
+
     // Got a hardware XR system. Query and store its properties and systemId:
     result = xrGetSystemProperties(instance, systemId, &availableSystems[numAvailableDevices]);
     if (!resultOK(result)) {
@@ -1475,9 +1480,21 @@ static psych_bool createDefaultXRInputConfig(XrInstance xrInstance)
             BBIND(OVR_Button_RThumb, "/user/hand/right/input/trackpad/click"),
             TBIND(OVR_Touch_LThumb, "/user/hand/left/input/trackpad/touch"),
             TBIND(OVR_Touch_RThumb, "/user/hand/right/input/trackpad/touch"),
+
+            // Only if has_XR_EXT_dpad_binding:
+            BBIND(OVR_Button_Up, "/user/hand/left/input/trackpad/dpad_up"),
+            BBIND(OVR_Button_Up, "/user/hand/right/input/trackpad/dpad_up"),
+            BBIND(OVR_Button_Down, "/user/hand/left/input/trackpad/dpad_down"),
+            BBIND(OVR_Button_Down, "/user/hand/right/input/trackpad/dpad_down"),
+            BBIND(OVR_Button_Left, "/user/hand/left/input/trackpad/dpad_left"),
+            BBIND(OVR_Button_Left, "/user/hand/right/input/trackpad/dpad_left"),
+            BBIND(OVR_Button_Right, "/user/hand/left/input/trackpad/dpad_right"),
+            BBIND(OVR_Button_Right, "/user/hand/right/input/trackpad/dpad_right"),
         };
 
-        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_controller", ARRAY_SIZE(viveBinding), viveBinding))
+        // Only add last 8 entries if has_XR_EXT_dpad_binding is available:
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_controller",
+            has_XR_EXT_dpad_binding ? ARRAY_SIZE(viveBinding) : ARRAY_SIZE(viveBinding) - 8, viveBinding))
             return(FALSE);
     }
 
@@ -1648,8 +1665,8 @@ static psych_bool createDefaultXRInputConfig(XrInstance xrInstance)
         XrActionSuggestedBinding viveProBinding[] = {
             BBIND(OVR_Button_VolDown, "/user/head/input/volume_down/click"),
             BBIND(OVR_Button_VolUp, "/user/head/input/volume_up/click"),
-            BBIND(OVR_Button_MicMute, "/user/head/input/mute_mic/click"),       // Does not work on SteamVR+Windows.
-            BBIND(OVR_Button_Home, "/user/head/input/system/click"),            // Does not work on SteamVR+Windows.
+            BBIND(OVR_Button_MicMute, "/user/head/input/mute_mic/click"),
+            BBIND(OVR_Button_Home, "/user/head/input/system/click"),            // Does not work on SteamVR.
         };
 
         if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_pro", ARRAY_SIZE(viveProBinding), viveProBinding))
@@ -2110,6 +2127,11 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
 
     // Enable basic eye tracking extension:
     has_XR_EXT_eye_gaze_interaction = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME);
+
+    // XR_KHR_binding_modification supported? If so, try to enable extensions which depend on it:
+    if (addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME)) {
+        has_XR_EXT_dpad_binding = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_DPAD_BINDING_EXTENSION_NAME);
+    }
 
     // Done enumerating instance extensions:
     free(instanceExtensions);
