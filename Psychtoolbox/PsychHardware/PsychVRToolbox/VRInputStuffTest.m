@@ -310,6 +310,10 @@ while 1
         fprintf('Button_VolDown ');
     end
 
+    if istate.Buttons(OVR.Button_MicMute)
+        fprintf('Button_MicMute ');
+    end
+
     if istate.Buttons(OVR.Button_Home)
         fprintf('Button_Home ');
     end
@@ -613,6 +617,7 @@ if hmdinfo.handTrackingSupported
     % returned camera matrices. In this case a translation + rotation, as
     % defined by the PsychGetPositionYawMatrix() helper function:
     state = PsychVRHMD('PrepareRender', hmd, globalHeadPose, reqMask);
+    %fprintf('HMD state.tracked %i  = Controller tracked %i : %i\n', state.tracked, state.handStatus(1), state.handStatus(2));
 
     % Get controller input state, buttons, triggers etc.:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
