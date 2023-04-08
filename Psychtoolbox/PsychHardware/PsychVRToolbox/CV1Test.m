@@ -2,15 +2,15 @@ function res = CV1Test(waitframes, useRTbox)
 % res = CV1Test([waitframes=90][, useRTbox=0]) - A timing test script for HMDs by use of a photometer.
 %
 % Needs the RTBox, and a photo-diode or such, e.g., a ColorCal-II,
-% connected to the TTL trigger input.
+% connected to the TTL trigger input of a RTBox or CRS Bits#.
 %
-% Atm., we still measure a discrepancy of about 75 msecs between what
-% 'Flip' reports according to our drivers timestamping, and what the
-% photometer based timestamping reports. That's still not good enough, and
-% i'm out of ideas on how to improve this.
-%
-% Onset scheduling also becomes erratic for short waitframes intervals
-% between white flashes.
+% While measured timestamps/timing on OculusVR-1 via PsychOculusVR1 is catastrophic,
+% and bad on all proprietary OpenXR runtimes on Windows (OculusVR, SteamVR) and Linux
+% (SteamVR), as well as with standard Monado, we get close to perfect timestamps with
+% our "metrics enhanced" Monado on Linux + Mesa Vulkan drivers with timestamping support,
+% as tested with both Oculus Rift CV-1 and HTC Vive Pro Eye on AMD Raven Ridge apu with
+% radv + timing extension and Monado metrics mode. Errors are sub-millisecond wrt. to
+% testing with a ColorCal2 and also with a Videoswitcher in simulated HMD mode.
 %
 
 if nargin < 2 || isempty(useRTbox)
@@ -224,6 +224,14 @@ if useRTbox
             % Estimated to about ~8 msecs in a 11.111 msecs / 90 Hz refresh
             % cycle. (Note the counter-intuitive but correct negative sign!):
             scanoutToPhotonOffset = scanoutToPhotonOffset - 0.008;
+        end
+
+        % Monado with a HTC Vive Pro (Eye)?
+        if ~isempty(strfind(hmdinfo.modelName, 'Monado: HTC Vive Pro'))
+            % HTC Vive Pro (Eye) has a OLED with essentially "rolling shutter".
+            % Estimated to about ~8 msecs in a 11.111 msecs / 90 Hz refresh
+            % cycle. (Note the counter-intuitive but correct negative sign!):
+            scanoutToPhotonOffset = scanoutToPhotonOffset - 0.004;
         end
     end
 
