@@ -8,7 +8,7 @@ function err = LoadClut(windowPtr,clut,startEntry,bits)
 % animation, as the operating system requires all CLUTs to contain mono-
 % tonically increasing entries. Psychtoolbox currently has no way of
 % detecting the resolution of your graphics cards DAC, so unless you
-% explicitely provide the DAC resolution in the optional parameter 'bits',
+% explicitly provide the DAC resolution in the optional parameter 'bits',
 % it will always assume a 8-Bit DAC. This assumption is safe, but it does
 % not allow you to automatically take advantage of higher resolution DACs.
 % Apart from that, all pixelSizes are supported. It should works with all

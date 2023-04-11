@@ -36,9 +36,9 @@ if mode == -1
     modes = 0:16;
 
     if IsARM
-        % Do not build plugin 16 == PsychOpenXRCore, 15 == PsychVulkanCore,
-        % 12 == PsychOculusVRCore, 10 == PsychCV, 4 == Eyelink on ARM / RaspberryPi:
-        modes = setdiff (modes, [4, 10, 12, 15, 16]);
+        % Do not build plugin 16 == PsychOpenXRCore, 12 == PsychOculusVRCore,
+        % 10 == PsychCV, 4 == Eyelink on ARM / RaspberryPi:
+        modes = setdiff (modes, [4, 10, 12, 16]);
     end
 
     for mode = modes
@@ -79,7 +79,6 @@ if mode==0
     mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lXcomposite
     
     unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
 end
 
 if mode==100 && ~neurodebianbuild
@@ -89,7 +88,6 @@ if mode==100 && ~neurodebianbuild
 
     % Store in special Wayland subfolder for now:
     unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target 'Wayland/']);
-    striplibsfrommexfile([PsychtoolboxRoot target 'Wayland/' 'Screen.mex']);
 end
 
 if mode==101 && ~neurodebianbuild
@@ -98,7 +96,6 @@ if mode==101 && ~neurodebianbuild
     mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_WAYLAND_PRESENT -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
 
     unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
 end
 
 if mode==1000 && ~neurodebianbuild
@@ -107,42 +104,36 @@ if mode==1000 && ~neurodebianbuild
     mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_WAFFLE -DPTB_USE_EGL -DPTB_USE_GLES1 -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/arm-linux-gnueabihf/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/arm-linux-gnueabihf/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGLESv1_CM -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
 
     unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
 end
 
 if mode==1
     % Build GetSecs.mex:
     mex --output ../Projects/Linux/build/GetSecs.mex -Wno-date-time -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/GetSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/GetSecs/*.c -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/GetSecs.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'GetSecs.mex']);
 end
 
 if mode==2
     % Build WaitSecs.mex:
     mex --output ../Projects/Linux/build/WaitSecs.mex -Wno-date-time -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/WaitSecs.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'WaitSecs.mex']);
 end
 
 if mode==3
     % Build PsychPortAudio.mex:
     mex --output ../Projects/Linux/build/PsychPortAudio.mex -Wno-date-time -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/PsychPortAudio -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychPortAudio/*.c -lportaudio -lasound -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/PsychPortAudio.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychPortAudio.mex']);
 end
 
 if mode==4 && ~neurodebianbuild
     % Build Eyelink.mex:
     mex --output ../Projects/Linux/build/Eyelink.mex -Wno-date-time -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'Eyelink.mex']);
 end
 
 if mode==5
     % Build IOPort.mex:
     mex --output ../Projects/Linux/build/IOPort.mex -Wno-date-time -DPTBMODULE_IOPort -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/IOPort -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/IOPort/*.c -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/IOPort.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'IOPort.mex']);
 end
 
 if mode==6
@@ -156,7 +147,6 @@ if mode==6
     unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
     delete('moglcore.mex');
     cd(curdir);
-    striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
 end
 
 if mode==6000 && ~neurodebianbuild
@@ -170,7 +160,6 @@ if mode==6000 && ~neurodebianbuild
     unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
     delete('moglcore.mex');
     cd(curdir);
-    striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
 end
 
 if mode==7
@@ -179,14 +168,12 @@ if mode==7
     % Test build against libfreenect-0.5 from GitHub repo:
     mex --output ../Projects/Linux/build/PsychKinectCore.mex -Wno-date-time -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib/ -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -ldl -lfreenect -lusb-1.0
     unix(['cp ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychKinectCore.mex']);
 end
 
 if mode==8
     % Build PsychHID.mex:
     mex --output ../Projects/Linux/build/PsychHID.mex -Wno-date-time -Wno-deprecated-declarations -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -ICommon/Base -ILinux/Base -ICommon/PsychHID -ILinux/PsychHID -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychHID/*.c Linux/PsychHID/*.c -lc -ldl -lrt -lusb-1.0 -lX11 -lXi -lutil
     unix(['cp ../Projects/Linux/build/PsychHID.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychHID.mex']);
 end
 
 if mode==9
@@ -200,7 +187,6 @@ if mode==9
     unix(['cp moalcore.mex ' PsychtoolboxRoot target]);
     delete('moalcore.mex');
     cd(curdir);
-    striplibsfrommexfile([PsychtoolboxRoot target 'moalcore.mex']);
 end
 
 if mode == 10 && ~neurodebianbuild
@@ -208,7 +194,6 @@ if mode == 10 && ~neurodebianbuild
     mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
     %mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_OPENCV -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include -I/usr/include/opencv Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c Common/PsychCV/OpenEyesCVEyeTracker/*.cc -lc -lrt -ldl -lopencv_core -lopencv_imgproc -lopencv_highgui /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
     unix(['cp ../Projects/Linux/build/PsychCV.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychCV.mex']);
 end
 
 if mode == 11
@@ -222,7 +207,6 @@ if mode == 11
     unix(['cp pnet.mex ' PsychtoolboxRoot target]);
     delete('pnet.mex');
     cd(curdir);
-    striplibsfrommexfile([PsychtoolboxRoot target 'pnet.mex']);
 end
 
 if mode==12 && ~neurodebianbuild
@@ -235,7 +219,6 @@ if mode==12 && ~neurodebianbuild
     end
 
     unix(['cp ../Projects/Linux/build/PsychOculusVRCore.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychOculusVRCore.mex']);
 end
 
 if mode == 13 && IsARM && exist('/usr/include/wiringPi.h', 'file')
@@ -249,7 +232,6 @@ if mode == 13 && IsARM && exist('/usr/include/wiringPi.h', 'file')
     unix(['mv RPiGPIOMex.mex ' PsychtoolboxRoot target]);
     delete('RPiGPIOMex.o');
     cd(curdir);
-    striplibsfrommexfile([PsychtoolboxRoot target 'RPiGPIOMex.mex']);
 end
 
 if mode==14
@@ -261,7 +243,6 @@ if mode==14
     end
 
     unix(['cp ../Projects/Linux/build/PsychOpenHMDVRCore.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychOpenHMDVRCore.mex']);
 end
 
 if mode==15
@@ -274,19 +255,17 @@ if mode==15
     end
 
     unix(['cp ../Projects/Linux/build/PsychVulkanCore.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychVulkanCore.mex']);
 end
 
 if mode==16
     % Build PsychOpenXRCore.mex:
     try
-        mex --output ../Projects/Linux/build/PsychOpenXRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenXRCore/*.c -lc -lrt -ldl -lopenxr_loader
+        mex --output ../Projects/Linux/build/PsychOpenXRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore -ICommon/PsychOpenXRCore/nanopb Linux/Base/*.c Common/Base/*.c Common/PsychOpenXRCore/*.c Common/PsychOpenXRCore/nanopb/*.c -lc -lrt -ldl -lopenxr_loader
     catch
         disp(psychlasterror);
     end
 
     unix(['cp ../Projects/Linux/build/PsychOpenXRCore.mex ' PsychtoolboxRoot target]);
-    striplibsfrommexfile([PsychtoolboxRoot target 'PsychOpenXRCore.mex']);
 end
 
 if str2num(version()(1)) < 5

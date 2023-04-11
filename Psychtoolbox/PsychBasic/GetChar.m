@@ -2,7 +2,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % [ch, when] = GetChar([getExtendedData], [getRawCode])
 % 
 % Wait for a typed character and return it.  If a character was typed
-% before calling GetChar then GetChar will return that character immediatly.
+% before calling GetChar then GetChar will return that character immediately.
 % Characters flushed by FlushEvents are all ignored by GetChar. Characters
 % are returned in the first return argument "ch".
 %
@@ -44,9 +44,9 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 %
 % By setting getExtendedData to 0, all extended timing/modifier information
 % will not be collected and "when" will be returned empty.  This speeds up
-% calls to this function. If ommitted or set to 1, the "when" data
+% calls to this function. If omitted or set to 1, the "when" data
 % structure is filled.  getRawCode set to 1 will set "ch" to be the integer
-% ACII code of the available character.  If ommitted or set to 0, "ch" will
+% ASCII code of the available character.  If omitted or set to 0, "ch" will
 % be in char format. When running under Linux in "matlab -nojvm" mode or on
 % Octave, "when" will be returned empty. When running on any other
 % operating system under Octave or in "matlab -nojvm" mode, or on Windows
@@ -138,8 +138,8 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % 6/1/02  dgp Mention Tick0Secs.
 % 9/21/02 dgp Added address field to "when", using C code donated by Tom Busey.
 % 7/12/04 awi ****** OS X-specific fork from the OS 9 version *******
-%                   Expanded on explantion in the first paragraph about when
-%                   GetChar waits, when it returns immediatly, what
+%                   Expanded on explanation in the first paragraph about when
+%                   GetChar waits, when it returns immediately, what
 %                   it ignores.  Retains OS 9-specific comments.    
 % 1/27/04 awi Issue an error when calling GetChar and suggest KbWait. 
 % 1/19/05 awi Implemented GetChar on OS X.  Added AssertMex for OS 9 and OS X conditional block.
@@ -166,7 +166,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % 05/31/09 mk Add support for Octave and Matlab in noJVM mode.
 % 10/22/12 mk Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 % 10/22/12 mk Add support for KbQueue-Based implementation.
-% 06/20/19 mk Try to protect against KDE focus stealing nastyness via kbqueues.
+% 06/20/19 mk Try to protect against KDE focus stealing nastiness via kbqueues.
 
 % NOTES:
 %
@@ -229,7 +229,7 @@ if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
 
     % Throw an error if we've exceeded the buffer size.
     if charValue == -1
-        % Reenable keystroke dispatching to Matlab to leave us with a
+        % Re-enable keystroke dispatching to Matlab to leave us with a
         % functional Matlab console.
         OSX_JAVA_GETCHAR.setRedispatchFlag(0);
         error('GetChar buffer overflow. Use "FlushEvents" to clear error');
@@ -242,7 +242,7 @@ if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
         ch = char(charValue);
     end
 
-    % Only fill up the 'when' data stucture if extended data was requested.
+    % Only fill up the 'when' data structure if extended data was requested.
     if getExtendedData
         when.address=nan;
         when.mouseButton=nan;
@@ -289,7 +289,7 @@ if IsLinux && KbQueueReserve(3, 2, [])
     
     % Throw an error if we've exceeded the buffer size.
     if charValue == -1
-        % Reenable keystroke display to leave us with a
+        % Re-enable keystroke display to leave us with a
         % functional console.
         PsychHID('KeyboardHelper', -11);
         error('GetChar buffer overflow. Use "FlushEvents" to clear error');
@@ -312,7 +312,7 @@ else
             % a warning for CharAvail and FlushEvents, it is game over for
             % GetChar, as we must not touch a user managed kbqueue, and we
             % can't provide any sensible behaviour if we can't do that:
-            error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+            error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar/CharAvail/FlushEvents etc. and keyboard queues is mutually exclusive!');
         end
         
         % Got it. Allocate and start it:
@@ -349,7 +349,7 @@ else
         end
     end
     
-    % Only fill up the 'when' data stucture if extended data was requested.
+    % Only fill up the 'when' data structure if extended data was requested.
     if getExtendedData
         when.address=nan;
         when.mouseButton=nan;

@@ -8,7 +8,7 @@ function [xo, yo] = RemapMouse(win, viewId, xm, ym)
 %   (xm,ym) will be no longer pointing to stimulus pixel (xm,ym). If you
 %   want to know which pixel in your original stimulus image corresponds to
 %   a specific physical display pixel (or mouse cursor position), use this
-%   function to perform the neccessary coordinate transformation.
+%   function to perform the necessary coordinate transformation.
 %
 %   'win' is the window handle of the onscreen window to remap.
 %

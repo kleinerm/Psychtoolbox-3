@@ -723,7 +723,7 @@ else
       % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
       % for use with our OpenHMD VR driver, instead of hiding them:
       if strcmp(xdriver, 'nvidia')
-        fprintf(fid, '  Option "AllowHMD"         "yes"\n');
+        fprintf(fid, '  Option "AllowHMD"         "no"\n');
       end
 
       fprintf(fid, 'EndSection\n\n');
@@ -748,7 +748,7 @@ else
       % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
       % for use with our OpenHMD VR driver, instead of hiding them:
       if strcmp(xdriver, 'nvidia')
-        fprintf(fid, '  Option "AllowHMD"         "yes"\n');
+        fprintf(fid, '  Option "AllowHMD"         "no"\n');
       end
 
       fprintf(fid, 'EndSection\n\n');

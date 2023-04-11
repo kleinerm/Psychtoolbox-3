@@ -21,7 +21,7 @@ function [versionString, versionStructure] = PsychtoolboxVersion
 % - Rightmost (patch level): A counter to distinguish multiple releases
 % having the same leftmost and middle version numbers. It increments if we
 % cancel support for platforms (Matlab/Octave versions, operating system
-% versions, processor architectures etc.). This happens occassionally.
+% versions, processor architectures etc.). This happens occasionally.
 %
 % Numeric values of the three integer fields contained in versionString are
 % available in fields of the second return argument, "versionStructure".
@@ -53,7 +53,7 @@ function [versionString, versionStructure] = PsychtoolboxVersion
 % Most Psychtoolbox mex files now provide a built-in 'Version' command
 % which returns version for themselves.  The version string for the
 % built-in version numbers contains a fourth numeric field named "build".
-% The build number is a unique serial number.  Mex files distinquished only
+% The build number is a unique serial number.  Mex files distinguished only
 % by build numbers were compiled from identical C source files.
 %
 % _________________________________________________________________________

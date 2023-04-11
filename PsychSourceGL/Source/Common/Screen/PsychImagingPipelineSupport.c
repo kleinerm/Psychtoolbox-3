@@ -1875,10 +1875,17 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     PsychTestForGLErrors();
 
     // Are all required OpenGL extensions supported?
-    if (!glewIsSupported("GL_EXT_memory_object") || !glewIsSupported("GL_ARB_direct_state_access") ||
+    if (!glewIsSupported("GL_EXT_memory_object") || !glewIsSupported("GL_EXT_direct_state_access") ||
         (!glewIsSupported("GL_EXT_memory_object_fd") && !glewIsSupported("GL_EXT_memory_object_win32"))) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL memory object extensions! Skipped.\n");
-        return(FALSE);
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL memory object extensions [%i %i %i].\n",
+                   glewIsSupported("GL_EXT_memory_object"), glewIsSupported("GL_EXT_memory_object_fd"), glewIsSupported("GL_EXT_direct_state_access"));
+
+        // Skip abort and continue on Broadcom VideoCore 6 under zink driver.
+        // Its GL_EXT_direct_state_access lacks some functions, so above check
+        // fails, but the stuff we need here actually works at least as of Mesa 23:
+        if (!strstr((char*) glGetString(GL_RENDERER), "zink (V3D 4.2)"))
+            return(FALSE);
     }
 
     // Backup current fbo assignments before we mess with them:
@@ -1949,7 +1956,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // Does OpenGL fbo for this PsychFBO already exist?
     if (fbo->fboid) {
         // Yes: Detach its colorbuffer texture:
-        glNamedFramebufferTexture(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, 0, 0);
+        glNamedFramebufferTexture2DEXT(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, glTextureTarget, 0, 0);
     }
     else {
         // No: Create one:
@@ -1973,12 +1980,12 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
         glDeleteTextures(1, &fbo->coltexid);
 
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: For fbo %i, recreating interop memory texture: Delete old id %i ", fbo->fboid, fbo->coltexid);
-    glCreateTextures(glTextureTarget, 1, &fbo->coltexid);
+    glGenTextures(1, &fbo->coltexid);
     if (PsychPrefStateGet_Verbosity() > 3) printf("created new one with id %i.\n", fbo->coltexid);
     PsychTestForGLErrors();
 
     // Assign tiling mode for rendering into the external memory backed texture:
-    glTextureParameteri(fbo->coltexid, GL_TEXTURE_TILING_EXT, (GLenum) tilingMode);
+    glTextureParameteriEXT(fbo->coltexid, glTextureTarget, GL_TEXTURE_TILING_EXT, (GLenum) tilingMode);
     PsychTestForGLErrors();
 
     // Attach new external memory backing to the texture (this will apply tilingMode):
@@ -1990,12 +1997,12 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     PsychTestForGLErrors();
 
     // Set texture filtering to nearest neighbour, for use as a fbo color buffer attachment:
-    glTextureParameteri(fbo->coltexid, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTextureParameteri(fbo->coltexid, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTextureParameteriEXT(fbo->coltexid, glTextureTarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteriEXT(fbo->coltexid, glTextureTarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     PsychTestForGLErrors();
 
     // Attach it as new colorbuffer backing texture:
-    glNamedFramebufferTexture(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, fbo->coltexid, 0);
+    glNamedFramebufferTexture2DEXT(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, glTextureTarget, fbo->coltexid, 0);
     PsychTestForGLErrors();
 
     // Bind FBO of view:

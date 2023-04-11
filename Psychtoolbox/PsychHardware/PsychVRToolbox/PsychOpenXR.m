@@ -197,6 +197,57 @@ function varargout = PsychOpenXR(cmd, varargin)
 % driver to optimize for the best precision/reliability/performance
 % tradeoff on all the runtimes where such a tradeoff is required.
 %
+% As mentioned here, in "help PsychVRHMD" and our "help OpenXR" overview
+% and setup instructions, currently no standard OpenXR implementation with
+% reliable and trustworthy timestamping exists. Proper enhancements to
+% OpenXR will need to be done in the future. Right now, as of Psychtoolbox
+% 3.0.19.1, we have a hacky solution for a subset of Linux users, called
+% "Monado metrics timestamping hack". It goes as follows:
+%
+% If you need reliable timestamping, the only solution right now is to use
+% Linux + a modified version of Monado + a modified version of Mesa + an
+% AMD or Intel gpu of sufficient performance + a VR HMD supported by Monado
+% on Linux. Contact our paid support "help PsychPaidSupportAndServices" for
+% help in setting up this feature and getting suitable modified Monado and
+% Mesa drivers. Once everything is installed on the hardware and software
+% side, the following steps need to be taken at the start of each
+% experiment session to enable the special Monado metrics timestamping hack
+% for trustworthy timestamping at the price of lowered performance:
+%
+%     1. Create a Linux fifo pipe file, e.g., in a terminal type
+%        "sudo mkfifo /usr/local/framequeue.protobuf"
+%        You can choose any file path and name instead of
+%        /usr/local/framequeue.protobuf but it makes sense to choose a
+%        directory which is under your users control, not a temporary
+%        directory, unless you want to repeat step 1 after each system
+%        reboot. In steps 2 and 3 you must path the same path/filename to
+%        both monado-service and Octave/Matlab via the XRT_METRICS_FILE
+%        environment variable.
+%
+%     2. Start monado-service and use the created fifo file as output file
+%        for the metrics log, e.g., in a terminal window via
+%
+%        "XRT_METRICS_FILE=/usr/local/framequeue.protobuf monado-service"
+%
+%        This will launch the monado-service OpenXR compositor, enable its
+%        metrics logging into the fifo, and block its startup until the
+%        Psychtoolbox XR work session is started.
+%
+%     3. Start a PTB session, also with XRT_METRICS_FILE environment variable
+%        specified to the same fifo file location during launch of Octave or
+%        Matlab, e.g., in a terminal start Octave or Matlab via:
+%
+%        "XRT_METRICS_FILE=/usr/local/framequeue.protobuf octave --gui" or
+%        "XRT_METRICS_FILE=/usr/local/framequeue.protobuf matlab"
+%
+%        Once the PsychOpenXR driver has detected that a Monado XR server is
+%        running, and that the fifo file exists and is accessible, it opens
+%        that fifo for read access, which will let monado-service fully start
+%        up and get ready to serve OpenXR clients. Your Psychtoolbox session
+%        should then work with trustworthy timestamps, but at potentially
+%        significantly reduced performance, e.g., a framerate of only half
+%        or a third of the refresh rate of your VR HMD display.
+%
 %
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
@@ -250,7 +301,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % The returned struct may contain more information, but the fields mentioned
 % above are the only ones guaranteed to be available over the long run. Other
 % fields may disappear or change their format and meaning anytime without
-% warning.
+% warning. See 'help PsychVRHMD' for more detailed info about available fields.
 %
 %
 % isSupported = PsychOpenXR('Supported');
@@ -650,6 +701,7 @@ global GL; %#ok<*GVMIS>
 global OVR;
 
 persistent firsttime;
+persistent fmonado;
 persistent oldShieldingLevel;
 persistent hmd;
 
@@ -696,7 +748,7 @@ if cmd == 1
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
 
   % PresentFrame successfull and not skipped?
-  if predictedOnset > 0
+  if predictedOnset >= 0
     % Get fresh set of backing textures for next Screen() post-flip drawing/render
     % cycle from the OpenXR texture swap chains:
     texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
@@ -739,6 +791,46 @@ if cmd == 2
   hmd{handle}.oldglRightTex = [];
 
   return;
+end
+
+% Check if Monado metrics support is available for our Monado timestamping hack:
+if isempty(fmonado)
+  fmonado = 0;
+
+  % On Linux our own custom version of Monado can support metrics based
+  % timestamping under the right conditions:
+  if IsLinux
+    % Does the metrics fifo file exist at the expected location? And monado-service is running?
+    monadometricsfile = getenv('XRT_METRICS_FILE');
+    [rc, ~] = system('pidof monado-service');
+    if exist(monadometricsfile, 'file') && (rc == 0)
+      % Yes. Try to open it. monado-service must have been launched with proper
+      % launch options, ie.:
+      % XRT_METRICS_FILE=/tmp/monado.protobuf XRT_COMPOSITOR_FORCE_GPU_INDEX=1 monado-service
+      fprintf('PsychOpenXR-INFO: Waiting for monado-service connection to become ready...\n');
+      fmonado = fopen(monadometricsfile, 'rb');
+      if fmonado == -1
+        % Failed to open file - No Monado metrics support in this session.
+        fmonado = 0;
+        warning('PsychOpenXR-INFO: monado-service is running and Monado metrics file exists, but can not be opened! Metrics timestamping disabled!');
+      elseif isempty(getenv('MONADO_STARTED'))
+        % If this is the first invocation since monado-service was launched, the
+        % service may have blocked until our fopen(), so it will only now commence
+        % its startup. Give it plenty seconds to get fully up and running:
+        WaitSecs(10);
+
+        % Make sure we skip this wait on a future invocation, to not make
+        % the citizens restless:
+        setenv('MONADO_STARTED', '1');
+      end
+    end
+
+    if ~fmonado
+        % No Monado metrics support - clear the marker env var, so PsychOpenXRCore
+        % knows not to bother:
+        setenv('XRT_METRICS_FILE', '');
+    end
+  end
 end
 
 if strcmpi(cmd, 'PrepareRender')
@@ -1134,7 +1226,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
     % Check if at least one OpenXR device is connected and available:
     if PsychOpenXR('GetCount') > 0
       % Yes. Open and initialize connection to first detected device:
-      fprintf('PsychOpenXR: Opening the first connected OpenXR VR headset.\n');
+      fprintf('PsychOpenXR: Opening the first connected OpenXR device.\n');
       newhmd = PsychOpenXR('Open', 0);
     else
       % Device emulation not possible:
@@ -1202,7 +1294,7 @@ if strcmpi(cmd, 'Open')
     fprintf('Khronos under Apache 2.0 and MIT license: SPDX license identifier “Apache-2.0 OR MIT”\n\n');
   end
 
-  [handle, modelName, runtimeName] = PsychOpenXRCore('Open', varargin{:});
+  [handle, modelName, runtimeName, hasEyeTracking] = PsychOpenXRCore('Open', varargin{:});
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOpenXR;
@@ -1217,6 +1309,7 @@ if strcmpi(cmd, 'Open')
   newhmd.hapticFeedbackSupported = 1;
   newhmd.VRControllersSupported = 1;
   newhmd.controllerTypes = 0;
+  newhmd.eyeTrackingSupported = hasEyeTracking;
 
   % Usually HMD tracking also works for mono display mode:
   newhmd.noTrackingInMono = 0;
@@ -1227,9 +1320,12 @@ if strcmpi(cmd, 'Open')
   % No need for MT for pure 2D mode either, aka use of quadViews, by default:
   newhmd.needMTFor2DQuadViews = 0;
 
+  % No need for MT by default for Monado as long as Metrics logging is not used:
+  newhmd.needMTForMonadoMetricsFifo = 0;
+
   % SteamVR OpenXR runtime needs a workaround for not properly
-  % managing its OpenGL context sometimes. So far confirmed to be
-  % needed on Linux with SteamVR 1.24.6. Status on Windows not yet known:
+  % managing its OpenGL context sometimes. Needed on Linux with
+  % SteamVR 1.24.6, but not on Windows:
   if IsLinux && strcmp(runtimeName, 'SteamVR/OpenXR')
     newhmd.steamXROpenGLWa = 1;
   else
@@ -1291,10 +1387,23 @@ if strcmpi(cmd, 'Open')
     % Also no need for MT for timing (bravo Monado, you are great!):
     newhmd.needMTForTiming = 0;
 
-    % TODO: Need MT for timestamping if we can't use tracy/metrics hacks,
-    % or a proper to-be-drafted-and-prototyped Monado specifc XR timestamping
-    % extension:
+    % We need MT for timestamping if we can't use tracy/metrics hacks, or a proper
+    % to-be-drafted-and-prototyped Monado specifc XR timestamping extension:
     newhmd.needMTForTimestamping = -1;
+
+    % Metrics timestamping available?
+    if fmonado > 0
+      % Got the file opened. That means Monado is running and properly set up for
+      % Metrics logging into our fifo file and we can use the special Metrics
+      % timestamping. Unfortunately when monado-service has been started with
+      % Metrics output to our fifo file, we need to read data from that fifo
+      % pretty much constantly, as otherwise the fifo - which has a limited capacity
+      % of 1 MB - will get full and block quite quickly and things to sideways! The
+      % only way to guarantee frequent enough reads is to drive this with our MT
+      % thread, so we need MT at all time as soon as Monado metrics mode is active:
+      newhmd.needMTForTimestamping = 0;
+      newhmd.needMTForMonadoMetricsFifo = 1;
+    end
   else
     % Less advanced: Need tracking update, and multi-threading if the
     % client does not use active fast tracking:
@@ -1789,7 +1898,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % Set as fbOverrideRect for window:
   ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
 
-  fprintf('PsychOpenXR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with XR device direct output mode.\n', ...
+  fprintf('PsychOpenXR-INFO: Overriding onscreen window framebuffer size to %i x %i pixels for use with XR device direct output mode.\n', ...
           clientRes(1), clientRes(2));
 
   % Skip all visual timing sync tests and calibrations, as display timing
@@ -1956,8 +2065,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     fprintf('PsychOpenXR-INFO: both potentially higher timestamp trustworthiness and potentially better performance.\n');
   end
 
+  if hmd{handle}.needMTForMonadoMetricsFifo
+    fprintf('PsychOpenXR-INFO: Monado supports metrics timestamping in this session. Will need permanent multi-threading.\n');
+  end
+
   % Derive initial master multiThreaded mode from current MT requirements:
-  mtReqs = [hmd{handle}.needMTFor3DViews, hmd{handle}.needMTFor2DQuadViews, hmd{handle}.needMTForTiming, hmd{handle}.needMTForTimestamping]; 
+  mtReqs = [hmd{handle}.needMTFor3DViews, hmd{handle}.needMTFor2DQuadViews, hmd{handle}.needMTForTiming, hmd{handle}.needMTForTimestamping, hmd{handle}.needMTForMonadoMetricsFifo];
   if ~any(mtReqs) || ~isempty(strfind(hmd{handle}.basicRequirements, 'ForbidMultiThreading'))
     % No need or want for multi-threading at all in this session -> Master
     % disable. We run only single-threaded for this session, which is
@@ -1974,22 +2087,25 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     if hmd{handle}.multiThreaded == 0
       fprintf('PsychOpenXR-WARNING: User script needs multi-threading for its use-case, but multi-threading is disabled! Expect timing/timestamping/jitter/judder problems!\n');
     else
-      % Special troublemakers? SteamVR on Windows with OculusVR backend
-      % will hang/fail/malfunction if Screen('BeginOpenGL') is used for
-      % typical 3D rendering, unless OpenGL context isolation is disabled,
-      % which is a troublemaker in many other ways!
-      if IsWin && hmd{handle}.use3DMode && strcmpi(hmd{handle}.modelName, 'SteamVR/OpenXR : oculus')
-        fprintf('PsychOpenXR-WARNING: User script needs multi-threading for its use-case, but broken MS-Windows SteamVR runtime with OculusVR backend in use!\n');
+      % Special troublemakers? SteamVR on Windows, as of version 1.25.6
+      % from March 2023 will cause Matlab to hang / fail / malfunction if
+      % Screen('BeginOpenGL') is used for typical 3D rendering, unless
+      % OpenGL context isolation is disabled, which is a troublemaker in
+      % many other ways! Bug confirmed for both OculusVR backend with
+      % Oculus Rift CV-1, and Vive backend with HTC Vive Pro Eye. Tested on
+      % both AMD and NVidia graphics:
+      if IsWin && hmd{handle}.use3DMode && strcmpi(hmd{handle}.subtype, 'SteamVR/OpenXR')
+        fprintf('PsychOpenXR-WARNING: User script needs multi-threading for its use-case, but broken MS-Windows SteamVR OpenXR runtime in use!\n');
         % kPsychDisableContextIsolation in use?
         if bitand(Screen('Preference', 'ConserveVRAM'), 8)
           fprintf('PsychOpenXR-WARNING: I see you disabled OpenGL context isolation to work around the problem. Tread carefully, this\n');
           fprintf('PsychOpenXR-WARNING: may screw up rendering and Screen() operation badly if you don''t know exactly what you are doing!\n');
         else
-          % This is an almost guaranteed crasher as of SteamVR 1.24.7 from
-          % February 2023 - will fail after a few seconds of 3D rendering
-          % with a hard hang of Matlab/Octave and need to kill the
+          % This is an almost guaranteed crasher as of SteamVR 1.25.6 from
+          % March 2023 - it will fail after a few seconds of 3D rendering
+          % with a hard hang of Matlab and one needs to kill the
           % application via task manager etc.:
-          fprintf('PsychOpenXR-WARNING: As of SteamVR version 1.24.7 from February 2023, this will almost certainly end in a Psychtoolbox hang or crash\n');
+          fprintf('PsychOpenXR-WARNING: As of SteamVR version 1.25.6 from March 2023, this will almost certainly end in a Psychtoolbox hang or crash\n');
           fprintf('PsychOpenXR-WARNING: if your script calls Screen(''BeginOpenGL'') anywhere. Brace for impact! Report back if you do not experience any\n');
           fprintf('PsychOpenXR-WARNING: problems with a later/future SteamVR version.\n');
         end

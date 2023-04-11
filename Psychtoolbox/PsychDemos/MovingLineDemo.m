@@ -72,7 +72,7 @@ end
 PsychImaging('PrepareConfiguration');
 % Try to open us on a VR HMD if one is connected, otherwise use regular
 % display:
-hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse TimingSupport TimestampingSupport');
+hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'TimingSupport TimestampingSupport');
 win = PsychImaging('OpenWindow', screenid, 128);
 [w, h] = Screen('WindowSize', win);
 ifi = Screen('GetFlipInterval', win);

@@ -1,6 +1,6 @@
 function windowsmakeit64_twisty(what, onoctave)
-% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-7 and Matlab.
-% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-7 if
+% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-8 and Matlab.
+% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-8 if
 % all relevant SDK's, Compilers and libraries would be installed.
 % This script is customized for MK's build machines "darlene" and "touchy",
 % building against the Windows-10 SDK on Windows-10 64-Bit.
@@ -11,7 +11,7 @@ if ~IsWin
 end
 
 if ~Is64Bit && ~IsOctave
-    error('%s must be run on MS-Windows within 32 or 64 Bit Octave or within 64-Bit Matlab!', mfilename);
+    error('%s must be run on MS-Windows within 32 or 64 Bit Octave 8 or within 64-Bit Matlab!', mfilename);
 end
 
 if nargin < 1
@@ -229,6 +229,15 @@ if onoctave == 0
         movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
+    if what == 14 && false
+        % Build PsychOpenHMDVRCore.mexa64:
+        % Needs the OpenHMD v0.3.0+ SDK installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed to OpenHMD.
+        mex -outdir ..\Projects\Windows\build -output PsychOpenHMDVRCore -DPTBMODULE_PsychOpenHMDVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -I..\..\..\OpenHMD -L..\..\..\OpenHMD -ICommon\Base -IWindows\Base -ICommon\PsychOpenHMDVRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenHMDVRCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib -lhidapi -lopenhmd-0
+        movefile(['..\Projects\Windows\build\PsychOpenHMDVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
     if what == 15
         % Build PsychVulkanCore for 64-Bit Matlab:
         % Needs the official Vulkan SDK for 64-Bit Windows for at least
@@ -249,7 +258,7 @@ if onoctave == 0
 else
     % Octave build:
     if Is64Bit
-        target = [PsychtoolboxRoot 'PsychBasic\Octave7WindowsFiles64\'];
+        target = [PsychtoolboxRoot 'PsychBasic\Octave8WindowsFiles64\'];
     else
         error('Building on 32-Bit Octave is not supported on Windows atm.');
     end
@@ -477,6 +486,16 @@ else
             % Empty. We just want to make sure the delete() call below is executed
             % in both success and failure case.
         end
+    end
+
+    if what == 14 && false
+        % Build PsychOpenHMDVRCore.mex:
+        % Build PsychOpenHMDVRCore.mexa64:
+        % Needs the OpenHMD v0.3.0+ SDK installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed to OpenHMD.
+        mexoctave --output ..\Projects\Windows\build\PsychOpenHMDVRCore.mex -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -I..\..\..\OpenHMD -L..\..\..\OpenHMD -ICommon\Base -IWindows\Base -ICommon\PsychOpenHMDVRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenHMDVRCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib -lhidapi -lopenhmd-0
+        movefile(['..\Projects\Windows\build\PsychOpenHMDVRCore.' mexext], target);
     end
 
     if what == 15

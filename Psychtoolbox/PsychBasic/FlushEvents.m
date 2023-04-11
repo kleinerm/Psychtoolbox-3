@@ -35,7 +35,7 @@ function FlushEvents(varargin)
 %
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
 % 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
-% 06/20/19 mk   Try to protect against KDE focus stealing nastyness via kbqueues.
+% 06/20/19 mk   Try to protect against KDE focus stealing nastiness via kbqueues.
 
 global OSX_JAVA_GETCHAR;
 
@@ -117,7 +117,7 @@ if doclear == 1
                     warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar(2) may work for keystroke suppression, but GetChar() etc. will not work.\n');
                 else
                     % 32-Bit OSX, or MS-Windows:
-                    warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+                    warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar/CharAvail/FlushEvents etc. and keyboard queues is mutually exclusive!');
                 end
 
                 % We fall through to KeyboardHelper to enable input

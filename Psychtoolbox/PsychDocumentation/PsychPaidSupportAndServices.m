@@ -80,11 +80,10 @@ function PsychPaidSupportAndServices(mininag)
 % other words, it contributes to / acts as an insurance that allows
 % Psychtoolbox to be around and in good shape years into the future.
 %
-% To clarify: Psychtoolbox itself will stay freely downloadable and usable
-% by anyone, and stay fully accessible as open-source software, by anyone
-% for any purpose. Anybody able and willing to contribute code and ideas of
-% sufficiently high quality is invited to contribute to the open-source
-% code, the documentation on our public community website and Wiki
+% To clarify: Psychtoolbox itself will stay open-source software. Anybody
+% able and willing to contribute code and ideas of sufficiently high quality
+% is invited to contribute to the open-source code, the documentation on our
+% public community website and Wiki
 % http://psychtoolbox.org, and to participate and help each other on the
 % public community forum https://psychtoolbox.discourse.group.
 %
@@ -113,15 +112,10 @@ if exist('mininag', 'var') && (mininag > 0)
     fprintf('\n\n');
 
     if mininag == 1
-        % Advertise our end of year discounted sale and user survey 2022:
-        fprintf('ADDITIONAL NEWS: Psychtoolbox discounted memberships and user survey 2022!\n');
+        % Advertise our user survey 2022/2023:
+        fprintf('ADDITIONAL NEWS: Psychtoolbox user survey 2022/2023!\n');
         fprintf('\n');
-        fprintf('For a limited time, starting 24th November 2022, we offer paid support memberships\n');
-        fprintf('at a substantially discounted price! For the announcement, go to the following link:\n');
-        fprintf('\n');
-        fprintf('https://psychtoolbox.discourse.group/t/get-support-memberships-for-99-euros-tax-only-limited-offer/4712\n');
-        fprintf('\n');
-        fprintf('We also kindly ask you to fill out our user survey, so that we can better understand the needs\n');
+        fprintf('We kindly ask you to fill out our user survey, so that we can better understand the needs\n');
         fprintf('and wishes of our community. Your answers will greatly help us to shape the future of Psychtoolbox.\n');
         fprintf('\n');
         fprintf('The survey is conducted by our host for all commercial services and matters, the\n');

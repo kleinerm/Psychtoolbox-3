@@ -4,7 +4,7 @@ function [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCh
 %  Obtains data about keypresses on the specified device since the 
 %  most recent call to this routine, KbQueueStart, or KbQueueWait
 %  Clears all scored events, but unscored events that are still being
-%  processsed may remain in the queue
+%  processed may remain in the queue
 %
 %  pressed: a boolean indicating whether a key has been pressed
 %
@@ -32,7 +32,7 @@ function [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCh
 %  ptb_kbcheck_disabledKeys (see "help DisableKeysForKbCheck"), will
 %  not caused pressed to return as true and will be zeroed out in the
 %  returned arrays. However, a better alternative is to specify a
-%  keyList arguement to KbQueueCreate. 
+%  keyList argument to KbQueueCreate. 
 %
 % _________________________________________________________________________
 %

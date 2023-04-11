@@ -9,7 +9,7 @@ function ListenChar(listenFlag)
 % listening, additionally any output of keypresses to Matlabs or Octaves
 % windows is suppressed. Use this with care, if your script aborts with an
 % error, Matlab or Octave may be left with a dead keyboard until the user
-% presses CTRL+C to reenable keyboard input. 'listenFlag' 2 is silently
+% presses CTRL+C to re-enable keyboard input. 'listenFlag' 2 is silently
 % ignored on Matlab in -nojvm mode under MS-Windows.
 %
 % Passing the listenFlag -1 will only suppress keypresses into Matlabs or
@@ -113,7 +113,7 @@ function ListenChar(listenFlag)
 %                friends.
 % 05/31/09 mk    Add support for Octave and Matlab in noJVM mode.
 % 01/31/16 mk    Add support for listenFlag -1 for only blocking input.
-% 06/20/19 mk    Try to protect against KDE focus stealing nastyness via kbqueues.
+% 06/20/19 mk    Try to protect against KDE focus stealing nastiness via kbqueues.
 
 global OSX_JAVA_GETCHAR;
 persistent keyboard_blocked;
@@ -225,13 +225,13 @@ end
 % Does the user only want to unblock keyboard input from spilling into the
 % command window / console after blocking it before with listenFlag -1?
 if listenFlag == 0 && keyboard_blocked
-    % Yes. Just reenable keyboard input
+    % Yes. Just re-enable keyboard input
     keyboard_blocked = 0;
 
     % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
     LoadPsychHID;
 
-    % Reenable character forwarding to console:
+    % Re-enable character forwarding to console:
     PsychHID('KeyboardHelper', -10);
 
     return;
@@ -268,7 +268,7 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
                     warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar(2) may work for keystroke suppression, but GetChar() etc. will not work.\n');
                 else
                     % 32-Bit OSX, or MS-Windows:
-                    warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+                    warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar/CharAvail/FlushEvents etc. and keyboard queues is mutually exclusive!');
                 end
 
                 % We fall through to KeyboardHelper to enable input

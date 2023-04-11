@@ -1,6 +1,11 @@
 function striplibsfrommexfile(filename, testrun, alsorenameit)
 % striplibsfrommexfile(filename [, testrun=0][, alsorenameit=1]);
 %
+% THIS FILE IS DEPRECATED/UNUSED/NO LONGER NEEDED AS OF Octave 5+, on
+% Ubuntu 20.04-LTS+ and Debian 11+ as Octave's mex/mkoctfile command strips
+% all libraries itself. Just left here for documentation, should a similar
+% need arise in the future.
+%
 % Remove a certain set of dynamic library dependencies from MEX/OCT file
 % given via 'filename'. Optional 'testrun' if set to non-zero value will
 % perform a dry-run.

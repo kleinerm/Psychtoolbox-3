@@ -286,6 +286,7 @@ try
   modesetting = 'd';
   usegamma = -1;
   asyncflipsecondaries = 'd';
+  vrhmdondesktop = 0;
 
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
@@ -390,6 +391,29 @@ try
       asyncflipsecondaries = '';
       while isempty(asyncflipsecondaries) || ~ismember(asyncflipsecondaries, ['y', 'n', 'd'])
         asyncflipsecondaries = input('Use AsyncFlipSecondaries mode for multi-display setups [y for yes, n for no, d for don''t care]? ', 's');
+      end
+    end
+
+    if strcmp(xdriver, 'nvidia')
+      % Expose VR HMD's on X11 desktop with NVidia proprietary driver? Only useful with
+      % PsychOpenHMDVR and PsychOculusVR:
+      fprintf('\n\nDo you want to use Virtual Reality HMDs of type Rift-DK1/DK2 or with OpenHMD?\n');
+      fprintf('Say yes if you want to drive a Oculus Rift DK1 or DK2, or use other VR HMDs with\n');
+      fprintf('the old OpenHMD VR driver, instead of the modern OpenXR driver. This will expose the\n');
+      fprintf('HMD as regular desktop display on NVidia graphics, so our old OculusVR and OpenHMD\n');
+      fprintf('drivers can use it, preferrably in a multi-X-Screen setup with separate X-Screen for the\n');
+      fprintf('HMD. This will disable any meaningful use of Vulkan displays under NVidia, and disable\n');
+      fprintf('use of VR HMDs with the modern OpenXR driver, e.g., with Monado or SteamVR.\n');
+      fprintf('Answering (n)o or (d)ont care is usually the right choice.\n');
+      vrhmdondesktop = '';
+      while isempty(vrhmdondesktop) || ~ismember(vrhmdondesktop, ['y', 'n', 'd'])
+        vrhmdondesktop = input('Use VR HMD with OpenHMD or OculusVR [y for yes, n for no, d for don''t care]? ', 's');
+      end
+
+      if vrhmdondesktop == 'y'
+        vrhmdondesktop = 1;
+      else
+        vrhmdondesktop = 0;
       end
     end
 
@@ -558,8 +582,8 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && asyncflipsecondaries ~= 'y' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && ...
-   usegamma == -1 && ~IsARM
+   ~isempty(intersect(depth30bpp, 'nd')) && (~strcmp(xdriver, 'nvidia') || ~vrhmdondesktop) && ...
+   vrrsupport ~= 'y' && usegamma == -1 && ~IsARM
   % Done writing the file:
   fclose(fid);
 else
@@ -617,9 +641,10 @@ else
         fprintf(fid, '  DefaultDepth  30\n');
       end
 
-      % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
-      % for use with our OpenHMD VR driver, instead of hiding them:
-      if strcmp(xdriver, 'nvidia')
+      % On NVidia ddx, optionally tell the driver to also expose HMD's, e.g.,
+      % for use with our OpenHMD VR driver, instead of hiding them. This will
+      % disable Vulkan direct display mode and modern OpenXR:
+      if strcmp(xdriver, 'nvidia') && vrhmdondesktop
         fprintf(fid, '  Option "AllowHMD"         "yes"\n');
       end
 
@@ -642,9 +667,10 @@ else
         fprintf(fid, '  DefaultDepth  30\n');
       end
 
-      % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
-      % for use with our OpenHMD VR driver, instead of hiding them:
-      if strcmp(xdriver, 'nvidia')
+      % On NVidia ddx, optionally tell the driver to also expose HMD's, e.g.,
+      % for use with our OpenHMD VR driver, instead of hiding them. This will
+      % disable Vulkan direct display mode and modern OpenXR:
+      if strcmp(xdriver, 'nvidia') && vrhmdondesktop
         fprintf(fid, '  Option "AllowHMD"         "yes"\n');
       end
 

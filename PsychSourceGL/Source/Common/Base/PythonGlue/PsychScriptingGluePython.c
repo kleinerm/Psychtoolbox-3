@@ -844,10 +844,6 @@ psych_bool PsychUseCMemoryLayoutIfOptimal(psych_bool tryEnableCMemoryLayout)
  *    Main entry point for Python runtime. Serves as a dispatch and handles
  *    first time initialization.
  *
- *    EXP is a macro defined within Psychtoolbox source to be nothing
- *    except on win where it is the declaration which tells the linker to
- *    make the function visible from outside the DLL.
- *
  *        The subfunction dispatcher can operate in either of two modes depending
  *        on whether the module has registed subfunctions, or only a single "base"
  *        function.
@@ -993,7 +989,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             } else {
                 tmparg = NULL;
             }
- 
+
             isArgEmptyMat[i] = isArgThere[i] ? PsychIsDefaultMat(tmparg) : FALSE;
             isArgText[i] = isArgThere[i] ? mxIsChar(tmparg) : FALSE;
             if (isArgText[i]) {
@@ -3072,10 +3068,10 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
     The special value numElements == -1 means to return a single struct, instead of a struct array.
 
 */
-psych_bool PsychAllocOutStructArray(int position, 
-                                    PsychArgRequirementType isRequired, 
+psych_bool PsychAllocOutStructArray(int position,
+                                    PsychArgRequirementType isRequired,
                                     int numElements,
-                                    int numFields, 
+                                    int numFields,
                                     const char **fieldNames,
                                     PsychGenericScriptType **pStruct)
 {
@@ -3141,7 +3137,7 @@ psych_bool PsychAssignOutStructArray(int position,
     return(putOut);
 }
 
-// functions for filling in struct elements by type 
+// functions for filling in struct elements by type
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -3309,7 +3305,7 @@ void PsychSetStructArrayStructElement(const char *fieldName,
     }
 
     // mxSetField steals the reference to pStructInner, so we are done with it:
-    mxSetField(pStructOuter, (ptbIndex) index, fieldName, pStructInner); 
+    mxSetField(pStructOuter, (ptbIndex) index, fieldName, pStructInner);
 }
 
 

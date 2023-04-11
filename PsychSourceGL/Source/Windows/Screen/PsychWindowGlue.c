@@ -2501,14 +2501,14 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     // Try to set requested swapInterval if swap-control extension is supported on
     // this windows machine. Otherwise this will be a no-op...
     if (wglSwapIntervalEXT) {
-        if(!wglSwapIntervalEXT(swapInterval)) {
+        if (!wglSwapIntervalEXT(swapInterval) && (PsychPrefStateGet_Verbosity() > 0)) {
             failcount++;
             if (failcount <= 10) printf("PTB-ERROR: Setting wglSwapInterval(%i) failed! Expect severe display timing and display tearing problems!!! See 'help SyncTrouble' for more info.\n", swapInterval);
             if (failcount == 10) printf("PTB-ERROR: This error message won't repeat on subsequent failure...\n");
         }
 
         // Double check new setting:
-        if ((NULL == wglGetSwapIntervalEXT) || (wglGetSwapIntervalEXT() != swapInterval)) {
+        if (((NULL == wglGetSwapIntervalEXT) || (wglGetSwapIntervalEXT() != swapInterval)) && (PsychPrefStateGet_Verbosity() > 0)) {
             failcount++;
             if (failcount <= 10) {
                 if (NULL == wglGetSwapIntervalEXT) {

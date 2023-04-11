@@ -95,7 +95,7 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags, win
 %      Obtains data about keypresses on the specified device since the 
 %      most recent call to this routine, KbQueueStart, KbQueueWait
 %      Clears all scored events, but unscored events that are still being
-%      processsed may remain in the queue
+%      processed may remain in the queue
 %
 %      pressed: a boolean indicating whether a key has been pressed
 %
@@ -123,7 +123,7 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags, win
 %     ptb_kbcheck_disabledKeys (see "help DisableKeysForKbCheck"), will
 %     not cause pressed to return as true and will be zeroed out in the
 %     returned arrays. However, a better alternative is to specify a
-%     keyList arguement to KbQueueCreate. 
+%     keyList argument to KbQueueCreate. 
 %
 % secs=KbQueueWait([deviceNumber])
 %      Waits for any key to be pressed and returns the time of the press.
@@ -150,7 +150,7 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags, win
 %
 %      This routine is called automatically at clean-up (e.g., when 
 %      'clear mex' is invoked and can be omitted expense of keeping 
-%      memory allocated and an additional thread running unnecesarily
+%      memory allocated and an additional thread running unnecessarily
 %
 % Note that any keyboard typing used to invoke KbQueue commands will be
 % recorded. This would include the release of the carriage return used
@@ -175,7 +175,7 @@ if ~KbQueueReserve(1, 2, deviceNumber)
   if isempty(deviceNumber)
       deviceNumber = NaN;
   end
-  error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
+  error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar/CharAvail/FlushEvents and keyboard queues is mutually exclusive!', deviceNumber);
 end
 
 if isempty(macosxrecent)
