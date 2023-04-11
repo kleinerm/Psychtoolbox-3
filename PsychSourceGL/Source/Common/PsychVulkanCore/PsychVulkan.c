@@ -60,7 +60,6 @@
 #endif
 
 #include <vulkan/vulkan.h>
-#include <vulkan/vk_sdk_platform.h>
 
 #ifndef VK_DRIVER_ID_NVIDIA_PROPRIETARY
 #define VK_DRIVER_ID_NVIDIA_PROPRIETARY VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR
