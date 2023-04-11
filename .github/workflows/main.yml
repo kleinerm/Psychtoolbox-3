@@ -2,8 +2,7 @@
 # Currently builds all mex files except Datapixx and Eyelink due to lack of SDK availability in VM.
 #
 # Note: - Free GitHub runners are only available for public / OSS repositories.
-#       - The free Matlab runner is only available for Linux, whereas the Octave build could
-#         in theory also be done on macOS (HomeBrew) and somehow on Windows (unclear).
+#       - The free Matlab runner is only available for Linux.
 #
 # Copyright (c) 2022-2023 by Mario Kleiner, licensed under MIT license.
 #
@@ -36,13 +35,16 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup additional build and runtime dependencies of Psychtoolbox.
-        run: sudo apt update; sudo apt install -y octave-psychtoolbox-3 liboctave-dev libfontconfig1-dev libopenhmd-dev libvulkan-dev libusb-1.0-0-dev xorg-dev libx11-xcb-dev libxcb*-dev libglu1-mesa-dev freeglut3-dev libgstreamer*-dev libasound2-dev portaudio19-dev libfreenect-dev libopenal-dev; sudo apt remove -y libgamemode0; sudo apt install -y libdc1394-dev
+        run: sudo apt update; sudo apt install -y octave-psychtoolbox-3 liboctave-dev libfontconfig1-dev libopenhmd-dev libusb-1.0-0-dev xorg-dev libx11-xcb-dev libxcb*-dev libglu1-mesa-dev freeglut3-dev libgstreamer*-dev libasound2-dev portaudio19-dev libfreenect-dev libopenal-dev; sudo apt remove -y libgamemode0; sudo apt install -y libdc1394-dev
 
       - name: Setup OculusVR SDK 0.5 for 64-Bit Linux.
         run: tar xvf PsychSourceGL/Cohorts/OculusSDK/ovr_sdk_linux_0.5.0.1.tar.xz; cd ovr_sdk_linux_0.5.0.1 ; sudo cp --recursive LibOVR/Include/* /usr/local/include/ ; sudo cp ../PsychSourceGL/Cohorts/OculusSDK/libOVR.a /usr/local/lib/
 
       - name: Setup OpenXR SDK and OpenXR loader for PsychOpenXRCore build, backported for 64-Bit Ubuntu Linux 20.04.
         run: sudo add-apt-repository ppa:monado-xr/monado; sudo apt-get update; sudo apt install -y libopenxr-dev;
+
+      - name: Setup latest Vulkan SDK from LunarG for PsychVulkanCore build, as Ubuntu 20.04 SDK is too old for all our needs.
+        run: wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add - ; sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.3.243-focal.list https://packages.lunarg.com/vulkan/1.3.243/lunarg-vulkan-1.3.243-focal.list ; sudo apt update ; sudo apt install -y vulkan-sdk ;
 
       - name: Set up latest MATLAB
         uses: matlab-actions/setup-matlab@v1
