@@ -1,5 +1,5 @@
-function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, refSpace)
-% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay'][, refSpace]) - Test input functionality related to VR devices.
+function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, refSpace, withGazeTracking)
+% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay'][, refSpace][, withGazeTracking=0]) - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
 % input. After any key press or controller button press, reports live state
@@ -43,6 +43,13 @@ function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, ref
 % visualization of the "play area". The driver default is 2 for local, as
 % that is always supported.
 %
+% The optional parameter 'withGazeTracking', if provided and non-zero, will
+% enable some basic tests of eye gaze tracking with VR HMD's which support
+% eye tracking. Please note that this functionality is not available in
+% official Psychtoolbox releases yet, at least not as of v3.0.19.1, and the
+% api used in this demo is highly experimental and subject to backwards
+% incompatible changes!
+%
 % After a keypress (or Enter/Back button press on the controller),
 % visualizes tracked hand position and orientation of hand controllers and
 % allows to do some nice visual effects based on trigger / grip button
@@ -77,6 +84,11 @@ end
 % No specific reference space by default - Allow driver to do its thing:
 if nargin < 4 || isempty(refSpace)
     refSpace = 0;
+end
+
+% Disable test of eye gaze tracking by default:
+if nargin < 5 || isempty(withGazeTracking)
+    withGazeTracking = 0;
 end
 
 canary = onCleanup(@sca);
@@ -115,9 +127,29 @@ if strcmpi(hmdinfo.type, 'OpenXR') && refSpace
     PsychOpenXR('ReferenceSpaceType', hmd, refSpace)
 end
 
+% OpenXR and Use2DViewsWhen3DStopped requested for stopped 3D rendering?
+if strcmpi(hmdinfo.type, 'OpenXR') && ~isempty(strfind(specialReqs, 'Use2DViewsWhen3DStopped')) %#ok<STREMP> 
+    % Set some default position for the 2D views that matches kleinerm's
+    % eyes well and provides matching imaging geometry between 3D
+    % projection layers and 2D quadviews, at least as tested with HTC Vive Pro Eye
+    % under SteamVR:
+    PsychVRHMD('View2DParameters', hmd, 0, [-0.098726, 0.000000, -1.000000]);
+    PsychVRHMD('View2DParameters', hmd, 1, [+0.098726, 0.000000, -1.000000]);
+end
+
 % Retrieve the initial settings for position and size for 2D quad views:
 oldPositionL = PsychVRHMD('View2DParameters', hmd, 0);
 oldPositionR = PsychVRHMD('View2DParameters', hmd, 1);
+
+% Test of eye gaze tracking requested and eye tracking supported by this system?
+if withGazeTracking && hmdinfo.eyeTrackingSupported
+    % Yes. Request gaze samples during calls to 'PrepareRender':
+    reqMask = 1 + 2 + 4;
+else
+    % No. Disable any eye gaze tracking:
+    reqMask = 1 + 2;
+    withGazeTracking = 0;
+end
 
 clc;
 
@@ -276,6 +308,10 @@ while 1
 
     if istate.Buttons(OVR.Button_VolDown)
         fprintf('Button_VolDown ');
+    end
+
+    if istate.Buttons(OVR.Button_MicMute)
+        fprintf('Button_MicMute ');
     end
 
     if istate.Buttons(OVR.Button_Home)
@@ -575,11 +611,13 @@ if hmdinfo.handTrackingSupported
     % and heading on top of the head tracking:
     globalHeadPose = PsychGetPositionYawMatrix(globalPos, heading);
 
-    % Track and predict head + hands position and orientation, retrieve modelview
-    % camera matrices for rendering of each eye. Apply some global transformation
-    % to returned camera matrices. In this case a translation + rotation, as defined
-    % by the PsychGetPositionYawMatrix() helper function:
-    state = PsychVRHMD('PrepareRender', hmd, globalHeadPose, 1+2);
+    % Track and predict head + hands position and orientation, possibly also
+    % eye gaze, depending on reqMask. Retrieve modelview camera matrices
+    % for rendering of each eye. Apply some global transformation to
+    % returned camera matrices. In this case a translation + rotation, as
+    % defined by the PsychGetPositionYawMatrix() helper function:
+    state = PsychVRHMD('PrepareRender', hmd, globalHeadPose, reqMask);
+    %fprintf('HMD state.tracked %i  = Controller tracked %i : %i\n', state.tracked, state.handStatus(1), state.handStatus(2));
 
     % Get controller input state, buttons, triggers etc.:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
@@ -608,14 +646,13 @@ if hmdinfo.handTrackingSupported
 
       % Light position:
       glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
+      glDisable(GL.LIGHTING);
 
       % Clear color and depths buffers:
       glClear;
 
       % Visualize projection of guardian "walls" to the floor, if any are defined:
       if ~isempty(outerboundsxyz)
-        glDisable(GL.LIGHTING);
-
         % Change color of guardian lines, depending if guardian grid visible or not:
         if PsychVRHMD('VRAreaBoundary', hmd)
           glColor3f(1.0, 0.0, 0.0);
@@ -636,10 +673,41 @@ if hmdinfo.handTrackingSupported
             glVertex3dv(playboundsxyz(:, i) + globalPos');
           end
         glEnd;
-
-        glEnable(GL.LIGHTING);
       end
 
+      % Visualize 3D gaze direction if requested, but only in left eye
+      % view, because we only track one gaze ray and viz in both eyes gets
+      % confusing:
+      if (withGazeTracking >= 2) && (state.gazeStatus(1) >= 3) && (renderPass == 0)
+        % Draw an orange wired cone marker to visualize gaze direction by
+        % rendering a complex 3D object in a eye-reference frame specified
+        % coordinate system. We use the global 4x4 OpenGL transformation
+        % matrix provided by gaze tracking:
+        glColor4f(0.17, 0.2, 0, 0.3);
+        glPushMatrix;
+        glMultMatrixd(state.gazeGlobalMat{1});
+        glutWireCone(0.001, 3, 10, 10);
+        glPopMatrix;
+
+        % Draw a 5 meters long green gaze-ray, using the gaze ray equation
+        % provided by gaze tracking, ie. global start position of the ray
+        % 'tv', corresponding to the the estimated optical center of the
+        % eye, and the gaze direction vector 'dv', along the optical axis /
+        % looking direction of that eye -- equivalent to the negative
+        % z-axis of the eye gaze reference frame:
+        tv = state.gazeRayGlobal{1}.gazeC;
+        dv = state.gazeRayGlobal{1}.gazeD;
+
+        glColor3f(1,0,1);
+        glBegin(GL.LINES);
+        glVertex3dv(tv);
+        vp = tv + dv * 5;
+        glVertex3dv(vp);
+        glEnd;
+      end
+
+      % Further rendering needs proper lighting:
+      glEnable(GL.LIGHTING);
       glPushMatrix;
 
       % Compute simulation time for this draw cycle:
@@ -699,6 +767,11 @@ if hmdinfo.handTrackingSupported
 
       % Manually disable 3D mode before switching to other eye or to flip:
       Screen('EndOpenGL', win);
+
+      % Visualize tracked left-eye 2D gaze position in left-eye view, if any:
+      if withGazeTracking && (renderPass == 0) && (state.gazeStatus(1) >= 3)
+          Screen('DrawDots', win, state.gazePos{1}, 5, [1, 0, 0]);
+      end
 
       % Repeat for renderPass of other eye:
     end

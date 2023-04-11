@@ -208,7 +208,7 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % The returned struct may contain more information, but the fields mentioned
 % above are the only ones guaranteed to be available over the long run. Other
 % fields may disappear or change their format and meaning anytime without
-% warning.
+% warning. See 'help PsychVRHMD' for more detailed info about available fields.
 %
 %
 % isSupported = PsychOpenHMDVRCore('Supported');
@@ -1024,6 +1024,8 @@ if strcmpi(cmd, 'Open')
     newhmd.hapticFeedbackSupported = 0;
   end
 
+  newhmd.eyeTrackingSupported = 0;
+
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
 
@@ -1140,6 +1142,26 @@ if strcmpi(cmd, 'Open')
   % Return device struct:
   varargout{1} = newhmd;
   varargout{2} = modelName;
+
+  if IsLinux && ~IsWayland
+    pause(4);
+    screenid = max(Screen('Screens'));
+    [rc, outputs] = system(sprintf('xrandr --screen %i | grep connected | cut -d '' '' -f1', screenid));
+    pause(1);
+    if rc == 0
+      while ~isempty(outputs)
+        [output, outputs] = strtok(outputs);
+        if ~isempty(output)
+          system(sprintf('xrandr --screen %i --output %s --set non-desktop 0', screenid, output))
+          %pause(1);
+          %system(sprintf('xrandr --screen %i --output %s --auto', screenid, output))
+        end
+      end
+
+      pause(2);
+      clear Screen;
+    end
+  end
 
   return;
 end
@@ -1451,39 +1473,39 @@ if strcmpi(cmd, 'OpenWindowSetup')
   ovrMultiSample = varargin{6};
 
   % Override winRect for the OpenHMD dummy HMD device:
-  if strcmp(myhmd.modelName, 'Dummy Device') || strcmp(myhmd.modelName, 'External Device')
+  if IsWin || strcmp(myhmd.modelName, 'Dummy Device') || strcmp(myhmd.modelName, 'External Device')
     winRect = [0, 0, myhmd.panelWidth, myhmd.panelHeight];
-  end
-
-  % Try to find the output with the HMD:
-  scanout = [];
-  for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
-    scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-    if ~myhmd.driver('IsHMDOutput', myhmd, scanout)
-      % This output is not it:
-      scanout = [];
+  else
+    % Try to find the output with the HMD:
+    scanout = [];
+    for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+      scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+      if ~myhmd.driver('IsHMDOutput', myhmd, scanout)
+        % This output is not it:
+        scanout = [];
+      end
     end
-  end
 
-  if isempty(scanout)
-    sca;
-    error('PsychOpenHMDVR-ERROR: Could not find X-Screen output with HMD on target X-Screen %i!', screenid);
-  end
+    if isempty(scanout)
+      sca;
+      error('PsychOpenHMDVR-ERROR: Could not find X-Screen output with HMD on target X-Screen %i!', screenid);
+    end
 
-  % Yes. Trying to display on a screen with more than one video output?
-  if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
-    % Yes. Not good, as this will impair graphics performance and timing a lot.
-    % Warn about this, then try to at least position the onscreen window on the
-    % right output.
-    fprintf('PsychOpenHMDVR-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
-    fprintf('PsychOpenHMDVR-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
-    fprintf('PsychOpenHMDVR-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
-    fprintf('PsychOpenHMDVR-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+    % Yes. Trying to display on a screen with more than one video output?
+    if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
+      % Yes. Not good, as this will impair graphics performance and timing a lot.
+      % Warn about this, then try to at least position the onscreen window on the
+      % right output.
+      fprintf('PsychOpenHMDVR-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
+      fprintf('PsychOpenHMDVR-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
+      fprintf('PsychOpenHMDVR-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
+      fprintf('PsychOpenHMDVR-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
 
-    % Position our onscreen window accordingly:
-    winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
-    fprintf('PsychOpenHMDVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i [%s] of screen %i.\n', ...
-            winRect(1), winRect(2), winRect(3), winRect(4), i, scanout.name, screenid);
+      % Position our onscreen window accordingly:
+      winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+      fprintf('PsychOpenHMDVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i [%s] of screen %i.\n', ...
+              winRect(1), winRect(2), winRect(3), winRect(4), i, scanout.name, screenid);
+    end
   end
 
   % Get "panel size" / true framebuffer size:
@@ -1505,7 +1527,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % the HMD, so lets do a output off->on cycle instead to only affect the actual
   % output which needs a DPMS off -> on, which happens as side-effect of the off
   % on cycle:
-  if 1
+  if IsLinux && ~isempty(strfind(myhmd.modelName, 'Rift'))
       cmd = sprintf('xrandr --screen %i --output %s --off', screenid, scanout.name);
       % Works also, but more intrusive on multi-display setups: cmd = sprintf('xset dpms force standby');
       system(cmd);
@@ -1843,7 +1865,7 @@ end
 if strcmpi(cmd, 'View2DParameters')
   varargout{1} = [NaN, NaN, NaN];
   varargout{2} = [NaN, NaN];
-  varargout{3} = [NaN, NaN, NaN, Nan];
+  varargout{3} = [NaN, NaN, NaN, NaN];
   return;
 end
 

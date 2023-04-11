@@ -312,7 +312,7 @@ else
             % a warning for CharAvail and FlushEvents, it is game over for
             % GetChar, as we must not touch a user managed kbqueue, and we
             % can't provide any sensible behaviour if we can't do that:
-            error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+            error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar/CharAvail/FlushEvents etc. and keyboard queues is mutually exclusive!');
         end
         
         % Got it. Allocate and start it:

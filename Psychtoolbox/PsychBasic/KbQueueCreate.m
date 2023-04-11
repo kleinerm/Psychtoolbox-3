@@ -175,7 +175,7 @@ if ~KbQueueReserve(1, 2, deviceNumber)
   if isempty(deviceNumber)
       deviceNumber = NaN;
   end
-  error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
+  error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar/CharAvail/FlushEvents and keyboard queues is mutually exclusive!', deviceNumber);
 end
 
 if isempty(macosxrecent)

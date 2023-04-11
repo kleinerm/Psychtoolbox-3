@@ -56,7 +56,7 @@ backgroundColor = GrayIndex(screenid);
 
 % Open a double-buffered full-screen window:
 PsychImaging('PrepareConfiguration');
-hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse NoTimingSupport NoTimestampingSupport DebugDisplay', 0);
+hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'NoTimingSupport NoTimestampingSupport DebugDisplay', 0);
 [win , winRect] = PsychImaging('OpenWindow', screenid, backgroundColor);
 
 DrawFormattedText(win, 'Hang on, I am working on my first supershape :)', 'center', 'center');

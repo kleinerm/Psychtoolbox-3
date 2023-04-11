@@ -205,7 +205,7 @@ end
 % Trigger automatic setup of first detected VR HMD with
 % default rendering parameters:
 if stereoMode == 103
-    PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
+    PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'NoTimingSupport TimestampingSupport');
     stereoMode = 0;
 end
 

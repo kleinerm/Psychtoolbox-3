@@ -152,7 +152,7 @@ end
 if mode==16
     % Build PsychOpenXRCore.mexa64:
     try
-        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychOpenXRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -D_GNU_SOURCE -DPTBMODULE_PsychOpenXRCore -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOpenXRCore/*.c" -lc -lrt -ldl -lopenxr_loader
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychOpenXRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -D_GNU_SOURCE -DPTBMODULE_PsychOpenXRCore -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore -ICommon/PsychOpenXRCore/nanopb "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOpenXRCore/*.c" "Common/PsychOpenXRCore/nanopb/*.c" -lc -lrt -ldl -lopenxr_loader
     catch
         disp(psychlasterror);
     end

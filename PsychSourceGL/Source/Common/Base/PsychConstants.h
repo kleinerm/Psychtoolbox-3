@@ -151,6 +151,14 @@ typedef unsigned char        psych_bool;
     #define __func__ __FUNCTION__
     #endif
 
+    // Since Octave 8 we suddenly need this export declaration, at least for the
+    // PsychHID mex file. Why I don't, but this fixes it. Must not use it for the
+    // Matlab build though, as it conflicts with linkage definition set by Matlabs
+    // mex build script:
+    #ifdef PTBOCTAVE3MEX
+    #define PTB_EXPORT __declspec(dllexport)
+    #endif
+
     // Hack to make compiler happy:
     typedef int CGDisplayCount;
     typedef HDC CGDirectDisplayID;
@@ -204,7 +212,9 @@ typedef unsigned char        psych_bool;
     typedef size_t ptbIndex;
 #endif
 
-#define EXP
+#ifndef PTB_EXPORT
+#define PTB_EXPORT
+#endif
 #ifndef APIENTRY
 #define APIENTRY
 #endif

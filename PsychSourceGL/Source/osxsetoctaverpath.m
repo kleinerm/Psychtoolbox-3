@@ -18,14 +18,14 @@ function osxsetoctaverpath(mexfname, mexpath)
 % files should always find a dylib for the currently running Octave.
 
     if ~IsOSX(1) || ~IsOctave
-        error('osxsetoctaverpath only works with a 64-Bit version of Octave-7.3.0 for OSX!');
+        error('osxsetoctaverpath only works with a 64-Bit version of Octave-8.1.0 for macOS!');
     end
 
     % If no mex filename given, iterate over 'mexpath' - or the default install
     % location of mex files - and apply the rpath editing to each mex file there:
     if nargin < 1 || isempty(mexfname)
         if nargin < 2 || isempty(mexpath)
-            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave7OSXFiles64/'];
+            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFiles64/'];
         end
 
         d = dir (mexpath);
@@ -51,16 +51,16 @@ function osxsetoctaverpath(mexfname, mexpath)
     % This is how the libdir should be defined automatically:
     libdir = __octave_config_info__.octlibdir;
 
-    % This is sadly how we have to do it with Octave on OSX 12 due to
+    % This is sadly how we have to do it with Octave on macOS 12 due to
     % the latest OSX linker crap - Hardcoding the path for a Octave install
     % from HomeBrew. Yes, this is sad...
-    libdir = '/usr/local/opt/octave/lib/octave/7.3.0';
+    libdir = '/usr/local/opt/octave/lib/octave/8.1.0';
 
-    % Replace absolute path to liboctinterp.10.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctinterp.10.dylib @rpath/liboctinterp.dylib ' mexfname]);
+    % Replace absolute path to liboctinterp.11.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctinterp.11.dylib @rpath/liboctinterp.dylib ' mexfname]);
 
-    % Replace absolute path to liboctave.9.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctave.9.dylib @rpath/liboctave.dylib ' mexfname]);
+    % Replace absolute path to liboctave.10.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctave.10.dylib @rpath/liboctave.dylib ' mexfname]);
 
     % Add one single rpath: @loader_path. This is the path to our folder where our
     % mex file is stored. If we place symlinks to liboctave.dylib and liboctinterp.dylib

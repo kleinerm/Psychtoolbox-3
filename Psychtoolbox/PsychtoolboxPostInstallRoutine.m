@@ -77,6 +77,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 10/29/2020 64-Bit Octave 5.2.0 support for Windows and OSX. (MK)
 % ??/??/2021 64-Bit Octave 6.1.0 support for Windows and OSX. (MK)
 % 02/05/2023 64-Bit Octave 7.3.0 support for Windows and OSX. (MK)
+% 03/12/2023 64-Bit Octave 8.1.0 support for OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -380,6 +381,14 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7OSXFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64']);
+        end
+
         % Encode prefix and Octave major version of proper folder:
         octavev = sscanf(version, '%i.%i.%i');
         octavemajorv = octavev(1);
@@ -397,24 +406,26 @@ if IsOctave
         end
 
         if ((octavemajorv >= 5) || (octavemajorv == 4 && octaveminorv >= 4)) && IsLinux
-            % Octave-4.4, 5.x, 6.x and Octave-7.x can share the same mex files in the Octave-5 folder on Linux:
+            % Octave-4.4, 5.x, 6.x, 7.x and Octave-8.x can share the same mex files in the Octave-5 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave5'];
         elseif ismember(octavemajorv, [3,4]) && IsLinux
             % Octave-3 and Octave-4.0/4.2 can share the same mex files in the Octave-3 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave3'];
             if ~IsARM
                 % Only warn on non-ARM ie. not RaspberryPi:
-                fprintf('\nOctave versions < 4.4 are no longer suppported on Linux. This will likely fail!\n');
+                fprintf('\nOctave versions < 4.4 are no longer supported on Linux. This will likely fail!\n');
                 fprintf('Upgrade to Ubuntu 20.04-LTS or an equivalent modern Linux distribution.\n');
                 fprintf('Press any key to confirm you read and understand this message.\n');
                 pause;
             end
-        elseif ismember(octavemajorv, [6,7]) && IsOSX
-            % Octave 6 and 7 can share the same mex files built against Octave 7:
-            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave7'];
+        elseif ismember(octavemajorv, [6,7,8]) && IsOSX
+            % Octave 6 - 8 can share the same mex files built against Octave 8:
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave8'];
         else
             % Everything else (aka other OS'es) goes by Octave major version:
-            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
+            %rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
+            % Override - Always use the Octave8WindowsFiles64 folder, although for actual Octave7 mex files:
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave8'];
         end
 
         % Add proper OS dependent postfix:
@@ -464,20 +475,20 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if  (IsOSX && (~ismember(octavemajorv, [6,7]))) || ...
-        (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, [1,2,3,4]))) || ...
-        (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 7)))
+    if  (IsOSX && (~ismember(octavemajorv, [6,7,8]))) || ...
+        (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, [3]))) || ...
+        (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 8)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything from 4.4 to at least 7.2 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x or 7.x series.\n');
+            % On Linux everything from 4.4 to at least 7.x and presumably 8.x is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x, 7.x or maybe 8.x series.\n');
             fprintf('WARNING: You can get Psychtoolbox for other, or more recent, versions of Octave from NeuroDebian.\n');
         elseif IsOSX
-            fprintf('WARNING: only using Octave 6 or Octave 7 with this version of Psychtoolbox.\n');
+            fprintf('WARNING: only using Octave 6 or Octave 7 or Octave 8 with this version of Psychtoolbox.\n');
         else
-            % On Windows we only care about 7.x atm:
-            fprintf('WARNING: only using Octave 7 with this version of Psychtoolbox.\n');
+            % On Windows we only care about 7.3 atm:
+            fprintf('WARNING: only using Octave 7.3 with this version of Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -526,7 +537,7 @@ if IsOctave
         % Failed! Either screwed setup of path or missing runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        if ismember(octavemajorv, [3,4,5,6,7]) && IsLinux
+        if ismember(octavemajorv, [3,4]) && IsLinux
             fprintf('ERROR: Make sure to have the ''liboctave-dev'' package installed, otherwise symlinks\n');
             fprintf('ERROR: from liboctinterp.so to the liboctinterp library of your Octave installation\n');
             fprintf('ERROR: might by missing, causing our mex files to fail to load with linker errors.\n');

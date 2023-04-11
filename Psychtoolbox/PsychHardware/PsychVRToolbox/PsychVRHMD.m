@@ -340,6 +340,12 @@ function varargout = PsychVRHMD(cmd, varargin)
 %                             test for a setting == 1 to know if PsychVRHMD('HapticPulse') works
 %                             in principle, which is considered basic feedback ability.
 %
+% eyeTrackingSupported = 1 if basic eye gaze tracking is supported by the given VR/AR/MR device and
+%                          software setup, 0 otherwise. In other words, if the device is equipped
+%                          with at least a monocular eye tracker. Values bigger than 1 may indicate
+%                          support for more than basic monocular eye gaze tracking, but the exact
+%                          meaning of these values is not yet specified.
+%
 % The info struct may contain much more vendor specific information, but the above
 % set is supported across all devices.
 %
@@ -918,7 +924,8 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % Need precise timing and no previous driver was up to it?
   if needTiming
     % OpenHMD VR supported and online? At least one real HMD connected?
-    if PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
+    % Override: As of PTB 3.0.19.1, don't use it anymore - it is just too fickly...
+    if false && PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
       % Yes. Use that one. It has great timing under Linux/X11 with a
       % separate X-Screen, but restricted functionality (e.g., often no or
       % limited positional tracking) and potentially lower image quality
