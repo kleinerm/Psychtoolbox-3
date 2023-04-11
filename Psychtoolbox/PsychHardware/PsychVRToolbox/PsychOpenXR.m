@@ -198,11 +198,11 @@ function varargout = PsychOpenXR(cmd, varargin)
 % tradeoff on all the runtimes where such a tradeoff is required.
 %
 % As mentioned here, in "help PsychVRHMD" and our "help OpenXR" overview
-% and setup instructions, currently no reliable standard OpenXR
-% implementation with reliable and trustworthy timestamping exists. Proper
-% enhancements to OpenXR will need to be done in the future. Right now, as
-% of Psychtoolbox 3.0.19.1, we have a hacky solution for a subset of Linux
-% users, called "Monado metrics timestamping hack". It goes as follows:
+% and setup instructions, currently no standard OpenXR implementation with
+% reliable and trustworthy timestamping exists. Proper enhancements to
+% OpenXR will need to be done in the future. Right now, as of Psychtoolbox
+% 3.0.19.1, we have a hacky solution for a subset of Linux users, called
+% "Monado metrics timestamping hack". It goes as follows:
 %
 % If you need reliable timestamping, the only solution right now is to use
 % Linux + a modified version of Monado + a modified version of Mesa + an

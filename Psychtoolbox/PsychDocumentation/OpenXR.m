@@ -7,16 +7,15 @@
 % e(X)tended (R)eality XR, hence the name OpenXR. See:
 % https://www.khronos.org/openxr
 %
-% Unless otherwise specified by a users script, the
-% PsychVRHMD('AutoSetupHMD') function from now on will try to use a system
-% installed OpenXR runtime to run VR applications, with fallbacks to the
-% older legacy drivers like PsychOculusVR1 for Oculus devices on
-% MS-Windows, PsychOculusVR for Oculus Rift DK-1/DK-2 on Linux/X11 and
-% MS-Windows, or to PsychOpenHMDVR on Linux/X11. The driver is designed to
-% be reasonably backwards compatible, so most scripts should continue to
-% work unmodified "plug & play".
+% Unless otherwise specified by a users script, the PsychVRHMD('AutoSetupHMD')
+% function from now on will try to use a system installed OpenXR runtime to
+% run VR applications, with fallbacks to the older legacy drivers like
+% PsychOculusVR1 for recent Oculus devices on MS-Windows, PsychOculusVR for
+% Oculus Rift DK-1/DK-2 on Linux/X11 and MS-Windows, or to PsychOpenHMDVR
+% on Linux/X11. The driver is designed to be reasonably backwards compatible,
+% so most scripts should continue to work unmodified "plug & play".
 %
-% In the current release we support the XR subset of VR virtual reality
+% In the current release, we support the XR subset of VR virtual reality
 % applications by use of any VR Head mounted display (VR-HMD) and for VR
 % input devices which are supported by a OpenXR 1.0 compliant runtime that
 % provides the following minimum set of OpenXR 1.0 extensions:
@@ -26,10 +25,10 @@
 % - Additionally on Linux/Unix: XR_KHR_convert_timespec_time.
 % - Optional, but not tested without it: XR_FB_display_refresh_rate.
 % - Optional, for improved input controller support: XR_EXT_hp_mixed_reality_controller,
-%   XR_HTC_vive_cosmos_controller_interaction, XR_HTC_vive_focus3_controller_interaction.
+%   XR_HTC_vive_cosmos_controller_interaction, XR_HTC_vive_focus3_controller_interaction,
+%   XR_KHR_binding_modification, XR_EXT_dpad_binding.
 %
-%
-% So far successfully tested with the PTB 3.0.19.0 initial release are:
+% So far successfully tested with the PTB 3.0.19.1 release are:
 %
 % - The open-source Monado(XR) runtime version 21.0.0 for Linux/X11, as shipping
 %   with Ubuntu 22.04-LTS and later, or as a 3rd party ppa for Ubuntu 20.04-LTS,
@@ -38,19 +37,20 @@
 %
 %   https://monado.freedesktop.org
 %
-%   This has been tested on Ubuntu 20.04.5-LTS and 22.04.1-LTS with AMD and NVidia
+%   This has been tested on Ubuntu 20.04.6-LTS and 22.04.1-LTS with AMD and NVidia
 %   gpu's so far.
 %
-% - The proprietary Valve SteamVR runtime version 1.24.7 on Linux (Ubuntu 20.04.5-LTS)
-%   and on Microsoft Windows 10 21H2.
+% - The proprietary Valve SteamVR runtime version 1.24.7 and 1.25.7 on
+%   Linux (Ubuntu 20.04.6-LTS) and on Microsoft Windows 10 21H2.
 %
 % - The proprietary OculusVR runtime version 1.81.0 on Microsoft Windows 10 21H2.
 %
-% Testing so far only occured with a OculusVR Oculus Rift CV-1 HMD with 2 Oculus
-% tracking cameras and 2 Oculus touch controllers, as well as a Oculus Remote control,
-% and a Microsoft XBox 360 gamepad controller.
-%
-% Tests with other HMD's from other vendors, or other OpenXR runtimes are tbd.
+% Testing so far occured with a OculusVR Oculus Rift CV-1 HMD with 2 Oculus
+% tracking cameras and 2 Oculus touch controllers, as well as a Oculus
+% Remote control, and a Microsoft XBox 360 gamepad controller. Additionally
+% testing was performed under Monado and SteamVR with a HTC Vive Pro Eye
+% and its two "Vive Wand" controllers, tracked by a Valve Lighthouse
+% version 2 system with two Vive lighthouse emitter stations.
 %
 % A limitation of the current OpenXR spec is that it doesn't provide any
 % means for reliable, robust, trustworthy, accurate and precise visual
@@ -60,13 +60,13 @@
 % future, stay tuned. For now, as of Psychoolbox 3.0.19.1 we have a hack
 % that only works on a modified version of Monado + a modified version of
 % Mesa, on AMD or Intel gpu's under Linux. The hack has various restrictions
-% and impacts performance. It is also not quite plug and play to set up.
+% and it impacts performance. It is also not quite plug and play to set up.
 % See 'help PsychOpenXR', the section about the Monado metrics hack, for
 % instructions.
 %
 % Testing also showed that all tested proprietary OpenXR runtimes, ie.
-% OculusVR and SteamVR, violate the OpenXR specs stimulus timing
-% requirements, as of February 2023. The only exception was the open-source
+% both OculusVR and SteamVR, violate the OpenXR specs stimulus timing
+% requirements, as of April 2023. The only exception was the open-source
 % Monado(XR) runtime for Linux.
 %
 % The same limitations are true for the old OculusVR runtimes on
@@ -86,7 +86,7 @@
 % Testing showed that MonadoXR was the most reliable and bug-free runtime,
 % whereas both OculusVR and SteamVR exposed various other serious bugs. Our
 % driver tries to work around such known bugs on those runtimes, sometimes
-% by ues of multi-threading, which costs performance. Therefore various new
+% by use of multi-threading, which impacts performance. Therefore various new
 % keywords beyond the ones mentioned above exist to control these
 % quality/reliability vs. performance tradeoffs for your specific script
 % and paradigm.
@@ -97,17 +97,15 @@
 %
 % If you need precise timing at all costs, potentially to the detriment of
 % most other functionality, performance or quality, there is also the
-% keyword 'TimingPrecisionIsCritical' to specify in addition to the other
+% keyword 'TimingPrecisionIsCritical' to specify, in addition to the other
 % timing/timestamping keywords. This keyword will force the selection of
 % the driver with the highest possible timing precision/reliability. At the
 % moment this means to probe for the PsychOculusVR driver for the old
 % Oculus v0.5 runtime for Linux/X11 and MS-Windows, only usable for the
 % original Oculus Rift developer kits DK-1 and DK-2. Then a fallback to a
 % potentially timing enhanced MonadoXR implementation, once such a thing
-% exists. Then a fallback to PsychOpenHMDVR for OpenHMD on Linux/X11 with
-% separate X-Screen for a OpenHMD supported HMD, then back to standard
-% OpenXR as a last resort measure, in which case timestamps will not be
-% reliable or trustworthy at all!
+% exists. Then back to standard OpenXR as a last resort measure, in which
+% case timestamps will not be reliable or trustworthy at all!
 %
 %
 % Basic Setup:
@@ -118,17 +116,20 @@
 %
 % - Oculus: If you bought and set up a Oculus HMD, then the OculusVR-1
 %   OpenXR runtime will have been installed and setup already and should
-%   just work(tm).
+%   just work(tm) with modern Oculus devices like Rift DK1/DK2/CV1/S and
+%   the new Meta Quest devices and associated controllers.
 %
-% - SteamVR: The same should be true for SteamVR supported HMD's if you
-%   followed the setup instructions, e.g., for the Valve Index HMD's or
-%   early HTC Vive HMD's. If you chose a (W)indows(M)ixed(R)eality HMD, you
-%   need to install SteamVR and set it up as OpenXR runtime for those HMDs,
-%   as the Microsoft Windows built-in WMR OpenXR runtime does not support
-%   OpenGL interop, so SteamVR is needed as a middle-man and translator.
+% - SteamVR: The same should be true for SteamVR supported HMDs if you
+%   followed the setup instructions, e.g., for the Valve Index HMDs or
+%   early HTC Vive HMDs, including the Vive Pro and Vive Pro Eye.If you
+%   chose a (W)indows(M)ixed(R)eality WMR-HMD, you need to install SteamVR
+%   and set it up as OpenXR runtime for those HMDs, as the Microsoft
+%   Windows built-in WMR OpenXR runtime does not support OpenGL interop, so
+%   SteamVR is needed as a middle-man and translator between Psychtoolbox
+%   OpenGL rendering and WMR's Direct3D only rendering.
 %
 % - Other OpenXR runtimes exist from HTC for their latest devices, or from
-%   Varjo.
+%   other vendors like Varjo for their devices.
 %
 % Linux/X11:
 % ----------
@@ -141,7 +142,11 @@
 %   from source against OpenHMD. See the "supported hardware" section on
 %   Monado's website, for natively supported devices, and for devices that
 %   additionally need OpenHMD, and potentially building Monado from source
-%   code against an installed libOpenHMD.
+%   code against an installed libOpenHMD. The HTC Vive devices do have
+%   basic 3 degree of freedom orientation tracking support in Monado, but
+%   for full 6 degrees of freedom tracking you will need to install
+%   libsurvive and compile Monado from source against libsurvive, as an
+%   external more capable tracking library at the moment.
 %
 % - SteamVR can be installed to use SteamVR supported HMD's, e.g., HTC
 %   Vive, Valve Index, Oculus Rift. Follow setup instructions after
@@ -150,7 +155,8 @@
 %   https://monado.freedesktop.org/steamvr.html). When displaying in
 %   'Monoscopic' or 'Stereoscopic' 2D mode, it has been shown beneficial at
 %   least on Linux with Oculus Rift, to disable asynchronous reprojection,
-%   as this reduces jitter and tracking noise.
+%   as this reduces jitter and tracking noise. HTC Vive devices do not need
+%   extra external Monado plugins for use with SteamVR.
 %
 % macOS:
 % ------
