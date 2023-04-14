@@ -146,7 +146,12 @@ more off;
 
 % Check if user wants to file a support request:
 fprintf('\n\n');
-answer = input('Do you need paid support now and have an active license key [y/n]? ', 's');
+
+answer = '';
+while length(answer)~=1 || ~ismember(answer, ['y', 'n'])
+    answer = strtrim(input('Do you need paid support now and have an active license key [y/n]? ', 's'));
+end
+
 if ~strcmpi(answer, 'y')
     fprintf('A community membership with paid support can be bought as described above. Bye.\n');
     return;
