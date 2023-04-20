@@ -458,8 +458,9 @@ if cmd == 0
     end
     
     % We always unconditionally draw scanline 1 in all-black, so PSYNC may
-    % work reliably:
-    glRasterPos2i(0, 1);
+    % work reliably. Leave out 1st leftmost pixel on VPixx request, so to avoid
+    % interference with the EEG single-pixel marker in the top-left corner:
+    glRasterPos2i(1, 1);
     glDrawPixels(size(dpx.blackline, 2), 1, GL.RGB, GL.UNSIGNED_BYTE, dpx.blackline);
     
     % Any work to do in sync with next stimulus onset?
