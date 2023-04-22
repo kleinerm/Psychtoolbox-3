@@ -247,7 +247,7 @@ catch %#ok<*CTCH>
         fprintf('  See "help GStreamer" for more info.\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n\n');
         fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library.\n');
-        fprintf('  libdc1394.22.so on systems older than Ubuntu 20.04-LTS, libdc1394.25.so for later systems.\n');
+        fprintf('  libdc1394.25.so or later.\n');
         fprintf('\n\n');
     end
 

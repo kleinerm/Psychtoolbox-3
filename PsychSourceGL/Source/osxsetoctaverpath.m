@@ -18,7 +18,7 @@ function osxsetoctaverpath(mexfname, mexpath)
 % files should always find a dylib for the currently running Octave.
 
     if ~IsOSX(1) || ~IsOctave
-        error('osxsetoctaverpath only works with a 64-Bit version of Octave-8.1.0 for macOS!');
+        error('osxsetoctaverpath only works with a 64-Bit version of HomeBrew Octave-8.2.0 for macOS!');
     end
 
     % If no mex filename given, iterate over 'mexpath' - or the default install
@@ -54,7 +54,7 @@ function osxsetoctaverpath(mexfname, mexpath)
     % This is sadly how we have to do it with Octave on macOS 12 due to
     % the latest OSX linker crap - Hardcoding the path for a Octave install
     % from HomeBrew. Yes, this is sad...
-    libdir = '/usr/local/opt/octave/lib/octave/8.1.0';
+    libdir = '/usr/local/opt/octave/lib/octave/8.2.0';
 
     % Replace absolute path to liboctinterp.11.dylib with @rpath:
     system(['install_name_tool -change ' libdir '/liboctinterp.11.dylib @rpath/liboctinterp.dylib ' mexfname]);

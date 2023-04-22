@@ -414,7 +414,7 @@ if IsOctave
             if ~IsARM
                 % Only warn on non-ARM ie. not RaspberryPi:
                 fprintf('\nOctave versions < 4.4 are no longer supported on Linux. This will likely fail!\n');
-                fprintf('Upgrade to Ubuntu 20.04-LTS or an equivalent modern Linux distribution.\n');
+                fprintf('Upgrade to Ubuntu 22.04-LTS or an equivalent modern Linux distribution.\n');
                 fprintf('Press any key to confirm you read and understand this message.\n');
                 pause;
             end
@@ -664,7 +664,7 @@ try
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('\n');
         fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library.\n');
-        fprintf('  libdc1394.22.so on systems older than Ubuntu 20.04-LTS, libdc1394.25.so for later systems.\n');
+        fprintf('  libdc1394.25.or later.\n');
         fprintf('\n');
         fprintf('* libraw1394 Firewire low-level access library.\n');
         fprintf('\n\n');
@@ -756,7 +756,7 @@ catch
     fprintf('\n\n');
     fprintf('Screen() failed to work for some reason:\n\n');
     if IsWin
-      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.18.0\n');
+      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.20.5\n');
       fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
       fprintf('or with the MinGW variants of the GStreamer runtime!\n');
       fprintf('Read ''help GStreamer'' for more info.\n\n');

@@ -42,7 +42,8 @@ function callStack = AssertMex(varargin)
 %                   and Matlab < V7.4 (aka R2007a) no longer supported.
 % 23-Feb-2019 mk    Make more robust in case of wrong path order.
 % 07-Aug-2019 mk    Update for new MSVC 2019 build system on Windows-10 / Win 10 SDK.
-% 13-Feb-2023 mk    Update for PTB 3.0.19.
+% 13-Feb-2023 mk    Update for PTB 3.0.19.0.
+% 22-Apr-2023 mk    Update for PTB 3.0.19.2.
 
 persistent okNames mexExtensions;
 
@@ -97,7 +98,7 @@ if IsOctave
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
             fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 5.0.0 or later\n', version);
-            fprintf('on Linux, Octave 7.3 on Windows and Octave 7.3/8.1 on macOS.\n');
+            fprintf('on Linux, Octave 7.3 on Windows and Octave 7.3/8.1/8.2 on macOS.\n');
 
             fprintf('Another reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
