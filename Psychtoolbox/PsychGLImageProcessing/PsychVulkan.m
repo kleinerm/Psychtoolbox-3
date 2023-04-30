@@ -609,8 +609,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % bit better. At the same time, this hack supposedly adds one
             % frame of extra latency, but our measurements show that even
             % without it, there is one frame of extra latency, contrary to
-            % what the docs wrt. Direct-to-Display mode say. Broken stuff
-            % all around on the iToys operating system:
+            % what the docs wrt. Direct-to-Display mode say.
+            % On macOS 13.3.1, it is still broken, but different: The one
+            % frame latency is gone, but now stimulus onset scheduling is
+            % broken whenever a flip is more than 2 frames in the future!
+            %
+            % Broken stuff all around on the iToys operating system:
             flags = mor(flags, 2);
         else
             flags = mor(flags, 1);
