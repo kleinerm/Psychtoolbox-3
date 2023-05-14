@@ -444,8 +444,8 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
         goto deviceExtensions_out;
     }
 
-    if (verbosity > 3) {
-        printf("PsychVulkanCore-INFO: GPU %i: Probing the following  %i device extensions against required set.\n", gpuIndex, deviceExtensionsCount);
+    if (verbosity > 4) {
+        printf("PsychVulkanCore-INFO: GPU %i: Probing the following %i device extensions against required set.\n", gpuIndex, deviceExtensionsCount);
         for (i = 0; i < deviceExtensionsCount; i++)
             printf("PsychVulkanCore-INFO: %i. device extension is '%s'.\n", i, deviceExtensions[i].extensionName);
     }
@@ -566,7 +566,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
         goto instance_init_out;
     }
 
-    if (verbosity >= 4) {
+    if (verbosity >= 5) {
         for (i = 0; i < instanceExtensionsCount; i++)
             printf("PsychVulkanCore-INFO: %i. instance extension is '%s'.\n", i, instanceExtensions[i].extensionName);
     }
