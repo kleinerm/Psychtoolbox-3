@@ -510,14 +510,24 @@ else
         end
     end
 
-    if what == 16 && false % DISABLED FOR NOW. NO FUNDED WORK TIME TO FIX THIS UP.
+    if what == 16
         % Build PsychOpenXRCore.mex for 64-Bit Octave:
         % Needs the official Khronos OpenXR SDK for 64-Bit Windows from
         % https://github.com/KhronosGroup/OpenXR-SDK
         % installed side-by-side to the Psychtoolbox-3 folder, so that it
         % shares the same parent folder as Psychtoolbox-3.
+        %
+        % Note: A statically linked openxr_loader.lib, built with MSVC does not
+        % work with Octave, because it depends on MSVC runtime libraries, so
+        % linking during build-time would fail. Therefore we MSVC build a dynamic
+        % openxr_loader.dll in a separate builddll\ subdirectory and link against
+        % that library via a pure openxr_loader.lib import library. This works
+        % with Octave when storing the openxr_loader.dll alongside PsychOpenXRCore.mex.
+        %
+        % It may also work with Matlab, but this is so far not verified.
+        % TODO: Verify and reunite by Matlab also using the openxr_loader.dll.
         try
-            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
+            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\builddll\win64\src\loader\RelWithDebInfo -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
             movefile(['..\Projects\Windows\build\PsychOpenXRCore.' mexext], target);
         catch
             disp(psychlasterror);
