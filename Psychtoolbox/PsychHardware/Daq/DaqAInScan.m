@@ -714,7 +714,7 @@ if options.continue
     % interrupt IN endpoints in interfaces 1-3 as input reports with a
     % report ID of 0. The last two bytes are a sequential index,
     % "reports.serial".
-    if isfinite(options.count)
+    if isfinite(options.count) || ~isfield(options,'ReleaseTime')
         % Perform exactly one pass per interface:
         for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
             % Tell PsychHID to receive reports, storing them internally.
