@@ -58,7 +58,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % In monoscopic or stereoscopic mode, you can change the imaging parameters, ie.,
 % apparent size and location of the 2D views used with the following command to
 % optimize visual display:
-% 
+%
 % [oldPosition, oldSize, oldOrientation] = PsychOpenXR('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
 %
@@ -124,7 +124,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % change the imaging parameters, ie., apparent size and location of the 2D
 % views used in this mode with the following command to minimize visual
 % disorientation:
-% 
+%
 % [oldPosition, oldSize, oldOrientation] = PsychOpenXR('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
 % For such 2D views you can also specify the distance of the virtual
@@ -606,7 +606,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % basicTask '3DVR' or 'Tracked3DVR' on any standard OpenXR 1.0 backend, as the
 % driver auto-selects optimal field of view for 3D perspective correct rendering.
 % In the 2D modes 'Monoscopic' or 'Stereoscopic', or in 3D mode with stopped loop,
-% the specified field of view will be used for calculating position and size of the 
+% the specified field of view will be used for calculating position and size of the
 % 2D views in use. If omitted the driver will try to auto-detect a meaningful field
 % of view. If that is impossible, it will use the hard-coded values of an Oculus
 % Rift CV-1 HMD as fallback. In all these cases, the 'PerEyeFOV' keyword will alter
@@ -697,7 +697,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 
 % Global GL handle for access to OpenGL constants needed in setup:
-global GL; %#ok<*GVMIS> 
+global GL; %#ok<*GVMIS>
 global OVR;
 
 persistent firsttime;
@@ -1761,12 +1761,12 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     hmd{myhmd.handle}.rbwidth = max(1, min(ceil(rbOvrSize(1) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbwidth));
     hmd{myhmd.handle}.rbheight = max(1, min(ceil(rbOvrSize(2) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbheight));
     if hmd{myhmd.handle}.rbwidth ~= rbOvrSize(1) || hmd{myhmd.handle}.rbheight ~= rbOvrSize(2)
-        warning('SetupRenderingParameters(): Had to clamp ''ForceSize=widthxheight'' requested pixelbuffer size to fit into valid range! Result may look funky.');
+      warning('SetupRenderingParameters(): Had to clamp ''ForceSize=widthxheight'' requested pixelbuffer size to fit into valid range! Result may look funky.');
     end
   end
 
   % Debug display of device output into onscreen window requested?
-  if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel) %#ok<*STREMP> 
+  if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel) %#ok<*STREMP>
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
   end
@@ -1842,9 +1842,9 @@ end
 % [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
-  screenid = varargin{2}; %#ok<NASGU> 
+  screenid = varargin{2}; %#ok<NASGU>
   winRect = varargin{3};
-  ovrfbOverrideRect = varargin{4}; %#ok<NASGU> 
+  ovrfbOverrideRect = varargin{4}; %#ok<NASGU>
   ovrSpecialFlags = varargin{5};
   if isempty(ovrSpecialFlags)
     ovrSpecialFlags = 0;
@@ -1885,7 +1885,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % effective minimum choice for MSAA. Store the value internally for use
   % in 'GetClientRenderingParameters' as called by PsychImaging
   % FinalizeConfiguration, to make the decision about imagingMode flags:
-  hmd{myhmd.handle}.requestedScreenMSAASamples = ovrMultiSample; 
+  hmd{myhmd.handle}.requestedScreenMSAASamples = ovrMultiSample;
 
   % The current design iteration requires the PTB parent onscreen windows
   % effective backbuffer (from the pov of the imaging pipeline) to have the
@@ -2469,16 +2469,16 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % gives much better results.
 
       % Total vertical field of view:
-      % vfov = fov{eye}(3) - fov{eye}(4); %#ok<NASGU> 
+      % vfov = fov{eye}(3) - fov{eye}(4); %#ok<NASGU>
 
       % Minimal vertical field of view:
       mvfov = min(abs(fov{eye}(3:4)));
 
       % Total horizontal field of view:
-      % hfov = fov{eye}(2) - fov{eye}(1); %#ok<NASGU> 
+      % hfov = fov{eye}(2) - fov{eye}(1); %#ok<NASGU>
 
       % Minimal horizontal field of view:
-      % mhfov = 2 * min(abs(fov{eye}(1:2))); %#ok<NASGU> 
+      % mhfov = 2 * min(abs(fov{eye}(1:2))); %#ok<NASGU>
 
       % Compute new vertical viewSize to fit into vertical field of view:
       viewSize(2) = z * 2 * tan(mvfov);
@@ -2494,7 +2494,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % in practice much worse!
 
       % Width of components of asymetric horizontal field of view:
-      wl = z * tan(abs(fov{eye}(1))); 
+      wl = z * tan(abs(fov{eye}(1)));
       wr = z * tan(abs(fov{eye}(2)));
 
       % Total width:
