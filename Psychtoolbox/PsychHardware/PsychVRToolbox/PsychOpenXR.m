@@ -840,6 +840,9 @@ if strcmpi(cmd, 'PrepareRender')
     error('PsychOpenXR:PrepareRender: Specified handle does not correspond to an open device!');
   end
 
+  % Make local working copy of current hmd total state:
+  myhmd = hmd{myhmd.handle};
+
   % Get 'userTransformMatrix' if any:
   if length(varargin) >= 2 && ~isempty(varargin{2})
     userTransformMatrix = varargin{2};
@@ -867,7 +870,7 @@ if strcmpi(cmd, 'PrepareRender')
 
   % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
   [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
-  myhmd.state = state;
+  hmd{myhmd.handle}.state = state;
 
   % Always return basic tracking status:
   result.tracked = state.Status;
