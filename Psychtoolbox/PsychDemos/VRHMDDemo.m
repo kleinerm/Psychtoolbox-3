@@ -46,6 +46,13 @@ if nargin < 3 || isempty(withGazeTracking)
   withGazeTracking = 0;
 end
 
+if withGazeTracking
+  % Tell that eyetracking is desired:
+  reqGazeTracking = 'Eyetracking ';
+else
+  reqGazeTracking = '';
+end
+
 if nargin < 4
   deviceindex = [];
 end
@@ -56,14 +63,17 @@ screenid = max(Screen('Screens'));
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 
+% Build final task requirements:
+basicReqs = ['NoTimingSupport NoTimestampingSupport ' reqGazeTracking];
+
 % We do collect timestamps for benchmarking, but don't require them to be especially precise or trustworthy:
 if ~stereoscopic
   % Setup the HMD to act as a regular "monoscopic" display monitor
   % by displaying the same image to both eyes:
-  hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'NoTimingSupport NoTimestampingSupport', [], [], deviceindex);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', basicReqs, [], [], deviceindex);
 else
   % Setup for stereoscopic presentation:
-  hmd = PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'NoTimingSupport NoTimestampingSupport', [], [], deviceindex);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Stereoscopic', basicReqs, [], [], deviceindex);
 end
 
 if isempty(hmd)

@@ -91,6 +91,11 @@ if nargin < 5 || isempty(withGazeTracking)
     withGazeTracking = 0;
 end
 
+if withGazeTracking
+    % Tell that eyetracking is desired:
+    specialReqs = [specialReqs ' Eyetracking '];
+end
+
 canary = onCleanup(@sca);
 
 % Setup unified keymapping and unit color range:

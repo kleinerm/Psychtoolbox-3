@@ -72,7 +72,7 @@ try
     % Open a double buffered fullscreen window.
     PsychImaging('PrepareConfiguration');
     if usehmd
-        hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'NoTimingSupport NoTimestampingSupport DebugDisplay');
+        hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'NoTimingSupport NoTimestampingSupport DebugDisplay Eyetracking');
         if isempty(hmd)
             fprintf('User wants to use HMD, but no HMD detected. Game over!\n');
             return;
