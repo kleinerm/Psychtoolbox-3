@@ -868,8 +868,80 @@ if strcmpi(cmd, 'PrepareRender')
     targetTime = [];
   end
 
-  % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
-  [state, touch, gaze] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
+  % Eyetracking data via SRAnipalMex requested?
+  if bitand(reqmask, 4) && bitand(myhmd.eyeTrackingSupported, 4)
+    % Get latest sample from SRAnipalMex:
+    srLastSample = [];
+    srCalibNeeded = 0;
+    [srSample, srNeedCalib, srImprove] = SRAnipalMex(5);
+    srCalibNeeded = srCalibNeeded + srNeedCalib;
+    while ~isempty(srSample)
+      srLastSample = srSample;
+      [srSample, srNeedCalib, srImprove] = SRAnipalMex(5);
+      srCalibNeeded = srCalibNeeded + srNeedCalib;
+    end
+
+    while isempty(srLastSample)
+      [srLastSample, srNeedCalib, srImprove] = SRAnipalMex(5);
+      srCalibNeeded = srCalibNeeded + srNeedCalib;
+    end
+
+    if PsychOpenXRCore('Verbosity') > 2
+      if srCalibNeeded
+        fprintf('PsychOpenXR-INFO: At time %f seconds - SRAnipal eyetracker suggests a calibration might be needed.\n', GetSecs);
+      end
+
+      for i=1:length(srImprove)
+        fprintf('PsychOpenXR-INFO: SRAnipal eyetracker suggests tracking improvement %i\n', srImprove(i));
+      end
+    end
+
+    % Convert time in msecs to GetSecs time in seconds:
+    [gaze(1).Time, gaze(2).Time, gaze(3).Time] = deal(srLastSample(2) / 1000);
+
+    % Map eye openess to tracked status:
+    if srLastSample(9) > 0 && norm(srLastSample(3:5)) > 0.1
+        gaze(1).Status = 3; %#ok<*AGROW>
+    else
+        gaze(1).Status = 1;
+    end
+
+    if srLastSample(19) > 0 && norm(srLastSample(13:15)) > 0.1
+        gaze(2).Status = 3; %#ok<*AGROW>
+    else
+        gaze(2).Status = 1;
+    end
+
+    if gaze(1).Status == 3 && gaze(2).Status == 3
+        gaze(3).Status = 3; %#ok<*AGROW>
+    else
+        gaze(3).Status = 1;
+    end
+
+    % Fixme: Orientation part is wrong, needs 4D quaternion, not normalized 3D row,pitch,yaw stuff!
+    gaze(1).GazePose = [srLastSample(6:8) / 1000, srLastSample(3:5)];
+    gaze(2).GazePose = [srLastSample(16:18) / 1000, srLastSample(13:15)];
+    gaze(3).GazePose = [srLastSample(26:28) / 1000, srLastSample(23:25)];
+
+    gaze(1).gazeEyeOpening = srLastSample(9);
+    gaze(2).gazeEyeOpening = srLastSample(19);
+    gaze(3).gazeEyeOpening = srLastSample(29);
+
+    gaze(1).gazeEyePupilDiameter = srLastSample(10);
+    gaze(2).gazeEyePupilDiameter = srLastSample(20);
+    gaze(3).gazeEyePupilDiameter = srLastSample(30);
+
+    gaze(1).sensor = srLastSample(11:12);
+    gaze(2).sensor = srLastSample(21:22);
+    gaze(3).sensor = srLastSample(31:32);
+
+    % Get predicted tracking state and hand controller poses (if supported) for targetTime:
+    [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask - 4);
+  else
+    % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
+    [state, touch, gaze] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
+  end
+
   hmd{myhmd.handle}.state = state;
 
   % Always return basic tracking status:
@@ -966,12 +1038,35 @@ if strcmpi(cmd, 'PrepareRender')
           gazeM = diag([1 1 1 1]);
         end
 
+        % Valid, tracked sample from SRAnipalMex available?
+        if bitand(myhmd.eyeTrackingSupported, 4)
+          if gaze(i).Status == 3
+            % Override gazeM matrix with a fake matrix, based on SRAnipal data.
+            % Only columns 3 and 4 for z-axis and position are valid, just enough:
+            gazeM(1:3, 4) = gaze(i).GazePose(1:3);
+            gazeM(1:3, 3) = gaze(i).GazePose(4:6);
+
+            % Mysterious negation hack needed with SRAnipal:
+            gazeM(1:3, 3) = -gazeM(1:3, 3);
+
+            % Eye center x is wrong!
+            gazeM(1, 4) = -gazeM(1, 4);
+          end
+
+          % Store estimated eye opening and pupil diameter:
+          result.gazeEyeOpening(i) = gaze(i).gazeEyeOpening;
+          result.gazeEyePupilDiameter(i) = gaze(i).gazeEyePupilDiameter;
+
+          % Distance to point of eye convergence - ie. to point of fixation:
+          result.gazeEyeConvergenceDistance = srLastSample(33);
+        end
+
         % Invert the y-Rotation subvector: Why? I don't know! But without
         % it, vertical gaze vector is wrong with the HTC Vive Pro Eye.
         % Maybe a HTC SRAnipal runtime bug?
         gazeM(2, 1:3) = -gazeM(2, 1:3);
 
-        result.gazeMat{i} = gazeM;
+        result.gazeLocalMat{i} = gazeM;
 
         % Compute gaze ray in XR device (HMD) local reference frame:
         result.gazeRayLocal{i}.gazeC = gazeM(1:3, 4);
@@ -1726,6 +1821,14 @@ if strcmpi(cmd, 'Close')
     if (length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open
       PsychOpenXRCore('Close', myhmd.handle);
       hmd{myhmd.handle}.open = 0;
+
+      % Was SRAnipalMex eyetracking active?
+      if bitand(hmd{myhmd.handle}.eyeTrackingSupported, 4) && hmd{myhmd.handle}.needEyeTracking
+        % Stop tracking:
+        SRAnipalMex(3);
+        % Shutdown tracker connection
+        SRAnipalMex(1);
+      end
     end
   else
     % Shutdown whole driver:
@@ -2686,6 +2789,26 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   if hmd{handle}.needEyeTracking && hmd{handle}.eyeTrackingSupported
     % Tracking api specific setup:
 
+    % SRAnipalMex available for HTC Vive SRAnipal eye tracking?
+    if exist('SRAnipalMex', 'file') && ~isempty(strfind(hmd{handle}.modelName, 'SRanipal'))
+      % Yes. Use this instead of standard PsychOpenXRCore provided eye tracking OpenXR extensions:
+      fprintf('PsychOpenXR-INFO: Trying to enable HTC SRAnipal eye tracking for this session.\n');
+
+      % Initialize eyetracker connection:
+      if SRAnipalMex(0)
+        % Start data acquisition:
+        SRAnipalMex(2);
+
+        % Upgrade eyeTrackingSupported:
+        % +1 "Basic" monocular/single gazevector
+        % +2 Binocular/separate left/right eye gaze
+        % +4 HTC SRAnipal eye tracking in use
+        hmd{handle}.eyeTrackingSupported = 1 + 2 + 4;
+      else
+        warning('HTC SRAnipal eye tracker startup failed! Eye tracking disabled!');
+        hmd{handle}.eyeTrackingSupported = 0;
+      end
+    end
   end
 
   % Tracked operation requested?
