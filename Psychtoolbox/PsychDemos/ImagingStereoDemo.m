@@ -48,7 +48,7 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalkG
 %
 % If you have a different set of filter glasses, e.g., red-magenta, you can
 % simply select one of above modes, then use the
-% SetStereoAnglyphParameters() command to change color gain settings,
+% SetAnaglyphStereoParameters() command to change color gain settings,
 % thereby implementing other anaglyph color combinations.
 %
 % 10 == Like mode 4, but for use on Mac OS/X with dualhead display setups.
