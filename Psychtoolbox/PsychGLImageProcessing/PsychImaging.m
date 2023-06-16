@@ -1912,7 +1912,7 @@ if strcmpi(cmd, 'OpenWindow')
     end
 
     % Running on a VR headset?
-    if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
+    if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')))
         % Yes:
         floc = find(mystrcmp(reqs, 'UseVRHMD'));
         [rows cols] = ind2sub(size(reqs), floc(1));
@@ -1927,7 +1927,7 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % Compute special OpenWindow overrides for winRect, framebuffer rect, specialflags and MSAA, as needed:
-        [winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample);
+        [winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample, screenid] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample);
     end
 
     % If multiSample is still "use default" choice, then override it to our default of 0 for "no MSAA":

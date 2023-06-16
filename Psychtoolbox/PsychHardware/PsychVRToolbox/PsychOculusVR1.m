@@ -606,7 +606,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample, screenid] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
@@ -1674,7 +1674,7 @@ if strcmpi(cmd, 'GetPanelFitterParameters')
   return;
 end
 
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample, screenid] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
   screenid = varargin{2};
@@ -1715,6 +1715,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   varargout{2} = ovrfbOverrideRect;
   varargout{3} = ovrSpecialFlags;
   varargout{4} = ovrMultiSample;
+  varargout{5} = screenid;
 
   return;
 end
