@@ -1473,10 +1473,24 @@ if strcmpi(cmd, 'OpenWindowSetup')
   ovrMultiSample = varargin{6};
 
   % Override winRect for the OpenHMD dummy HMD device:
-  if IsWin || strcmp(myhmd.modelName, 'Dummy Device') || strcmp(myhmd.modelName, 'External Device')
+  if strcmp(myhmd.modelName, 'Dummy Device') || strcmp(myhmd.modelName, 'External Device')
     winRect = [0, 0, myhmd.panelWidth, myhmd.panelHeight];
+  elseif IsWin
+    % MS-Windows:
+
+    % Fullscreen on proper screenid:
+    winRect = [];
+
+    % Find proper screenid with matching resolution of our HMD panel:
+    for screenids = Screen('Screens')
+      [w, h] = Screen('WindowSize', screenids);
+      if (w == myhmd.panelWidth) && (h == myhmd.panelHeight)
+        screenid = screenids;
+        break;
+      end
+    end
   else
-    % Try to find the output with the HMD:
+    % Linux/X11: Try to find the output with the HMD:
     scanout = [];
     for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
       scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
