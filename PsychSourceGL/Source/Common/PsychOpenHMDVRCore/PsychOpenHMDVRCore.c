@@ -908,8 +908,13 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
         PsychSetStructArrayDoubleElement("Time", i, tNow, status);
 
         // Get current tracked position and orientation measurements:
-        ohmd_device_getf(openhmd->controller[i], OHMD_POSITION_VECTOR, &state[0]);
-        ohmd_device_getf(openhmd->controller[i], OHMD_ROTATION_QUAT, &state[3]);
+        if (openhmd->controller[i]) {
+            ohmd_device_getf(openhmd->controller[i], OHMD_POSITION_VECTOR, &state[0]);
+            ohmd_device_getf(openhmd->controller[i], OHMD_ROTATION_QUAT, &state[3]);
+        }
+        else {
+            memset(&state[0], 0, sizeof(state));
+        }
 
         // Reset hand-tracked state:
         hmdstatus = 0;
@@ -948,7 +953,7 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
         if (OHMD_S_OK == ohmd_require_version(1000, 0, 0)) {
             #ifdef OHMD_HAVE_VEL_ACCEL_API_v0
             // Linear velocity:
-            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_VELOCITY_VECTOR, &state[7])) {
+            if ((openhmd->controller[i]) && (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_VELOCITY_VECTOR, &state[7]))) {
                 v = NULL;
                 PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
                 v[0] = state[7];
@@ -958,7 +963,7 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
             }
 
             // Linear acceleration:
-            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ACCELERATION_VECTOR, &state[10])) {
+            if ((openhmd->controller[i]) && (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ACCELERATION_VECTOR, &state[10]))) {
                 v = NULL;
                 PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
                 v[0] = state[10];
@@ -970,7 +975,7 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
 
             #ifdef OHMD_HAVE_VEL_ACCEL_API_v1
             // Angular velocity:
-            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ANGULAR_VELOCITY_VECTOR, &state[13])) {
+            if ((openhmd->controller[i]) && (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ANGULAR_VELOCITY_VECTOR, &state[13]))) {
                 v = NULL;
                 PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
                 v[0] = state[13];
@@ -980,7 +985,7 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
             }
 
             // Angular acceleration:
-            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ANGULAR_ACCELERATION_VECTOR, &state[16])) {
+            if ((openhmd->controller[i]) && (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ANGULAR_ACCELERATION_VECTOR, &state[16]))) {
                 v = NULL;
                 PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
                 v[0] = state[16];
