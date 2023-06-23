@@ -413,7 +413,7 @@ while any(istate.Buttons)
 end
 
 % Part 3: Actual hand tracking and visualisation:
-if hmdinfo.handTrackingSupported
+if hmdinfo.handTrackingSupported || withGazeTracking
   % Number of fountain particles whose positions are computed on the GPU:
   nparticles = 10000;
 
