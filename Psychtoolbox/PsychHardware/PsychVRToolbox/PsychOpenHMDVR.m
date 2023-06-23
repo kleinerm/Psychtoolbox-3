@@ -1579,6 +1579,9 @@ if strcmpi(cmd, 'OpenWindowSetup')
   fprintf('PsychOpenHMDVR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
           clientRes(1), clientRes(2));
 
+  % Make sure the window is not transparent:
+  Screen('Preference', 'WindowShieldinglevel', 2000);
+
   varargout{1} = winRect;
   varargout{2} = ovrfbOverrideRect;
   varargout{3} = ovrSpecialFlags;
