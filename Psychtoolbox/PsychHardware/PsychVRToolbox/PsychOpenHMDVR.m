@@ -1668,54 +1668,95 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     hmd{handle}.inTex(2) = hmd{handle}.inTex(1);
   end
 
-  % Get GLSL shader source code for the distortion shaders:
-  [vertexShaderSrc, fragmentShaderSrc] = PsychOpenHMDVRCore('GetCorrectionShaders', handle);
+  if strcmp(hmd{handle}.modelName, 'HTC Vive')
+    % HTC Vive (Pro) specific correction shader:
+    grow_for_undistort = 0.6000000238418579; % In ohmd and JSON, vs. 0.5 for vive/survive. In JSON: grow_for_undistort
+    aspect_x_over_y = 0.8999999761581421; % Monado all drivers and JSON. In JSON: physical_aspect_x_over_y
+    coeffs = zeros(3,3,2);
 
-  left_lens_center(2) = hmd{handle}.HmdToEyeViewOffsetLeft(2);
-  right_lens_center(2) = hmd{handle}.HmdToEyeViewOffsetRight(2);
-  left_lens_center(1) = viewport_scale(1) + hmd{handle}.HmdToEyeViewOffsetLeft(1);
-  right_lens_center(1) = hmd{handle}.HmdToEyeViewOffsetRight(1);
+    % Left eye:
+    coeffs(:, 1, 1) = [-0.16640834766821358   ; -0.20331470531297763  ; -0.25831734144170526]; % Coefficient 0 rgb
+    coeffs(:, 2, 1) = [-0.08398524684858014   ; -0.027578563152494302 ;  0.06924808042080391]; % Coefficient 1 rgb
+    coeffs(:, 3, 1) = [-0.0037370006049573983 ; -0.03378921675897428  ; -0.0911560015027105]; % Coefficient 2 rgb
 
-  if left_lens_center(1) > right_lens_center(1)
-    warp_scale = left_lens_center(1);
+    % Right eye:
+    coeffs(:, 1, 2) = [-0.15753946841491998  ; -0.19474535844822508  ; -0.24972289009157236]; % Coefficient 0 rgb
+    coeffs(:, 2, 2) = [-0.09719549197929116  ; -0.03913691895553098  ;  0.056551348616293635]; % Coefficient 1 rgb
+    coeffs(:, 3, 2) = [ 0.004565599952242557 ; -0.026737368587367503 ; -0.08277243093472844]; % Coefficient 2 rgb
+
+    left_lens_center(1) = 0.08822191906110802;
+    left_lens_center(2) = 0.002215858404763872;
+
+    right_lens_center(1) = -0.08930821920625079;
+    right_lens_center(2) = 0.0025618317453592;
+
+    for i = 1:2
+      glsl(i) = LoadGLSLProgramFromFiles([fileparts(mfilename('fullpath')) filesep 'HTCViveCorrectionShader'], 1);
+      glUseProgram(glsl(i));
+
+      glUniform1i(glGetUniformLocation(glsl(i), 'warpTexture'), 0);
+      glUniform1f(glGetUniformLocation(glsl(i), 'grow_for_undistort'), grow_for_undistort);
+      glUniform1f(glGetUniformLocation(glsl(i), 'aspect_x_over_y'), aspect_x_over_y);
+      glUniform3fv(glGetUniformLocation(glsl(i), 'coeffs'), 3, coeffs(:,:,i));
+
+      if i == 1
+        glUniform2fv(glGetUniformLocation(glsl(i), 'LensCenter'), 1, left_lens_center);
+      else
+        glUniform2fv(glGetUniformLocation(glsl(i), 'LensCenter'), 1, right_lens_center);
+      end
+
+      glUseProgram(0);
+    end
   else
-    warp_scale = right_lens_center(1);
-  end
+    % Get GLSL shader source code for the distortion shaders:
+    [vertexShaderSrc, fragmentShaderSrc] = PsychOpenHMDVRCore('GetCorrectionShaders', handle);
 
-  % Setup shaders:
-  for i = 1:2
-    vertexShader = glCreateShader(GL.VERTEX_SHADER);
-    fragmentShader = glCreateShader(GL.FRAGMENT_SHADER);
-    glsl(i) = glCreateProgram();
+    left_lens_center(2) = hmd{handle}.HmdToEyeViewOffsetLeft(2);
+    right_lens_center(2) = hmd{handle}.HmdToEyeViewOffsetRight(2);
+    left_lens_center(1) = viewport_scale(1) + hmd{handle}.HmdToEyeViewOffsetLeft(1);
+    right_lens_center(1) = hmd{handle}.HmdToEyeViewOffsetRight(1);
 
-    glAttachShader(glsl(i), vertexShader);
-    glAttachShader(glsl(i), fragmentShader);
-
-    glShaderSource(vertexShader, vertexShaderSrc);
-    glCompileShader(vertexShader);
-
-    glShaderSource(fragmentShader, fragmentShaderSrc);
-    glCompileShader(fragmentShader);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    glLinkProgram(glsl(i));
-
-    glUseProgram(glsl(i));
-    glUniform1i(glGetUniformLocation(glsl(i), 'warpTexture'), 0);
-    glUniform2fv(glGetUniformLocation(glsl(i), 'ViewportScale'), 1, viewport_scale);
-    glUniform3fv(glGetUniformLocation(glsl(i), 'aberr'), 1, abberationk);
-    glUniform1f(glGetUniformLocation(glsl(i), 'WarpScale'), warp_scale);
-    glUniform4fv(glGetUniformLocation(glsl(i), 'HmdWarpParam'), 1, distortionk);
-
-    if i == 1
-      glUniform2fv(glGetUniformLocation(glsl(i), 'LensCenter'), 1, left_lens_center);
+    if left_lens_center(1) > right_lens_center(1)
+      warp_scale = left_lens_center(1);
     else
-      glUniform2fv(glGetUniformLocation(glsl(i), 'LensCenter'), 1, right_lens_center);
+      warp_scale = right_lens_center(1);
     end
 
-    glUseProgram(0);
+    % Setup shaders:
+    for i = 1:2
+      vertexShader = glCreateShader(GL.VERTEX_SHADER);
+      fragmentShader = glCreateShader(GL.FRAGMENT_SHADER);
+      glsl(i) = glCreateProgram();
+
+      glAttachShader(glsl(i), vertexShader);
+      glAttachShader(glsl(i), fragmentShader);
+
+      glShaderSource(vertexShader, vertexShaderSrc);
+      glCompileShader(vertexShader);
+
+      glShaderSource(fragmentShader, fragmentShaderSrc);
+      glCompileShader(fragmentShader);
+
+      glDeleteShader(vertexShader);
+      glDeleteShader(fragmentShader);
+
+      glLinkProgram(glsl(i));
+
+      glUseProgram(glsl(i));
+      glUniform1i(glGetUniformLocation(glsl(i), 'warpTexture'), 0);
+      glUniform2fv(glGetUniformLocation(glsl(i), 'ViewportScale'), 1, viewport_scale);
+      glUniform3fv(glGetUniformLocation(glsl(i), 'aberr'), 1, abberationk);
+      glUniform1f(glGetUniformLocation(glsl(i), 'WarpScale'), warp_scale);
+      glUniform4fv(glGetUniformLocation(glsl(i), 'HmdWarpParam'), 1, distortionk);
+
+      if i == 1
+        glUniform2fv(glGetUniformLocation(glsl(i), 'LensCenter'), 1, left_lens_center);
+      else
+        glUniform2fv(glGetUniformLocation(glsl(i), 'LensCenter'), 1, right_lens_center);
+      end
+
+      glUseProgram(0);
+    end
   end
 
   % Assign the two shaders:
