@@ -1233,8 +1233,8 @@ if strcmpi(cmd, 'IsHMDOutput')
   scanout = varargin{2};
 
   % Does physical display size from EDID match the one reported by the HMD?
-  mmmatch = (myhmd.panelWidthMM == scanout.displayWidthMM && myhmd.panelHeightMM == scanout.displayHeightMM) || ...
-            (myhmd.panelWidthMM == scanout.displayHeightMM && myhmd.panelHeightMM == scanout.displayWidthMM);
+  mmmatch = (abs(myhmd.panelWidthMM - scanout.displayWidthMM) < 5 && abs(myhmd.panelHeightMM - scanout.displayHeightMM) < 5) || ...
+            (abs(myhmd.panelWidthMM - scanout.displayHeightMM) < 5  && abs(myhmd.panelHeightMM - scanout.displayWidthMM) < 5);
 
   % Is this an output with a resolution or physical size matching HMD panel resolution or size?
   % Assumption here is that it is a tilted panel in portrait mode in case of
