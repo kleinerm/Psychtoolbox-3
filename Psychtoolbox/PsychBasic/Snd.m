@@ -12,26 +12,16 @@ function err = Snd(command,signal,rate,sampleSize)
 %
 % Snd() is a rather dumb and primitive wrapper around the PsychPortAudio()
 % driver. It uses PsychPortAudio's most basic functionality to achieve
-% "sort of ok" sound playback. The driver is used in high-latency,
-% low-timing precision mode, so Snd()'s audio playback timing will likely
-% be very unreliable.
+% "sort of ok" sound playback. The driver is used in high latency, low timing
+% precision mode, so Snd()'s audio playback timing will likely be very unreliable.
 %
 % Alternatively you can create an empty file named 'Snd_use_oldstyle.txt' in
 % the PsychtoolboxConfigDir() folder, ie., [PsychtoolboxConfigDir 'Snd_use_oldstyle.txt']
-% This will enable the old-style implementation of Snd(), which is equally
-% shoddy and works as follows:
+% This will enable the old-style implementation of Snd(), which just calls into
+% Matlabs/Octaves sound() function. As sound() is of varying quality, there may
+% be bugs, latency- and timing problems associated with the use of sound() by Snd().
 %
-% While Snd used to use a special purpose low level driver on MacOS-9 which
-% was well suited for cognitive science, Snd for all other operating
-% systems (Windows, MacOS-X, Linux) just calls into Matlab's Sound()
-% function which is of varying - but usually pretty poor - quality in most
-% implementations of Matlab. There are many bugs, latency- and timing
-% problems associated with the use of Snd.
-%
-% GNU/OCTAVE: If you don't use the PsychPortAudio based Snd() function, then
-% you must install the optional octave "audio" package from Octave-Forge,
-% as of Octave 3.0.5, otherwise the required sound() function won't be
-% available and this function will fail!
+% The command Snd('Oldstyle') also requests use of this old-style sound() path.
 %
 % Audio device sharing for interop with PsychPortAudio:
 % -----------------------------------------------------
@@ -76,9 +66,8 @@ function err = Snd(command,signal,rate,sampleSize)
 %
 % The optional 'sampleSize' argument used with Snd('Play') is only retained
 % for backwards compatibility and has no meaning, unless you opt in to use
-% the old-style implementation on Matlab with some operating systems. - It
-% is checked for correctness, but other than that it is ignored. Allowable
-% values are either 8 or 16.
+% the old-style implementation. Otherwise it is checked for correctness, but
+% other than that it is ignored. Allowable values are either 8 or 16.
 %
 % oldverbosity = Snd('Verbosity' [, verbosity]);
 % - Query current level of verbosity, optionally set a new 'verbosity' level.
@@ -185,6 +174,10 @@ function err = Snd(command,signal,rate,sampleSize)
 % 12/9/19    mk Add 'Verbosity' subcommand to be able to silence Snd() and PsychPortAudio() output.
 % 08/10/21   mk Try to make Snd - pahandle sharing more reliable via new Snd('Open', pahandle, 1).
 % 10/29/21   mk Some more help updates.
+% 06/30/23   mk Remove Octave special cases, update help text. Octave 5+ does have
+%               sound() builtin, and on par in functionality with Matlab. Both use
+%               audioplayer() objects internally. All said, sound() may be now good
+%               enough to do without the new PsychPortAudio based path.
 
 persistent ptb_snd_oldstyle;
 persistent ptb_snd_injected;
@@ -212,6 +205,11 @@ if strcmpi(command, 'Verbosity')
 
     err = verbose;
     verbose = signal;
+    return;
+end
+
+if strcmpi(command, 'Oldstyle') && isempty(ptb_snd_oldstyle)
+    ptb_snd_oldstyle = 1;
     return;
 end
 
@@ -354,30 +352,11 @@ if strcmpi(command,'Play')
     if ptb_snd_oldstyle
         % Old-Style implementation via sound() function:
 
-        WaitSecs(endTime-GetSecs); % Wait until any ongoing sound is done.
+        % Wait until any ongoing sound is done.
+        WaitSecs(endTime-GetSecs);
 
-        % Octave special-case:
-        if IsOctave
-            if exist('sound') %#ok<EXIST>
-                sound(signal',rate);
-            else
-                % Unavailable: Try to load the package, assuming its
-                % installed but not auto-loaded:
-                try
-                    pkg('load','audio');
-                catch %#ok<CTCH>
-                end
-
-                % Retry...
-                if exist('sound') %#ok<EXIST>
-                    sound(signal',rate);
-                else
-                    warning('Required Octave command sound() is not available. Install and "pkg load audio" the "audio" package from Octave-Forge!'); %#ok<WNTAG>
-                end
-            end
-        else
-            sound(signal',rate,sampleSize);
-        end
+        % Play via Matlab/Octave sound():
+        sound(signal',rate,sampleSize);
 
         % Estimate 'endTime' for playback:
         endTime=GetSecs+length(signal)/rate;
@@ -494,10 +473,6 @@ elseif strcmpi(command,'Quiet') || strcmpi(command,'Close')
 
             pahandle = [];
             ptb_snd_injected = 0;
-        end
-    else
-        if ~IsOctave
-            clear playsnd; % Stop any ongoing sound.
         end
     end
     endTime=0;
