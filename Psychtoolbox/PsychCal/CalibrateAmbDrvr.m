@@ -33,6 +33,7 @@ function cal = CalibrateAmbDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 8/19/12   mk    Rewrite setup and clut code to be able to better cope with all
 %                 the broken operating systems / drivers / gpus and to also
 %                 support DataPixx/ViewPixx devices.
+% 6/30/23   mk    Use new clut mapping to fix this mess on standard gpus.
 
 global g_usebitspp;
 
@@ -75,6 +76,11 @@ end
 % care of possible graphics driver bugs and other quirks:
 PsychImaging('PrepareConfiguration');
 
+if g_usebitspp == 0
+    % Setup for imaging pipeline based clut mapping:
+    PsychImaging('AddTask', 'AllViews', 'EnableCLUTMapping', 256, 1);
+end
+
 if g_usebitspp == 1
     % Setup for Bits++ CLUT mode. This will automatically load proper
     % identity gamma tables into the graphics hardware and into the Bits+:
@@ -90,32 +96,36 @@ end
 
 % Open the window:
 [window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen, 0);
+
+% Only need to set identity mapping for standard display mode, as all needed setup
+% is already done automatically for CRS, VPixx devices etc. by PsychImaging():
+if g_usebitspp == 0
+    % Upload an identity gamma ramp into all channels. Upload a LUT with exactly
+    % as many slots as the operating system + gpu driver expects, so we pass through
+    % the full framebuffer precision one-to-one, as much as framebuffer depths allows.
+    % Don't use LoadIdentityClut here, as it configures for a 8 bpc identity lut,
+    % suitable for special display devices, but may lose a bit of precision for
+    % conventional display setups:
+    [~, ~, nslots] = Screen('ReadNormalizedGammaTable', window);
+    Screen('LoadNormalizedGammaTable', window, (linspace(0, 1, nslots)' * ones(1, 3)), 0);
+end
+
 if (cal.describe.whichScreen == 0)
     HideCursor(window);
 end
 
 % Load zero theClut into device:
 theClut = zeros(256,3);
-if g_usebitspp
-    % Load zero theClut into device:
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window);    
-else
-    % Load zero lut into regular graphics card:
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
+Screen('LoadNormalizedGammaTable', window, theClut, 2);
+Screen('Flip', window);
 
 % Draw a box in the center of the screen
 boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
 boxRect = CenterRect(boxRect, screenRect);
 theClut(2,:) = [1 1 1];
 Screen('FillRect', window, 1, boxRect);
-if g_usebitspp
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window, 0, 1);
-else
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
+Screen('LoadNormalizedGammaTable', window, theClut, 2);
+Screen('Flip', window, 0, 1);
 
 % Wait for user
 if USERPROMPT == 1
@@ -126,14 +136,9 @@ if USERPROMPT == 1
 end
 
 % Put in appropriate background.
-theClut(2,:) = cal.bgColor';
-if g_usebitspp
-    Screen('FillRect', window, 1, boxRect);
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window, 0, 1);
-else
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
+theClut(1,:) = cal.bgColor';
+Screen('LoadNormalizedGammaTable', window, theClut, 2);
+Screen('Flip', window, 0, 1);
 
 % Start timing
 t0 = clock;

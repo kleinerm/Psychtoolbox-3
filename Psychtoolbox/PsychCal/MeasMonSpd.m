@@ -10,10 +10,10 @@ function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, the
 % returns random spectra.  This is useful for testing when
 % you don't have a meter.
 %
-% Other valid types:
-%  1 - Use PR650 (default)
-%  2 - Use CVI
+% Other valid types: See list in 'help CMCheckInit' for various Photo Research
+% PR-xxx colormeters.
 %
+
 % 10/26/93  dhb   Wrote it based on ccc code.
 % 11/12/93  dhb   Modified to use SetColor.
 % 8/11/94   dhb   Sync mode.
@@ -29,6 +29,7 @@ function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, the
 % 2/27/02   dhb   Change noMeterAvail to whichMeterType.
 % 8/19/12   mk    Rewrite g_usebitspp path to use PTB imaging pipeline for higher robustness 
 %                 and to support more display devices.
+% 6/30/23   mk    Use new clut mapping to fix this mess on standard gpus.
 
 % Declare Bits++ box global
 global g_usebitspp;
@@ -68,33 +69,20 @@ end
 spd = zeros(S(3), nMeas);
 for i = 1:nMeas
     % Set the color.
-    
+    theClut(2,:) = settings(:, i)';
+    Screen('LoadNormalizedGammaTable', window, theClut, 2);
+    Screen('Flip', window, 0, 1);
+
     % Measure spectrum
     switch whichMeterType
         case 0
-            theClut(2,:) = settings(:, i)';
-            if g_usebitspp
-                Screen('LoadNormalizedGammaTable', window, theClut, 2);
-                Screen('Flip', window, 0, 1);
-            else
-                Screen('LoadNormalizedGammaTable', window, theClut);
-            end
             spd(:,i) = sum(settings(:, i)) * ones(S(3), 1);
-            WaitSecs(.1);
-        case 1
-            theClut(2,:) = settings(:, i)';
-            if g_usebitspp
-                Screen('LoadNormalizedGammaTable', window, theClut, 2);
-                Screen('Flip', window, 0, 1);
-            else
-                Screen('LoadNormalizedGammaTable',window, theClut);
-            end
-            spd(:,i) = MeasSpd(S);
+            WaitSecs(0.1);
         case 2
             error('CVI interface not yet ported to PTB-3.');
             % cviCal = LoadCVICalFile;
             % spd(:,i) =  CVICalibratedDarkMeasurement(cviCal, S, [], [], [], window, 1, settings(:,i));
         otherwise
-            error('Invalid meter type set');
+            spd(:,i) = MeasSpd(S, whichMeterType, syncMode);
     end
 end
