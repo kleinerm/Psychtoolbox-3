@@ -68,20 +68,20 @@ try
         % PR-650
         case 1,
             [spectrum, qual] = PR650measspd(S,syncMode);
-            
+
         % PR-655
         case 4,
             [spectrum, qual] = PR655measspd(S,syncMode);
-            
+
         % PR-670
         case 5,
             [spectrum, qual] = PR670measspd(S,syncMode);
-            
+
         % PR-705
         case 6,
             qual = 0;
             spectrum = PR705measspd(S);
-            
+
         otherwise,
             error('Unknown meter type');
     end

@@ -74,19 +74,19 @@ end
 
 % User prompt
 if USERPROMPT
-	if cal.describe.whichScreen == 0
-		fprintf('Hit any key to proceed past this message and display a box.\n');
-		fprintf('Focus radiometer on the displayed box.\n');
-		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
+    if cal.describe.whichScreen == 0
+        fprintf('Hit any key to proceed past this message and display a box.\n');
+        fprintf('Focus radiometer on the displayed box.\n');
+        fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
                 cal.describe.leaveRoomTime);
-		fprintf('to leave room.\n');
+        fprintf('to leave room.\n');
         KbStrokeWait(-1);
-	else
-		fprintf('Focus radiometer on the displayed box.\n');
-		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
+    else
+        fprintf('Focus radiometer on the displayed box.\n');
+        fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
                 cal.describe.leaveRoomTime);
-		fprintf('to leave room.\n');
-	end
+        fprintf('to leave room.\n');
+    end
 end
 
 % Blank other screen, if requested:
@@ -119,11 +119,13 @@ if g_usebitspp == 2
 end
 
 % Open the window:
-[window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen);
+[window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen, 0);
+% Hide cursor if wanted:
 if (cal.describe.whichScreen == 0)
-    HideCursor;
+    HideCursor(window);
 end
 
+% Load zero theClut into device:
 theClut = zeros(256,3);
 if g_usebitspp
     % Load zero theClut into device:
@@ -136,10 +138,10 @@ end
 
 % Draw a box in the center of the screen
 if ~isfield(cal.describe, 'boxRect')
-	boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
-	boxRect = CenterRect(boxRect,screenRect);
+    boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
+    boxRect = CenterRect(boxRect,screenRect);
 else
-	boxRect = cal.describe.boxRect;
+    boxRect = cal.describe.boxRect;
 end
 theClut(2,:) = [1 1 1];
 Screen('FillRect', window, 1, boxRect);
@@ -180,7 +182,7 @@ for a = 1:cal.describe.nAverage
         Screen('Flip', window, 0, 1);
 
         % Measure ambient
-        darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
+        darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 'on', whichMeterType, theClut);
 
         % Measure full gamma in random order
         mGammaInput = zeros(cal.nDevices, cal.describe.nMeas);
@@ -189,11 +191,11 @@ for a = 1:cal.describe.nAverage
         [null, sortIndex] = sort(sortVals); %#ok<*ASGLU>
         %fprintf(1,'MeasMonSpd run %g, device %g\n',a,i);
         [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), ...
-            cal.describe.S, [], whichMeterType, theClut);
+            cal.describe.S, 'on', whichMeterType, theClut);
         tempMon(:, sortIndex) = tempMon;
 
         % Take another ambient reading and average
-        darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
+        darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 'on', whichMeterType, theClut);
         darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1, cal.describe.nMeas);
 
         % Subtract ambient
@@ -212,16 +214,8 @@ if g_usebitspp
     Screen('Flip', window);
 end
 
-% Restore graphics card gamma tables to original state:
-RestoreCluts;
-
-% Show hidden cursor:
-if cal.describe.whichScreen == 0
-	ShowCursor;
-end
-
-% Close all windows:
-Screen('CloseAll');
+% Close all windows, restore gamma tables etc.:
+sca;
 
 % Report time
 t1 = clock;

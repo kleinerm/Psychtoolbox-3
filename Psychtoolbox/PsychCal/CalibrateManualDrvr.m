@@ -14,15 +14,15 @@ if isempty(g_usebitspp)
 end
 
 if USERPROMPT
-	if cal.describe.whichScreen == 0
-		fprintf('Hit any key to proceed past this message and display a box.\n');
-		fprintf('Insert manual photometer/radiometer.\n');
-		fprintf('Once meter is set up, hit any key to proceed\n');
-		KbStrokeWait(-1);
-	else
-		fprintf('Insert manual photometer/radiometer.\n');
-		fprintf('Once meter is set up, hit any key to proceed\n');
-	end
+    if cal.describe.whichScreen == 0
+        fprintf('Hit any key to proceed past this message and display a box.\n');
+        fprintf('Insert manual photometer/radiometer.\n');
+        fprintf('Once meter is set up, hit any key to proceed\n');
+        KbStrokeWait(-1);
+    else
+        fprintf('Insert manual photometer/radiometer.\n');
+        fprintf('Once meter is set up, hit any key to proceed\n');
+    end
 end
 
 % Blank other screen
@@ -54,11 +54,12 @@ if g_usebitspp == 2
 end
 
 % Open the window:
-[window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen);
+[window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen, 0);
 if (cal.describe.whichScreen == 0)
-    HideCursor;
+    HideCursor(window);
 end
 
+% Load zero theClut into device:
 theClut = zeros(256,3);
 if g_usebitspp
     % Load zero theClut into device:
@@ -71,10 +72,10 @@ end
 
 % Draw a box in the center of the screen
 if ~isfield(cal.describe, 'boxRect')
-	boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
-	boxRect = CenterRect(boxRect,screenRect);
+    boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
+    boxRect = CenterRect(boxRect,screenRect);
 else
-	boxRect = cal.describe.boxRect;
+    boxRect = cal.describe.boxRect;
 end
 
 theClut(2,:) = [1 1 1];
@@ -104,11 +105,11 @@ end
 % We have put up white:
 cal.manual.white = [];
 while isempty(cal.manual.white)
-	if cal.manual.photometer
-		cal.manual.white = input('Enter photometer reading (cd/m2): ');
-	else
-		cal.manual.white = 1e-6*input('Enter radiometer reading (micro Watts): ');
-	end
+    if cal.manual.photometer
+        cal.manual.white = input('Enter photometer reading (cd/m2): ');
+    else
+        cal.manual.white = 1e-6*input('Enter radiometer reading (micro Watts): ');
+    end
 end
 
 theClut(2,:) = [0 , 0 , 0];
@@ -120,11 +121,11 @@ else
 end
 cal.manual.black = [];
 while isempty(cal.manual.black)
-	if cal.manual.photometer
-		cal.manual.black = input('Enter photometer reading (cd/m2): ');
-	else
-		cal.manual.black = 1e-6*input('Enter radiometer reading (micro Watts): ');
-	end
+    if cal.manual.photometer
+        cal.manual.black = input('Enter photometer reading (cd/m2): ');
+    else
+        cal.manual.black = 1e-6*input('Enter radiometer reading (micro Watts): ');
+    end
 end
 cal.manual.increment = cal.manual.white - cal.manual.black;
 
@@ -135,13 +136,5 @@ if g_usebitspp
     Screen('Flip', window);
 end
 
-% Restore graphics card gamma tables to original state:
-RestoreCluts;
-
-% Show hidden cursor:
-if cal.describe.whichScreen == 0
-	ShowCursor;
-end
-
-% Close all windows:
-Screen('CloseAll');
+% Restore graphics card gamma tables to original state, close windows etc.:
+sca;

@@ -3,18 +3,18 @@ function cal = CalibrateAmbDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 %
 % This script does the work for monitor ambient calibration.
 
-% 4/4/94		dhb		Wrote it.
-% 8/5/94		dhb, ccc	More flexible interface.
-% 9/4/94		dhb		Small changes.
-% 10/20/94	dhb		Add bgColor variable.
-% 12/9/94   ccc   Nine-bit modification
-% 1/23/95		dhb		Pulled out working code to be called from elsewhere.
-%						dhb		Make user prompting optional.
-% 1/24/95		dhb		Get filename right.
+% 4/4/94    dhb     Wrote it.
+% 8/5/94    dhb,ccc More flexible interface.
+% 9/4/94    dhb     Small changes.
+% 10/20/94  dhb     Add bgColor variable.
+% 12/9/94   ccc     Nine-bit modification
+% 1/23/95   dhb     Pulled out working code to be called from elsewhere.
+%           dhb     Make user prompting optional.
+% 1/24/95   dhb     Get filename right.
 % 12/17/96  dhb, jmk  Remove big bug.  Ambient wasn't getting set.
-% 4/12/97   dhb   Update for new toolbox.
-% 8/21/97		dhb		Don't save files here.
-%									Always measure.
+% 4/12/97   dhb     Update for new toolbox.
+% 8/21/97   dhb     Don't save files here.
+%                   Always measure.
 % 4/7/99    dhb   NINEBIT -> NBITS
 %           dhb   Handle noMeterAvail, RADIUS switches.
 % 9/22/99   dhb, mdr  Make boxRect depend on boxSize, defined up one level.
@@ -42,26 +42,21 @@ if isempty(g_usebitspp)
     g_usebitspp = 0;
 end
 
-% Check meter
-if ~whichMeterType
-	CMCheckInit;
-end
-
 % User prompt
 if USERPROMPT
-	if cal.describe.whichScreen == 0
-		fprintf('Hit any key to proceed past this message and display a box.\n');
-		fprintf('Focus radiometer on the displayed box.\n');
-		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
+    if cal.describe.whichScreen == 0
+        fprintf('Hit any key to proceed past this message and display a box.\n');
+        fprintf('Focus radiometer on the displayed box.\n');
+        fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
                 cal.describe.leaveRoomTime);
-		fprintf('to leave room.\n');
+        fprintf('to leave room.\n');
         KbStrokeWait(-1);
-	else
-		fprintf('Focus radiometer on the displayed box.\n');
-		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
+    else
+        fprintf('Focus radiometer on the displayed box.\n');
+        fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
                 cal.describe.leaveRoomTime);
-		fprintf('to leave room.\n');
-	end
+        fprintf('to leave room.\n');
+    end
 end
 
 % Blank other screen, if requested:
@@ -94,11 +89,12 @@ if g_usebitspp == 2
 end
 
 % Open the window:
-[window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen);
+[window, screenRect] = PsychImaging('OpenWindow', cal.describe.whichScreen, 0);
 if (cal.describe.whichScreen == 0)
-    HideCursor;
+    HideCursor(window);
 end
 
+% Load zero theClut into device:
 theClut = zeros(256,3);
 if g_usebitspp
     % Load zero theClut into device:
@@ -124,9 +120,9 @@ end
 % Wait for user
 if USERPROMPT == 1
     KbStrokeWait(-1);
-	fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
-	WaitSecs(cal.describe.leaveRoomTime);
-	fprintf(' done\n');
+    fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
+    WaitSecs(cal.describe.leaveRoomTime);
+    fprintf(' done\n');
 end
 
 % Put in appropriate background.
@@ -145,7 +141,7 @@ t0 = clock;
 ambient = zeros(cal.describe.S(3), 1);
 for a = 1:cal.describe.nAverage
     % Measure ambient
-    ambient = ambient + MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
+    ambient = ambient + MeasMonSpd(window, [0 0 0]', cal.describe.S, 'on', whichMeterType, theClut);
 end
 ambient = ambient / cal.describe.nAverage;
 
@@ -156,16 +152,8 @@ if g_usebitspp
     Screen('Flip', window);
 end
 
-% Restore graphics card gamma tables to original state:
-RestoreCluts;
-
-% Show hidden cursor:
-if cal.describe.whichScreen == 0
-	ShowCursor;
-end
-
-% Close all windows:
-Screen('CloseAll');
+% Restore graphics card gamma tables to original state, close windows, etc.
+sca;
 
 % Report time:
 t1 = clock;
