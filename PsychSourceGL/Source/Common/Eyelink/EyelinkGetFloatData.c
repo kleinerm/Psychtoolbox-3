@@ -74,7 +74,7 @@ PsychError EyelinkGetFloatData(void)
 	switch(type)
 {
 		case SAMPLE_TYPE:
-			if (eyelink_get_float_data(&fs) != type) {
+			if (eyelink_get_float_data((ALLF_DATA*) &fs) != type) {
 				PsychErrorExitMsg(PsychError_user, "Eyelink: GetFloatData: eyelink_get_float_data did not return sample type as user said it would.");
 			}
 			(*mxpp) = CreateMXFSample(&fs);
@@ -88,7 +88,7 @@ PsychError EyelinkGetFloatData(void)
 			mxGetPr((*mxpp))[0] = 0;
 			break;
 		default: // else it is an event
-			if (eyelink_get_float_data(&fe) != type) {
+			if (eyelink_get_float_data((ALLF_DATA*) &fe) != type) {
 				PsychErrorExitMsg(PsychError_user, "Eyelink: GetFloatDataRaw: eyelink_get_float_data did not return event type as user said it would.");
 			}
 			(*mxpp) = CreateMXFEvent(&fe);
@@ -163,7 +163,7 @@ PsychError EyelinkGetFloatDataRaw(void)
 	
 	switch(type){
 		case SAMPLE_TYPE:
-			if (eyelink_get_float_data(&fs) != type) {
+			if (eyelink_get_float_data((ALLF_DATA*) &fs) != type) {
 				PsychErrorExitMsg(PsychError_user, "Eyelink: GetFloatDataRaw: eyelink_get_float_data did not return sample type as user said it would.");
 			}
 			(*mxpp)[0] = CreateMXFSample(&fs);
@@ -204,7 +204,7 @@ PsychError EyelinkGetFloatDataRaw(void)
 			break;
 			
 		default: // else it is an event
-			if (eyelink_get_float_data(&fe) != type) {
+			if (eyelink_get_float_data((ALLF_DATA*) &fe) != type) {
 				PsychErrorExitMsg(PsychError_user, "Eyelink: GetFloatDataRaw: eyelink_get_float_data did not return event type as user said it would.");
 			}
 
