@@ -11,27 +11,26 @@ function EyeLinkPicture
 % HISTORY
 %
 % mm/dd/yy
-% 07/01/08 js 	redone the structure of the experiment and added 
-%		integration messages to the EyeLink Data Viewer software
-% 07/14/08 js 	added code to set your own EDF file name before opening
-%		the experiment graphics
-% 07/13/10  fwc made to work with new toolbox with callback and updated to
+% 07/01/08 js   redone the structure of the experiment and added
+%               integration messages to the EyeLink Data Viewer software
+% 07/14/08 js   added code to set your own EDF file name before opening
+%               the experiment graphics
+% 07/13/10 fwc  made to work with new toolbox with callback and updated to
 %               enable eye image display, added "cleanup" function,
 %               reenabled try-catch
 % 09/20/12 srresearch updated to allow:
 %               1. Transfer the image to host. (STEP 7.1)
 %               2. Change the calibration colors and turn on/off the
-%                   calibration beep. (STEP 6)
+%                  calibration beep. (STEP 6)
 %               3. End trials by button box. (STEP 7.5)
-% 12/20/13  srresearch
-%                Added part to make it run with octave
-%                fixed issue with non integer arguments for Eyelink('message' ...)
-%                removed cleanup function, used Eyelink('ShutDown'); Screen('CloseAll') instead.
+% 12/20/13 srresearch
+%               Added part to make it run with octave
+%               fixed issue with non integer arguments for Eyelink('message' ...)
+%               removed cleanup function, used Eyelink('ShutDown'); Screen('CloseAll') instead.
 %
-
-
-
-clear;
+% 07/07/23 mk   Use imread() and new Eyelink('ImageTransfer') to handle image file
+%               formats other than uncompressed Microsoft bitmap .bmp files.
+%
 
 if ~IsOctave
     commandwindow;
@@ -47,43 +46,36 @@ try
     % Added a dialog box to set your own EDF file name before opening 
     % experiment graphics. Make sure the entered EDF file name is 1 to 8 
     % characters in length and only numbers or letters are allowed.
-    if IsOctave
-        edfFile = 'DEMO';
-    else
-
     prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};
     dlg_title = 'Create EDF file';
     num_lines= 1;
     def     = {'DEMO'};
     answer  = inputdlg(prompt,dlg_title,num_lines,def);
-    %edfFile= 'DEMO.EDF'
     edfFile = answer{1};
     fprintf('EDFFile: %s\n', edfFile );
-    end
 
     % STEP 2
+    % Initialization of the connection with the Eyelink Gazetracker.
+    % exit program if this fails.
+    if ~EyelinkInit(dummymode)
+        fprintf('Eyelink Init aborted.\n');
+        return;
+    end
+
+    % STEP 3
     % Open a graphics window on the main screen
     % using the PsychToolbox's Screen function.
     screenNumber=max(Screen('Screens'));
-    [window, wRect]=Screen('OpenWindow', screenNumber, 0,[],32,2);
-    Screen(window,'BlendFunction',GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    [window, wRect]=Screen('OpenWindow', screenNumber, 0);
+    Screen('BlendFunction', window, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-    % STEP 3
+    % STEP 4
     % Provide Eyelink with details about the graphics environment
     % and perform some initializations. The information is returned
     % in a structure that also contains useful defaults
     % and control codes (e.g. tracker state bit and Eyelink key values).
     el=EyelinkInitDefaults(window);
-
-    % STEP 4
-    % Initialization of the connection with the Eyelink Gazetracker.
-    % exit program if this fails.
-    if ~EyelinkInit(dummymode)
-        fprintf('Eyelink Init aborted.\n');
-        cleanup;  % cleanup function
-        return;
-    end
 
     % the following code is used to check the version of the eye tracker
     % and version of the host software
@@ -96,7 +88,7 @@ try
     i = Eyelink('Openfile', edfFile);
     if i~=0
         fprintf('Cannot create EDF file ''%s'' ', edffilename);
-        Eyelink( 'Shutdown');
+        Eyelink('Shutdown');
         Screen('CloseAll');
         return;
     end
@@ -105,7 +97,7 @@ try
     [width, height]=Screen('WindowSize', screenNumber);
 
 
-    % STEP 5    
+    % STEP 5
     % SET UP TRACKER CONFIGURATION
     % Setting the proper recording resolution, proper calibration type, 
     % as well as the data file content;
@@ -134,16 +126,15 @@ try
     % allow to use the big button on the eyelink gamepad to accept the 
     % calibration/drift correction target
     Eyelink('command', 'button_function 5 "accept_target_fixation"');
-   
-    
+
+
     % make sure we're still connected.
     if Eyelink('IsConnected')~=1 && dummymode == 0
         fprintf('not connected, clean up\n');
-        Eyelink( 'Shutdown');
+        Eyelink('Shutdown');
         Screen('CloseAll');
         return;
     end
-
 
 
     % STEP 6
@@ -164,9 +155,8 @@ try
     EyelinkUpdateDefaults(el);
 
     % Hide the mouse cursor;
-    Screen('HideCursorHelper', window);
+    HideCursor(window);
     EyelinkDoTrackerSetup(el);
-
 
 
     % STEP 7
@@ -177,11 +167,11 @@ try
     % calls as well integration messages to the data file (message to mark 
     % the time of critical events and the image/interest area/condition 
     % information for the trial)
-    
+
     for i=1:3
         % Now within the scope of each trial;
-        imgfile= char(imageList(i));  
-        
+        imgfile= which(char(imageList(i)));
+
         % STEP 7.1 
         % Sending a 'TRIALID' message to mark the start of a trial in Data 
         % Viewer.  This is different than the start of recording message 
@@ -205,11 +195,14 @@ try
 
         fprintf('img file name is %s\n',transferimginfo.Filename);
 
+        % The constraint on imdata for use by Eyelink('ImageTransfer') is that
+        % imdata can be any uint8 image with 1, 3 or 4 layers for a grayscale,
+        % RGB truecolor or RGBA image of 8 bpc resolution:
+        imdata=imread(imgfile);
 
-        % image file should be 24bit or 32bit bitmap
         % parameters of ImageTransfer:
         % imagePath, xPosition, yPosition, width, height, trackerXPosition, trackerYPosition, xferoptions
-        transferStatus =  Eyelink('ImageTransfer',transferimginfo.Filename,0,0,transferimginfo.Width,transferimginfo.Height,width/2-transferimginfo.Width/2 ,height/2-transferimginfo.Height/2,1);
+        transferStatus = Eyelink('ImageTransfer',imdata,0,0,transferimginfo.Width,transferimginfo.Height,width/2-transferimginfo.Width/2 ,height/2-transferimginfo.Height/2,1);
         if transferStatus ~= 0
             fprintf('*****Image transfer Failed*****-------\n');
         end
@@ -223,7 +216,7 @@ try
         % Performing drift correction (checking) is optional for
         % EyeLink 1000 eye trackers.
         EyelinkDoDriftCorrection(el);  
-        
+
         % STEP 7.3
         % start recording eye position (preceded by a short pause so that 
         % the tracker can finish the mode transition)
@@ -231,16 +224,14 @@ try
         % file_samples, file_events, link_samples, link_events availability
         Eyelink('Command', 'set_idle_mode');
         WaitSecs(0.05);
-%         Eyelink('StartRecording', 1, 1, 1, 1);    
         Eyelink('StartRecording');    
         % record a few samples before we actually start displaying
         % otherwise you may lose a few msec of data 
         WaitSecs(0.1);
-    
-    	% STEP 7.4
+
+        % STEP 7.4
         % Prepare and show the screen. 
-     	Screen('FillRect', window, el.backgroundcolour);   
-        imdata=imread(imgfile);
+        Screen('FillRect', window, el.backgroundcolour);
         imageTexture=Screen('MakeTexture',window, imdata);
         Screen('DrawTexture', window, imageTexture);
         Screen('DrawText', window, 'Press the SPACEBAR or BUTTON 5 to end the recording of the trial.', floor(width/5), floor(height/2), 0);
@@ -250,7 +241,7 @@ try
         % Data Viewer.
 
         Eyelink('Message', 'SYNCTIME');
-        
+
         % Send an integration message so that an image can be loaded as 
         % overlay backgound when performing Data Viewer analysis.  This 
         % message can be placed anywhere within the scope of a trial (i.e.,
@@ -258,7 +249,7 @@ try
         % See "Protocol for EyeLink Data to Viewer Integration -> Image 
         % Commands" section of the EyeLink Data Viewer User Manual.
         Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', imgfile, width/2, height/2);
-        
+
         stopkey=KbName('space');
  
         % STEP 7.5
@@ -289,18 +280,18 @@ try
             end
         end % main loop
 
-        
+
         % STEP 7.6
         % Clear the display
         Screen('FillRect', window, el.backgroundcolour);
-     	Screen('Flip', window);
+        Screen('Flip', window);
         Eyelink('Message', 'BLANK_SCREEN');
         % adds 100 msec of data to catch final events
         WaitSecs(0.1);
         % stop the recording of eye-movements for the current trial
         Eyelink('StopRecording');
-        
-        
+
+
         % STEP 7.7
         % Send out necessary integration messages for data analysis
         % Send out interest area information for the trial
@@ -330,7 +321,7 @@ try
         WaitSecs(0.001);
         Eyelink('Message', '!V TRIAL_VAR index %d', i)        
         Eyelink('Message', '!V TRIAL_VAR imgfile %s', imgfile)               
-        
+
         % STEP 7.8
         % Sending a 'TRIAL_RESULT' message to mark the end of a trial in 
         % Data Viewer. This is different than the end of recording message 
@@ -338,12 +329,12 @@ try
         % not parse any messages, events, or samples that exist in the data 
         % file after this message.
         Eyelink('Message', 'TRIAL_RESULT 0')
-    end   
-    
+    end
+
     % STEP 8
     % End of Experiment; close the file first   
     % close graphics window, close data file and shut down tracker
-        
+
     Eyelink('Command', 'set_idle_mode');
     WaitSecs(0.5);
     Eyelink('CloseFile');
@@ -361,23 +352,16 @@ try
     catch
         fprintf('Problem receiving data file ''%s''\n', edfFile );
     end
-    
+
     % STEP 9
     % close the eye tracker and window
-      Eyelink('ShutDown');
-      Screen('CloseAll');
+    Eyelink('ShutDown');
+    sca;
 
 catch
-     %this "catch" section executes in case of an error in the "try" section
-     %above.  Importantly, it closes the onscreen window if its open.
-      Eyelink('ShutDown');
-      Screen('CloseAll');
-%      commandwindow;
-%      rethrow(lasterr);
+    %this "catch" section executes in case of an error in the "try" section
+    %above.  Importantly, it closes the onscreen window if its open.
+    Eyelink('ShutDown');
+    sca;
+    rethrow(lasterr);
 end %try..catch.
-
-
-
-
-
-

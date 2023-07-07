@@ -1,5 +1,4 @@
 function EyelinkPictureCustomCalibration
-
 %
 % ___________________________________________________________________
 %
@@ -25,15 +24,16 @@ function EyelinkPictureCustomCalibration
 % 01/28/11  NJ  created
 % 12/20/13  LJ  changed isoctave to IsOctave, case sensitive for the latest matlab
 %               fixed issue with non integer arguments for Eyelink('message' ...)
+% 07/07/23 mk   Use imread() and new Eyelink('ImageTransfer') to handle image file
+%               formats other than uncompressed Microsoft bitmap .bmp files.
+%
 
-
-
-clear;
 if ~IsOctave
     commandwindow;
 else
     more off;
 end
+
 % list of images used for the trial. Octave cares about capitalization 
 imageList = {'../town.jpg' '../town_blur.jpg' '../composite.jpg'};
 dummymode=0;
@@ -45,18 +45,14 @@ try
     % Added a dialog box to set your own EDF file name before opening
     % experiment graphics. Make sure the entered EDF file name is 1 to 8
     % characters in length and only numbers or letters are allowed.
-    if IsOctave
-        edfFile = 'DEMO';
-    else  
-        prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};
-        dlg_title = 'Create EDF file';
-        num_lines= 1;
-        def     = {'DEMO'};
-        answer  = inputdlg(prompt,dlg_title,num_lines,def);
-        %edfFile= 'DEMO.EDF'
-        edfFile = answer{1};
-        fprintf('EDFFile: %s\n', edfFile );
-    end
+    prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};
+    dlg_title = 'Create EDF file';
+    num_lines= 1;
+    def     = {'DEMO'};
+    answer  = inputdlg(prompt,dlg_title,num_lines,def);
+    edfFile = answer{1};
+    fprintf('EDFFile: %s\n', edfFile );
+
     %%%%%%%%%%
     % STEP 2 %
     %%%%%%%%%%
@@ -65,7 +61,7 @@ try
     % using the PsychToolbox's Screen function.
     screenNumber=max(Screen('Screens'));
     [window, wRect]=Screen('OpenWindow', screenNumber, 0,[],32,2); %#ok<*NASGU>
-    Screen(window,'BlendFunction',GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    Screen('BlendFunction', window, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     [wW, wH] = WindowSize(window);
     
     %%%%%%%%%%
@@ -226,7 +222,7 @@ try
     %%%%%%%%%%
     disp('pre cal')
     % Hide the mouse cursor;
-    Screen('HideCursorHelper', window);
+    HideCursor(window);
     % enter Eyetracker camera setup mode, calibration and validation
     EyelinkDoTrackerSetup(el);
     disp('post cal')
@@ -263,8 +259,14 @@ try
         Eyelink('Command', 'clear_screen %d', 0);
         
         finfo = imfinfo(imgfile);
-        finfo.Filename 
-          Status = Eyelink('ImageTransfer', finfo.Filename ,0,0,0,0,round(wW/2 - finfo.Width/2) ,round(wH/2 - finfo.Height/2),4);
+        finfo.Filename
+
+        % The constraint on imdata for use by Eyelink('ImageTransfer') is that
+        % imdata can be any uint8 image with 1, 3 or 4 layers for a grayscale,
+        % RGB truecolor or RGBA image of 8 bpc resolution:
+        imdata=imread(imgfile);
+
+        Status = Eyelink('ImageTransfer', imdata,0,0,0,0,round(wW/2 - finfo.Width/2) ,round(wH/2 - finfo.Height/2),4);
         if transferStatus ~= 0
             fprintf('Image to host transfer failed\n');
         end
@@ -292,7 +294,6 @@ try
         % STEP 7.4
         % Prepare and show the screen.
         Screen('FillRect', window, el.backgroundcolour);
-        imdata=imread(imgfile);
         imageTexture=Screen('MakeTexture',window, imdata);
         Screen('DrawTexture', window, imageTexture);
         Screen('DrawText', window, 'Press the SPACEBAR to end the recording of the trial.', width/5, height/2, 0);
@@ -421,7 +422,6 @@ end %try..catch.
     function cleanup
         % Shutdown Eyelink:        
         Eyelink('Shutdown');
-        Screen('CloseAll');
-        
+        sca;
     end
 end
