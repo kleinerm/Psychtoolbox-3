@@ -25,8 +25,7 @@ void main()
     /* Apply standard geometric transformations to patch: */
     gl_Position = ftransform();
 
-    /* Don't pass real texture coordinates, but ones corrected for hardware offsets (-0.5,0.5) */
-    gl_TexCoord[0] = (gl_TextureMatrix[0] * gl_MultiTexCoord0) + vec4(-0.5, 0.5, 0.0, 0.0);
+    gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
     
     /* Premultiply the wanted Contrast to the color: */
     baseColor = modulateColor;
