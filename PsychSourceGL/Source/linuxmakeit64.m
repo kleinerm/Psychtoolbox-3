@@ -54,10 +54,11 @@ if mode==3
     unix(['mv ../Projects/Linux/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
-if mode==4 && ~cibuild
-    % Build Eyelink.mexa64:
+if mode==4
+    % Build Eyelink.mexa64: Needs Eyelink SDK (eyelink_core component) from SR-Research.
+    % See https://www.sr-research.com/support/docs.php?topic=linuxsoftware for install instructions.
     try
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Eyelink -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c" -leyelink_core -lc -lrt -ldl
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Eyelink -I/usr/include/EyeLink -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c" -leyelink_core -lc -lrt -ldl
     unix(['mv ../Projects/Linux/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
     catch
         disp(psychlasterror);

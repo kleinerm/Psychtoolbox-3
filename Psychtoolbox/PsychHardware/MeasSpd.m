@@ -29,14 +29,14 @@ function [spectrum,qual] = MeasSpd(S,meterType,syncMode)
 % syncMode = 'on':  Try to sync integration time with display, if meter supports it (default)
 % syncMode = 'off': Don't try to sync, even if meter supports it.
 %
-% 9/3/93		dhb		Added default handling of S.
-% 9/14/93		jms		Added global no hardware switch
-% 10/1/93		dhb		Removed print on error, passed qual on up
-% 10/4/93		dhb		Handle quality code 18 properly.
-% 1/16/94		jms		Removed 'exist' check and declared globals.
-% 2/20/94		dhb		Modified for CMETER.
-% 8/11/94		dhb		Handle sync mode error condition.
-% 9/7/94		dhb		Remove sync mode message.
+% 9/3/93        dhb     Added default handling of S.
+% 9/14/93       jms     Added global no hardware switch
+% 10/1/93       dhb     Removed print on error, passed qual on up
+% 10/4/93       dhb     Handle quality code 18 properly.
+% 1/16/94       jms     Removed 'exist' check and declared globals.
+% 2/20/94       dhb     Modified for CMETER.
+% 8/11/94       dhb     Handle sync mode error condition.
+% 9/7/94        dhb     Remove sync mode message.
 % 11/6/96       dhb     Remove extra call to CMETER('Measure').
 % 6/17/98       dhb     Add meterType switch.
 % 7/1/98        dhb,jmk Fix bug in switch.
@@ -68,20 +68,20 @@ try
         % PR-650
         case 1,
             [spectrum, qual] = PR650measspd(S,syncMode);
-            
+
         % PR-655
         case 4,
             [spectrum, qual] = PR655measspd(S,syncMode);
-            
+
         % PR-670
         case 5,
             [spectrum, qual] = PR670measspd(S,syncMode);
-            
+
         % PR-705
         case 6,
             qual = 0;
             spectrum = PR705measspd(S);
-            
+
         otherwise,
             error('Unknown meter type');
     end

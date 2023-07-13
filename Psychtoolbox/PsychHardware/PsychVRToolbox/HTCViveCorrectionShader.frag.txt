@@ -1,0 +1,38 @@
+// Undistortion shader implementing DPOLY3 undistortion for use on HTC Vive HMDs.
+// Ported from old versions of Monado and OpenGL 3+ to Psychtoolbox and OpenGL 2.1
+// by Mario Kleiner in the year 2023.
+//
+// The original shader code has the following authors, copyright and BSL-1 license:
+//
+// Copyright      2017, Philipp Zabel.
+// Copyright 2017-2019, Collabora, Ltd.
+// SPDX-License-Identifier: BSL-1.0
+// Author: Philipp Zabel <philipp.zabel@gmail.com>
+// Author: Lubosz Sarnecki <lubosz.sarnecki@collabora.com>
+
+uniform sampler2D warpTexture;
+uniform vec3 coeffs[3];
+uniform vec2 LensCenter;
+uniform float aspect_x_over_y;
+uniform float grow_for_undistort;
+
+void main()
+{
+    vec2 factor = 0.5 / (1.0 + grow_for_undistort) * vec2(1.0, aspect_x_over_y);
+    vec2 texCoord = 2.0 * gl_TexCoord[0].xy - vec2(1.0);
+
+    texCoord.y /= aspect_x_over_y;
+    texCoord -= LensCenter;
+
+    float r2 = dot(texCoord, texCoord);
+
+    vec3 d_inv = ((r2 * coeffs[2] + coeffs[1]) * r2 + coeffs[0]) * r2 + vec3(1.0);
+    vec3 d = 1.0 / d_inv;
+
+    const vec2 offset = vec2(0.5);
+    vec2 tc_r = offset + (texCoord * d.r + LensCenter) * factor;
+    vec2 tc_g = offset + (texCoord * d.g + LensCenter) * factor;
+    vec2 tc_b = offset + (texCoord * d.b + LensCenter) * factor;
+
+    gl_FragColor = vec4(texture2D(warpTexture, tc_r).r, texture2D(warpTexture, tc_g).g, texture2D(warpTexture, tc_b).b, 1.0);
+}

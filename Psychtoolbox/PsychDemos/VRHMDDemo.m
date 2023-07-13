@@ -46,6 +46,13 @@ if nargin < 3 || isempty(withGazeTracking)
   withGazeTracking = 0;
 end
 
+if withGazeTracking
+  % Tell that eyetracking is desired:
+  reqGazeTracking = 'Eyetracking ';
+else
+  reqGazeTracking = '';
+end
+
 if nargin < 4
   deviceindex = [];
 end
@@ -56,14 +63,17 @@ screenid = max(Screen('Screens'));
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 
+% Build final task requirements:
+basicReqs = ['NoTimingSupport NoTimestampingSupport ' reqGazeTracking];
+
 % We do collect timestamps for benchmarking, but don't require them to be especially precise or trustworthy:
 if ~stereoscopic
   % Setup the HMD to act as a regular "monoscopic" display monitor
   % by displaying the same image to both eyes:
-  hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'NoTimingSupport NoTimestampingSupport', [], [], deviceindex);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', basicReqs, [], [], deviceindex);
 else
   % Setup for stereoscopic presentation:
-  hmd = PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'NoTimingSupport NoTimestampingSupport', [], [], deviceindex);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Stereoscopic', basicReqs, [], [], deviceindex);
 end
 
 if isempty(hmd)
@@ -106,11 +116,18 @@ while ~KbCheck
     end
     Screen('FillOval', win, [mod(GetSecs, 1) 0 0], CenterRect([0 0 10 10], rect));
 
-    if withGazeTracking && eye == 0
+    if withGazeTracking
+      if eye == 0
+        state = PsychVRHMD('PrepareRender', hmd, [], 4);
+      end
+
       Screen('FrameArc',win, [0,1,1], CenterRect([0 0 500 500], rect), mod(GetSecs, 10) * 36, 10, 20);
-      state = PsychVRHMD('PrepareRender', hmd, [], 4);
-      if state.gazeStatus(1) >= 3
-        Screen('DrawDots', win, state.gazePos{1}, 5, [1, 0, 0], [], 1);
+      for i = 1:length(state.gazeStatus)
+        % fprintf('Eye %i: status %i pos = %i %i\n', i, state.gazeStatus(i), state.gazePos{i}(1), state.gazePos{i}(2));
+        % disp(state.gazeRayLocal{i}.gazeC);
+        if state.gazeStatus(i) >= 3
+          Screen('DrawDots', win, state.gazePos{i}, 5, [1, 0, i - 1], [], 1);
+        end
       end
     end
   end

@@ -91,6 +91,11 @@ if nargin < 5 || isempty(withGazeTracking)
     withGazeTracking = 0;
 end
 
+if withGazeTracking
+    % Tell that eyetracking is desired:
+    specialReqs = [specialReqs ' Eyetracking '];
+end
+
 canary = onCleanup(@sca);
 
 % Setup unified keymapping and unit color range:
@@ -408,7 +413,7 @@ while any(istate.Buttons)
 end
 
 % Part 3: Actual hand tracking and visualisation:
-if hmdinfo.handTrackingSupported
+if hmdinfo.handTrackingSupported || withGazeTracking
   % Number of fountain particles whose positions are computed on the GPU:
   nparticles = 10000;
 
@@ -678,15 +683,16 @@ if hmdinfo.handTrackingSupported
       % Visualize 3D gaze direction if requested, but only in left eye
       % view, because we only track one gaze ray and viz in both eyes gets
       % confusing:
-      if (withGazeTracking >= 2) && (state.gazeStatus(1) >= 3) && (renderPass == 0)
+      if (withGazeTracking >= 2) && (length(state.gazeStatus) >= renderPass + 1) && ...
+         (state.gazeStatus(renderPass + 1) >= 3)
         % Draw an orange wired cone marker to visualize gaze direction by
         % rendering a complex 3D object in a eye-reference frame specified
         % coordinate system. We use the global 4x4 OpenGL transformation
         % matrix provided by gaze tracking:
         glColor4f(0.17, 0.2, 0, 0.3);
         glPushMatrix;
-        glMultMatrixd(state.gazeGlobalMat{1});
-        glutWireCone(0.001, 3, 10, 10);
+        glMultMatrixd(state.gazeGlobalMat{renderPass + 1});
+        glutWireCone(0.001, 15, 10, 10);
         glPopMatrix;
 
         % Draw a 5 meters long green gaze-ray, using the gaze ray equation
@@ -695,13 +701,13 @@ if hmdinfo.handTrackingSupported
         % eye, and the gaze direction vector 'dv', along the optical axis /
         % looking direction of that eye -- equivalent to the negative
         % z-axis of the eye gaze reference frame:
-        tv = state.gazeRayGlobal{1}.gazeC;
-        dv = state.gazeRayGlobal{1}.gazeD;
+        tv = state.gazeRayGlobal{renderPass + 1}.gazeC;
+        dv = state.gazeRayGlobal{renderPass + 1}.gazeD;
 
         glColor3f(1,0,1);
         glBegin(GL.LINES);
         glVertex3dv(tv);
-        vp = tv + dv * 5;
+        vp = tv + dv * 15;
         glVertex3dv(vp);
         glEnd;
       end
@@ -769,8 +775,9 @@ if hmdinfo.handTrackingSupported
       Screen('EndOpenGL', win);
 
       % Visualize tracked left-eye 2D gaze position in left-eye view, if any:
-      if withGazeTracking && (renderPass == 0) && (state.gazeStatus(1) >= 3)
-          Screen('DrawDots', win, state.gazePos{1}, 5, [1, 0, 0]);
+      if withGazeTracking && (length(state.gazeStatus) >= renderPass + 1) && ...
+         (state.gazeStatus(renderPass + 1) >= 3)
+          Screen('DrawDots', win, state.gazePos{renderPass + 1}, 5, [1, 0, 0]);
       end
 
       % Repeat for renderPass of other eye:

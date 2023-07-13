@@ -1,15 +1,18 @@
 % CalDemo
 %
-% Demonstrates basic use of the PsychCal calibraiton structure and routines.
+% Demonstrates basic use of the PsychCal calibration structure and routines.
 %
 % See also PsychCal, DKLDemo, RenderDemo, DumpMonCalSpd
 %
-% 1/15/07	dhb		Wrote it.
+% 1/15/07   dhb     Wrote it.
 % 9/27/08   dhb     Prompt for filename.  Clean up plot labels
 %           dhb     Prompt for gamma method.
 % 5/08/14   npc     Modifications for accessing calibration data using a @CalStruct object.
 % 7/9/14    dhb     Made this work with PTB original or new object oriented
 %                   calibration code (available in the BrainardLabToolbox on gitHub).
+% 6/30/23   mk      Remove assumption of hardware always having a 256 slots gamma clut.
+%                   It doesn't on most modern systems with modern hardware. Instead get
+%                   size from gammaTable.
 
 % Clear
 % clear; close all
@@ -24,7 +27,6 @@ if (isempty(newFileName))
     newFileName = defaultFileName;
 end
 fprintf(1,'\nLoading from %s.mat\n',newFileName);
-commandwindow;
 cal = LoadCalFile(newFileName);
 fprintf('Calibration file %s read\n\n',newFileName);
     
@@ -96,7 +98,6 @@ title('Device Gamma');
 % Set inversion method.  See SetGammaMethod for information on available
 % methods.
 defaultGammaMethod = 0;
-commandwindow;
 gammaMethod = input(sprintf('Enter gamma method [%d]:',defaultGammaMethod));
 if (isempty(gammaMethod))
     gammaMethod = defaultGammaMethod;
@@ -108,7 +109,7 @@ else
 end
              
 % Make the desired linear output, then convert.
-linearValues = ones(3,1)*linspace(0,1,256);
+linearValues = ones(3,1)*linspace(0,1,size(gammaTable, 1));
 clutValues = PrimaryToSettings(calStructOBJ,linearValues);
 predValues = SettingsToPrimary(calStructOBJ,clutValues);
 

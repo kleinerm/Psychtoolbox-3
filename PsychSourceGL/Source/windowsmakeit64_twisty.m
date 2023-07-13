@@ -241,8 +241,8 @@ if onoctave == 0
     if what == 15
         % Build PsychVulkanCore for 64-Bit Matlab:
         % Needs the official Vulkan SDK for 64-Bit Windows for at least
-        % Vulkan 1.1 installed under C:\VulkanSDK\1.2.189.2
-        mex -outdir ..\Projects\Windows\build -output PsychVulkanCore -DPTBMODULE_PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L"C:\VulkanSDK\1.2.189.2\Lib" -I"C:\VulkanSDK\1.2.189.2\Include" -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
+        % Vulkan 1.1 installed under C:\VulkanSDK\1.3.246.1
+        mex -outdir ..\Projects\Windows\build -output PsychVulkanCore -DPTBMODULE_PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L"C:\VulkanSDK\1.3.246.1\Lib" -I"C:\VulkanSDK\1.3.246.1\Include" -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
         movefile(['..\Projects\Windows\build\PsychVulkanCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -501,23 +501,33 @@ else
     if what == 15
         % Build PsychVulkanCore.mex for 64-bit Octave:
         % Needs the official Vulkan SDK for 64-Bit Windows for at least
-        % Vulkan 1.1 installed under C:\VulkanSDK\1.2.189.2
+        % Vulkan 1.1 installed under C:\VulkanSDK\1.3.246.1
         try
-            mexoctave --output ..\Projects\Windows\build\PsychVulkanCore.mex -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX -LC:\VulkanSDK\1.2.189.2\Lib -IC:\VulkanSDK\1.2.189.2\Include -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
+            mexoctave --output ..\Projects\Windows\build\PsychVulkanCore.mex -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX -LC:\VulkanSDK\1.3.246.1\Lib -IC:\VulkanSDK\1.3.246.1\Include -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
             movefile(['..\Projects\Windows\build\PsychVulkanCore.' mexext], target);
         catch
             disp(psychlasterror);
         end
     end
 
-    if what == 16 && false % DISABLED FOR NOW. NO FUNDED WORK TIME TO FIX THIS UP.
+    if what == 16
         % Build PsychOpenXRCore.mex for 64-Bit Octave:
         % Needs the official Khronos OpenXR SDK for 64-Bit Windows from
         % https://github.com/KhronosGroup/OpenXR-SDK
         % installed side-by-side to the Psychtoolbox-3 folder, so that it
         % shares the same parent folder as Psychtoolbox-3.
+        %
+        % Note: A statically linked openxr_loader.lib, built with MSVC does not
+        % work with Octave, because it depends on MSVC runtime libraries, so
+        % linking during build-time would fail. Therefore we MSVC build a dynamic
+        % openxr_loader.dll in a separate builddll\ subdirectory and link against
+        % that library via a pure openxr_loader.lib import library. This works
+        % with Octave when storing the openxr_loader.dll alongside PsychOpenXRCore.mex.
+        %
+        % It may also work with Matlab, but this is so far not verified.
+        % TODO: Verify and reunite by Matlab also using the openxr_loader.dll.
         try
-            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\build\win64\src\loader\Release -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
+            mexoctave --output ..\Projects\Windows\build\PsychOpenXRCore.mex -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -L..\..\..\OpenXR-SDK\builddll\win64\src\loader\RelWithDebInfo -I..\..\..\OpenXR-SDK\include -ICommon\Base -IWindows\Base -ICommon\PsychOpenXRCore Windows\Base\*.c Common\Base\*.c Common\PsychOpenXRCore\*.c kernel32.lib user32.lib winmm.lib opengl32.lib openxr_loader.lib
             movefile(['..\Projects\Windows\build\PsychOpenXRCore.' mexext], target);
         catch
             disp(psychlasterror);

@@ -703,7 +703,7 @@ void PsychReleaseScreen(int screenNumber)
     return;
 }
 
-psych_bool PsychIsScreenCaptured(screenNumber)
+psych_bool PsychIsScreenCaptured(int screenNumber)
 {
     return(PsychCheckScreenSettingsLock(screenNumber));
 }

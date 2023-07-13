@@ -208,7 +208,7 @@ PsychError EyelinkGetQueuedData(void)
 		if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: doing item of type %d\n",type);
 		switch(type) {
 			case SAMPLE_TYPE:
-				if (eyelink_get_float_data(&fs) != type) {
+				if (eyelink_get_float_data((ALLF_DATA*) &fs) != type) {
 					PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same sample type as eyelink_get_next_data.");
 				}
 				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on sample\n");
@@ -293,7 +293,7 @@ PsychError EyelinkGetQueuedData(void)
 				break;
 				
 			default: // it is an event
-				if (eyelink_get_float_data(&fe) != type) {
+				if (eyelink_get_float_data((ALLF_DATA*) &fe) != type) {
 					PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same event type as eyelink_get_next_data.");
 				}
 				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on event\n");

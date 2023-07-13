@@ -125,8 +125,9 @@ if mode==3
 end
 
 if mode==4 && ~neurodebianbuild
-    % Build Eyelink.mex:
-    mex --output ../Projects/Linux/build/Eyelink.mex -Wno-date-time -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt -ldl
+    % Build Eyelink.mex: Needs Eyelink SDK (eyelink_core component) from SR-Research.
+    % See https://www.sr-research.com/support/docs.php?topic=linuxsoftware for install instructions.
+    mex --output ../Projects/Linux/build/Eyelink.mex -Wno-date-time -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I/usr/include/EyeLink -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target]);
 end
 

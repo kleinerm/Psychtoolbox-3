@@ -1,0 +1,31 @@
+Setting LIBUSB_DEBUG via PsychTweak() had no effect! Must set in powershell via
+$env:LIBUSB_DEBUG = 4
+
+Control Transfer: Not implemented / supported by HID backend.
+
+Supported with WinUSB backend if WinUSB driver installed for PowerMate via zadig app.,
+seems to succeed, but does not have any effect on PowerMate.
+
+----
+Bulk/Interrupt OUT transfer: 1 extra Byte written for reportId 0, no read-past-buffer OK. Why only 1 Byte?
+Upstream fix, ETA libusb 1.0.27: https://github.com/libusb/libusb/pull/1217
+
+Remaining bug -> OS WriteFile does not write more than 2 Bytes! No conceivable obvious bugs in HID backend.
+
+-> Works perfect with WinUSB backend if WinUSB driver installed for PowerMate via zadig app.
+
+----
+
+Bulk/Interrupt IN transfer: 1 extra Byte read for reportId 0, maybe 2:
+-> Needs 1 extra byte for reportId 0 for HID devs which don't support reportId, e.g., PowerMate.
+
+BUG:
+Does not compensate for length + 1 extra byte! Copies one byte too much -> Write 1 Byte past PsychHID buffer!
+
+BUG FIX:
+
+Upstream, ETA libusb 1.0.27: https://github.com/libusb/libusb/pull/1217
+
+PsychHID Workaround: 396ae58654a6ff690f03bac7eeab6812ca221cb6
+
+-> Works perfect with WinUSB backend if WinUSB driver installed for PowerMate via zadig app.

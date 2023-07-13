@@ -606,13 +606,13 @@ const char* PsychSupportStatus(void)
         // Query macOS version and machine processor architecture:
         osMinor = PsychGetOSXMinorVersion(&isARM);
 
-        // Only macOS 12 is officially supported:
-        isSupported = (!isARM && (osMinor - 5 == 12)) ? 1 : 0;
+        // Only macOS 13 Intel is officially supported:
+        isSupported = (!isARM && (osMinor - 5 == 13)) ? 1 : 0;
 
         if (osMinor <= 15) {
             // macOS 10 family is done, although there's some chance it still works back to 10.11, but who knows?
             sprintf(statusString, "macOS version 10.%i is no longer tested or officially supported for this Psychtoolbox release.", osMinor);
-        } else if (osMinor - 5 <= 11) {
+        } else if (osMinor - 5 <= 12) {
             // Now unsupported macOS 11+
             sprintf(statusString, "macOS version %i is no longer tested or officially supported for this Psychtoolbox release.", osMinor - 5);
         } else {

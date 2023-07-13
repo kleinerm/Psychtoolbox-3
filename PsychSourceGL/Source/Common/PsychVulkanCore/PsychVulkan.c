@@ -418,6 +418,7 @@ static psych_bool addDeviceExtension(VkExtensionProperties* exts, unsigned int e
 
 psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex, psych_bool* hasHDR, psych_bool* hasHDRLocalDimming, psych_bool* hasTiming, psych_bool* hasWait)
 {
+    int i;
     VkResult result;
     psych_bool rc = FALSE;
 
@@ -443,8 +444,11 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
         goto deviceExtensions_out;
     }
 
-    if (verbosity > 3)
-        printf("PsychVulkanCore-INFO: GPU %i: Probing %i device extensions against required set.\n", gpuIndex, deviceExtensionsCount);
+    if (verbosity > 4) {
+        printf("PsychVulkanCore-INFO: GPU %i: Probing the following %i device extensions against required set.\n", gpuIndex, deviceExtensionsCount);
+        for (i = 0; i < deviceExtensionsCount; i++)
+            printf("PsychVulkanCore-INFO: %i. device extension is '%s'.\n", i, deviceExtensions[i].extensionName);
+    }
 
     // First request all mandatory extensions we need for any Psychtoolbox use case:
     if (!addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_SWAPCHAIN_EXTENSION_NAME) ||
@@ -562,6 +566,11 @@ void PsychVulkanCheckInit(psych_bool dontfail)
         goto instance_init_out;
     }
 
+    if (verbosity >= 5) {
+        for (i = 0; i < instanceExtensionsCount; i++)
+            printf("PsychVulkanCore-INFO: %i. instance extension is '%s'.\n", i, instanceExtensions[i].extensionName);
+    }
+
     // Check if minimum set of required instance extensions exist and enable/request them, if so:
     if (!addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_SURFACE_EXTENSION_NAME) ||
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME) ||
@@ -574,9 +583,12 @@ void PsychVulkanCheckInit(psych_bool dontfail)
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_XLIB_SURFACE_EXTENSION_NAME) ||
         #endif
 
+        #if defined(VK_USE_PLATFORM_XLIB_XRANDR_EXT)
+        !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_EXT_ACQUIRE_XLIB_DISPLAY_EXTENSION_NAME) ||
+        #endif
+
         #if defined(VK_USE_PLATFORM_DISPLAY_KHR)
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_DISPLAY_EXTENSION_NAME) ||
-        !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_EXT_ACQUIRE_XLIB_DISPLAY_EXTENSION_NAME) ||
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME)
         #endif
 

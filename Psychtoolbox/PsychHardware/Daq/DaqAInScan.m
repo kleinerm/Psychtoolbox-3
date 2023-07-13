@@ -280,6 +280,10 @@ function [data,params]=DaqAInScan(daq,options)
 %
 % 9/26/16 mk  Runs on Matlab R2013a and later, replacing the deprecated bitcmp function
 %             for handling of 12 bit differential channels on non-USB 1608FS. Untested.
+%
+% 5/17/23 mk  Try to fix issue with data loss / data misalignment if used in livedata
+%             mode with DaqAInScanContinue and more than 1 input channel, cfe.
+%             https://psychtoolbox.discourse.group/t/sampling-frequency-of-analogue-input/4780/10
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -461,6 +465,9 @@ persistent  snomax;
 % Remembers the DAQ serial number each time options.begin is 1
 persistent  daqsno;
 
+% Remember overflowing reports from previous call to this function:
+persistent overflowreports;
+
 if options.begin
     % It might be running, so stop it.
     % hex2dec('12') is 18.
@@ -561,6 +568,9 @@ if options.begin
 
     % Initialise max report's serial number on last read so that first number is 0:
     snomax = -1 ;
+
+    % Initialise overflowreports to empty for this daq:
+    overflowreports{daq} = [];
 
 % options.begin is 0, so check if options.continue or options.end is 1 and
 % make sure that the correct daq was specified -- js
@@ -704,7 +714,7 @@ if options.continue
     % interrupt IN endpoints in interfaces 1-3 as input reports with a
     % report ID of 0. The last two bytes are a sequential index,
     % "reports.serial".
-    if isfinite(options.count)
+    if isfinite(options.count) || ~isfield(options,'ReleaseTime')
         % Perform exactly one pass per interface:
         for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
             % Tell PsychHID to receive reports, storing them internally.
@@ -887,16 +897,36 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
             fprintf('\n');
         end
     end
-    % Return times.
-    params.times=[reports.time];
-    % Extract the data from the reports.
-    data=[];
-    for k=1:length(reports)
-        data=[data reports(k).report(1:bytes)];
+
+    % If there are any overflowreports retained from a previous iteration
+    % then prefix them to the new reports:
+    if ~isempty(overflowreports{daq})
+        reports = [overflowreports{daq} reports];
+        overflowreports{daq} = [];
     end
-    
+
+    % Find cutoff, so number of reports is a multiple of channel count c:
+    repcutoff = length(reports) - mod(length(reports), c);
+
+    % Copy all reports up to the cutoff point:
+    data = [];
+    for k = 1:repcutoff
+        data = [data reports(k).report(1:bytes)];
+        params.times(k) = reports(k).time;
+    end
+
+    % Anything beyond the cutoff is cached for the next call to DaqAInScan(),
+    % ie. this current postfix of reports becomes the new prefix for next call:
+    overflowreports{daq} = reports(repcutoff+1:length(reports));
+
+    if isempty(data)
+        fprintf('Nothing received.\n');
+        return
+    end
+
     % Combine two bytes for each reading.
     data = double(data(1:2:end))+double(data(2:2:end))*256;
+
     % Discard any extra 16-bit words at the end of the last report.
     if length(data)>c*options.count
         if 2*(length(data)-options.count*c)>60
@@ -904,15 +934,17 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
         end
         data=data(1:c*options.count);
     end
-    if c*options.count>length(data)
-        if isfinite(options.count)
-            fprintf('Missing %.1f sample/channel, %.0f bytes.\n',options.count-length(data)/c,2*(options.count*c-length(data)));
-        end
-        options.count=floor(length(data)/c);
-        data=data(1:c*options.count);
+
+    % Less data than requested at end of scan?
+    if options.end && isfinite(options.count) && (c * options.count > length(data))
+        fprintf('Missing %.1f sample/channel, %.0f bytes.\n',options.count-length(data)/c,2*(options.count*c-length(data)));
     end
-    data=reshape(data,c,options.count)';
-    
+
+    % Truncate data, so it can be reshaped for multi-channel, ie. for c > 1:
+    options.count = floor(length(data) / c);
+    data = data(1:c*options.count);
+    data = reshape(data, c, options.count)';
+
     range=ones([1 size(data,2)]);
     if ~isempty(options.range)
         if length(options.range)~=size(data,2)

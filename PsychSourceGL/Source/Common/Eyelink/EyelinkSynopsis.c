@@ -103,7 +103,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[version, versionString]  = Eyelink('GetTrackerVersion')";
 	synopsis[i++] = "[time =] Eyelink('TrackerTime')";
 	synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
-	synopsis[i++] = "[status] = Eyelink('ImageTransfer', imagePath [, xPosition=0][, yPosition=0][, width=0][, height=0][, trackerXPosition=0][, trackerYPosition=0][, xferoptions=0])";
+	synopsis[i++] = "[status] = Eyelink('ImageTransfer', imagePathOrImageMatrix [, xPosition=0][, yPosition=0][, width=0][, height=0][, trackerXPosition=0][, trackerYPosition=0][, xferoptions=0])";
 	
 	synopsis[i++] = "\n% Eyelink Velocity related functions:";
 	synopsis[i++] = "[vel, acc, fsample]= Eyelink('CalculateOverallVelocityAndAcceleration' [, sample_model])";

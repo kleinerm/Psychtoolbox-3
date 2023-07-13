@@ -1,6 +1,6 @@
 % Psychtoolbox/PsychHardware/Daq/
 % The Daq Toolbox
-% Control the USB-1208FS or USB-1608FS (see below) data acquisition device. 
+% Control a USB-1024LS, USB-1208FS, USB-1408FS, or USB-1608FS data acquisition device.
 %
 % The Daq Toolbox is a set of functions providing communication with
 % a particular USB data acquisition device (daq): the USB-1208FS made by

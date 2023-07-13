@@ -10,7 +10,7 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % point framebuffer on the latest hardware. This allows for an effective 23
 % bits of precision in all math done and in the final stimuli - more than
 % any display device in existence could resolve. On previous generation
-% hardware (older than NVidia Geforce 88000 or ATI Radeon HD2000), alpha
+% hardware (older than NVidia Geforce 8800 or ATI Radeon HD2000), alpha
 % blending isn't supported in 32 bpc float precision. Therefore the demo
 % will select 16 bpc floating point precision, where alpha blending works.
 % This way the effective precision is 11 bits, a bit less than what special
@@ -38,34 +38,25 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % clever color rendering trick. See "help CreatePseudoGrayLUT" for
 % references and details.
 %
-% 'Native10Bit' - Enables the native 10 bpc framebuffer support on ATI
-% Radeon X1xxx / HDxxx GPU's when used under Linux or OS/X with the
-% PsychtoolboxKernelDriver loaded (see "help PsychtoolboxKernelDriver" on
-% how to do that). These GPU's do support 10 bits per color channel when
-% this special mode is used. This also works with properly configured NVidia
-% GPU's under Linux, and with NVidia Quadro and AMD Fire gpu's under
-% some versions of MS-Windows.
+% 'Native10Bit' - Enables the native 10 bpc framebuffer support on all supported
+% GPUs. All gpus from AMD since ~2006, Intel since around ~2010 and NVidia since
+% around ~2008 support this on Linux. This also works similar modern with NVidia
+% Quadro and AMD Fire professional gpu's ounder MS-Windows.
 %
-% 'Native11Bit' - Enables the native ~11 bpc framebuffer support on ATI
-% Radeon X1xxx / HDxxx GPU's when used under Linux or OS/X with the
-% PsychtoolboxKernelDriver loaded (see "help PsychtoolboxKernelDriver" on
-% how to do that). These GPU's do support ~11 bits per color channel when
-% this special mode is used (11 bits red, 11 bits green, 10 bits blue).
+% 'Native11Bit' - Enables the native ~11 bpc framebuffer support on some ATI
+% Radeon X1xxx / HDxxx GPU's with DCE-8 to DCE-12 display engine when used under
+% Linux. These GPU's do support ~11 bits per color channel when this special mode
+% is used (11 bits red, 11 bits green, 10 bits blue).
 %
 % 'Native16Bit' - Enables the native up to 16 bpc framebuffer support on AMD
-% GPU's when used under Linux . While this activates a 16 bpc framebuffer,
-% the precision of the video output signal depends on the specific gpu, connection
-% and display. As of 2014, the "Sea Islands" AMD gpu family can output at most
-% 12 bpc precision to suitable displays over HDMI or DisplayPort. This mode needs
-% special configuration of your system and use of the Linux open-source graphics
-% drivers. If you can do with 10 bpc or 11 bpc, 'Native10Bit' or 'Native11Bit' are
-% much easier to use and setup and provide higher performance.
+% GPU's when used under Linux with Vulkan display backend. While this activates
+% a 16 bpc framebuffer, the precision of the video output signal depends on the
+% specific gpu, connection and display. As of 2023, the "Sea Islands" AMD gpu
+% family and later can output at most 12 bpc precision to suitable displays over
+% HDMI or DisplayPort.
 %
 % 'Native16BitFloat' - Enable native 16 bit floating point (~11 bit linear)
 % framebuffer support on suitable operating systems and graphics cards.
-% As of July 2019 only NVidia GeForce 1000 and later under Windows-10 is known
-% to support this. macOS emulates it in software with bad timing and performance,
-% and varying success.
 %
 % 'VideoSwitcher' - Enable the Xiangrui Li et al. VideoSwitcher, a special
 % type of video attenuator (see "help PsychVideoSwitcher") in standard
@@ -121,13 +112,8 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % The fifth optional parameter 'useVulkan' if provided and set to 1, will try
 % to use a Vulkan based display backend, instead of the standard OpenGL based
 % display backend. See "help PsychVulkan" for system requirements and caveats.
-%
-%
-% Please note: Most of these modes only show expected results when the
-% proper devices are attached and calibrated. All modes will work even on
-% standard graphics without special devices, but you'll just see a false
-% color image, as the standard GPU's can't interpret the special
-% framebuffer encodings.
+% You need to set useVulkan to 1 on Linux to get Native16Bit or Native16BitFloat
+% mode on AMD graphics under Linux.
 %
 % The demo shows two superimposed sine wave gratings in the center of the
 % screen. You can shift the 2nd grating up and down in subpixel steps by
