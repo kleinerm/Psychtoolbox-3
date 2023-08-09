@@ -1097,6 +1097,8 @@ struct macModel {
     int  panelHeight;
     int  panelWidthMM;
 } macModels[] = {
+    { "iMac20,1", 5120, 2880, 0 },
+    { "iMac20,2", 5120, 2880, 0 },
     { "iMacPro1,1", 5120, 2880, 0 },
     { "iMac15,1", 5120, 2880, 0 },
     { "iMac17,1", 5120, 2880, 0 },
