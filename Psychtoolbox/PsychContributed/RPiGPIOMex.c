@@ -7,7 +7,7 @@
 
   ------------------------------------------------------------------------------
 
-  Copyright (C) 2016 Mario Kleiner
+  Copyright (C) 2016 - 2023 Mario Kleiner
 
   This program is licensed under the MIT license.
 
@@ -57,7 +57,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 
     if (nrhs < 2) {
         mexPrintf("%s: A simple Octave MEX file for basic control of the RaspberryPi GPIO pins under GNU/Linux.\n\n", me);
-        mexPrintf("(C) 2016 Mario Kleiner -- Licensed to you under the MIT license.\n");
+        mexPrintf("(C) 2016 - 2023 Mario Kleiner -- Licensed to you under the MIT license.\n");
         mexPrintf("This file is part of Psychtoolbox-3 but should also work independently.\n\n");
         mexPrintf("Pin numbers are in Broadcom numbering scheme aka BCM_GPIO numbering.\n");
         mexPrintf("Mapping to physical connector pins and other restrictions and pin properties can be found at\n");
@@ -86,6 +86,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         mexPrintf("result = %s(5, pin, timeoutMsecs);\n", me);
         mexPrintf("- Wait for rising/falling edge on input pin number 'pin' with a timeout of 'timeoutMsecs': -1 = Infinite wait.\n");
         mexPrintf("  Return 'result' status code: -1 = error, 0 = timed out, 1 = trigger received.\n");
+        mexPrintf("  Usually only available if running Octave as non-root.\n");
         mexPrintf("  Pin must be configured as input and edge trigger type must be setup via the gpio utility.\n\n");
 
         return;
@@ -100,14 +101,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         // Gpio mode for full support, otherwise Sysmode for only basic
         // digital i/o.
         //
-        // We use native Broadcom GPIO pin numbering:
-        rc = wiringPiSetupSys();
-        sysMode = 1;
-
+        // We will use native Broadcom GPIO pin numbering:
         if (!geteuid()) {
-            // Upgrade to root access mode:
+            // Root - Upgrade to root access mode:
             rc = wiringPiSetupGpio();
             sysMode = 0;
+        }
+        else {
+            // Standard sys mode:
+            rc = wiringPiSetupSys();
+            sysMode = 1;
         }
 
         if (rc) {
@@ -163,7 +166,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
                 mexErrMsgTxt("New opmode for pin missing for pin mode configuration.");
 
             if (sysMode)
-                mexErrMsgTxt("PWM control unsupported in sys mode! Must run as root via sudo to use this!");
+                mexErrMsgTxt("Pin input/output direction control unsupported in sys mode! Must run as root via sudo to use this!");
 
             pinMode(pin, arg ? OUTPUT : INPUT);
             break;
@@ -173,7 +176,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
                 mexErrMsgTxt("New pullup/down for pin missing for pin resistor configuration.");
 
             if (sysMode)
-                mexErrMsgTxt("PWM control unsupported in sys mode! Must run as root via sudo to use this!");
+                mexErrMsgTxt("Pullup/Pulldown control unsupported in sys mode! Must run as root via sudo to use this!");
 
             pullUpDnControl(pin, (arg == 0) ? PUD_OFF : ((arg > 0) ? PUD_UP : PUD_DOWN));
             break;
@@ -185,6 +188,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             rc = waitForInterrupt(pin, arg);
             plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
             *(mxGetPr(plhs[0])) = (double) rc;
+
+            if (rc == -2)
+                mexErrMsgTxt("Wait for trigger unsupported in this mode! Probably only works in non-root mode.");
+
             break;
 
         default:
