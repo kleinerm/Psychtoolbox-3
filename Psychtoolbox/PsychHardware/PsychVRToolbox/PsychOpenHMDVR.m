@@ -627,7 +627,7 @@ if cmd == 0
     glBindTexture(GL.TEXTURE_2D, hmd{handle}.inTex(i));
     glBegin(GL.QUADS);
     if i == 1
-      ipd = -hmd{handle}.ipd;
+      ipd = -hmd{handle}.ipd / 2;
       glTexCoord2d(ipd + 0,  0);
       glVertex3d(  -1, -1, 0);
       glTexCoord2d(ipd + 1,  0);
@@ -637,7 +637,7 @@ if cmd == 0
       glTexCoord2d(ipd + 0,  1);
       glVertex3d(  -1,  1, 0);
     else
-      ipd = +hmd{handle}.ipd;
+      ipd = +hmd{handle}.ipd / 2;
       glTexCoord2d(ipd + 0,  0);
       glVertex3d(   0, -1, 0);
       glTexCoord2d(ipd + 1,  0);
