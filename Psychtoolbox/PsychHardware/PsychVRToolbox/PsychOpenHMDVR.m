@@ -763,9 +763,13 @@ if strcmpi(cmd, 'PrepareRender')
         gaze(3).Status = 1;
     end
 
-    % Fixme: Orientation part is wrong, needs 4D quaternion, not normalized 3D row,pitch,yaw stuff!
-    gaze(1).GazePose = [srLastSample(6:8) / 1000, srLastSample(3:5)];
-    gaze(2).GazePose = [srLastSample(16:18) / 1000, srLastSample(13:15)];
+    % Swap eye center / translation between left eye and right eye, to compensate
+    % for a bug in the SRAnipal runtime on at least HTC Vive Pro Eye:
+    gaze(1).GazePose = [srLastSample(16:18) / 1000, srLastSample(3:5)];
+    gaze(2).GazePose = [srLastSample(6:8) / 1000, srLastSample(13:15)];
+
+    % Need to switch sign of x-axis position of cyclops eye due to HTC eye switching bug above!
+    srLastSample(26) = -srLastSample(26);
     gaze(3).GazePose = [srLastSample(26:28) / 1000, srLastSample(23:25)];
 
     gaze(1).gazeEyeOpening = srLastSample(9);
