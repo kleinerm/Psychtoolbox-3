@@ -918,9 +918,19 @@ if strcmpi(cmd, 'PrepareRender')
         gaze(3).Status = 1;
     end
 
-    % Fixme: Orientation part is wrong, needs 4D quaternion, not normalized 3D row,pitch,yaw stuff!
-    gaze(1).GazePose = [srLastSample(6:8) / 1000, srLastSample(3:5)];
-    gaze(2).GazePose = [srLastSample(16:18) / 1000, srLastSample(13:15)];
+    if 1
+      % Swap eye center / translation between left eye and right eye, to compensate
+      % for a bug in the SRAnipal runtime on at least HTC Vive Pro Eye:
+      gaze(1).GazePose = [srLastSample(16:18) / 1000, srLastSample(3:5)];
+      gaze(2).GazePose = [srLastSample(6:8) / 1000, srLastSample(13:15)];
+      % Need to switch sign of x-axis position of cyclops eye due to HTC eye switching bug above!
+      srLastSample(26) = -srLastSample(26);
+    else
+      % Normal assignment for left and right eye:
+      gaze(1).GazePose = [srLastSample(6:8) / 1000, srLastSample(3:5)]; %#ok<UNRCH> 
+      gaze(2).GazePose = [srLastSample(16:18) / 1000, srLastSample(13:15)];
+    end
+
     gaze(3).GazePose = [srLastSample(26:28) / 1000, srLastSample(23:25)];
 
     gaze(1).gazeEyeOpening = srLastSample(9);
@@ -1049,9 +1059,6 @@ if strcmpi(cmd, 'PrepareRender')
 
             % Mysterious negation hack needed with SRAnipal:
             gazeM(1:3, 3) = -gazeM(1:3, 3);
-
-            % Eye center x is wrong!
-            gazeM(1, 4) = -gazeM(1, 4);
           end
 
           % Store estimated eye opening and pupil diameter:
