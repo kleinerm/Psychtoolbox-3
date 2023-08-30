@@ -103,7 +103,7 @@ if exist('mininag', 'var') && (mininag > 0)
     else
         fprintf('IMPORTANT NEWS:\n\n');
         fprintf('You can now financially contribute to Psychtoolbox sustainability, upkeep and continued\n');
-        fprintf('improvement by buying a community membership, which also includes some paid support\n');
+        fprintf('improvement by buying a paid support membership, which provides some paid support\n');
         fprintf('for questions regarding its use, or issues you may have with it. We also offer paid\n');
         fprintf('feature development and other useful commercial services.\n');
     end
@@ -112,22 +112,6 @@ if exist('mininag', 'var') && (mininag > 0)
     fprintf('\n\n');
 
     if mininag == 1
-        % Advertise our user survey 2022/2023:
-        fprintf('ADDITIONAL NEWS: Psychtoolbox user survey 2022/2023!\n');
-        fprintf('\n');
-        fprintf('We kindly ask you to fill out our user survey, so that we can better understand the needs\n');
-        fprintf('and wishes of our community. Your answers will greatly help us to shape the future of Psychtoolbox.\n');
-        fprintf('\n');
-        fprintf('The survey is conducted by our host for all commercial services and matters, the\n');
-        fprintf('“Medical Innovations Incubator GmbH, Tuebingen, Germany”.\n');
-        fprintf('\n');
-        fprintf('As a thank you for participation, you will receive a discount code for your next\n');
-        fprintf('Psychtoolbox Support Membership purchase after completing the survey.\n');
-        fprintf('\n');
-        fprintf('Use the following link to the survey form if you want to participate:\n');
-        fprintf('\n');
-        fprintf('https://t.co/NOiTOWW0v4\n');
-        fprintf('\n\n');
     end
 
     return;
@@ -153,7 +137,7 @@ while length(answer)~=1 || ~ismember(answer, ['y', 'n'])
 end
 
 if ~strcmpi(answer, 'y')
-    fprintf('A community membership with paid support can be bought as described above. Bye.\n');
+    fprintf('A paid support membership can be bought as described above. Bye.\n');
     return;
 end
 
