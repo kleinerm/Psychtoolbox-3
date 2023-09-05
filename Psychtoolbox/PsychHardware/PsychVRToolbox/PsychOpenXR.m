@@ -2796,19 +2796,35 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % Yes. Use this instead of standard PsychOpenXRCore provided eye tracking OpenXR extensions:
       fprintf('PsychOpenXR-INFO: Trying to enable HTC SRAnipal eye tracking for this session.\n');
 
-      % Initialize eyetracker connection:
-      if SRAnipalMex(0)
-        % Start data acquisition:
-        SRAnipalMex(2);
+      % Perform an eye gaze tracking query via OpenXR extensions. We don't
+      % care about the actual result, but on HTC devices like this one,
+      % this will force-load/link the SRanipal.dll which is contained /
+      % bundled within HTC's installed driver software for Vive devices
+      % into the Matlab/Octave process, as HTC's OpenXR gaze tracking
+      % extension is just a thin wrapper around HTC's SRanipal api and
+      % runtime, specifically their XR_EXT_eye_gaze_interaction extension
+      % simply calls SRanipal's GetEyeData_v2() function, then translates
+      % and returns the data in OpenXR format. As our SRAnipalMex file also
+      % has a load-time dependency on SRanipal.dll, this should allow our
+      % mex file to load and link without trouble - or so goes the theory:
+      PsychOpenXRCore('GetTrackingState', handle, [], 4);
 
-        % Upgrade eyeTrackingSupported:
-        % +1 "Basic" monocular/single gazevector
-        % +2 Binocular/separate left/right eye gaze
-        % +1024 HTC SRAnipal eye tracking in use
-        hmd{handle}.eyeTrackingSupported = 1 + 2 + 1024;
-      else
-        warning('HTC SRAnipal eye tracker startup failed! Eye tracking disabled!');
-        hmd{handle}.eyeTrackingSupported = 0;
+      % Initialize eyetracker connection:
+      try
+        if SRAnipalMex(0)
+          % Start data acquisition:
+          SRAnipalMex(2);
+
+          % Upgrade eyeTrackingSupported:
+          % +1 "Basic" monocular/single gazevector
+          % +2 Binocular/separate left/right eye gaze
+          % +1024 HTC SRAnipal eye tracking in use
+          hmd{handle}.eyeTrackingSupported = 1 + 2 + 1024;
+        else
+          warning('HTC SRAnipal eye tracker startup failed! Trying more limited standard OpenXR eye tracking instead.');
+        end
+      catch
+        fprintf('PsychOpenXR-INFO: HTC SRAnipal runtime interface DLL unavailable. Trying more limited standard OpenXR eye tracking instead.\n');
       end
     end
   end
