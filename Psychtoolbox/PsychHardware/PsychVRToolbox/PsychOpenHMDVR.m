@@ -2140,17 +2140,22 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       fprintf('PsychOpenHMDVR-INFO: Trying to enable HTC SRAnipal eye tracking for this session.\n');
 
       % Initialize eyetracker connection:
-      if SRAnipalMex(0)
-        % Start data acquisition:
-        SRAnipalMex(2);
-
-        % Upgrade eyeTrackingSupported:
-        % +1 "Basic" monocular/single gazevector
-        % +2 Binocular/separate left/right eye gaze
-        % +1024 HTC SRAnipal eye tracking in use
-        hmd{handle}.eyeTrackingSupported = 1 + 2 + 1024;
-      else
-        warning('HTC SRAnipal eye tracker startup failed! Eye tracking disabled!');
+      try
+        if SRAnipalMex(0)
+          % Start data acquisition:
+          SRAnipalMex(2);
+    
+          % Upgrade eyeTrackingSupported:
+          % +1 "Basic" monocular/single gazevector
+          % +2 Binocular/separate left/right eye gaze
+          % +1024 HTC SRAnipal eye tracking in use
+          hmd{handle}.eyeTrackingSupported = 1 + 2 + 1024;
+        else
+          warning('HTC SRAnipal eye tracker startup failed! Eye tracking disabled!');
+          hmd{handle}.eyeTrackingSupported = 0;
+        end
+      catch
+        warning('HTC SRAnipal eye tracker runtime interface DLL unavailable! Eye tracking disabled!');
         hmd{handle}.eyeTrackingSupported = 0;
       end
     end
