@@ -714,7 +714,7 @@ if strcmpi(cmd, 'PrepareRender')
   end
 
   % Eyetracking data via SRAnipalMex requested?
-  if bitand(reqmask, 4) && bitand(myhmd.eyeTrackingSupported, 4)
+  if bitand(reqmask, 4) && bitand(myhmd.eyeTrackingSupported, 1024)
     % Get latest sample from SRAnipalMex:
     srLastSample = [];
     srCalibNeeded = 0;
@@ -775,6 +775,11 @@ if strcmpi(cmd, 'PrepareRender')
     gaze(1).gazeEyePupilDiameter = srLastSample(10);
     gaze(2).gazeEyePupilDiameter = srLastSample(20);
     gaze(3).gazeEyePupilDiameter = srLastSample(30);
+
+    % Pupil position in normalized 2D sensor space:
+    gaze(1).sensor2D = srLastSample(11:12);
+    gaze(2).sensor2D = srLastSample(21:22);
+    gaze(3).sensor2D = srLastSample(31:32);    
   else
     gaze = [];
   end
@@ -893,7 +898,8 @@ if strcmpi(cmd, 'PrepareRender')
         % Maybe a HTC SRAnipal runtime bug?
         gazeM(2, 1:3) = -gazeM(2, 1:3);
 
-        result.gazeLocalMat{i} = gazeM;
+        % Disabled, as impossible to make compatible with other implementations:
+        % result.gazeLocalMatNonPortable{i} = gazeM;
 
         % Compute gaze ray in XR device (HMD) local reference frame:
         result.gazeRayLocal{i}.gazeC = gazeM(1:3, 4);
@@ -903,7 +909,7 @@ if strcmpi(cmd, 'PrepareRender')
         if bitand(reqmask, 1)
           % Compute global gaze orientation matrix and gaze ray:
           gazeM = result.globalHeadPoseMatrix * gazeM;
-          result.gazeGlobalMat{i} = gazeM;
+          % Disabled, see gazeLocalMatNonPortable result.gazeGlobalMatNonPortable{i} = gazeM;
           result.gazeRayGlobal{i}.gazeC = gazeM(1:3, 4);
           result.gazeRayGlobal{i}.gazeD = gazeM(1:3, 3);
         end
@@ -1411,7 +1417,7 @@ if strcmpi(cmd, 'Close')
       hmd{myhmd.handle}.open = 0;
 
       % Was SRAnipalMex eyetracking active?
-      if bitand(hmd{myhmd.handle}.eyeTrackingSupported, 4) && hmd{myhmd.handle}.needEyeTracking
+      if bitand(hmd{myhmd.handle}.eyeTrackingSupported, 1024) && hmd{myhmd.handle}.needEyeTracking
         % Stop tracking:
         SRAnipalMex(3);
         % Shutdown tracker connection
@@ -2141,8 +2147,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % Upgrade eyeTrackingSupported:
         % +1 "Basic" monocular/single gazevector
         % +2 Binocular/separate left/right eye gaze
-        % +4 HTC SRAnipal eye tracking in use
-        hmd{handle}.eyeTrackingSupported = 1 + 2 + 4;
+        % +1024 HTC SRAnipal eye tracking in use
+        hmd{handle}.eyeTrackingSupported = 1 + 2 + 1024;
       else
         warning('HTC SRAnipal eye tracker startup failed! Eye tracking disabled!');
         hmd{handle}.eyeTrackingSupported = 0;
