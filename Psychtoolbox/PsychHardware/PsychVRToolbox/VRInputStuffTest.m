@@ -685,17 +685,7 @@ if hmdinfo.handTrackingSupported || withGazeTracking
       % confusing:
       if (withGazeTracking >= 2) && (length(state.gazeStatus) >= renderPass + 1) && ...
          (state.gazeStatus(renderPass + 1) >= 3)
-        % Draw an orange wired cone marker to visualize gaze direction by
-        % rendering a complex 3D object in a eye-reference frame specified
-        % coordinate system. We use the global 4x4 OpenGL transformation
-        % matrix provided by gaze tracking:
-        glColor4f(0.17, 0.2, 0, 0.3);
-        glPushMatrix;
-        glMultMatrixd(state.gazeGlobalMat{renderPass + 1});
-        glutWireCone(0.001, 15, 10, 10);
-        glPopMatrix;
-
-        % Draw a 5 meters long green gaze-ray, using the gaze ray equation
+        % Draw a 15 meters long gaze-ray, using the gaze ray equation
         % provided by gaze tracking, ie. global start position of the ray
         % 'tv', corresponding to the the estimated optical center of the
         % eye, and the gaze direction vector 'dv', along the optical axis /
