@@ -89,6 +89,7 @@
 %    MovingLineDemo          - Shows some horizontally moving lines to demonstrate flat panel display artifacts.
 %    MultiTouchDemo          - Shows how to get (multi-)touch input from touchscreens and touchpads.
 %    MultiTouchMinimalDemo   - Shows a more minimal example of how to get (multi-)touch input from touchscreens and touchpads.
+%    MultiTouchPinchDemo     - Shows how to detect and handle a two-finger pinch gesture on a touchscreen.
 %    NomogramDemo            - Compute photoreceptor nomograms.
 %    OldNewRecogExp          - A full old-new recognition experiment.
 %    OpenEXRImages           - Subfolder: OpenEXR HDR sample image files.
