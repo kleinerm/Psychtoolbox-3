@@ -175,8 +175,11 @@ try
         end
     end
 
-    % DataPixx or Bits# used? They allow advanced diagnostics.
-    if dpixx || BitsPlusPlus('OpenBits#')
+    % DataPixx or Bits# used? They allow advanced diagnostics. This does not yet
+    % work with the Vulkan display backend though, as the encoder tests would run
+    % with only a halfway initialized Vulkan display backend, which would cause
+    % the test stims to not get displayed on the video output and thereby test failure.
+    if (dpixx || BitsPlusPlus('OpenBits#')) && ~useVulkan
         fprintf('\n\nYou can run extended diagnostics and fixes if you answer the following question\n');
         fprintf('with yes. However, we recommend first running this script once, answering no. Then\n');
         fprintf('if that at least somewhat succeeds, save the closest to good result via ''s'' key,\n');
