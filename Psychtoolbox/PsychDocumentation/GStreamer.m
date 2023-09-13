@@ -87,11 +87,11 @@
 % <http://gstreamer.freedesktop.org/download/>
 %
 % The following GStreamer runtime packages have been lightly tested for compatibility
-% with Psychtoolbox 3.0.19.1, as of March 2023:
+% with Psychtoolbox 3.0.19.4, as of September 2023:
 %
-% For MS-Windows: 64-Bit Intel MSVC runtime v1.22.1 for use with 64-Bit Matlab/Octave.
+% For MS-Windows: 64-Bit Intel MSVC runtime v1.22.5 for use with 64-Bit Matlab/Octave.
 %
-% <https://gstreamer.freedesktop.org/data/pkg/windows/1.22.1/msvc/gstreamer-1.0-msvc-x86_64-1.22.1.msi>
+% <https://gstreamer.freedesktop.org/data/pkg/windows/1.22.5/msvc/gstreamer-1.0-msvc-x86_64-1.22.5.msi>
 %
 % You *must* install the MSVC variants of GStreamer, not the MinGW64 variants!
 %
