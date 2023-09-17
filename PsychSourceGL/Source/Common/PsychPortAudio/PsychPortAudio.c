@@ -2909,10 +2909,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
             break;
 
         case paPulseAudio:
-            // For PulseAudio we choose 15 msecs by default, lowering to 10 msecs if explicitely requested.
-            // These work on a "500 Euro class" PC from early 2019 with onboard sound (AMD Ryzen-5 2400G APU),
-            // 15 msecs everywhere, but 10 msecs only "crackle-free" with onboard HDA sound, not with iGPU DP/HDMI sound.
-            lowlatency = (latencyclass > 2) ? 0.010 : 0.015;
+            // Pulseaudio does not actually use .suggestedLatency, therefore this lowlatency setting
+            // is actually meaningless atm. Set it to something reasonable anyway:
+            lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
             break;
 
         default:            // Not the safest assumption for non-verified Api's, but we'll see...
@@ -2928,14 +2927,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // Especially on macOS 10.14 this seems to be neccessary for crackle-free playback: (Forum message #23422)
         if ((latencyclass <= 1) && (PSYCH_SYSTEM == PSYCH_OSX) && (outputParameters.suggestedLatency < 0.010))
             outputParameters.suggestedLatency = 0.010;
-
-        // For PulseAudio in high latency mode, make sure requested latency is at least 40 msecs, regardless what
-        // the reported defaultHighInputLatency/defaultHighOutputLatency is. As of the current PulseAudio hostApi
-        // prototype, reporting of these values makes no sense, so this hack should keep us going at least:
-        if ((latencyclass == 0) && (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paPulseAudio)) {
-            outputParameters.suggestedLatency = (outputParameters.suggestedLatency >= 0.040) ? outputParameters.suggestedLatency : 0.040;
-            inputParameters.suggestedLatency = (inputParameters.suggestedLatency >= 0.040) ? inputParameters.suggestedLatency : 0.040;
-        }
     }
     else {
         // Override provided: Use it.
