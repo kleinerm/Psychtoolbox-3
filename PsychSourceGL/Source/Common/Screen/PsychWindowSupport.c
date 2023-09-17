@@ -1676,11 +1676,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if ((*windowRecord)->stereomode==kPsychDualWindowStereo) printf("PTB-INFO: Stereo display via dual window output with imaging pipeline enabled.\n");
         if ((*windowRecord)->stereomode==kPsychFrameSequentialStereo) printf("PTB-INFO: Stereo display via non-native frame-sequential stereo method enabled.\n");
         if ((*windowRecord)->stereomode==kPsychDualStreamStereo) printf("PTB-INFO: Stereo display via dual-stream stereo for special consumers with imaging pipeline enabled.\n");
-        if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr((char*) glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
-            // User wants us to use client storage, but client storage is unavailable :(
-            printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
-            printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
-        }
 
         if (PsychPrefStateGet_3DGfx() > 0) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: depth-buffer and stencil buffer attached.\n");
         if (PsychPrefStateGet_3DGfx() & 2) printf("PTB-INFO: Additional accumulation buffer for OpenGL 3D graphics rendering attached.\n");

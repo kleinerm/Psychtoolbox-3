@@ -301,7 +301,7 @@ PsychError SCREENMakeTexture(void)
     // Is texture storage in planar format explicitely requested by usercode? Do the gpu and its size
     // constraints on textures support planar storage for this image?
     // Can a proper planar -> interleaved remapping GLSL shader be generated and assigned for this texture?
-    if ((usepoweroftwo == 4) && (numMatrixPlanes > 1) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) &&
+    if ((usepoweroftwo == 4) && (numMatrixPlanes > 1) && (windowRecord->gfxcaps & kPsychGfxCapFBO) &&
         (ySize * numMatrixPlanes <= windowRecord->maxTextureSize) && PsychAssignPlanarTextureShaders(textureRecord, windowRecord, numMatrixPlanes)) {
         // Yes: Use the planar texture storage fast-path.
         planar_storage = TRUE;
@@ -330,7 +330,7 @@ PsychError SCREENMakeTexture(void)
     // We allocate our own intermediate conversion buffer unless this is
     // creation of a single-layer luminance8 integer texture from a single
     // layer uint8 input matrix and client storage is disabled. In that case, we can use a zero-copy path:
-    if ((isImageMatrixBytes && (numMatrixPlanes == 1) && (!usefloatformat) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures)) ||
+    if ((isImageMatrixBytes && (numMatrixPlanes == 1) && !usefloatformat) ||
         (isImageMatrixBytes && planar_storage && !(windowRecord->imagingMode & kPsychNeedHDRWindow))) {
         // Zero copy path:
         texturePointer = NULL;

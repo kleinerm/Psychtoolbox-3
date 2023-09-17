@@ -22,11 +22,6 @@
 % that only has very small amounts of VRAM, e.g., only 16 MB or 8 MB VRAM.
 %
 %
-% 2 == kPsychDontCacheTextures: A setting of 2 asks Psychtoolbox not to
-% cache used textures in the graphics hardware local VRAM memory. This will
-% save some VRAM memory at the expense of lower drawing performance. Only
-% useful on gfx-hardware with low amounts of VRAM and only works on
-% MacOS/X. The flag is silently ignored on Windows and Linux.
 %
 %
 % 4 == kPsychOverrideWglChoosePixelformat: This is a workaround for broken
