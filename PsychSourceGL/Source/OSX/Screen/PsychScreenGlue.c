@@ -297,6 +297,7 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
         if ((modes[i].flags & (1 << 25)) && (modes[i].scale == 1) && (modes[i].depth == targetDepthCode) &&
             (modes[i].freq == current_mode->freq)) {
             optimal_mode = &modes[i];
+
             if (verbosity > 3)
                 printf("PTB-DEBUG: Optimal mode from auto-detect for timing on screenId %i at %i bpc: %dx%d@%.0f@d=%d@%iHz\n", screenNumber, targetBpc,
                    optimal_mode->width, optimal_mode->height, optimal_mode->scale, optimal_mode->depth, (int) optimal_mode->freq);
@@ -311,6 +312,7 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
             if ((modes[i].scale == 1) && (modes[i].depth == targetDepthCode) && (modes[i].freq == current_mode->freq) &&
                 (modes[i].width == targetWidth) && (modes[i].height == targetHeight)) {
                 optimal_mode = &modes[i];
+
                 if (verbosity > 3)
                     printf("PTB-DEBUG: Optimal mode from internal LUT for timing on screenId %i at %i bpc: %dx%d@%.0f@d=%d@%iHz\n", screenNumber, targetBpc,
                     optimal_mode->width, optimal_mode->height, optimal_mode->scale, optimal_mode->depth, (int) optimal_mode->freq);
@@ -349,6 +351,16 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
             return(TRUE);
         }
 
+        // Discard auto-selected mode if user script requests this, so fallback of just finding a mode
+        // with proper targetDepthCode triggers, keeping current modes resolution and refresh rate.
+        if (PsychPrefStateGet_ConserveVRAM() & kPsychDontSwitchToOptimalVidMode) {
+            if (verbosity > 2)
+                printf("PTB-INFO:PsychOSFixupFramebufferFormatForTiming: Ignoring optimal mode for screenId %i due to ConserveVRAM 2 user override.\n",
+                       screenNumber);
+
+            optimal_mode = NULL;
+        }
+
         // Need to switch mode to something more suitable:
         if (optimal_mode) {
             // There exists an optimal mode for the display, e.g., the native unscaled resolution
@@ -362,7 +374,7 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
         else {
             // Nope. Try to find a mode that matches the current one in all aspects, except its fb format being targetDepthCode:
             if (verbosity > 3) {
-                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in unsuitable format %i != %i for %i bpc.\n",
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in unsuitable mode, or format %i != %i for %i bpc.\n",
                        screenNumber, current_mode->depth, targetDepthCode, targetBpc);
                 printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Trying to switch to suitable mode with format %i.\n",
                        targetDepthCode);
@@ -376,6 +388,7 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
                     modes[i].freq == current_mode->freq &&
                     modes[i].depth == targetDepthCode && modes[i].scale == 1) {
                     target_mode_num = modes[i].mode;
+
                     if (verbosity > 3)
                         printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Switching to suitable mode %ix%i@%iHz.\n",
                                modes[i].width, modes[i].height, (int) modes[i].freq);
