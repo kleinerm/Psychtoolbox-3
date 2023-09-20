@@ -3,7 +3,9 @@ function makeftglplugin
 % PsychPlugins folder.
 
 if IsWin
-    if IsOctave
+    % For now, always use MSVC build-path, like with Matlab, as Octave method
+    % can not build a dll that works everywhere.
+    if IsOctave && false
         if Is64Bit
             % 64-Bit build with gcc:
             cmd = 'g++ -g -m64 -o libptbdrawtext_ftgl64.dll -fno-exceptions -shared -LC:\gstreamer\1.0\msvc_x86_64\lib -I. -IC:\gstreamer\1.0\msvc_x86_64\include\freetype2 -IC:\gstreamer\1.0\msvc_x86_64\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype'
@@ -20,7 +22,9 @@ if IsWin
         name = 'libptbdrawtext_ftgl64.dll';
 
         % Does our own self-buit fontconfig.lib import file already exist?
-        if ~exist('fontconfig.lib', 'file')
+        % UPDATE: This was needed for building against GStreamer 1.20, but
+        % is not needed right now for GStreamer 1.22, so disable:
+        if ~exist('fontconfig.lib', 'file') && false
             % No. Need to build it ourselves, as the one shipping with
             % GStreamer 1.20.5 is broken!
             fprintf('Generating our own fontconfig-1.lib import library now...\n');
