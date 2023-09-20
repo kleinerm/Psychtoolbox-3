@@ -1,17 +1,11 @@
 function windowsmakeit64_twisty(what, onoctave)
-% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-8 and Matlab.
-% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-8 if
-% all relevant SDK's, Compilers and libraries would be installed.
+% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-7 and Matlab.
 % This script is customized for MK's build machines "darlene" and "touchy",
 % building against the Windows-10 SDK on Windows-10 64-Bit.
 %
 
-if ~IsWin
-    error('%s must be run on MS-Windows!', mfilename);
-end
-
-if ~Is64Bit && ~IsOctave
-    error('%s must be run on MS-Windows within 32 or 64 Bit Octave 8 or within 64-Bit Matlab!', mfilename);
+if ~IsWin(1)
+    error('%s must be run on MS-Windows within 64 Bit Octave 7 or within 64-Bit Matlab!', mfilename);
 end
 
 if nargin < 1
@@ -44,7 +38,7 @@ if onoctave == 0
     % Matlab build:
     if what == 0
         % Default: Build Screen with GStreamer-1 support: Needs the
-        % www.gstreamer.freedesktop.org GStreamer-1.20.5+ SDK in the MSVC
+        % www.gstreamer.freedesktop.org GStreamer-1.22.0+ SDK in the MSVC
         % variant for 64-Bit Windows, or a later version of GStreamer. Use
         % this for verbose linker output: /VERBOSE:LIB
         clear Screen
@@ -101,7 +95,7 @@ if onoctave == 0
     end
 
     if what == 6
-        % Build moglcore on MS-Windows for Matlab 32/64 Bit:
+        % Build moglcore on MS-Windows for Matlab 64 Bit:
         %
         % Requires freeglut import libraries and header files which are bundled
         % inside the PsychSourceGL\Cohorts\freeglut folder of the PTB source distro.
@@ -113,13 +107,8 @@ if onoctave == 0
         clear moglcore;
 
         try
-            if IsWin(1)
-                % 64-Bit build:
-                mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
-            else
-                % 32-Bit build:
-                mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
-            end
+            % 64-Bit build:
+            mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
 
             movefile(['moglcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
         catch
@@ -164,13 +153,8 @@ if onoctave == 0
 
         try
             clear moalcore;
-            if Is64Bit
-                % 64-Bit R2007a or later build:
-                mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
-            else
-                % 32-Bit R2007a or later build:
-                mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win32" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
-            end
+            % 64-Bit R2007a or later build:
+            mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
 
             movefile(['moalcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
         catch
@@ -257,27 +241,19 @@ if onoctave == 0
     end
 else
     % Octave build:
-    if Is64Bit
-        target = [PsychtoolboxRoot 'PsychBasic\Octave8WindowsFiles64\'];
-    else
-        error('Building on 32-Bit Octave is not supported on Windows atm.');
-    end
+    target = [PsychtoolboxRoot 'PsychBasic\Octave8WindowsFiles64\'];
 
     if what == 0
         % Default: Build Screen.mex
         clear Screen;
 
         try
-            % Set override linker search path: GStreamer lib dir comes before Octaves mingw64/32 dir:
+            % Set override linker search path: GStreamer lib dir comes before Octaves mingw64 dir:
             [rc, oldoctavelinkoptions] = system('mkoctfile --print LDFLAGS');
             oldoctavelinkoptions = deblank(oldoctavelinkoptions);
             setenv('LDFLAGS', ['-LC:\gstreamer\1.0\msvc_x86_64\lib ' oldoctavelinkoptions]);
 
-            if Is64Bit
-                mexoctave -fno-exceptions --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\msvc_x86_64\lib -IC:\gstreamer\1.0\msvc_x86_64\include -IC:\gstreamer\1.0\msvc_x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\msvc_x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c Common\Screen\tinyexr.cc kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
-            else
-                mexoctave -fno-exceptions --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\msvc_x86\lib -IC:\gstreamer\1.0\msvc_x86\include -IC:\gstreamer\1.0\msvc_x86\include\gstreamer-1.0 -IC:\gstreamer\1.0\msvc_x86\include\glib-2.0 -IC:\gstreamer\1.0\msvc_x86\include\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86\lib\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\msvc_x86\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c Common\Screen\tinyexr.cc kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
-            end
+            mexoctave -fno-exceptions --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\msvc_x86_64\lib -IC:\gstreamer\1.0\msvc_x86_64\include -IC:\gstreamer\1.0\msvc_x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\msvc_x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c Common\Screen\tinyexr.cc kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
         catch
         end
 
@@ -299,18 +275,13 @@ else
         % Build PsychPortAudio.mex
         % If PsychPortAudio should support the proprietary ASIO sound backend, then add a: -DPTB_USE_ASIO
         %
-        % This needs a libportaudio_x86 compatible with mingw32 gcc. The way we do this
-        % is by taking the libportaudio_x86.dll from the PsychSound folder and copying
-        % it into the PsychSourceGL/Cohorts/PortAudio/MinGW32 folder, but with the file extension
-        % changed from .dll to .lib, ie. libportaudio_x86.lib - Weird but true, this makes
-        % mingws linker accept the file as input. Same procedure for libportaudio_x64.dll to
-        % libportaudio_x64.lib into targetfolder MinGW64 for 64-Bit builds.
+        % This needs a libportaudio_x64 compatible with mingw64 gcc. The way we do this
+        % is by taking the libportaudio_x64.dll from the PsychSound folder and copying
+        % it into the PsychSourceGL/Cohorts/PortAudio/MinGW64 folder, but with the file extension
+        % changed from .dll to .lib, ie. libportaudio_x64.lib - Weird but true, this makes
+        % mingws linker accept the file as input.
         clear PsychPortAudio
-        if Is64Bit
-            mexoctave --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW64 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64
-        else
-            mexoctave --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW32 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x86
-        end
+        mexoctave --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW64 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64
         movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], target);
     end
 
@@ -339,18 +310,12 @@ else
     end
 
     if what == 6
-        % Build moglcore.mex: Please note that 32-Bit moglcore.mex for Octave
-        % actually links against libfreeglut.a, *not* libfreeglut.lib in the
-        % lib folder!
+        % Build moglcore.mex:
         curdir = pwd;
         cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
         clear moglcore
         try
-            if Is64Bit
-                mexoctave --output moglcore.mex -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c gl_auto.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
-            else
-                mexoctave --output moglcore.mex -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib -I. windowhacks.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c gl_auto.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
-            end
+            mexoctave --output moglcore.mex -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c gl_auto.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
             movefile(['moglcore.' mexext], target);
         catch
             lasterr
@@ -362,13 +327,8 @@ else
         % Build Eyelink.mex
         clear Eyelink
         try
-            if Is64Bit
-                copyfile('C:\Program Files (x86)\SR Research\EyeLink\libs\x64\*.dll', '..\..\..\');
-                mexoctave -W'l,--enable-stdcall-fixup' --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I'C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink' -L..\..\.. -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib -leyelink_core64 -leyelink_w32_comp64
-            else
-                copyfile('C:\Program Files (x86)\SR Research\EyeLink\libs\*.dll', '..\..\..\');
-                mexoctave -W'l,--enable-stdcall-fixup' --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I'C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink' -L..\..\.. -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib -leyelink_core -leyelink_w32_comp
-            end
+            copyfile('C:\Program Files (x86)\SR Research\EyeLink\libs\x64\*.dll', '..\..\..\');
+            mexoctave -W'l,--enable-stdcall-fixup' --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I'C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink' -L..\..\.. -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib -leyelink_core64 -leyelink_w32_comp64
             movefile(['..\Projects\Windows\build\Eyelink.' mexext], target);
         catch
         end
@@ -378,41 +338,24 @@ else
     if what == 8
         % Build PsychKinectCore.mex:
         clear PsychKinectCore
-        if Is64Bit
-            mexoctave --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\msvc_x64 -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib
-        else
-            mexoctave --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\gcc -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
-        end
+        mexoctave --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\msvc_x64 -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib
         movefile(['..\Projects\Windows\build\PsychKinectCore.' mexext], target);
     end
 
     if what == 9
         % Build PsychHID.mex:
         clear PsychHID
-        if Is64Bit
-            mexoctave --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MinGW64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
-        else
-            mexoctave --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MinGW32\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
-        end
+        mexoctave --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MinGW64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], target);
     end
 
     if what == 10
-        % Build moalcore 32-Bit:
-        % For 32-Bit we copy the installed runtime DLL
-        % C:\Windows\SysWOW64\OpenAL32dll into the build folder and abuse that
-        % as import library for our mex file, as the import .lib of the SDK is
-        % unuseable by the linker.
-        % However, for 64-Bit strangely the .lib from the SDK works.
+        % Build moalcore 64-Bit:
         curdir = pwd;
         cd('../../Psychtoolbox/PsychSound/MOAL/source/')
         try
             clear moalcore
-            if Is64Bit
-                copyfile('C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64\OpenAL32.lib', '.\');
-            else
-                copyfile('C:\Windows\SysWOW64\OpenAL32.dll', '.\');
-            end
+            copyfile('C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64\OpenAL32.lib', '.\');
 
             mexoctave --output moalcore.mex -DWINDOWS -I'C:\Program Files (x86)\OpenAL 1.1 SDK\include' -L. moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
             movefile(['moalcore.' mexext], target);
@@ -420,11 +363,7 @@ else
             lasterr
         end
         % Remove stale object files:
-        if Is64Bit
-            delete('OpenAL32.lib');
-        else
-            delete('OpenAL32.dll');
-        end
+        delete('OpenAL32.lib');
         cd(curdir);
     end
 
@@ -443,26 +382,18 @@ else
     end
 
     if what == 12
-        % Build PsychOculusVRCore 32/64 Bit:
+        % Build PsychOculusVRCore 64 Bit:
         % Needs the Oculus VR SDK v 0.5.01 installed in side-by-side to
         % the Psychtoolbox-3 folder, ie., in the same parent directory, and
         % renamed from OculusSDK to OculusSDKWin. Needs to Oculus VR runtime
         % for Windows installed as well. Then we copy the installed runtime DLL
-        % C:\windows\system32\LibOVRRT64_0_5.dll or - for 32-Bit -
-        % C:\Windows\SysWOW64\LibOVRRT32_0_5.dll into the SDK folder and abuse that
+        % C:\windows\system32\LibOVRRT64_0_5.dll into the SDK folder and abuse that
         % as import library for our mex file. Weird but true - this seems to work!
         clear PsychOculusVRCore
-        if Is64Bit
-            try
-                copyfile('C:\windows\system32\LibOVRRT64_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
-            end
-            mexoctave --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT64_0_5
-        else
-            try
-                copyfile('C:\Windows\SysWOW64\LibOVRRT32_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
-            end
-            mexoctave --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT32_0_5
+        try
+            copyfile('C:\windows\system32\LibOVRRT64_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
         end
+        mexoctave --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT64_0_5
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], target);
     end
 
@@ -490,7 +421,6 @@ else
 
     if what == 14 && false
         % Build PsychOpenHMDVRCore.mex:
-        % Build PsychOpenHMDVRCore.mexa64:
         % Needs the OpenHMD v0.3.0+ SDK installed side-by-side to the Psychtoolbox-3
         % folder, so that it shares the same parent folder as Psychtoolbox-3,
         % and the SDK must be renamed to OpenHMD.
@@ -553,7 +483,7 @@ myvararg = cell();
 myvararg(end+1) = '-DPTBOCTAVE3MEX';
 myvararg(end+1) = '-Wno-multichar';
 myvararg(end+1) = '-Wno-unknown-pragmas';
-myvararg(end+1) = '-s'; % Strep mex/oct files to get them down to a reasonable size.
+myvararg(end+1) = '-s'; % Strip mex/oct files to get them down to a reasonable size.
 
 outarg = '';
 quoted = 0;
