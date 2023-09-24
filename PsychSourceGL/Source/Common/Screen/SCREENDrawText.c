@@ -1478,6 +1478,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
     char pluginPath[FILENAME_MAX];
     char pluginName[100];
     char pluginid[5];
+    double tDur;
     unsigned int retrycount = 0;
 
     // Try to load plugin if not already loaded: The dlopen call will search in all standard system
@@ -1650,8 +1651,16 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
         // Assign current level of verbosity:
         PsychPluginSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
 
-        // Try to initialize plugin:
+        // Try to initialize plugin, time duration of init:
+        tDur = PsychGetAdjustedPrecisionTimerSeconds(NULL);
         if (PsychPluginInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
+        // If duration of init is longer than typically expected, this could mean some non-standard cache rebuild happened, e.g.,
+        // a libfontconfig cache rebuild. Point this out, with possible pointers for troubleshooting if it happens too often:
+        tDur = PsychGetAdjustedPrecisionTimerSeconds(NULL) - tDur;
+        if ((tDur > 5) && (PsychPrefStateGet_Verbosity() > 2)) {
+            printf("PTB-INFO: Screen('DrawText') plugin init took relatively long (%f seconds). If this happens frequently, then you might\n", tDur);
+            printf("PTB-INFO: have a problem with fontconfig caches on your system. Read 'help DrawTextPlugin' for troubleshooting info in that case.\n");
+        }
 
         // Enable use of plugins internal fontMapper for selection of font file, face type and rendering
         // parameters, based on the font/text spec provided by us:
