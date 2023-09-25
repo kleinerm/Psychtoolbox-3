@@ -365,6 +365,11 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
         return(true);
     }
 
+    // Try to disable cpu idling, e.g., C-State transitions, in realtime mode, to reduce timing noise
+    // caused by processor (package) power state transitions:
+    if (!PsychOSDisableProcessorIdling(enable_realtime) && (PsychPrefStateGet_Verbosity() > 3))
+        printf("PTB-DEBUG: %s processor idling (e.g., ACPI C-State transitions) failed!\n", enable_realtime ? "Disabling" : "Enabling");
+
     // Transition requested:
     old_enable_realtime = enable_realtime;
 
