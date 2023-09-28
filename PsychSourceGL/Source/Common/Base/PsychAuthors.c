@@ -213,7 +213,16 @@ void InitPsychAuthorList(void)
         "Jabakhanji",
         "nj",
         "nuha@sr-research.com",
-        "http://sr-research.com"
+        "https://sr-research.com"
+    );
+    PsychAddAuthor(
+        // Eyelink toolbox:
+        "Brian",
+        "",
+        "Richardson",
+        "br",
+        "brian@sr-research.com",
+        "https://sr-research.com"
     );
 }
 
