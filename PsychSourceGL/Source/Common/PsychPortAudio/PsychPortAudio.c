@@ -19,24 +19,11 @@
  *        feedback with well controlled timing and low latency. Uses the free software
  *        PortAudio library, API Version 19 (http://www.portaudio.com), which has a MIT style license.
  *
- *        This seems to link statically against libportaudio.a on OS/X. However, it doesn't!
- *        Due to some restrictions of the OS/X linker we can't link statically against portaudio,
- *        so we have to have a .dylib version of the library installed in a system library
- *        search path, both for compiling and using PsychPortAudio. The current universal
- *        binary version of libportaudio.a for OS/X can be found in the...
- *        PsychSourceGL/Cohorts/PortAudio/ subfolder, which also contains versions for
- *        Linux and Windows.
- *
  */
 
 #include "PsychPortAudio.h"
 
 unsigned int verbosity = 4;
-
-// This is a define of the PulseAudio host api id. It will be 16, once a portaudio
-// version with PulseAudio support is officially released. Define it here, so we
-// can already build a driver that is able to handle paPulseAudio quirks:
-#define paPulseAudio 16
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "pa_mac_core.h"
@@ -5645,7 +5632,7 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     "Each struct contains information about its associated PortAudio device. The optional "
     "parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
     "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
-    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, probably 16=Linux/PulseAudio, 5=MacOSX/CoreAudio.\n\n"
+    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 16=Linux/PulseAudio, 5=macOS/CoreAudio.\n\n"
     "On macOS you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
     "On Linux you may have the choice between ALSA, JACK, PulseAudio and OSS. ALSA or JACK provide very low "
     "latencies and very good timing, OSS is an older system which is less capable and not in "
