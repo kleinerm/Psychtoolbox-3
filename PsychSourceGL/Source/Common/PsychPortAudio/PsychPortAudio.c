@@ -2968,6 +2968,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // specialFlags 16: Never dither audio data:
     if (specialFlags & 16) sflags |= paDitherOff;
 
+    // Assume no validation error, in case we skip Pa_IsFormatSupported() validation:
+    err = paNoError;
+
     #if PSYCH_SYSTEM == PSYCH_LINUX
         int major, minor;
 
@@ -2987,9 +2990,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
         //       function below will request very reasonable settings during execution, which the kernel happily accepts, e.g., only 15 kB in
         //       the same scenario. This way we can continue working against the flawed Portaudio library shipping with Ubuntu 20.10.
 
-        // Assume no validation error in case we skip Pa_IsFormatSupported() validation on pre-Linux 5.13 kernels:
-        err = paNoError;
-
         // Find out which kernel we are running on:
         PsychOSGetLinuxVersion(&major, &minor, NULL);
 
@@ -3002,19 +3002,25 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #endif
             err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
 
-    if ((err != paNoError) && (err != paDeviceUnavailable)) {
-        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
+    // Skip checking of prevalidation results - and error abort on trouble - if verbosity is lowered to <= 3.
+    // Default verbosity is 4, so this is done, but this allows to bypass acting on result of Pa_IsFormatSupported(),
+    // in case it is buggy in some way itself. Should help diagnose certain so far elusive failure cases:
+    if ((err != paNoError) && (err != paDeviceUnavailable) && (verbosity > 3)) {
+        printf("PTB-ERROR: Desired audio parameters for device %i seem to be unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
         if (err == paInvalidSampleRate) {
             printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
         } else if (err == paInvalidChannelCount) {
             printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+        } else if (err == paSampleFormatNotSupported) {
+            printf("PTB-ERROR: Seems the requested audio sample format is not supported by this combo of hardware and sound driver.\n");
         } else {
-            printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+            printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of timing, sample rate, audio channel count/allocation, or sample format.\n");
         }
 
         if (PSYCH_SYSTEM == PSYCH_LINUX)
             printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
-        PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
+
+        PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters. Prevalidation failure.");
     }
 
     // Try to create & open stream:
@@ -3032,10 +3038,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
     if (err != paNoError || stream == NULL) {
         printf("PTB-ERROR: Failed to open audio device %i. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));
         if (err == paDeviceUnavailable) {
-            printf("PTB-ERROR: Could not open audio device, most likely because it is already in use by a previous call to\n");
-            printf("PTB-ERROR: PsychPortAudio('Open', ...). You can open each audio device only once per session. If you need\n");
+            printf("PTB-ERROR: Could not open audio device, most likely because it is already in exclusive use by a previous call\n");
+            printf("PTB-ERROR: to PsychPortAudio('Open', ...). You can open each exclusive device only once per session. If you need\n");
             printf("PTB-ERROR: multiple independent devices simulated on one physical audio device, look into use of audio\n");
             printf("PTB-ERROR: slave devices. See help for this by typing 'PsychPortAudio OpenSlave?'.\n");
+
             PsychErrorExitMsg(PsychError_user, "Audio device unavailable. Most likely tried to open device multiple times.");
         }
         else {
@@ -3044,16 +3051,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
             } else if (err == paInvalidChannelCount) {
                 printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+            } else if (err == paSampleFormatNotSupported) {
+                printf("PTB-ERROR: Seems the requested audio sample format is not supported by this combo of hardware and sound driver.\n");
             } else {
-                printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+                printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of timing, sample rate, audio channel count/allocation, or sample format.\n");
             }
 
             if (PSYCH_SYSTEM == PSYCH_LINUX)
                 printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
-            PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
-        }
 
-        PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device.");
+            PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to some unsupported combination of audio parameters.");
+        }
     }
 
     // Setup our final device structure:
