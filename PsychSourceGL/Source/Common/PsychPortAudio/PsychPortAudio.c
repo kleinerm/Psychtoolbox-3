@@ -282,10 +282,10 @@ typedef struct PsychPADevice {
     psych_int64 readposition;       // Last read-out sample since start of capture.
     psych_int64 outchannels;        // Number of output channels.
     psych_int64 inchannels;         // Number of input channels.
-    unsigned int xruns;             // Number of over-/underflows of input-/output channel for this stream.
-    unsigned int paCalls;           // Number of callback invocations.
-    unsigned int noTime;            // Number of timestamp malfunction - Should not happen anymore.
+    psych_uint64 paCalls;           // Number of callback invocations.
+    psych_uint64 noTime;            // Number of timestamp malfunction - Should not happen anymore.
     psych_int64 batchsize;          // Maximum number of frames requested during callback invokation: Estimate of real buffersize.
+    unsigned int xruns;             // Number of over-/underflows of input-/output channel for this stream.
     double     predictedLatency;    // Latency that PortAudio predicts for current callbackinvocation. We will compensate for that when starting audio.
     double   latencyBias;           // A bias value to add to the value that PortAudio reports for total buffer->Speaker latency.
                                     // This value defaults to zero.
@@ -920,9 +920,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     // Query host API: Done without mutex held, as it doesn't change during device lifetime:
     hA=dev->hostAPI;
 
-    // Count number of timestamp failures:
-    if (timeInfo->currentTime == 0) dev->noTime++;
-
     // Only compute timestamps from raw data if we're not a slave:
     if (!isSlave) {
         // Buffer timestamp computation code:
@@ -943,7 +940,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         #if PSYCH_SYSTEM == PSYCH_LINUX
         // Enable realtime scheduling for our audio processing thread on ALSA and Pulseaudio backends.
         // Jack backend does setup by itself, OSS and ASIHPI don't matter anymore.
-        if ((dev->paCalls == 0xffffffff) && (hA == paALSA || hA == paPulseAudio)) {
+        if ((dev->paCalls == 0xffffffffffffffff) && (hA == paALSA || hA == paPulseAudio)) {
             int rc;
 
             // Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
@@ -1016,8 +1013,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         else {
             // Either known to need timestamp remapping, e.g., PulseAudio, or
             // not yet verified how these other audio APIs behave. Play safe
-            // and perform timebase remapping: This also needs our special fixed
-            // PortAudio version where currentTime actually has a value:
+            // and perform timebase remapping:
             if (dev->opmode & kPortAudioPlayBack) {
                 // Playback enabled: Use DAC time as basis for timing:
                 // Assign predicted (remapped to our time system) audio onset time for this buffer:
@@ -1075,8 +1071,15 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     // Cache requested state:
     reqstate = dev->reqstate;
 
+    // Reset to 0 start value on first invocation, before first increment:
+    if (dev->paCalls == 0xffffffffffffffff)
+        dev->paCalls = 0;
+
     // Count total number of calls:
     dev->paCalls++;
+
+    // Count number of timestamp failures:
+    if (timeInfo->currentTime == 0) dev->noTime++;
 
     // Keep track of maximum number of frames requested/provided:
     if (dev->batchsize < (psych_int64) framesPerBuffer) {
@@ -4750,7 +4753,6 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 
     // Reset statistics:
     audiodevices[pahandle].xruns = 0;
-    audiodevices[pahandle].noTime = 0;
     audiodevices[pahandle].captureStartTime = 0;
     audiodevices[pahandle].startTime = 0.0;
     audiodevices[pahandle].estStopTime = 0;
@@ -4972,7 +4974,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
             if (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) Pa_StopStream(audiodevices[pahandle].stream);
 
             // Reset paCalls to special value to mark 1st call ever:
-            audiodevices[pahandle].paCalls = 0xffffffff;
+            audiodevices[pahandle].paCalls = 0xffffffffffffffff;
 
             // Start engine:
             if ((err=Pa_StartStream(audiodevices[pahandle].stream))!=paNoError) {
@@ -5335,6 +5337,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     PsychGenericScriptType     *status;
     double currentTime;
     psych_int64 playposition, totalplaycount, recposition;
+    psych_uint64 nrtotalcalls, nrnotime;
 
     const char *FieldNames[]={    "Active", "State", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
         "XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate",
@@ -5368,6 +5371,8 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     totalplaycount = audiodevices[pahandle].totalplaycount;
     playposition = audiodevices[pahandle].playposition;
     recposition = audiodevices[pahandle].recposition;
+    nrtotalcalls = audiodevices[pahandle].paCalls;
+    nrnotime = audiodevices[pahandle].noTime;
     PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 
     // Atomic snapshot for remaining fields would only be needed for low-level debugging, so who cares?
@@ -5385,8 +5390,8 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     PsychSetStructArrayDoubleElement("ReadSecs", 0, ((double)(audiodevices[pahandle].readposition / audiodevices[pahandle].inchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
     PsychSetStructArrayDoubleElement("SchedulePosition", 0, audiodevices[pahandle].schedule_pos, status);
     PsychSetStructArrayDoubleElement("XRuns", 0, audiodevices[pahandle].xruns, status);
-    PsychSetStructArrayDoubleElement("TotalCalls", 0, audiodevices[pahandle].paCalls, status);
-    PsychSetStructArrayDoubleElement("TimeFailed", 0, audiodevices[pahandle].noTime, status);
+    PsychSetStructArrayDoubleElement("TotalCalls", 0, nrtotalcalls, status);
+    PsychSetStructArrayDoubleElement("TimeFailed", 0, nrnotime, status);
     PsychSetStructArrayDoubleElement("BufferSize", 0, (double) audiodevices[pahandle].batchsize, status);
     PsychSetStructArrayDoubleElement("CPULoad", 0, (Pa_IsStreamActive(audiodevices[pahandle].stream)) ? Pa_GetStreamCpuLoad(audiodevices[pahandle].stream) : 0.0, status);
     PsychSetStructArrayDoubleElement("PredictedLatency", 0, audiodevices[pahandle].predictedLatency, status);
