@@ -1177,6 +1177,25 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         }
     }
 
+    // Deal with a quirk of the initial Pulseaudio backend implementation. During engine startup, likely
+    // as part of audio buffer priming, the Pulseaudio backend delivers a stretch of invalid timestamps
+    // for the first bunch of paCallback calls. We can't schedule meaningfully during this startup, so
+    // better no-op by outputting silence until the situation rectifies after a bunch of iterations:
+    if (!isSlave && (hA == paPulseAudio) && (dev->paCalls == dev->noTime) && (timeInfo->currentTime == 0)) {
+        // Timestamps wrong/useless, so can not meaningfully proceed, as any kind of timestamp based sound
+        // onset/offset/schedule scheduling would go haywire. We try to no-op as good as possible, by
+        // outputting silence and returning control to PortAudio's thread:
+
+        // Release mutex here, as memset() only operates on "local" data:
+        PsychPAUnlockDeviceMutex(dev);
+
+        // Prime the outputbuffer with silence:
+        if (outputBuffer) memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
+
+        // Done:
+        return(paContinue);
+    }
+
     // Are we in a nominally "idle" / inactive state?
     if (dev->state == 0) {
         // We are effectively idle, but the engine shall keep running. This is usually
@@ -4868,6 +4887,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
     double repetitions = 1;
     double when = 0.0;
     double stopTime = DBL_MAX;
+    psych_bool waitStabilized = FALSE;
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4982,6 +5002,11 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
                 PsychErrorExitMsg(PsychError_system, "Failed to start PortAudio audio device.");
             }
 
+            // The Pulseaudio backend will deliver a batch of invalid timestamps during stream startup, so make
+            // sure we wait for timestamping to stabilize before returning control, and reset the fail counter:
+            if (audiodevices[pahandle].hostAPI == paPulseAudio)
+                waitStabilized = TRUE;
+
             // Reacquire lock:
             PsychPALockDeviceMutex(&audiodevices[pahandle]);
         }
@@ -5001,8 +5026,8 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
         PsychErrorExitMsg(PsychError_user, "Asked to 'waitForStart' of a slave device, but associated master device not even started! Deadlock avoided!");
     }
 
-    // Wait for real start of playback/capture?
-    if (waitForStart > 0) {
+    // Wait for real start of playback/capture? Or forced wait for timestamp stabilization?
+    if (waitForStart > 0 || waitStabilized) {
         // Device will be in state == 1 until playback really starts:
         // We need to enter the first while() loop iteration with
         // the device lock held from above, so the while() loop will iterate at
@@ -5010,6 +5035,18 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
         while (audiodevices[pahandle].state == 1 && Pa_IsStreamActive(audiodevices[pahandle].stream)) {
             // Wait for a state-change before reevaluating the .state:
             PsychPAWaitForChange(&audiodevices[pahandle]);
+        }
+
+        // Playback/Capture is now active. Under Pulseaudio that only happens after timestamping has
+        // stabilized, and has provided its first usable timestamps for proper audio timing, allowing
+        // actual start of playback/capture to happen. Report this, and reset the timestamp failure
+        // counter, as the batch of invalid timestamps during early startup has been dealt with:
+        if (waitStabilized) {
+            if (verbosity > 4)
+                printf("PTB-DEBUG: Timestamping stabilized after Pulseaudio stream startup: failed vs. total = %i / %i\n",
+                       (int) audiodevices[pahandle].noTime, (int) audiodevices[pahandle].paCalls);
+
+            audiodevices[pahandle].noTime = 0;
         }
 
         // Device has started (potentially even already finished for very short sounds!)
