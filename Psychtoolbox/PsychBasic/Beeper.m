@@ -28,45 +28,45 @@ function Beeper(frequency, fVolume, durationSec);
 % 12/2/00 Backus - original version
 persistent onetimedone;
 
-if ~exist('frequency', 'var')
-  frequency = 400;
+if ~exist('frequency', 'var') || isempty(frequency)
+    frequency = 400;
 end
 
-if ~exist('durationSec', 'var')
-  durationSec = 0.15;
+if ~exist('durationSec', 'var') || isempty(durationSec)
+    durationSec = 0.15;
 end
 
-if ~exist('fVolume', 'var')
+if ~exist('fVolume', 'var') || isempty(fVolume)
     fVolume = 0.4;
 else
     % Clamp if necessary
-    if (fVolume > 1.0)
+    if fVolume > 1.0
         fVolume = 1.0;
-    elseif (fVolume < 0)
+    elseif fVolume < 0
         fVolume = 0;
     end
 end
 
 if ischar(frequency)
-  if strcmp(lower(frequency), 'high') frequency = 1000; 
-  elseif strcmp(lower(frequency), 'med') frequency = 400;
-  elseif strcmp(lower(frequency), 'medium') frequency = 400;
-  elseif strcmp(lower(frequency), 'low') frequency = 220;
-  end
+    if strcmp(lower(frequency), 'high') frequency = 1000;
+    elseif strcmp(lower(frequency), 'med') frequency = 400;
+    elseif strcmp(lower(frequency), 'medium') frequency = 400;
+    elseif strcmp(lower(frequency), 'low') frequency = 220;
+    end
 end
 
 % Silence any console output of Snd():
 if isempty(onetimedone)
-  onetimedone = 1;
-  oldverbo = Snd('Verbosity', 1);
+    onetimedone = 1;
+    oldverbo = Snd('Verbosity', 1);
 else
-  oldverbo = Snd('Verbosity', 0);
+    oldverbo = Snd('Verbosity', 0);
 end
 
 sampleRate = Snd('DefaultRate');
 
 nSample = sampleRate*durationSec;
-soundVec = sin(2*pi*frequency*(1:nSample)/sampleRate);
+soundVec = sin(2*pi*frequency*(0:nSample-1)/sampleRate);
 
 % Scale down the volume
 soundVec = soundVec * fVolume;
