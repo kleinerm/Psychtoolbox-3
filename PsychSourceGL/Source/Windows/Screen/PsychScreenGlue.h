@@ -69,6 +69,7 @@ psych_bool              PsychOSIsKernelDriverAvailable(int screenId);
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
 const char*             PsychOSDisplayDPITrouble(unsigned int screenNumber);
+psych_bool PsychOSDisableProcessorIdling(psych_bool dontIdle);
 
 //end include once
 #endif

@@ -48,7 +48,14 @@
  *        of the DirectX/Direct3D driver settings may also affect OpenGL rendering and stimulus presentation.
  */
 
+// Must include initguid.h before Screen.h, and therefore before any windows includes, or
+// use of any GUID as part of power management setup won't work (build time link failure):
+#include <initguid.h>
+
 #include "Screen.h"
+
+// For power management control:
+#include <PowrProf.h>
 
 #ifndef WS_EX_LAYERED
 /* Define prototype for this function: */
@@ -344,6 +351,36 @@ BOOL CALLBACK PsychHostWindowEnumFunc(HWND hwnd, LPARAM passId)
     return(TRUE);
 }
 
+/* Disable (dontIdle = TRUE), or enable use of processor core idling by OS processor power management,
+ * return if mode switch worked (TRUE) or failed (FALSE). Disabling idling should, e.g., prevent the
+ * cpus from entering sleep states, ie. ACPI C states greater than C0. As C state transitions, especially
+ * from deeper C states, can be time consuming, they can cause significant execution timing jitter in the
+ * above 200 microseconds range, and thereby impair timing correctness tests, timing calibrations etc.
+ *
+ * Note that this will increase cpu utilization to permanent 100% on all cores and may cause drastic
+ * increase in power consumption and heat production! It should therefore generally not be used all
+ * the time, but only for short time intervals, e.g., during startup tests and calibrations.
+ *
+ * This functionality requires Windows Vista and later, or build time failure will happen.
+ */
+psych_bool PsychOSDisableProcessorIdling(psych_bool dontIdle)
+{
+    GUID* activeScheme;
+
+    if (PowerGetActiveScheme(NULL, &activeScheme) ||
+        PowerWriteACValueIndex(NULL, activeScheme, &GUID_PROCESSOR_SETTINGS_SUBGROUP, &GUID_PROCESSOR_IDLE_DISABLE, dontIdle ? 1 : 0) ||
+        PowerWriteDCValueIndex(NULL, activeScheme, &GUID_PROCESSOR_SETTINGS_SUBGROUP, &GUID_PROCESSOR_IDLE_DISABLE, dontIdle ? 1 : 0) ||
+        PowerSetActiveScheme(NULL, activeScheme)) {
+        // Failed to switch processor idle mode!
+        return(FALSE);
+    }
+
+    // Give processor power management a bit of time to latch into the new state:
+    PsychYieldIntervalSeconds(0.010);
+
+    // Success:
+    return(TRUE);
+}
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority in M$-Windows.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(2) would do in Matlab).

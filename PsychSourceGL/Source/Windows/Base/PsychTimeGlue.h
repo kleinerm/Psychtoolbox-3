@@ -74,7 +74,6 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask);
 const char* PsychSupportStatus(void);
 double PsychOSMonotonicToRefTime(double monotonicTime);
 double PsychOSRefTimeToMonotonicTime(double refInputTime);
-psych_bool PsychOSDisableProcessorIdling(psych_bool dontIdle);
 
 //end include once
 #endif
