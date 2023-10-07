@@ -367,6 +367,11 @@ psych_bool PsychOSDisableProcessorIdling(psych_bool dontIdle)
 {
     GUID* activeScheme;
 
+    // No-Op with success return if env variable PSYCH_DONT_DISABLE_CPU_IDLING is defined,
+    // for testing or for interop with cpu tweaking tools - settable via PsychTweak():
+    if (getenv("PSYCH_DONT_DISABLE_CPU_IDLING"))
+        return(TRUE);
+
     if (PowerGetActiveScheme(NULL, &activeScheme) ||
         PowerWriteACValueIndex(NULL, activeScheme, &GUID_PROCESSOR_SETTINGS_SUBGROUP, &GUID_PROCESSOR_IDLE_DISABLE, dontIdle ? 1 : 0) ||
         PowerWriteDCValueIndex(NULL, activeScheme, &GUID_PROCESSOR_SETTINGS_SUBGROUP, &GUID_PROCESSOR_IDLE_DISABLE, dontIdle ? 1 : 0) ||
