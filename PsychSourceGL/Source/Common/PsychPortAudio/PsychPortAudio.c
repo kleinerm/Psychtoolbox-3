@@ -241,6 +241,7 @@ psych_bool    uselocking = TRUE;                // Use Mutex locking and signall
 psych_bool    lockToCore1 = TRUE;               // NO LONGER USED: Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
 psych_bool    pulseaudio_autosuspend = TRUE;    // Should we try to suspend the Pulseaudio sound server on Linux while we're active?
 psych_bool    pulseaudio_isSuspended = FALSE;   // Is PulseAudio suspended by us?
+unsigned int  workaroundsMask = 0;              // Bitmask of enabled workarounds.
 
 double debugdummy1, debugdummy2;
 
@@ -1853,7 +1854,7 @@ const char** InitializeSynopsis(void)
     synopsis[i++] = "count = PsychPortAudio('GetOpenDeviceCount');";
     synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype] [, deviceIndex]);";
     synopsis[i++] = "\nGeneral settings:\n";
-    synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1] [, audioserver_autosuspend]);";
+    synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend, workarounds] = PsychPortAudio('EngineTunables' [, yieldInterval][, MutexEnable][, lockToCore1][, audioserver_autosuspend][, workarounds]);";
     synopsis[i++] = "oldRunMode = PsychPortAudio('RunMode', pahandle [,runMode]);";
     synopsis[i++] = "\n\nDevice setup and shutdown:\n";
     synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels][, specialFlags=0]);";
@@ -2940,27 +2941,31 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // Execute check if Linux is 5.13+, skip otherwise with err = paNoError. Our setup will always execute the check on non-Linux:
         if ((major > 5) || (major == 5 && minor >= 13))
     #endif
-            err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
+            if (!(workaroundsMask & 0x2)) // Only perform test if not disabled by workaround bit 1.
+                err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
 
-    // Skip checking of prevalidation results - and error abort on trouble - if verbosity is lowered to <= 3.
-    // Default verbosity is 4, so this is done, but this allows to bypass acting on result of Pa_IsFormatSupported(),
-    // in case it is buggy in some way itself. Should help diagnose certain so far elusive failure cases:
-    if ((err != paNoError) && (err != paDeviceUnavailable) && (verbosity > 3)) {
-        printf("PTB-ERROR: Desired audio parameters for device %i seem to be unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
-        if (err == paInvalidSampleRate) {
-            printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
-        } else if (err == paInvalidChannelCount) {
-            printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
-        } else if (err == paSampleFormatNotSupported) {
-            printf("PTB-ERROR: Seems the requested audio sample format is not supported by this combo of hardware and sound driver.\n");
-        } else {
-            printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of timing, sample rate, audio channel count/allocation, or sample format.\n");
+    if ((err != paNoError) && (err != paDeviceUnavailable)) {
+        if (verbosity > 0) {
+            printf("PTB-ERROR: Desired audio parameters for device %i seem to be unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
+            if (err == paInvalidSampleRate) {
+                printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
+            } else if (err == paInvalidChannelCount) {
+                printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+            } else if (err == paSampleFormatNotSupported) {
+                printf("PTB-ERROR: Seems the requested audio sample format is not supported by this combo of hardware and sound driver.\n");
+            } else {
+                printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of timing, sample rate, audio channel count/allocation, or sample format.\n");
+            }
+
+            if (PSYCH_SYSTEM == PSYCH_LINUX)
+                printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
         }
 
-        if (PSYCH_SYSTEM == PSYCH_LINUX)
-            printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
-
-        PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters. Prevalidation failure.");
+        // Only abort on test failure if workaround bit 0 not set:
+        if (!(workaroundsMask & 0x1))
+            PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters. Prevalidation failure.");
+        else
+            err = paNoError;
     }
 
     // Try to create & open stream:
@@ -5844,7 +5849,7 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
  */
 PsychError PSYCHPORTAUDIOEngineTunables(void)
 {
-    static char useString[] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1] [, audioserver_autosuspend]);";
+    static char useString[] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend, workarounds] = PsychPortAudio('EngineTunables' [, yieldInterval][, MutexEnable][, lockToCore1][, audioserver_autosuspend][, workarounds]);";
     static char synopsisString[] =
     "Return, and optionally set low-level tuneable driver parameters.\n"
     "The driver must be idle, ie., no audio device must be open, if you want to change tuneables! "
@@ -5873,23 +5878,26 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
     "can interfere with low level audio device access and low-latency / high-precision audio timing. "
     "For this reason it is a good idea to switch them to standby (suspend) while a PsychPortAudio "
     "session is active. Sometimes this isn't needed or not even desireable. Therefore this option "
-    "allows to inhibit this automatic suspending of audio servers.\n";
+    "allows to inhibit this automatic suspending of audio servers.\n"
+    "'workarounds' A bitmask to enable various workarounds: +1 = Ignore Pa_IsFormatSupported() errors, "
+    "+2 = Don't even call Pa_IsFormatSupported().\n";
 
     static char seeAlsoString[] = "Open ";
 
-    int mutexenable, mylockToCore1, mysuspend;
+    int mutexenable, mylockToCore1, mysuspend, myworkaroundsMask;
     double myyieldInterval;
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(5));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(4));    // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(5));    // The maximum number of outputs
 
     // Make sure no settings are changed while an audio device is open:
-    if ((PsychGetNumInputArgs() > 0) && (audiodevicecount > 0)) PsychErrorExitMsg(PsychError_user, "Tried to change low-level engine parameter while at least one audio device is open! Forbidden!");
+    if ((PsychGetNumInputArgs() > 0) && (audiodevicecount > 0))
+        PsychErrorExitMsg(PsychError_user, "Tried to change low-level engine parameter while at least one audio device is open! Forbidden!");
 
     // Return current/old audioserver_suspend:
     PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) ((pulseaudio_autosuspend) ? 1 : 0));
@@ -5909,7 +5917,9 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
 
     // Get optional new yieldInterval:
     if (PsychCopyInDoubleArg(1, kPsychArgOptional, &myyieldInterval)) {
-        if (myyieldInterval < 0 || myyieldInterval > 0.1) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'yieldInterval' provided. Valid are between 0.0 and 0.1 seconds.");
+        if (myyieldInterval < 0 || myyieldInterval > 0.1)
+            PsychErrorExitMsg(PsychError_user, "Invalid setting for 'yieldInterval' provided. Valid are between 0.0 and 0.1 seconds.");
+
         yieldInterval = myyieldInterval;
         if (verbosity > 3) printf("PsychPortAudio: INFO: Engine yieldInterval changed to %lf seconds.\n", yieldInterval);
     }
@@ -5932,6 +5942,19 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
         if (mylockToCore1 < 0 || mylockToCore1 > 1) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'lockToCore1' provided. Valid are 0 and 1.");
         lockToCore1 = (mylockToCore1 > 0) ? TRUE : FALSE;
         if (verbosity > 3) printf("PsychPortAudio: INFO: Locking of all engine threads to cpu core 1 %s.\n", (lockToCore1) ? "enabled" : "disabled");
+    }
+
+    // Return current/old workarounds mask:
+    PsychCopyOutDoubleArg(5, kPsychArgOptional, workaroundsMask);
+
+    // Get optional workaroundsMask:
+    if (PsychCopyInIntegerArg(5, kPsychArgOptional, &myworkaroundsMask)) {
+        if (myworkaroundsMask < 0)
+            PsychErrorExitMsg(PsychError_user, "Invalid setting for 'workarounds' provided. Valid are values >= 0.");
+
+        workaroundsMask = myworkaroundsMask;
+
+        if (verbosity > 3) printf("PsychPortAudio: INFO: Setting workaroundsMask to %i.\n", workaroundsMask);
     }
 
     return(PsychError_none);
