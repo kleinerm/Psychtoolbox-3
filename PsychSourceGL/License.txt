@@ -97,15 +97,6 @@
 % licensed PortAudio library from http://portaudio.com - The specific license text is
 % included below in the licenses section.
 %
-% Older versions of Psychtoolbox (v3.0.14 and earlier) used a modified version
-% of PortAudio and DLL's, static and dynamic libraries built from it. For documentation
-% purposes and until further notice, the source code of this MIT licensed library and of
-% all modifications we made can be found in a Psychtoolbox C-Sourcecode download in
-% the subfolder PsychSourceGL/Cohorts/PortAudio/. Building from this source code would
-% yield the old libraries for older < v3.0.15 Psychtoolbox versions. We may delete this
-% source code soon, as it mostly does not serve any use anymore in Psychtoolbox 3.0.15
-% and later.
-%
 %
 % Psychtoolbox/PsychContributed: See individual licenses and output of
 %                                "help PsychContributed" in that folder.
