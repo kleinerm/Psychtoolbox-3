@@ -5909,9 +5909,6 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
         if (verbosity > 3) printf("PsychPortAudio: INFO: Automatic suspending of desktop audio servers %s.\n", (pulseaudio_autosuspend) ? "enabled" : "disabled");
     }
 
-    // Make sure PortAudio is online: Must be done after setup of audioserver_suspend!
-    PsychPortAudioInitialize();
-
     // Return old yieldInterval:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, yieldInterval);
 
