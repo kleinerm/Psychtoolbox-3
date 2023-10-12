@@ -224,6 +224,33 @@ void InitPsychAuthorList(void)
         "brian@sr-research.com",
         "https://sr-research.com"
     );
+    PsychAddAuthor(
+        // Eyelink toolbox:
+        "Brian",
+        "",
+        "Richardson",
+        "br",
+        "brian@sr-research.com",
+        "https://sr-research.com"
+    );
+    PsychAddAuthor(
+        // Eyelink toolbox:
+        "Marcus",
+        "",
+        "Johnson",
+        "mj",
+        "marcus@sr-research.com",
+        "https://sr-research.com"
+    );
+    PsychAddAuthor(
+        // Eyelink toolbox:
+        "Kurt",
+        "",
+        "Debono",
+        "kd",
+        "kurt@sr-research.com",
+        "https://sr-research.com"
+    );
 }
 
 
