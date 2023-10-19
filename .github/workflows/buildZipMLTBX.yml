@@ -21,12 +21,15 @@ jobs:
       - name: checkout the repo
         uses: actions/checkout@v3
 
-      - name: Archive Release
-        uses: thedoctor0/zip-release@0.7.1
-        with:
-          type: 'zip'
-          filename: '${{  github.ref_name }}.zip'
-          directory: 'Psychtoolbox'
+      # - name: Archive Release
+      #   uses: thedoctor0/zip-release@0.7.1
+      #   with:
+      #     type: 'zip'
+      #     filename: '${{  github.ref_name }}.zip'
+      #     directory: 'Psychtoolbox'
+      
+      - name: Zip the toolbox
+        run: zip -r '${{  github.ref_name }}.zip' Psychtoolbox
       - name: list dir
         run: ls -l
       
