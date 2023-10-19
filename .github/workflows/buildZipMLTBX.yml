@@ -27,6 +27,8 @@ jobs:
           type: 'zip'
           filename: '${{  github.ref_name }}.zip'
           directory: './Psychtoolbox'
+      - name: list dir
+        run: ls -l
       
       # - name: Set up MATLAB
       #   uses: matlab-actions/setup-matlab@v1
