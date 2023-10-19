@@ -20,35 +20,30 @@ jobs:
     # Runs a single command using the runners shell
       - name: checkout the repo
         uses: actions/checkout@v3
-
-      # - name: Archive Release
-      #   uses: thedoctor0/zip-release@0.7.1
-      #   with:
-      #     type: 'zip'
-      #     filename: '${{  github.ref_name }}.zip'
-      #     directory: 'Psychtoolbox'
       
       - name: Zip the toolbox
         run: zip -r '${{  github.ref_name }}.zip' Psychtoolbox
-      - name: list dir
-        run: ls -l
+
+    # This is for diagnostics
+      # - name: list dir
+      #   run: ls -l
       
-      # - name: Set up MATLAB
-      #   uses: matlab-actions/setup-matlab@v1
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v1
       
-      # - name: Create MLTBX
-      #   uses: matlab-actions/run-command@v1
-      #   continue-on-error: false
-      #   if: always()
-      #   with:
-      #     command: addpath("utilities_help");createToolboxMLTBX("toolboxPackaging.prj",  "${{  github.ref_name }}")
+      - name: Create MLTBX
+        uses: matlab-actions/run-command@v1
+        continue-on-error: false
+        if: always()
+        with:
+          command: createPsychtoolboxMLTBX("Psychtoolbox.prj",  "${{  github.ref_name }}")
       
-      # # Save the MLTBX.
-      # - name: Save MLTBX
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: FSDA build MLTBX
-      #     path: release/fsda.mltbx
+      # Save the MLTBX.
+      - name: Save MLTBX
+        uses: actions/upload-artifact@v3
+        with:
+          name: FSDA build MLTBX
+          path: release/fsda.mltbx
           
       #Create the release
       - name: Create release
@@ -58,10 +53,3 @@ jobs:
           artifacts: "./${{  github.ref_name }}.zip"
           generateReleaseNotes: true
           tag: ${{  github.ref_name }}
-      # - name: Release
-      #   uses: fnkr/github-action-ghr@v1
-      #   # if: startsWith(github.ref, 'refs/tags/')
-      #   env:
-      #     GHR_COMPRESS: xz
-      #     GHR_PATH: './release.zip'
-      #     # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
