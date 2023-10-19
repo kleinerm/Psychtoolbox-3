@@ -26,7 +26,7 @@ jobs:
         with:
           type: 'zip'
           filename: '${{  github.ref_name }}.zip'
-          directory: './Psychtoolbox'
+          directory: 'Psychtoolbox'
       - name: list dir
         run: ls -l
       
