@@ -2,11 +2,14 @@
 
 name: Tag triggered release
 
-# Start the workflow when a tag is created.
-on:
-  push:
-    tags:
-      - '*'
+# # Start the workflow when a tag is created.
+# on:
+#   push:
+#     tags:
+#       - '*'
+
+on: [workflow_dispatch]
+
 # A workflow run consists of a jobs that runs sequentially
 jobs:
   # This workflow contains a one job that builds the zip and MLTBX files.
