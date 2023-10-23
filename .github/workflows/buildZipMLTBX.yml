@@ -50,6 +50,6 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           draft: true        
-          artifacts: ["./${{  github.ref_name }}.zip", "./${{  github.ref_name }}.mltbx"]
+          artifacts: "./${{  github.ref_name }}.zip, ./${{  github.ref_name }}.mltbx"
           generateReleaseNotes: true
           tag: ${{  github.ref_name }}
