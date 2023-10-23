@@ -8,8 +8,6 @@ on:
     tags:
       - '*'
 
-# on: [workflow_dispatch]
-
 # A workflow run consists of a jobs that runs sequentially
 jobs:
   # This workflow contains a one job that builds the zip and MLTBX files.
@@ -34,16 +32,9 @@ jobs:
         with:
           command: createPsychtoolboxMLTBX("Psychtoolbox.prj",  "${{  github.ref_name }}")
           
-      # This is for diagnostics
-      - name: list directories
-        run: ls -l
-
-      # # Save the MLTBX.
-      # - name: Save MLTBX
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: FSDA build MLTBX
-      #     path: release/fsda.mltbx
+      # # This is for diagnostics
+      # - name: list directories
+      #   run: ls -l
           
       #Create the release
       - name: Create release
