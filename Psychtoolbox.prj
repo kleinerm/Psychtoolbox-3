@@ -1,14 +1,36 @@
 <deployment-project plugin="plugin.toolbox" plugin-version="1.0">
   <configuration file="/home/bpancras/gitRepo/Psychtoolbox-3/Psychtoolbox.prj" location="/home/bpancras/gitRepo/Psychtoolbox-3" name="Psychtoolbox" target="target.toolbox" target-name="Package Toolbox">
-    <param.appname>Psychtoolbox 3</param.appname>
+    <param.appname>Psychtoolbox-3</param.appname>
     <param.authnamewatermark />
     <param.email />
-    <param.company />
+    <param.company>Medical Incubator Tuebingen</param.company>
     <param.summary />
-    <param.description />
+    <param.description>Psychophysics Toolbox Version 3 (or short "PTB") extends MATLAB with functions for research grade neuroscience stimulus presentation and response collection. The PTB core routines provide trustworthy, precise, and efficient functions for stimulus presentation and response collection in different modalities:
+- Visual stimulus presentation by use of modern graphics and display hardware via OpenGL hardware acceleration:
+• Drawing of complex 2D stimuli, including use of GPU shaders, framebuffer blending and texture mapping for real-time creation of complex dynamic stimuli and procedural stimuli.
+• Movie playback and movie recording, utilizing the GStreamer multi-media framework.
+• Video capture and live display, including GPU post-processing of live video, also with precisely timed
+control of professional class IIDC compliant Firewire and USB-Vision machine vision video cameras and synchronized multi-camera setups (Linux only for IIDC cameras).
+• Drawing of 3D stimuli via direct low level OpenGL commands and via a high level 3D engine.
+• Stereoscopic presentation, supporting different stereoscopic display techniques, including support for some head tracked VR headsets, e.g., from Oculus VR.
+• Presentation of stimuli with high color/luminance/contrast precision on a wide range of suitable display
+hardware for bit depths beyond the typical 8 bits per color range, up to 16 bits per color channel with
+some equipment.
+• High Dynamic Range (HDR) stimulus display on Linux, and MS-Windows, and with more limitations on macOS 10.15.
+• GPU based fast stimulus post-processing to cover many common tasks like color-correction, gamma correction, geometric display distortion correction, vignette/shading correction.
+• Precisely timed and time-stamped stimulus presentation, also on multi-display setups.
+• Support for variable refresh rate displays (FreeSync, DisplayPort adaptive sync) on modern Linux.
+• Support for some types of photometers for display calibration.
+- Auditory stimulus presentation with low-latency, sub-millisecond precise timing and time-stamping, multi-channel support and convenient live control of some auditory stimulus parameters. Interfacing with the OpenAL API for 3D spatial stimuli.
+- Fast low level control of some types of digital and analog input/output hardware for control of stimulation and recording equipment via serial ports, network and USB.
+Response collection, sometimes with millisecond accurate time-stamping is provided from keyboards, keypads, mice, game controllers, and other HID input devices, and also - on Linux and Windows 10 only - on multitouch touchscreens. Different common response button boxes and eye trackers are also supported, as well as auditory response collection.
+Psychtoolbox also provides functions for precisely timed execution of code, and for control of the realtime scheduling facilities of the operating system.
+Ancillary routines support common needs like color space transformations, the QUEST threshold seeking algorithm and some other psychometric routines, file i/o and various convenient helper routines. A large set of demos is included.
+Psychtoolbox works best on recent versions of the GNU/Linux operating system, where it takes advantage of some unique features of that operating system (Ubuntu 20.04.3-LTS or later). It also works reasonably well on Microsoft Windows (Windows-10 recommended) and - with substantial limitations due to many operating system flaws and defects - Apple macOS (version 10.15.7 recommended, macOS 11 not recommended), although those systems are often much more restricted in accuracy and reliability of stimulus presentation and response collection.
+Different parts of Psychtoolbox are licensed under different OSI compliant Free Software and Open Source licenses, with the majority of routines licensed under the MIT license.</param.description>
     <param.screenshot />
-    <param.version>1.0</param.version>
-    <param.output>${PROJECT_ROOT}/Psychtoolbox 3.mltbx</param.output>
+    <param.version>3.0.19.4</param.version>
+    <param.output>${PROJECT_ROOT}/Psychtoolbox-3.mltbx</param.output>
     <param.products.name />
     <param.products.id />
     <param.products.version />
@@ -44,11 +66,8 @@
     <unset>
       <param.authnamewatermark />
       <param.email />
-      <param.company />
       <param.summary />
-      <param.description />
       <param.screenshot />
-      <param.version />
       <param.output />
       <param.products.name />
       <param.products.id />
@@ -133,7 +152,7 @@
     <fileset.depfun.excluded />
     <fileset.package />
     <build-deliverables>
-      <file location="${PROJECT_ROOT}" name="Psychtoolbox 3.mltbx" optional="false">/home/bpancras/gitRepo/Psychtoolbox-3/Psychtoolbox 3.mltbx</file>
+      <file location="${PROJECT_ROOT}" name="Psychtoolbox-3.mltbx" optional="false">/home/bpancras/gitRepo/Psychtoolbox-3/Psychtoolbox-3.mltbx</file>
     </build-deliverables>
     <workflow />
     <matlab>
