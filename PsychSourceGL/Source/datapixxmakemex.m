@@ -22,7 +22,7 @@ function datapixxmakemex()
         if exist('C:/Users/mario/Documents/GitHub/', 'dir')
             VPIXXDIR = 'C:/Users/mario/Documents/GitHub/';
         end
-        
+
         CPYCMD = 'copy ';
         DELCMD = 'del ';
     end
@@ -50,8 +50,12 @@ function datapixxmakemex()
         S = [S ' -largeArrayDims -DMEX_DOUBLE_HANDLE'];
     end
 
-    if IsLinux && ~IsOctave
-        S = [S ' CFLAGS=''$CFLAGS -fPIC -std=gnu99 -fexceptions'' '];
+    if IsLinux
+        if ~IsOctave
+            S = [S ' CFLAGS=''$CFLAGS -fPIC -std=gnu99 -fexceptions'' '];
+        else
+            S = [S ' -fexceptions'];
+        end
     end
 
     S = [S ' -I' VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/src'];
