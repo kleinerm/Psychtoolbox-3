@@ -88,7 +88,7 @@ end
 
 % For quick texture mipmap creation, the hardware needs to support
 % framebuffer object extensions...
-if ~isempty(findstr(glGetString(GL.EXTENSIONS), '_framebuffer_object'))
+if ~isempty(strfind(glGetString(GL.EXTENSIONS), '_framebuffer_object'))
     % Automatic, fast, hardware based creation of mipmap texture resolution
     % pyramids supported on this system. Use it to quickly create the
     % texture mipmap object:
