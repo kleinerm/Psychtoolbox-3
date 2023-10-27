@@ -379,6 +379,12 @@ if strcmpi(command,'Play')
             clear player;
         end
 
+        % On Octave on Linux, do this little trickery to abuse PsychPortAudio
+        % to suppress ALSA debug messages triggered by the audioplayer() object:
+        if IsLinux && IsOctave
+            PsychPortAudio('Verbosity', PsychPortAudio('Verbosity'));
+        end
+
         % Create new player object and start non-blocking playback:
         player = audioplayer(signal', rate, sampleSize);
         play(player);
