@@ -1,5 +1,5 @@
-function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx, triggerLevel)
-% PsychPortAudioTimingTest([exactstart=1][, deviceid=-1][, latbias=0][, waitframes][, useDPixx=0][, triggerLevel=0.01])
+function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx, triggerLevel, reqlatencyclass)
+% PsychPortAudioTimingTest([exactstart=1][, deviceid=-1][, latbias=0][, waitframes][, useDPixx=0][, triggerLevel=0.01][, reqlatencyclass=2])
 %
 % Test script for sound onset timing reliability and sound onset
 % latency of the PsychPortAudio sound driver.
@@ -51,9 +51,17 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 %                  captured by DataPixx, which may help in selection of the
 %                  optimal triggerLevel.
 %
+% 'reqlatencyclass' Override setting for reqlatencyclass parameter. By default,
+%                   reqlatencyclass = 2 is used, for exclusive device access for
+%                   low latency / high timing precision mode.
 
-% Initialize driver, request low-latency preinit:
-InitializePsychSound(1);
+if nargin < 7 || isempty(reqlatencyclass)
+    % Request latency mode 2, a tad more aggressive than the default:
+    reqlatencyclass = 2;
+end
+
+% Initialize driver, request low-latency preinit for reqlatencyclass > 1:
+InitializePsychSound(double(reqlatencyclass > 1));
 
 % Force GetSecs and WaitSecs into memory to avoid latency later on:
 GetSecs;
@@ -114,9 +122,6 @@ else
     end
     disp(devs(idx));
 end
-
-% Request latency mode 2, a tad more aggressive than the default:
-reqlatencyclass = 2;
 
 % Requested output frequency, may need adaptation on some audio-hw:
 freq = 44100;       % Must set this. 44.1 khz most likely to work, as shown by experience. Common rates: 96khz, 48khz, 44.1khz.

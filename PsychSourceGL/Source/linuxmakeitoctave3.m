@@ -77,7 +77,7 @@ if mode==0
 
     % Build against system installed GStreamer-1.8+, ideally 1.18+.
     mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lXcomposite
-    
+
     unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
 end
 
@@ -287,6 +287,7 @@ end
 function mex(varargin)
   inargs = {varargin{:}};
   outargs = {"--mex"};
+  outargs = {outargs{:}, "-fexceptions"}; % Explicit exception handling for Octave on RaspberryPi OS.
   outargs = {outargs{:}, "-s"};
 
   for i = 1:length(inargs)
@@ -296,7 +297,7 @@ function mex(varargin)
       outargs = {outargs{:}, inargs{i}};
     end
   end
-  
+
   args = cellstr(char(outargs));
   mkoctfile (args{:});
 end

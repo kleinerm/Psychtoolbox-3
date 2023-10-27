@@ -1,5 +1,5 @@
 /*
- * PsychToolbox2/Source/Common/PsychAuthors.c
+ * PsychToolbox-3/PsychSourceGL/Source/Common/Base/PsychAuthors.c
  *
  * AUTHORS:
  *
@@ -45,6 +45,9 @@ void PsychAddAuthor(
     if (strlen(url) > 511)
         PsychErrorExitMsg(PsychError_stringOverrun, "URL string too long");
 
+    if (numAuthors >= MAX_PSYCHTOOLBOX_AUTHORS)
+        PsychErrorExitMsg(PsychError_internal, "Maximum number of Psychtoolbox authors exceeded! Bump MAX_PSYCHTOOLBOX_AUTHORS and recompile.");
+
     strcpy(authorList[numAuthors].firstName, firstName);
     strcpy(authorList[numAuthors].middleName, middleName);
     strcpy(authorList[numAuthors].lastName, lastName);
@@ -69,7 +72,7 @@ void PsychSetModuleAuthorByInitials(char *initials)
                 PsychErrorExitMsg(PsychError_internal, "Attempt to set module author using ambiguous initials.");
             } else {
                 authorList[i].enabled = TRUE;
-                ++numAuthors;
+                ++numFound;
             }
         }
     }
@@ -210,7 +213,16 @@ void InitPsychAuthorList(void)
         "Jabakhanji",
         "nj",
         "nuha@sr-research.com",
-        "http://sr-research.com"
+        "https://sr-research.com"
+    );
+    PsychAddAuthor(
+        // Eyelink toolbox:
+        "Brian",
+        "",
+        "Richardson",
+        "br",
+        "brian@sr-research.com",
+        "https://sr-research.com"
     );
 }
 

@@ -19,24 +19,11 @@
  *        feedback with well controlled timing and low latency. Uses the free software
  *        PortAudio library, API Version 19 (http://www.portaudio.com), which has a MIT style license.
  *
- *        This seems to link statically against libportaudio.a on OS/X. However, it doesn't!
- *        Due to some restrictions of the OS/X linker we can't link statically against portaudio,
- *        so we have to have a .dylib version of the library installed in a system library
- *        search path, both for compiling and using PsychPortAudio. The current universal
- *        binary version of libportaudio.a for OS/X can be found in the...
- *        PsychSourceGL/Cohorts/PortAudio/ subfolder, which also contains versions for
- *        Linux and Windows.
- *
  */
 
 #include "PsychPortAudio.h"
 
 unsigned int verbosity = 4;
-
-// This is a define of the PulseAudio host api id. It will be 16, once a portaudio
-// version with PulseAudio support is officially released. Define it here, so we
-// can already build a driver that is able to handle paPulseAudio quirks:
-#define paPulseAudio 16
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "pa_mac_core.h"
@@ -66,88 +53,6 @@ void (*myjack_set_error_function)(void(*)(const char *)) = NULL;
 static void ALSAErrorHandler(const char *file, int line, const char *function, int err, const char *fmt, ...)
 {
 }
-
-// Pseudo-Defines of Portaudio internal structs, mimicking the memory layout
-// of the true Portaudio internal structs just enough so that we can cast a PaStream*
-// into a PaAlsaStream*, then access a stream-internal variable of the buffer-processor
-// and fudge with it in the most hackish and puke inducing way to work around a bug
-// present in the audio-capture only mode setup code (ie. no playback) inside the ALSA
-// backend since 24th May 2009! This over 9 years old bug causes massive distortion if
-// one only uses audio-capture, but no playback or full-duplex mode.
-//
-// A clean way of fixing this will be to get a fix into upstream, but we need to support
-// all the existing libportaudio implementations in all Linux distributions from 2009 to
-// 2019. The only option for shipping distros therefore would be to go back to static
-// linking against our own bug-fixed variant of libportaudio, but i haven't spent the
-// better part of a week to get us to finally be able to drop our own private libportaudio
-// builds, just to reintroduce them now! Therefore ugly hack it is...
-
-typedef enum {
-    paUtilFixedHostBufferSize,
-    paUtilBoundedHostBufferSize,
-    paUtilUnknownHostBufferSize,
-    paUtilVariableHostBufferSizePartialUsageAllowed
-} PaUtilHostBufferSizeMode;
-
-typedef struct {
-    unsigned long framesPerUserBuffer;
-    unsigned long framesPerHostBuffer;
-
-    PaUtilHostBufferSizeMode hostBufferSizeMode;
-    int useNonAdaptingProcess;
-    int userOutputSampleFormatIsEqualToHost;
-    int userInputSampleFormatIsEqualToHost;
-    unsigned long framesPerTempBuffer;
-
-    unsigned int inputChannelCount;
-    unsigned int bytesPerHostInputSample;
-    unsigned int bytesPerUserInputSample;
-    int userInputIsInterleaved;
-    // More stuff follows in real data struct...
-} PseudoBufferProcessor;
-
-typedef struct {
-    double samplingPeriod;
-    double measurementStartTime;
-    double averageLoad;
-} PseudoCpuLoadMeasurer;
-
-#define PA_STREAM_MAGIC (0x18273645)
-
-typedef struct PseudoStreamRepresentation {
-    unsigned long magic;    /**< set to PA_STREAM_MAGIC */
-    struct PseudoStreamRepresentation *nextOpenStream; /**< field used by multi-api code */
-    void *streamInterface;
-    void *streamCallback;
-    void *streamFinishedCallback;
-    void *userData;
-    PaStreamInfo streamInfo;
-} PseudoStreamRepresentation;
-
-typedef struct PseudoStreamRepresentationExt {
-    unsigned long magic;    /**< set to PA_STREAM_MAGIC */
-    struct PseudoStreamRepresentationExt *nextOpenStream; /**< field used by multi-api code */
-    void *streamInterface;
-    void *streamCallback;
-    void *streamFinishedCallback;
-    void *userData;
-    PaStreamInfo streamInfo;
-    PaHostApiTypeId hostApiType;
-} PseudoStreamRepresentationExt;
-
-typedef struct PseudoAlsaStream {
-    PseudoStreamRepresentation streamRepresentation;
-    PseudoCpuLoadMeasurer cpuLoadMeasurer;
-    PseudoBufferProcessor bufferProcessor;
-    // More stuff follows in real data struct...
-} PseudoAlsaStream;
-
-typedef struct PseudoAlsaStreamExt {
-    PseudoStreamRepresentationExt streamRepresentation;
-    PseudoCpuLoadMeasurer cpuLoadMeasurer;
-    PseudoBufferProcessor bufferProcessor;
-    // More stuff follows in real data struct...
-} PseudoAlsaStreamExt;
 
 #endif
 
@@ -295,10 +200,10 @@ typedef struct PsychPADevice {
     psych_int64 readposition;       // Last read-out sample since start of capture.
     psych_int64 outchannels;        // Number of output channels.
     psych_int64 inchannels;         // Number of input channels.
-    unsigned int xruns;             // Number of over-/underflows of input-/output channel for this stream.
-    unsigned int paCalls;           // Number of callback invocations.
-    unsigned int noTime;            // Number of timestamp malfunction - Should not happen anymore.
+    psych_uint64 paCalls;           // Number of callback invocations.
+    psych_uint64 noTime;            // Number of timestamp malfunction - Should not happen anymore.
     psych_int64 batchsize;          // Maximum number of frames requested during callback invokation: Estimate of real buffersize.
+    unsigned int xruns;             // Number of over-/underflows of input-/output channel for this stream.
     double     predictedLatency;    // Latency that PortAudio predicts for current callbackinvocation. We will compensate for that when starting audio.
     double   latencyBias;           // A bias value to add to the value that PortAudio reports for total buffer->Speaker latency.
                                     // This value defaults to zero.
@@ -336,6 +241,7 @@ psych_bool    uselocking = TRUE;                // Use Mutex locking and signall
 psych_bool    lockToCore1 = TRUE;               // NO LONGER USED: Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
 psych_bool    pulseaudio_autosuspend = TRUE;    // Should we try to suspend the Pulseaudio sound server on Linux while we're active?
 psych_bool    pulseaudio_isSuspended = FALSE;   // Is PulseAudio suspended by us?
+unsigned int  workaroundsMask = 0;              // Bitmask of enabled workarounds.
 
 double debugdummy1, debugdummy2;
 
@@ -933,9 +839,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     // Query host API: Done without mutex held, as it doesn't change during device lifetime:
     hA=dev->hostAPI;
 
-    // Count number of timestamp failures:
-    if (timeInfo->currentTime == 0) dev->noTime++;
-
     // Only compute timestamps from raw data if we're not a slave:
     if (!isSlave) {
         // Buffer timestamp computation code:
@@ -956,7 +859,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         #if PSYCH_SYSTEM == PSYCH_LINUX
         // Enable realtime scheduling for our audio processing thread on ALSA and Pulseaudio backends.
         // Jack backend does setup by itself, OSS and ASIHPI don't matter anymore.
-        if ((dev->paCalls == 0xffffffff) && (hA == paALSA || hA == paPulseAudio)) {
+        if ((dev->paCalls == 0xffffffffffffffff) && (hA == paALSA || hA == paPulseAudio)) {
             int rc;
 
             // Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
@@ -1029,8 +932,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         else {
             // Either known to need timestamp remapping, e.g., PulseAudio, or
             // not yet verified how these other audio APIs behave. Play safe
-            // and perform timebase remapping: This also needs our special fixed
-            // PortAudio version where currentTime actually has a value:
+            // and perform timebase remapping:
             if (dev->opmode & kPortAudioPlayBack) {
                 // Playback enabled: Use DAC time as basis for timing:
                 // Assign predicted (remapped to our time system) audio onset time for this buffer:
@@ -1088,8 +990,15 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     // Cache requested state:
     reqstate = dev->reqstate;
 
+    // Reset to 0 start value on first invocation, before first increment:
+    if (dev->paCalls == 0xffffffffffffffff)
+        dev->paCalls = 0;
+
     // Count total number of calls:
     dev->paCalls++;
+
+    // Count number of timestamp failures:
+    if (timeInfo->currentTime == 0) dev->noTime++;
 
     // Keep track of maximum number of frames requested/provided:
     if (dev->batchsize < (psych_int64) framesPerBuffer) {
@@ -1185,6 +1094,25 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             // into no-ops due to the nominal idle state:
             return(paContinue);
         }
+    }
+
+    // Deal with a quirk of the initial Pulseaudio backend implementation. During engine startup, likely
+    // as part of audio buffer priming, the Pulseaudio backend delivers a stretch of invalid timestamps
+    // for the first bunch of paCallback calls. We can't schedule meaningfully during this startup, so
+    // better no-op by outputting silence until the situation rectifies after a bunch of iterations:
+    if (!isSlave && (hA == paPulseAudio) && (dev->paCalls == dev->noTime) && (timeInfo->currentTime == 0)) {
+        // Timestamps wrong/useless, so can not meaningfully proceed, as any kind of timestamp based sound
+        // onset/offset/schedule scheduling would go haywire. We try to no-op as good as possible, by
+        // outputting silence and returning control to PortAudio's thread:
+
+        // Release mutex here, as memset() only operates on "local" data:
+        PsychPAUnlockDeviceMutex(dev);
+
+        // Prime the outputbuffer with silence:
+        if (outputBuffer) memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
+
+        // Done:
+        return(paContinue);
     }
 
     // Are we in a nominally "idle" / inactive state?
@@ -1926,7 +1854,7 @@ const char** InitializeSynopsis(void)
     synopsis[i++] = "count = PsychPortAudio('GetOpenDeviceCount');";
     synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype] [, deviceIndex]);";
     synopsis[i++] = "\nGeneral settings:\n";
-    synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1] [, audioserver_autosuspend]);";
+    synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend, workarounds] = PsychPortAudio('EngineTunables' [, yieldInterval][, MutexEnable][, lockToCore1][, audioserver_autosuspend][, workarounds]);";
     synopsis[i++] = "oldRunMode = PsychPortAudio('RunMode', pahandle [,runMode]);";
     synopsis[i++] = "\n\nDevice setup and shutdown:\n";
     synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels][, specialFlags=0]);";
@@ -2102,8 +2030,7 @@ PsychError PsychPortAudioExit(void)
         PsychPAPaUtil_SetDebugPrintFunction(NULL);
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
-            // Disable ALSA error handler:
-            snd_lib_error_set_handler(NULL);
+            // Disable Jack error handler:
             if (myjack_set_error_function) {
                 myjack_set_error_function(NULL);
                 myjack_set_error_function = NULL;
@@ -2127,6 +2054,13 @@ PsychError PsychPortAudioExit(void)
             pulseaudio_isSuspended = FALSE;
         }
     }
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+        // Always disable ALSA error handler, as it could have been set in 'Verbosity' to
+        // our internal function, so a jettison of PsychPortAudio would leave a dangling
+        // pointer from libasound to that internal error handler which no longer exists:
+        snd_lib_error_set_handler(NULL);
+    #endif
 
     return(PsychError_none);
 }
@@ -2909,10 +2843,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
             break;
 
         case paPulseAudio:
-            // For PulseAudio we choose 15 msecs by default, lowering to 10 msecs if explicitely requested.
-            // These work on a "500 Euro class" PC from early 2019 with onboard sound (AMD Ryzen-5 2400G APU),
-            // 15 msecs everywhere, but 10 msecs only "crackle-free" with onboard HDA sound, not with iGPU DP/HDMI sound.
-            lowlatency = (latencyclass > 2) ? 0.010 : 0.015;
+            // 10 msecs is fine on a typical 500 Euros PC from 2019, but 5 msecs is aggressive:
+            lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
             break;
 
         default:            // Not the safest assumption for non-verified Api's, but we'll see...
@@ -2928,14 +2860,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // Especially on macOS 10.14 this seems to be neccessary for crackle-free playback: (Forum message #23422)
         if ((latencyclass <= 1) && (PSYCH_SYSTEM == PSYCH_OSX) && (outputParameters.suggestedLatency < 0.010))
             outputParameters.suggestedLatency = 0.010;
-
-        // For PulseAudio in high latency mode, make sure requested latency is at least 40 msecs, regardless what
-        // the reported defaultHighInputLatency/defaultHighOutputLatency is. As of the current PulseAudio hostApi
-        // prototype, reporting of these values makes no sense, so this hack should keep us going at least:
-        if ((latencyclass == 0) && (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paPulseAudio)) {
-            outputParameters.suggestedLatency = (outputParameters.suggestedLatency >= 0.040) ? outputParameters.suggestedLatency : 0.040;
-            inputParameters.suggestedLatency = (inputParameters.suggestedLatency >= 0.040) ? inputParameters.suggestedLatency : 0.040;
-        }
     }
     else {
         // Override provided: Use it.
@@ -2990,6 +2914,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // specialFlags 16: Never dither audio data:
     if (specialFlags & 16) sflags |= paDitherOff;
 
+    // Assume no validation error, in case we skip Pa_IsFormatSupported() validation:
+    err = paNoError;
+
     #if PSYCH_SYSTEM == PSYCH_LINUX
         int major, minor;
 
@@ -3009,9 +2936,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
         //       function below will request very reasonable settings during execution, which the kernel happily accepts, e.g., only 15 kB in
         //       the same scenario. This way we can continue working against the flawed Portaudio library shipping with Ubuntu 20.10.
 
-        // Assume no validation error in case we skip Pa_IsFormatSupported() validation on pre-Linux 5.13 kernels:
-        err = paNoError;
-
         // Find out which kernel we are running on:
         PsychOSGetLinuxVersion(&major, &minor, NULL);
 
@@ -3022,21 +2946,31 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // Execute check if Linux is 5.13+, skip otherwise with err = paNoError. Our setup will always execute the check on non-Linux:
         if ((major > 5) || (major == 5 && minor >= 13))
     #endif
-            err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
+            if (!(workaroundsMask & 0x2)) // Only perform test if not disabled by workaround bit 1.
+                err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
 
     if ((err != paNoError) && (err != paDeviceUnavailable)) {
-        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
-        if (err == paInvalidSampleRate) {
-            printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
-        } else if (err == paInvalidChannelCount) {
-            printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
-        } else {
-            printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+        if (verbosity > 0) {
+            printf("PTB-ERROR: Desired audio parameters for device %i seem to be unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
+            if (err == paInvalidSampleRate) {
+                printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
+            } else if (err == paInvalidChannelCount) {
+                printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+            } else if (err == paSampleFormatNotSupported) {
+                printf("PTB-ERROR: Seems the requested audio sample format is not supported by this combo of hardware and sound driver.\n");
+            } else {
+                printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of timing, sample rate, audio channel count/allocation, or sample format.\n");
+            }
+
+            if (PSYCH_SYSTEM == PSYCH_LINUX)
+                printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
         }
 
-        if (PSYCH_SYSTEM == PSYCH_LINUX)
-            printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
-        PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
+        // Only abort on test failure if workaround bit 0 not set:
+        if (!(workaroundsMask & 0x1))
+            PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters. Prevalidation failure.");
+        else
+            err = paNoError;
     }
 
     // Try to create & open stream:
@@ -3054,10 +2988,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
     if (err != paNoError || stream == NULL) {
         printf("PTB-ERROR: Failed to open audio device %i. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));
         if (err == paDeviceUnavailable) {
-            printf("PTB-ERROR: Could not open audio device, most likely because it is already in use by a previous call to\n");
-            printf("PTB-ERROR: PsychPortAudio('Open', ...). You can open each audio device only once per session. If you need\n");
+            printf("PTB-ERROR: Could not open audio device, most likely because it is already in exclusive use by a previous call\n");
+            printf("PTB-ERROR: to PsychPortAudio('Open', ...). You can open each exclusive device only once per session. If you need\n");
             printf("PTB-ERROR: multiple independent devices simulated on one physical audio device, look into use of audio\n");
             printf("PTB-ERROR: slave devices. See help for this by typing 'PsychPortAudio OpenSlave?'.\n");
+
             PsychErrorExitMsg(PsychError_user, "Audio device unavailable. Most likely tried to open device multiple times.");
         }
         else {
@@ -3066,16 +3001,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
             } else if (err == paInvalidChannelCount) {
                 printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+            } else if (err == paSampleFormatNotSupported) {
+                printf("PTB-ERROR: Seems the requested audio sample format is not supported by this combo of hardware and sound driver.\n");
             } else {
-                printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+                printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of timing, sample rate, audio channel count/allocation, or sample format.\n");
             }
 
             if (PSYCH_SYSTEM == PSYCH_LINUX)
                 printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
-            PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
-        }
 
-        PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device.");
+            PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to some unsupported combination of audio parameters.");
+        }
     }
 
     // Setup our final device structure:
@@ -4764,7 +4700,6 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 
     // Reset statistics:
     audiodevices[pahandle].xruns = 0;
-    audiodevices[pahandle].noTime = 0;
     audiodevices[pahandle].captureStartTime = 0;
     audiodevices[pahandle].startTime = 0.0;
     audiodevices[pahandle].estStopTime = 0;
@@ -4880,6 +4815,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
     double repetitions = 1;
     double when = 0.0;
     double stopTime = DBL_MAX;
+    psych_bool waitStabilized = FALSE;
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4986,13 +4922,18 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
             if (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) Pa_StopStream(audiodevices[pahandle].stream);
 
             // Reset paCalls to special value to mark 1st call ever:
-            audiodevices[pahandle].paCalls = 0xffffffff;
+            audiodevices[pahandle].paCalls = 0xffffffffffffffff;
 
             // Start engine:
             if ((err=Pa_StartStream(audiodevices[pahandle].stream))!=paNoError) {
                 printf("PTB-ERROR: Failed to start audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
                 PsychErrorExitMsg(PsychError_system, "Failed to start PortAudio audio device.");
             }
+
+            // The Pulseaudio backend will deliver a batch of invalid timestamps during stream startup, so make
+            // sure we wait for timestamping to stabilize before returning control, and reset the fail counter:
+            if (audiodevices[pahandle].hostAPI == paPulseAudio)
+                waitStabilized = TRUE;
 
             // Reacquire lock:
             PsychPALockDeviceMutex(&audiodevices[pahandle]);
@@ -5013,8 +4954,8 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
         PsychErrorExitMsg(PsychError_user, "Asked to 'waitForStart' of a slave device, but associated master device not even started! Deadlock avoided!");
     }
 
-    // Wait for real start of playback/capture?
-    if (waitForStart > 0) {
+    // Wait for real start of playback/capture? Or forced wait for timestamp stabilization?
+    if (waitForStart > 0 || waitStabilized) {
         // Device will be in state == 1 until playback really starts:
         // We need to enter the first while() loop iteration with
         // the device lock held from above, so the while() loop will iterate at
@@ -5022,6 +4963,18 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
         while (audiodevices[pahandle].state == 1 && Pa_IsStreamActive(audiodevices[pahandle].stream)) {
             // Wait for a state-change before reevaluating the .state:
             PsychPAWaitForChange(&audiodevices[pahandle]);
+        }
+
+        // Playback/Capture is now active. Under Pulseaudio that only happens after timestamping has
+        // stabilized, and has provided its first usable timestamps for proper audio timing, allowing
+        // actual start of playback/capture to happen. Report this, and reset the timestamp failure
+        // counter, as the batch of invalid timestamps during early startup has been dealt with:
+        if (waitStabilized) {
+            if (verbosity > 4)
+                printf("PTB-DEBUG: Timestamping stabilized after Pulseaudio stream startup: failed vs. total = %i / %i\n",
+                       (int) audiodevices[pahandle].noTime, (int) audiodevices[pahandle].paCalls);
+
+            audiodevices[pahandle].noTime = 0;
         }
 
         // Device has started (potentially even already finished for very short sounds!)
@@ -5349,6 +5302,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     PsychGenericScriptType     *status;
     double currentTime;
     psych_int64 playposition, totalplaycount, recposition;
+    psych_uint64 nrtotalcalls, nrnotime;
 
     const char *FieldNames[]={    "Active", "State", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
         "XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate",
@@ -5382,6 +5336,8 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     totalplaycount = audiodevices[pahandle].totalplaycount;
     playposition = audiodevices[pahandle].playposition;
     recposition = audiodevices[pahandle].recposition;
+    nrtotalcalls = audiodevices[pahandle].paCalls;
+    nrnotime = audiodevices[pahandle].noTime;
     PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 
     // Atomic snapshot for remaining fields would only be needed for low-level debugging, so who cares?
@@ -5399,8 +5355,8 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     PsychSetStructArrayDoubleElement("ReadSecs", 0, ((double)(audiodevices[pahandle].readposition / audiodevices[pahandle].inchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
     PsychSetStructArrayDoubleElement("SchedulePosition", 0, audiodevices[pahandle].schedule_pos, status);
     PsychSetStructArrayDoubleElement("XRuns", 0, audiodevices[pahandle].xruns, status);
-    PsychSetStructArrayDoubleElement("TotalCalls", 0, audiodevices[pahandle].paCalls, status);
-    PsychSetStructArrayDoubleElement("TimeFailed", 0, audiodevices[pahandle].noTime, status);
+    PsychSetStructArrayDoubleElement("TotalCalls", 0, nrtotalcalls, status);
+    PsychSetStructArrayDoubleElement("TimeFailed", 0, nrnotime, status);
     PsychSetStructArrayDoubleElement("BufferSize", 0, (double) audiodevices[pahandle].batchsize, status);
     PsychSetStructArrayDoubleElement("CPULoad", 0, (Pa_IsStreamActive(audiodevices[pahandle].stream)) ? Pa_GetStreamCpuLoad(audiodevices[pahandle].stream) : 0.0, status);
     PsychSetStructArrayDoubleElement("PredictedLatency", 0, audiodevices[pahandle].predictedLatency, status);
@@ -5654,7 +5610,7 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     "Each struct contains information about its associated PortAudio device. The optional "
     "parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
     "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
-    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, probably 16=Linux/PulseAudio, 5=MacOSX/CoreAudio.\n\n"
+    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 16=Linux/PulseAudio, 5=macOS/CoreAudio.\n\n"
     "On macOS you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
     "On Linux you may have the choice between ALSA, JACK, PulseAudio and OSS. ALSA or JACK provide very low "
     "latencies and very good timing, OSS is an older system which is less capable and not in "
@@ -5898,7 +5854,7 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
  */
 PsychError PSYCHPORTAUDIOEngineTunables(void)
 {
-    static char useString[] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1] [, audioserver_autosuspend]);";
+    static char useString[] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend, workarounds] = PsychPortAudio('EngineTunables' [, yieldInterval][, MutexEnable][, lockToCore1][, audioserver_autosuspend][, workarounds]);";
     static char synopsisString[] =
     "Return, and optionally set low-level tuneable driver parameters.\n"
     "The driver must be idle, ie., no audio device must be open, if you want to change tuneables! "
@@ -5927,23 +5883,26 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
     "can interfere with low level audio device access and low-latency / high-precision audio timing. "
     "For this reason it is a good idea to switch them to standby (suspend) while a PsychPortAudio "
     "session is active. Sometimes this isn't needed or not even desireable. Therefore this option "
-    "allows to inhibit this automatic suspending of audio servers.\n";
+    "allows to inhibit this automatic suspending of audio servers.\n"
+    "'workarounds' A bitmask to enable various workarounds: +1 = Ignore Pa_IsFormatSupported() errors, "
+    "+2 = Don't even call Pa_IsFormatSupported().\n";
 
     static char seeAlsoString[] = "Open ";
 
-    int mutexenable, mylockToCore1, mysuspend;
+    int mutexenable, mylockToCore1, mysuspend, myworkaroundsMask;
     double myyieldInterval;
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(5));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(4));    // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(5));    // The maximum number of outputs
 
     // Make sure no settings are changed while an audio device is open:
-    if ((PsychGetNumInputArgs() > 0) && (audiodevicecount > 0)) PsychErrorExitMsg(PsychError_user, "Tried to change low-level engine parameter while at least one audio device is open! Forbidden!");
+    if ((PsychGetNumInputArgs() > 0) && (audiodevicecount > 0))
+        PsychErrorExitMsg(PsychError_user, "Tried to change low-level engine parameter while at least one audio device is open! Forbidden!");
 
     // Return current/old audioserver_suspend:
     PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) ((pulseaudio_autosuspend) ? 1 : 0));
@@ -5955,15 +5914,14 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
         if (verbosity > 3) printf("PsychPortAudio: INFO: Automatic suspending of desktop audio servers %s.\n", (pulseaudio_autosuspend) ? "enabled" : "disabled");
     }
 
-    // Make sure PortAudio is online: Must be done after setup of audioserver_suspend!
-    PsychPortAudioInitialize();
-
     // Return old yieldInterval:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, yieldInterval);
 
     // Get optional new yieldInterval:
     if (PsychCopyInDoubleArg(1, kPsychArgOptional, &myyieldInterval)) {
-        if (myyieldInterval < 0 || myyieldInterval > 0.1) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'yieldInterval' provided. Valid are between 0.0 and 0.1 seconds.");
+        if (myyieldInterval < 0 || myyieldInterval > 0.1)
+            PsychErrorExitMsg(PsychError_user, "Invalid setting for 'yieldInterval' provided. Valid are between 0.0 and 0.1 seconds.");
+
         yieldInterval = myyieldInterval;
         if (verbosity > 3) printf("PsychPortAudio: INFO: Engine yieldInterval changed to %lf seconds.\n", yieldInterval);
     }
@@ -5986,6 +5944,19 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
         if (mylockToCore1 < 0 || mylockToCore1 > 1) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'lockToCore1' provided. Valid are 0 and 1.");
         lockToCore1 = (mylockToCore1 > 0) ? TRUE : FALSE;
         if (verbosity > 3) printf("PsychPortAudio: INFO: Locking of all engine threads to cpu core 1 %s.\n", (lockToCore1) ? "enabled" : "disabled");
+    }
+
+    // Return current/old workarounds mask:
+    PsychCopyOutDoubleArg(5, kPsychArgOptional, workaroundsMask);
+
+    // Get optional workaroundsMask:
+    if (PsychCopyInIntegerArg(5, kPsychArgOptional, &myworkaroundsMask)) {
+        if (myworkaroundsMask < 0)
+            PsychErrorExitMsg(PsychError_user, "Invalid setting for 'workarounds' provided. Valid are values >= 0.");
+
+        workaroundsMask = myworkaroundsMask;
+
+        if (verbosity > 3) printf("PsychPortAudio: INFO: Setting workaroundsMask to %i.\n", workaroundsMask);
     }
 
     return(PsychError_none);

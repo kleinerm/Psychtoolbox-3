@@ -37,11 +37,6 @@
 
 #include "Screen.h"
 
-// If set to true, then the apple client storage extensions are used: I doubt that they have any
-// advantage for the current way PTB is used, but it can be useful to conserve VRAM on very
-// low-mem gfx cards if Screen('Preference', 'ConserveVRAM') is set appropriately.
-static psych_bool clientstorage = FALSE;
-
 // This stores the texture format/mode to use: We autodetect available types at first
 // invocation of PsychCreateTexture()... We try to use GL_EXT_TEXTURE_RECTANGLE_2D textures for
 // higher speed/efficiency and lower memory consumption. If that fails, we try
@@ -136,9 +131,6 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 
 void PsychCreateTexture(PsychWindowRecordType *win)
 {
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    GLenum textureHint;
-    #endif
     GLenum texturetarget, oldtexturetarget = GL_TEXTURE_RECTANGLE_EXT;
     double sourceWidth, sourceHeight;
     GLint glinternalFormat = 0, gl_realinternalformat = 0;
@@ -171,11 +163,6 @@ void PsychCreateTexture(PsychWindowRecordType *win)
     // Assign proper texturetarget for creation:
     texturetarget = PsychGetTextureTarget(win);
 
-    // Check if user requested explicit use of clientstorage + Use of System RAM for
-    // storage of textures instead of VRAM caching in order to conserve VRAM memory on
-    // low-mem gfx-cards. Enable clientstorage, if so...
-    clientstorage = (PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) ? TRUE : FALSE;
-
     // Create a unique texture handle for this texture:
     // If the texture already has a handle assigned then this means that we shouldn't
     // create and setup a new OpenGL texture from scratch, but bind and recycle the
@@ -200,37 +187,6 @@ void PsychCreateTexture(PsychWindowRecordType *win)
     glBindTexture(texturetarget, win->textureNumber);
 
     // Setup texture parameters like optimization, storage format et al.
-
-    // Choose the texture acceleration extension out of GL_STORAGE_PRIVATE_APPLE, GL_STORAGE_CACHED_APPLE, GL_STORAGE_SHARED_APPLE
-    // We normally use CACHED storage for caching textures in gfx-cards VRAM for high-perf drawing,
-    // but if user explicitely requests client storage for saving VRAM memory, we do so and
-    // use SHARED storage in system RAM --> Slower but saves VRAM memory.
-    #if PSYCH_SYSTEM == PSYCH_OSX
-        textureHint= (clientstorage) ? GL_STORAGE_SHARED_APPLE : GL_STORAGE_CACHED_APPLE;
-        glTexParameteri(texturetarget, GL_TEXTURE_STORAGE_HINT_APPLE , textureHint);
-        glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, (clientstorage) ? GL_TRUE : GL_FALSE);
-    #endif
-
-    // Not using GL_STORAGE_SHARED_APPLE provided increased reliability of timing and significantly shorter rendering times
-    // when testing with a G5-Mac with 1.6Ghz CPU and 256 MB RAM, MacOS-X 10.3.7, using 12 textures of 800x800 pixels each.
-    // Rendering times with this code are around 6 msecs, while original PTB 1.0.40 code took 17 ms on average...
-    // Can't test this on other machines like G4 or machines with more RAM...
-    // -> Sometimes, GL_STORAGE_SHARED_APPLE is faster, but only if texture width and height are divisable by 16 and
-    // all used memory is page-aligned and a couple other conditions are met. So... Sometimes you are 20% faster, but most of
-    // the time you are 2 to 3 times slower than without this extensions...
-    // The "Principle of least surprise" would suggest to disable the extension, because the end-user doesn't
-    // expect sudden and random changes in performance of his PTB scripts.
-    // Alternatively one could code up different path's depending on if the preconditions are met or not...
-    //
-    // We could reenable the extension, if wanted, but then the MakeTexture code needs to be modified in a way
-    // that will slow down MakeTexture a bit. It's a tradeoff between speed of DrawTexture and speed of MakeTexture.
-    //
-    // BTW -> Does disabling the extension solve "severe tearing bug" reported in Forum message 3007?
-    // Explanation: GL_STORAGE_SHARED_APPLE enables texture fetches over AGP bus via DMA operations and
-    // should increase performance. But DMA only triggers when texture width is divisible by 8, in all other
-    // cases it's disabled. Bug in message 3007 only happens when texture width is divisible by 8. Could this
-    // be a bug in the G4 Laptops graphics hardware (DMA-Engine) or in its OpenGL driver???
-    // Would be interesting to find out...
 
     // Setting GL_UNPACK_ALIGNMENT == 1 fixes a bug, where textures are drawn incorrectly, if their
     // width or height is not divisible by 4.
@@ -397,11 +353,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
                 if ((!avoidCPUGPUSync || (verbosity > 10)) && ((glerr = glGetError()) !=0 )) {
                     glBindTexture(texturetarget, 0);
                     win->textureNumber = 0;
-                    if (!clientstorage) {
-                        if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
-                        win->textureMemory=NULL;
-                        win->textureMemorySizeBytes=0;
-                    }
+                    if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
+                    win->textureMemory=NULL;
+                    win->textureMemorySizeBytes=0;
                     while(glGetError()) {};
 
                     if (verbosity > 0) {
@@ -444,11 +398,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
                     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                     glDeleteTextures(1, &win->textureNumber);
                     win->textureNumber = 0;
-                    if (!clientstorage) {
-                        if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
-                        win->textureMemory=NULL;
-                        win->textureMemorySizeBytes=0;
-                    }
+                    if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
+                    win->textureMemory=NULL;
+                    win->textureMemorySizeBytes=0;
 
                     while(glGetError());
 
@@ -598,12 +550,10 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         }
     }
 
-    // Free system RAM backing memory buffer, if client storage extensions are not used for this texture:
-    if (!clientstorage) {
-        if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
-        win->textureMemory=NULL;
-        win->textureMemorySizeBytes=0;
-    }
+    // Free system RAM backing memory buffer:
+    if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
+    win->textureMemory=NULL;
+    win->textureMemorySizeBytes=0;
 
     // Texture object ready for future use. Unbind it:
     glBindTexture(texturetarget, 0);

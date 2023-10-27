@@ -63,16 +63,9 @@
 % On MS-Windows you will need to install the GStreamer multi- media framework -
 % see "help GStreamer" for installation instructions - otherwise Psychtoolbox
 % will use the old lower quality GDI text renderer instead. As of Psychtoolbox
-% version 3.0.19, you *must* install GStreamer v1.20.5 or later (see the download
+% version 3.0.19, you *must* install GStreamer v1.22 or later (see the download
 % link in "help GStreamer" for the latest tested version). All earlier versions
 % will not work!
-%
-% If your version of Matlab bundles an outdated libfreetype.dll, as may be the
-% case with at least R2015a and later, you may need to get rid of that as well,
-% just as on macOS (see above). The file to delete or rename would likely to be
-% found in (e.g., for R2015b):
-% C:\Program Files\MATLAB\R2015b\bin\win64\ under a name like libfreetype.dll,
-% or a similar name containing "freetype".
 %
 % The first time a script calls a text drawing function after an operating system
 % update, or after the installation of new text fonts, a long pause of many seconds

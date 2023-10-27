@@ -3,6 +3,8 @@ PsychSourceGL/Projects/Linux/build/*
 PsychSourceGL/Projects/Windows/build/*
 PsychSourceGL/Source/build/
 build/
+# except this one which is committed
+!PsychSourceGL/Cohorts/HID_Utilities_64Bit/build
 *.o
 *~
 .DS_Store

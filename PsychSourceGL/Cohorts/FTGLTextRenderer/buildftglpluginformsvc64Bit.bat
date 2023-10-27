@@ -1,11 +1,12 @@
 rem **** Build sequence for libptbdrawtext_ftgl64.dll, our 64-Bit text renderer plugin for Windows ****
-rem **** Requires 64-Bit GStreamer 1.20.5+ MSVC SDK and MSVC 2019 Community edition installed.     ****
+rem **** Requires 64-Bit GStreamer 1.22.0+ MSVC SDK and MSVC 2019 Community edition installed.     ****
 
 rem **** Set pathes to the MSVC 2019 Community edition build tools and included Windows 10 SDK ****
 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 
-dumpbin.exe /OUT:fontconfig-1.functions /EXPORTS C:/gstreamer/1.0/msvc_x86_64/bin/fontconfig-1.dll
-lib /def:fontconfig-1.def /machine:x64 /out:fontconfig.lib
+rem Disabled the following, not needed right now for GStreamer 1.22, was needed for GStreamer 1.20
+rem dumpbin.exe /OUT:fontconfig-1.functions /EXPORTS C:/gstreamer/1.0/msvc_x86_64/bin/fontconfig-1.dll
+rem lib /def:fontconfig-1.def /machine:x64 /out:fontconfig.lib
 
 cl /c /GR /W3 /EHs /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0 /nologo /MD /I"C:\gstreamer\1.0\msvc_x86_64\include\freetype2" /I"C:\gstreamer\1.0\msvc_x86_64\include" /Foqstringqcharemulation.obj /O2 /Oy- /DNDEBUG -DOGLFT_BUILD qstringqcharemulation.cpp
 cl /c /GR /W3 /EHs /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0 /nologo /MD /I"C:\gstreamer\1.0\msvc_x86_64\include\freetype2" /I"C:\gstreamer\1.0\msvc_x86_64\include" /Folibptbdrawtext_ftgl.obj /O2 /Oy- /DNDEBUG -DOGLFT_BUILD libptbdrawtext_ftgl.cpp

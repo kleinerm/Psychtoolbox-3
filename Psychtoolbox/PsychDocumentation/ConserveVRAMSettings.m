@@ -22,11 +22,22 @@
 % that only has very small amounts of VRAM, e.g., only 16 MB or 8 MB VRAM.
 %
 %
-% 2 == kPsychDontCacheTextures: A setting of 2 asks Psychtoolbox not to
-% cache used textures in the graphics hardware local VRAM memory. This will
-% save some VRAM memory at the expense of lower drawing performance. Only
-% useful on gfx-hardware with low amounts of VRAM and only works on
-% MacOS/X. The flag is silently ignored on Windows and Linux.
+% 2 == kPsychDontSwitchToOptimalVidMode: A setting of 2 asks Psychtoolbox
+% to avoid switching the display to a different resolution, as would be
+% normally done on macOS for Intel Macs in fullscreen mode in order to fix
+% various macOS bugs. Instead a mode with proper timing properties but
+% matching video resolution and refresh rate to the currently active mode
+% is chosen if possible. This is usually the wrong thing to do, but for
+% certain special external display configurations it might help, e.g., with
+% external display splitter devices from Matrox.
+%
+% The flag is silently ignored on Windows and Linux, as the visual timing
+% workarounds influenced by this flag are only needed on buggy macOS.
+%
+% Note that this flag value 2 used to have a different meaning in older
+% Psychtoolbox releases, influencing texture memory optimizations. These
+% have been removed as they were both not needed anymore and buggy on
+% recent macOS releases.
 %
 %
 % 4 == kPsychOverrideWglChoosePixelformat: This is a workaround for broken

@@ -160,8 +160,10 @@ typedef struct {
 // Screen Preference setting:
 // Do not use AUX buffers, disable associated features.
 #define kPsychDisableAUXBuffers 1
-// Use Client storage for RAM->DMA texturing instead of VRAM texturing.
-#define kPsychDontCacheTextures 2
+// In macOS CGL fullscreen mode, do not switch to detected "optimal mode", but try an
+// unscaled (by the compositor) mode with proper depth and width x height x refresh that
+// matches the current mode, ie. stay as close to current mode as possible:
+#define kPsychDontSwitchToOptimalVidMode 2
 // Do not use wglChoosePixelformat - extension on M$-Windows:
 #define kPsychOverrideWglChoosePixelformat 4
 // Do not use separate GL contexts for PTB vs. MOGL on f%%%% M$-Windows and its broken drivers:

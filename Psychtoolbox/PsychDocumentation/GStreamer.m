@@ -13,7 +13,7 @@
 % for video recording, not for live capture).
 %
 % You will need at least version 1.8 of GStreamer on Linux, and at least
-% version 1.20.5 on MS-Windows and at least version 1.18.5 on macOS, but
+% version 1.22.0 on MS-Windows and at least version 1.18.5 on macOS, but
 % we recommend to use the latest stable release of the version 1 series
 % tested by us (see links below).
 %
@@ -65,7 +65,7 @@
 %
 % MS-Windows: You must install GStreamer, regardless if you want to use multi-media
 % functionality or not, as the Screen() mex file won't work at all without GStreamer
-% installed! You must install at least version 1.20.5 of the 64-Bit MSVC variant of
+% installed! You must install at least version 1.22.0 of the 64-Bit MSVC variant of
 % GStreamer.
 %
 % Here is a FAQ entry on resolving GStreamer problems:
@@ -87,11 +87,11 @@
 % <http://gstreamer.freedesktop.org/download/>
 %
 % The following GStreamer runtime packages have been lightly tested for compatibility
-% with Psychtoolbox 3.0.19.1, as of March 2023:
+% with Psychtoolbox 3.0.19.4, as of September 2023:
 %
-% For MS-Windows: 64-Bit Intel MSVC runtime v1.22.1 for use with 64-Bit Matlab/Octave.
+% For MS-Windows: 64-Bit Intel MSVC runtime v1.22.5 for use with 64-Bit Matlab/Octave.
 %
-% <https://gstreamer.freedesktop.org/data/pkg/windows/1.22.1/msvc/gstreamer-1.0-msvc-x86_64-1.22.1.msi>
+% <https://gstreamer.freedesktop.org/data/pkg/windows/1.22.5/msvc/gstreamer-1.0-msvc-x86_64-1.22.5.msi>
 %
 % You *must* install the MSVC variants of GStreamer, not the MinGW64 variants!
 %

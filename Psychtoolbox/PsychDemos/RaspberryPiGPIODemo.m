@@ -1,9 +1,7 @@
 function RaspberryPiGPIODemo
 % RaspberryPiGPIODemo - Show basic use of GPIO's on RaspberryPi.
 %
-% Demos full access to the Pi GPIOs when running as root,
-% slightly more limited access when running as a regular user,
-% and also the different setup steps required.
+% Demos full access to the Pi GPIOs.
 %
 % Accessing the GPIOs as non-root requires the user account
 % to be a member of the Unix group 'gpio'. PsychLinuxConfiguration
@@ -19,10 +17,10 @@ function RaspberryPiGPIODemo
 %
 % https://github.com/WiringPi/WiringPi/releases
 %
-% Shows digital i/o by flashing/alternating the two
+% The demo shows digital i/o by flashing/alternating the two
 % LEDs on the RPi 2B, Red power, and green status.
 %
-% Shows how to efficiently wait for a rising edge
+% It shows how to efficiently wait for a rising edge
 % trigger on Broadcom pin 17, a real GPIO pin on the
 % connector. To avoid the need to actually connect
 % a switch to the connector, uses internal programmable
@@ -42,11 +40,13 @@ function RaspberryPiGPIODemo
 %
 % A nice translation table between connector pins and Broadcom GPIO
 % pins can be found on the following website: https://pinout.xyz
+% The command 'pinout' in a terminal will also print the pin mapping.
 %
 
 % History:
 % 26-Jun-2016 mk  Written.
 % 22-Jul-2016 mk  Clarify pin numbering more, reference https://pinout.xyz
+% 18-Aug-2023 mk  Update for current libwiringPi, remove now defunct demo code.
 
 if ~IsARM || ~exist('RPiGPIOMex', 'file')
   fprintf('This demo only works on the RaspberryPi. Bye.\n');
@@ -68,46 +68,17 @@ greenled = 47;
 
 % Decouple OS from LEDs so we are alone in the driver seat:
 % Not needed for real GPIO pins on the connector...
-system('echo none > /sys/class/leds/led0/trigger');
-system('echo none > /sys/class/leds/led1/trigger');
-
-% Set pin 17 to input with reception of rising edge triggers.
-% This will fire an interrupt if a rising edge is detected.
-% The RPiGPIOMex(5, pin, timeout) command can efficiently wait
-% for such triggers that are reported via hardware interrupts:
-system('gpio edge 17 rising');
-
-% Pull the input pin down to logical low via internal pulldown resistor,
-% to have a good starting point for simulating a trigger by using
-% the internal pullup resistor to create a low->high transition.
-% All gpio commands except 'edge' and 'export' operate on wiringPi
-% logical pin numbers, not on Broadcom GPIO pin numbers. As we only
-% use Broadcom numbering, we need to use the -g flag for most commands
-% to tell 'gpio' to use the Broadcom numbering:
-system('gpio -g mode 17 down');
+fprintf('Please enter your sudo password if prompted, to allow LED control on RPi.\n');
+system('sudo -S /bin/bash -c ''echo none > /sys/class/leds/led0/trigger''');
+system('sudo -S /bin/bash -c ''echo none > /sys/class/leds/led1/trigger''');
 
 % List all pins which are exported for use by non-root applications,
 % and their configuration:
 system('gpio exports')
 
-% Are we effectively running as root?
-if geteuid ~= 0
-  % Nope. Need some help from our powerful command line friend:
-  % Call gpio command line utility to export pins of
-  % red led and green led for use by us without need
-  % to be root. Set them to output mode.
-  %
-  % Note: This does not actually work for the builtin LEDs!
-  % It only works for the real GPIO pins, so these lines are
-  % for illustration only and you need to run 'sudo octave'
-  % to control the LEDs.
-  system(sprintf('gpio export %i out', redled));
-  system(sprintf('gpio export %i out', greenled));
-else
-  % Yes. Can setup stuff ourselves. Switch pins to output mode:
-  RPiGPIOMex(3, redled, 1);
-  RPiGPIOMex(3, greenled, 1);
-end
+% Switch pins to output mode:
+RPiGPIOMex(3, redled, 1);
+RPiGPIOMex(3, greenled, 1);
 
 % Remember current LED state for restore at end:
 oldRed = RPiGPIOMex(0, redled)
@@ -130,55 +101,38 @@ RPiGPIOMex(1, greenled, oldGreen);
 
 % Restore OS control of leds, displaying disc activity
 % and state of power supply and system health:
-system('echo mmc0 > /sys/class/leds/led0/trigger');
-system('echo input > /sys/class/leds/led1/trigger');
+system('sudo -S /bin/bash -c ''echo mmc0 > /sys/class/leds/led0/trigger''');
+system('sudo -S /bin/bash -c ''echo input > /sys/class/leds/led1/trigger''');
 
 % Test for efficiently waiting for reception of a trigger
 % signal on an input pin.
-if geteuid == 0
-  % Switch pin 17 to input:
-  RPiGPIOMex(3, 17, 0);
 
-  % Pull it low:
-  RPiGPIOMex(4, 17, -1);
-  statelow = RPiGPIOMex(0, 17)
+% Switch pin 17 to input:
+RPiGPIOMex(3, 17, 0);
 
-  % Pull it high to simulate an external rising edge trigger:
-  RPiGPIOMex(4, 17, +1);
-  statehi = RPiGPIOMex(0, 17)
+% Pull it low:
+RPiGPIOMex(4, 17, -1);
+statelow = RPiGPIOMex(0, 17)
 
-  % Pull it low again:
-  RPiGPIOMex(4, 17, -1);
-  statelow = RPiGPIOMex(0, 17)
+% Pull it high to simulate an external rising edge trigger:
+RPiGPIOMex(4, 17, +1);
+statehi = RPiGPIOMex(0, 17)
 
-  % Wait for a rising edge trigger for up to 10 seconds:
-  % First wait will usually complete immediately due to
-  % some recorded low->high transition during port setup.
-  trigger1 = RPiGPIOMex(5, 17, 10000)
-  % 2nd and 3rd waits will usually actually wait for a
-  % real trigger, or simply time out after 10 seconds:
-  trigger2 = RPiGPIOMex(5, 17, 10000)
-  trigger3 = RPiGPIOMex(5, 17, 10000)
+% Pull it low again:
+RPiGPIOMex(4, 17, -1);
+statelow = RPiGPIOMex(0, 17)
 
-  % Should be high after trigger:
-  posthi = RPiGPIOMex(0, 17)
+% Wait for a rising edge trigger for up to 10 seconds,
+% three times in a row:
+trigger1 = RPiGPIOMex(5, 17, 10000)
+trigger2 = RPiGPIOMex(5, 17, 10000)
+trigger3 = RPiGPIOMex(5, 17, 10000)
 
-  % Tristate it:
-  RPiGPIOMex(4, 17, 0);
-  statetri = RPiGPIOMex(0, 17)
-else
-  % Wait for a rising edge trigger for up to 10 seconds:
-  % First wait will usually complete immediately due to
-  % some recorded low->high transition during port setup.
-  trigger1 = RPiGPIOMex(5, 17, 10000)
+% Should be high after trigger:
+posthi = RPiGPIOMex(0, 17)
 
-  % Wait for a rising edge trigger for up to 10 seconds:
-  % 2nd wait will usually actually wait for a real trigger,
-  % or simply time out after 10 seconds:
-  trigger2 = RPiGPIOMex(5, 17, 10000)
-
-  % Should be high after trigger:
-  posthi = RPiGPIOMex(0, 17)
-end
+% Tristate it:
+RPiGPIOMex(4, 17, 0);
+statetri = RPiGPIOMex(0, 17)
 
 return;

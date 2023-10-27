@@ -1,5 +1,5 @@
-function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device)
-% BasicSoundInputDemo([wavfilename][, voicetrigger=0][, maxsecs=inf] [, device])
+function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device, reqlatencyclass)
+% BasicSoundInputDemo([wavfilename][, voicetrigger=0][, maxsecs=inf][, device][, reqlatencyclass])
 %
 % Demonstrates very basic usage of the new Psychtoolbox sound driver
 % PsychPortAudio() for audio capture / recording.
@@ -28,6 +28,10 @@ function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device)
 %                infinite - sound is recorded until a key is pressed.
 %
 % device       = Deviceindex of audio card to use. Auto-Selected if omitted.
+%
+% reqlatencyclass = Override reqlatencyclass parameter for audio capture. Defaults
+%                   to standard [] for low-latency, high timing precision if omitted.
+%
 
 % History:
 % 06/30/2007 Written (MK)
@@ -63,6 +67,16 @@ if nargin < 4
     device = [];
 end
 
+if nargin < 5
+    reqlatencyclass = [];
+end
+
+% If no specific reqlatencyclass is requested, but voicetrigger is wanted, raise
+% to level 2 - exclusive device access - for good timestamping and low latency:
+if isempty(reqlatencyclass) && (voicetrigger > 0)
+    reqlatencyclass = 2;
+end
+
 % Workaround broken qt plotting on some Octave setups:
 if IsOctave && exist('graphics_toolkit')
     try
@@ -76,13 +90,13 @@ RestrictKeysForKbCheck(KbName('ESCAPE'));
 KbReleaseWait;
 
 % Perform basic initialization of the sound driver:
-InitializePsychSound;
+InitializePsychSound(double(reqlatencyclass > 1));
 
 % Open audio device 'device', with mode 2 (== Only audio capture),
-% and a required latencyclass of 1 == low-latency mode, with the preferred
+% and a required latencyclass of 'reqlatencyclass', with the preferred
 % default sampling frequency of the audio device, and 2 sound channels
 % for stereo capture. This returns a handle to the audio device:
-pahandle = PsychPortAudio('Open', device, 2, 1, [], 2);
+pahandle = PsychPortAudio('Open', device, 2, reqlatencyclass, [], 2);
 
 % Get what freq'uency we are actually using:
 s = PsychPortAudio('GetStatus', pahandle);
@@ -181,6 +195,11 @@ PsychPortAudio('Close', pahandle);
 
 RestrictKeysForKbCheck([]);
 
+% Shall we store recorded sound to wavfile?
+if ~isempty(wavfilename)
+    psychwavwrite(transpose(recordedaudio), freq, 16, wavfilename)
+end
+
 % Replay recorded data: Open 'device' for output, push recorded sound
 % data into its output buffer:
 pahandle = PsychPortAudio('Open', device, 1, 0, freq, 2);
@@ -194,11 +213,6 @@ PsychPortAudio('Stop', pahandle, 1);
 
 % Close the audio device:
 PsychPortAudio('Close', pahandle);
-
-% Shall we store recorded sound to wavfile?
-if ~isempty(wavfilename)
-    psychwavwrite(transpose(recordedaudio), freq, 16, wavfilename)
-end
 
 % Done.
 fprintf('Demo finished, bye!\n');

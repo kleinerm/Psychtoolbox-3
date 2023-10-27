@@ -98,7 +98,7 @@ if IsOctave
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
             fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 5.0.0 or later\n', version);
-            fprintf('on Linux, Octave 7.3 on Windows and Octave 7.3/8.1/8.2 on macOS.\n');
+            fprintf('on Linux, Octave 7.3 on Windows and Octave 7.3/8.1/8.2/8.3 on macOS.\n');
 
             fprintf('Another reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');

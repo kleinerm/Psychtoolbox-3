@@ -4,7 +4,7 @@ function PsychStartup
 % This performs setup of Matlab or Octave at session startup for
 % Psychtoolbox.
 %
-% On MS-Windows, it currently detects if the GStreamer 1.18+ runtime is
+% On MS-Windows, it currently detects if the GStreamer 1.22+ runtime is
 % installed, as this is required for Screen() multi-media functions to
 % work. It performs GStreamer setup, or outputs a warning if the runtime is
 % missing.
@@ -26,6 +26,7 @@ function PsychStartup
 % 26.10.2020  mk  Update for GStreamer 1.18.0+ use only.
 % 21.11.2020  mk  Reenable GStreamer on octave-cli for Windows. Workaround no longer needed.
 % 11.10.2021  mk  Fix wrong drive letters in Win fallback GStreamer detection, introduced in 3.0.17.0.
+% 20.09.2023  mk  Remove all 32-Bit support on MS-Windows.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -33,9 +34,9 @@ try
     % Setup for MS-Windows:
     if IsWin
         % Need to assign a proper install location for the
-        % www.gstreamer.net GStreamer-1.16.0+ MSVC runtime libraries, otherwise
-        % use of GStreamer based functions would fail due to unresolved
-        % link dependencies:
+        % GStreamer-1.22.0+ MSVC runtime libraries, otherwise
+        % use of GStreamer based functions would fail due to
+        % unresolved link dependencies:
 
         % Must omit GStreamer runtime path on Octave in CLI mode, to avoid
         % build trouble due to lib clashes between Octave and GStreamer:
@@ -43,36 +44,21 @@ try
         % GStreamer disable for building on octave-cli: No longer needed since Octave 5.2+
         useGStreamer = 1;
 
-        % Find path to SDK-Root folder: Should be defined in env variable
-        % by installer:
-        if Is64Bit
-            % Use 64-Bit GStreamer runtime for 64-Bit Matlab/Octave on Windows:
-            sdkroot = getenv('GSTREAMER_1_0_ROOT_MSVC_X86_64');
-            suffix = 'msvc_x86_64\';
-        else
-            % Use 32-Bit GStreamer runtime for 32-Bit Octave-5.2+ on Windows:
-            sdkroot = getenv('GSTREAMER_1_0_ROOT_MSVC_X86');
-            suffix = 'msvc_x86\';
-        end
+        % Find path to SDK-Root folder: Should be defined in environment variable
+        % by installer. Use the 64-Bit GStreamer runtime for 64-Bit Matlab/Octave
+        % on Windows:
+        sdkroot = getenv('GSTREAMER_1_0_ROOT_MSVC_X86_64');
+        suffix = 'msvc_x86_64\';
 
         if isempty(sdkroot)
-            if Is64Bit
-                fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_MSVC_X86_64 is undefined.\n');
-            else
-                fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_MSVC_X86 is undefined.\n');
-            end
-            fprintf('PsychStartup: Either GStreamer-1.18 MSVC or a later version is not installed at all, or if it is installed, then\n');
+            fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_MSVC_X86_64 is undefined.\n');
+            fprintf('PsychStartup: Either GStreamer-1.22 MSVC or a later version is not installed at all, or if it is installed, then\n');
             fprintf('PsychStartup: something is botched. Trying various common locations for the GStreamer runtime to keep going.\n');
         else
             if ~exist(sdkroot, 'dir')
                 % Env variable points to non-existent SDK dir. How peculiar?
                 % Invalidate invalid sdkroot, so fallback code can run:
-                if Is64Bit
-                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_MSVC_X86_64 points to non-existent folder?!?\n');
-                else
-                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_MSVC_X86 points to non-existent folder?!?\n');
-                end
-
+                fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_MSVC_X86_64 points to non-existent folder?!?\n');
                 fprintf('PsychStartup: The missing or inaccessible path to GStreamer is: %s\n', sdkroot);
                 fprintf('PsychStartup: Something is botched. Trying various common locations for the runtime to keep going.\n');
                 sdkroot = [];
@@ -102,16 +88,8 @@ try
 
         if isempty(sdkroot) || ~exist(sdkroot, 'dir')
             fprintf('\nPsychStartup: Path to GStreamer runtime is undefined! This probably means that\n');
-            fprintf('PsychStartup: the 64-Bit GStreamer 1.18+ MSVC runtime from www.gstreamer.net is not installed.\n');
-
-            % PTB 3.0.17 - GStreamer is always needed, also on Matlab.
-            if 1 || IsOctave
-                fprintf('PsychStartup: The Psychtoolbox Screen() function will not work at all until you fix\n');
-            else
-                fprintf('PsychStartup: The Psychtoolbox Screen() multimedia functions and the new ''DrawText''\n');
-                fprintf('PsychStartup: high quality text renderer will fail to work until you fix\n');
-            end
-
+            fprintf('PsychStartup: the 64-Bit GStreamer 1.22+ MSVC runtime is not installed.\n');
+            fprintf('PsychStartup: The Psychtoolbox Screen() function will not work at all until you fix\n');
             fprintf('PsychStartup: this! Read ''help GStreamer'' for instructions.\n\n');
             sdkroot = [];
         else
@@ -160,24 +138,12 @@ try
             newpath = [driverloadpath ';' newpath];
         end
 
-        % For moglcore we need to prepend the path to freeglut.dll:
-        if Is64Bit
-            % Need 64-Bit freeglut.dll:
-            driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/x64'];
-        else
-            % Need 32-Bit freeglut.dll:
-            driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core'];
-        end
+        % For moglcore we need to prepend the path to the 64-Bit freeglut.dll:
+        driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/x64'];
         newpath = [driverloadpath ';' newpath];
 
-        % For PsychHID we need to prepend the path to libusb-1.0.dll:
-        if Is64Bit
-            % 64-Bit version of libusb.dll
-            driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep 'x64' filesep];
-        else
-            % 32-Bit version of libusb.dll
-            driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep ];
-        end
+        % For PsychHID we need to prepend the path to the 64-Bit libusb-1.0.dll:
+        driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep 'x64' filesep];
         newpath = [driverloadpath ';' newpath];
 
         setenv('PATH', newpath);

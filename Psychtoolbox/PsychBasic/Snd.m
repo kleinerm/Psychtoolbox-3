@@ -1,35 +1,47 @@
 function err = Snd(command,signal,rate,sampleSize)
 % err = Snd(command,[signal],[rate],[sampleSize])
 %
-% Old Sound driver for Psychtoolbox. USE OF THIS DRIVER IS DEPRECATED FOR
-% ALL BUT THE MOST TRIVIAL PURPOSES! Only useful for simple feedback tones,
-% and indirectly by Eyelink's calibration routines. Does not mix well with
-% simultaneous use of PsychPortAudio() or Screen() movie playback functions!
+% Old Sound driver for Psychtoolbox. USE OF THIS DRIVER IS DEPRECATED FOR ALL BUT
+% THE MOST TRIVIAL PURPOSES! Only useful for simple feedback tones, and indirectly
+% by Eyelink's calibration routines. Does not trivially mix well with simultaneous
+% use of PsychPortAudio(), see below for how to make it work with PsychPortAudio().
 %
 % Have a look at the help for PsychPortAudio ("help PsychPortAudio" and
 % "help InitializePsychSound") for an introduction into the new sound
 % driver, which is recommended for most purposes.
 %
-% Snd() is a rather dumb and primitive wrapper around the PsychPortAudio()
-% driver. It uses PsychPortAudio's most basic functionality to achieve
-% "sort of ok" sound playback. The driver is used in high latency, low timing
-% precision mode, so Snd()'s audio playback timing will likely be very unreliable.
+% By default, Snd() uses Matlabs or Octaves audioplayer() function for sound
+% playback. This allows good interoperation with Screen()'s GStreamer based movie
+% playback functionality, as well as with other running audio client applications.
+% This has been tested under Octave 5+ and Matlab R2022b on Windows-10, macOS 13
+% and Ubuntu 20.04-LTS and later. The downside is that audioplayer() operates
+% with high audio latency, bad audio timing precision, unreliable and imprecise
+% audio timestamps, as well as very limited audio control and functionality. It
+% is mostly good enough for simple sound playback of stereo sound, e.g., some
+% audio feedback tones, not more.
+%
+% Snd() can also be used with PsychPortAudio, but as a rather dumb and primitive
+% wrapper around the PsychPortAudio() driver. It uses PsychPortAudio's most basic
+% functionality to achieve "sort of ok" sound playback. The driver is used in high
+% latency, low timing precision mode, so Snd()'s audio playback timing will likely
+% be very unreliable.
 %
 % Alternatively you can create an empty file named 'Snd_use_oldstyle.txt' in
 % the PsychtoolboxConfigDir() folder, ie., [PsychtoolboxConfigDir 'Snd_use_oldstyle.txt']
-% This will enable the old-style implementation of Snd(), which just calls into
-% Matlabs/Octaves sound() function. As sound() is of varying quality, there may
-% be bugs, latency- and timing problems associated with the use of sound() by Snd().
+% to enforce the old-style implementation of Snd(), which uses audioplayer().
+% The command Snd('Oldstyle') also requests use of this old-style audioplayer() path.
 %
-% The command Snd('Oldstyle') also requests use of this old-style sound() path.
+% Creating a file named 'Snd_use_newstyle.txt' similar to above will enforce use
+% of PsychPortAudio().
+%
 %
 % Audio device sharing for interop with PsychPortAudio:
 % -----------------------------------------------------
 %
 % If you want to use PsychPortAudio and Snd() simultaneously, or one of the
 % functions that indirectly use Snd(), e.g., Beeper() for simple beep tones,
-% or Eyelink's auditory feedback during tracker setup and recalibration, which
-% in turn uses Beeper() and thereby Snd(), then try this:
+% or Eyelink's auditory feedback during tracker setup and recalibration (which
+% in turn uses Beeper() and thereby Snd()), then try this:
 %
 % 1. Open a suitable PsychPortAudio audio device, possibly also a slave audio
 %    device and get a pahandle to it, e.g., pahandle = PsychPortAudio('Open',...);
@@ -51,36 +63,33 @@ function err = Snd(command,signal,rate,sampleSize)
 % 4. At the end of a session, you could forcefully detach Snd() from the pahandle
 %    via a call to Snd('Close', 1).
 %
-% Supported functions:
-% --------------------
+% Supported subfunctions:
+% -----------------------
 %
 % Snd('Play', signal [, rate][, sampleSize]) plays a sound.
 %
-% rate=Snd('DefaultRate') returns the default sampling rate in Hz, which
-% currently is 22254.5454545454 Hz on all platforms for the old style sound
+% rate = Snd('DefaultRate') returns the default sampling rate in Hz, which
+% currently is 44100 Hz on all platforms for the old style sound
 % implementation, and the default device sampling rate if PsychPortAudio is
 % used. This default may change in the future, so please either specify a
-% rate, or use this function to get the default rate. (This default is
-% suboptimal on any system except long dead MacOS-9, but kept for backwards
-% compatibility!).
+% rate, or use this function to get the default rate.
 %
-% The optional 'sampleSize' argument used with Snd('Play') is only retained
-% for backwards compatibility and has no meaning, unless you opt in to use
-% the old-style implementation. Otherwise it is checked for correctness, but
+% The optional 'sampleSize' argument used with Snd('Play') is only retained for
+% backwards compatibility and has no meaning, unless you opt in to use the
+% audioplayer() implementation. Otherwise it is checked for correctness, but
 % other than that it is ignored. Allowable values are either 8 or 16.
 %
 % oldverbosity = Snd('Verbosity' [, verbosity]);
 % - Query current level of verbosity, optionally set a new 'verbosity' level.
 %
-% Snd('Open') opens the channel, which stays open until you call
-% Snd('Close'). Snd('Play',...) automatically opens the channel if it isn't
-% already open. You can use Snd('Open', pahandle); to share an existing
-% PsychPortAudio audio device handle 'pahandle' with Snd() for optimal
-% interoperation. A Snd('Close') of such a shared 'pahandle' would not close the
-% handle, but it would close Snd()'s further use of it. If you call
-% Snd('Open', pahandle, 1); then a Snd('Close') will not have any effect, ie. the
-% pahandle not only stays open, but also continues to be shared and open for use
-% by Snd(). See instructions above.
+% Snd('Open') opens the channel, which stays open until you call Snd('Close').
+% Snd('Play',...) automatically opens the channel if it isn't already open.
+% You can use Snd('Open', pahandle); to share an existing PsychPortAudio device
+% handle 'pahandle' with Snd() for optimal interoperation.
+% A Snd('Close') of such a shared 'pahandle' would not close the handle, but it
+% would close Snd()'s further use of it. If you call Snd('Open', pahandle, 1);
+% then a Snd('Close') will not have any effect, ie. the pahandle not only stays
+% open, but also continues to be shared and open for use by Snd().
 %
 % Snd('Close') immediately stops all sound and closes the channel, unless you
 % specified a shared pahandle with PsychPortAudio via Snd('Open', pahandle, 1);
@@ -88,7 +97,7 @@ function err = Snd(command,signal,rate,sampleSize)
 %
 % Snd('Wait') waits until the sound is done playing.
 %
-% isPlaying=Snd('IsPlaying') returns true if any sound is playing, and
+% isPlaying = Snd('IsPlaying') returns true if any sound is playing, and
 % false (0) otherwise.
 %
 % Snd('Quiet') stops the sound currently playing, but leaves the channel open.
@@ -98,19 +107,16 @@ function err = Snd(command,signal,rate,sampleSize)
 % Your "signal" data should lie between -1 and 1 (smaller to play more
 % softly). If the "signal" array has one row then it's played monaurally,
 % through both speakers. If it has two rows then it's played in stereo.
-% (Snd has no provision for changing which speaker(s), or the volume, used
-% by a named snd resource, so use READSND to get the snd into an array,
-% and supply the appropriately modified array to Snd.)
 %
 % "rate" is the rate (in Hz) at which the samples in "signal" should be
 % played. We suggest you always specify the "rate" parameter. If not
-% specified, the sample "rate", on all platforms, defaults to OS9's
-% standard hardware sample rate of 22254.5454545454 Hz. That value is
-% returned by Snd('DefaultRate'). Other values can be specified.
+% specified, the sample "rate", on all platforms, defaults to the most
+% common hardware sample rate of 44100 Hz. That value is returned by
+% Snd('DefaultRate'). Other values can be specified.
 %
-% OSX & WIN: "samplesize". Snd accepts the sampleSize argument and passes
-% it to the Matlab SOUND command.  SOUND (and therefore Snd also) obeys the
-% specified sampleSize value, either 8 or 16, only if it is supported by
+% "samplesize". Snd accepts the sampleSize argument and passes it to the
+% audioplayer() command. audioplayer (and therefore also Snd) may obey
+% the specified sampleSize value, either 8 or 16, only if it is supported by
 % your computer hardware.
 %
 % Snd('Play',sin(0:10000)); % play 22 KHz/(2*pi)=3.5 kHz tone
@@ -121,23 +127,12 @@ function err = Snd(command,signal,rate,sampleSize)
 % For most of the commands, the returned value is zero when successful, and
 % a nonzero error number when Snd fails.
 %
-% Snd('Play', signal) takes some time to open the channel, if it isn't
-% already open, and allocate a snd structure for your sound. This overhead
-% of the call to Snd, if you call it in the middle of a movie, may be
-% perceptible as a pause in the movie, which would be bad. However, the
-% actual playing of the sound, asynchronously, is a background process that
-% usually has very little overhead. So, even if you want a sound to begin
-% after the movie starts, you should create a soundtrack for your entire
-% movie duration (possibly including long silences), and call Snd to set
-% the sound going before you start your movie. (Thanks to Liz Ching for
-% raising the issue.)
-%
 % NOTE: We suggest you always specify the "rate" parameter. If not
-% specified, the sample rate, on all platforms, defaults to OS9's
-% standard hardware sample rate of 22254.5454545454 Hz. That value is returned
+% specified, the sample rate, on all platforms, defaults to the most
+% common hardware sample rate of 44100 Hz. That value is returned
 % by Snd('DefaultRate').
 %
-% See also PsychPortAudio, Beeper, AUDIOPLAYER, PLAY, MakeBeep, READSND, and WRITESND.
+% See also PsychPortAudio, Beeper, audioplayer, PLAY, MakeBeep, READSND, and WRITESND.
 
 % 6/6/96    dgp Wrote SndPlay.
 % 6/1/97    dgp Polished help text.
@@ -178,15 +173,22 @@ function err = Snd(command,signal,rate,sampleSize)
 %               sound() builtin, and on par in functionality with Matlab. Both use
 %               audioplayer() objects internally. All said, sound() may be now good
 %               enough to do without the new PsychPortAudio based path.
+% 10/04/23   mk Switch the old style path from use of sound() to use of audioplayer(),
+%               as sound() is using that anyway on Octave and Matlab, so direct use
+%               gives us more control. Note: Both Octave (since at least version 5)
+%               and Matlab use Portaudio internally for audioplayer afaict, with the
+%               default audio playback device. This translates to the ALSA default device
+%               on Linux, ie. usually a running Pulseaudio or Pipewire desktop sound server.
+%               This allows possibly for interop between Snd() and GStreamer and other apps.
+% 10/07/23   mk Switch default opmode to use audioplayer() instead of PsychPortAudio, update docs.
 
 persistent ptb_snd_oldstyle;
 persistent ptb_snd_injected;
 persistent pahandle;
+persistent player;
 persistent verbose;
 
-persistent endTime;
-if isempty(endTime)
-    endTime = 0;
+if isempty(verbose)
     ptb_snd_injected = 0;
     verbose = 1;
 end
@@ -251,8 +253,6 @@ if strcmpi(command,'Open') && nargin >= 2 && ~isempty(signal)
         end
     end
 
-    endTime = 0;
-
     return;
 end
 
@@ -261,17 +261,32 @@ end
 if isempty(ptb_snd_oldstyle)
     % Nope, check if the special "old style" marker file exists:
     if exist([PsychtoolboxConfigDir 'Snd_use_oldstyle.txt'], 'file')
-        % User explicitly wants old-style implementation via
-        % Matlab/Octave sound() function:
+        % User explicitly wants old-style implementation via Matlab/Octave
+        % audioplayer() function:
         ptb_snd_oldstyle = 1;
 
         if verbose
-            fprintf('Snd(): Using Matlab/Octave sound() function for sound output.\n');
+            fprintf('Snd(): Forced use of Matlab/Octave audioplayer() function for sound output.\n');
         end
-    else
-        % User wants new-style PsychPortAudio variant:
+    elseif exist([PsychtoolboxConfigDir 'Snd_use_newstyle.txt'], 'file')
+        % User explicitly wants new-style implementation via PsychPortAudio():
         ptb_snd_oldstyle = 0;
 
+        if verbose
+            fprintf('Snd(): Forced use of PsychPortAudio() for sound output.\n');
+        end
+    else
+        % Default, if nothing else is specified, is to use "old style" audioplayer(),
+        % as the audioplayer() implementation on current Matlab and Octave seems to
+        % be good enough as tested on all operating systems and has a good interop story
+        % with other audio clients, GStreamer etc., and usually with PsychPortAudio in
+        % reqlatencyclass modes 0 and 1, at least on macOS and Windows, and on Linux if
+        % Pulseaudio enabled libportaudio 19.8 or later is used:
+        ptb_snd_oldstyle = 1;
+    end
+
+    if ~ptb_snd_oldstyle
+        % User wants new-style PsychPortAudio variant, so do preinit:
         if verbose
             fprintf('Snd(): Initializing PsychPortAudio driver for sound output.\n');
         end
@@ -283,7 +298,7 @@ if isempty(ptb_snd_oldstyle)
             fprintf('Snd(): ERROR!\n');
             ple;
             psychlasterror('reset');
-            fprintf('Snd(): PsychPortAudio initialization failed - See error messages above. Trying to use old sound() fallback instead.\n');
+            fprintf('Snd(): PsychPortAudio initialization failed - See error messages above. Trying to use old audioplayer() fallback instead.\n');
             ptb_snd_oldstyle = 1;
         end
     end
@@ -305,7 +320,7 @@ if ~(strcmpi(command,'Open') || strcmpi(command,'Quiet') || strcmpi(command,'Clo
 
     if odc > 0
         if verbose
-            fprintf('Snd(): PsychPortAudio already in use. Using old sound() fallback instead...\n');
+            fprintf('Snd(): PsychPortAudio already in use. Using old audioplayer() fallback instead...\n');
         end
 
         ptb_snd_oldstyle = 1;
@@ -341,8 +356,8 @@ if strcmpi(command,'Play')
 
     if isempty(rate)
         if ptb_snd_oldstyle
-            % Old MacOS-9 style default:
-            rate = 22254.5454545454;
+            % Reasonable default:
+            rate = 44100;
         else
             % Let PPA decide itself:
             rate = [];
@@ -350,16 +365,29 @@ if strcmpi(command,'Play')
     end
 
     if ptb_snd_oldstyle
-        % Old-Style implementation via sound() function:
+        % Old-Style implementation via audioplayer() function:
 
         % Wait until any ongoing sound is done.
-        WaitSecs(endTime-GetSecs);
+        while ~isempty(player) && isplaying(player)
+            drawnow;
+            WaitSecs('YieldSecs', 0.001);
+        end
 
-        % Play via Matlab/Octave sound():
-        sound(signal',rate,sampleSize);
+        % Stop and delete potentially existing old player object:
+        if ~isempty(player)
+            stop(player);
+            clear player;
+        end
 
-        % Estimate 'endTime' for playback:
-        endTime=GetSecs+length(signal)/rate;
+        % On Octave on Linux, do this little trickery to abuse PsychPortAudio
+        % to suppress ALSA debug messages triggered by the audioplayer() object:
+        if IsLinux && IsOctave
+            PsychPortAudio('Verbosity', PsychPortAudio('Verbosity'));
+        end
+
+        % Create new player object and start non-blocking playback:
+        player = audioplayer(signal', rate, sampleSize);
+        play(player);
     else
         % New-Style via PsychPortAudio:
         if ~isempty(pahandle)
@@ -435,7 +463,11 @@ elseif strcmpi(command,'Wait')
         % Wait blocking until end of playback:
         PsychPortAudio('Stop', pahandle, 1, 1);
     else
-        WaitSecs(endTime-GetSecs); % Wait until any ongoing sound is done.
+        % Wait until any ongoing sound is done.
+        while ~isempty(player) && isplaying(player)
+            drawnow;
+            WaitSecs('YieldSecs', 0.001);
+        end
     end
     err=0;
 
@@ -448,7 +480,8 @@ elseif strcmpi(command,'IsPlaying')
         props = PsychPortAudio('GetStatus', pahandle);
         err = props.Active;
     else
-        if endTime>GetSecs
+        if ~isempty(player) && isplaying(player)
+            drawnow;
             err=1;
         else
             err=0;
@@ -474,8 +507,13 @@ elseif strcmpi(command,'Quiet') || strcmpi(command,'Close')
             pahandle = [];
             ptb_snd_injected = 0;
         end
+    elseif ~isempty(player)
+        stop(player);
+        if strcmpi(command,'Close')
+            clear player;
+        end
     end
-    endTime=0;
+
     err=0;
 
 elseif strcmpi(command,'DefaultRate')
@@ -484,8 +522,12 @@ elseif strcmpi(command,'DefaultRate')
     end
 
     if ptb_snd_oldstyle
-        % Old style - old hard-coded default:
-        err = 22254.5454545454; % default sampling rate in Hz.
+        if ~isempty(player)
+            err = get(player).SampleRate;
+        else
+            % Old style - reasonable hard-coded default:
+            err = 44100; % default sampling rate in Hz.
+        end
     else
         % Audio device open?
         if isempty(pahandle)
@@ -499,7 +541,7 @@ elseif strcmpi(command,'DefaultRate')
     end
 
 elseif strcmpi(command,'Open')
-    endTime=0;
+    % Nothing to do right now.
 else
     PsychPortAudio('Close');
     pahandle = [];

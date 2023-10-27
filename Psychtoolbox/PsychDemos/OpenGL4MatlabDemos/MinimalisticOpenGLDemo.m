@@ -92,7 +92,7 @@ function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTextur
 % programming. Release 1.0 is available online, later releases can be
 % purchased in any good book store:
 %
-% http://www.opengl.org/documentation/red_book_1.0/
+% http://www.glprogramming.com/red/
 %
 % For more infos, code samples, tutorials, online documentation, go to:
 %

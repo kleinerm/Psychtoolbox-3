@@ -890,6 +890,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %      https://github.com/GPUOpen-Drivers/AMDVLK/releases
 %
 %      Driver release v-2021.Q4.1 or later from November 2021 is required to support this feature.
+%      Note that release 2023-Q3.3 from September 2023 was the last release to support pre-Navi
+%      gpu's like Polaris and Vega. Later versions only support AMD Navi and later with RDNA
+%      graphics architecture.
 %
 %   2. You will need to install Linux kernel 5.14, which is currently not shipping in any Ubuntu release,
 %      as of November 2021. A way to manually install it on Ubuntu 20.04-LTS is described on the following

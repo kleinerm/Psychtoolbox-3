@@ -21,8 +21,12 @@ function varargout = PsychHDR(cmd, varargin)
 % - Modern AMD graphics cards (like above) under modern GNU/Linux (Ubuntu 18.04.4-LTS
 %   at a minimum (untested!), or better Ubuntu 20.04-LTS and later recommended), with
 %   the AMD open-source Vulkan driver "amdvlk". Install driver release 2020-Q3.5 from
-%   September 2020, which was tested, or any later versions. The following webpage has
-%   amdvlk download and installation instructions:
+%   September 2020, which was tested, or any later versions. Note that release
+%   2023-Q3.3 from September 2023 was the last release to support pre-Navi gpu's like
+%   Polaris and Vega. Later versions only support AMD Navi and later with RDNA graphics
+%   architecture.
+%
+%   The following webpage has amdvlk download and installation instructions:
 %
 %   https://github.com/GPUOpen-Drivers/AMDVLK/releases
 %

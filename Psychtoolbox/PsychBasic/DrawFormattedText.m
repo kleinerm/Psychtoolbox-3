@@ -17,9 +17,11 @@ function [nx, ny, textbounds, wordbounds] = DrawFormattedText(win, tstring, sx, 
 %
 % 'sx' defines the left border of the text: If it is left out, text
 % starts at x-position zero, otherwise it starts at the specified position
-% 'sx'. If sx=='center', then each line of text is horizontally centered in
-% the window. If sx=='right', then each line of text is right justified to
-% the right border of the target window, or of 'winRect', if provided.
+% 'sx' in the window. If sx=='left', then each line of text is left justified
+% to the left border of the target window, or of 'winRect', if provided.
+% If sx=='center', then each line of text is horizontally centered in
+% the window or 'winRect'. If sx=='right', then each line of text is right
+% justified to the right border of the target window, or of 'winRect'.
 % The options sx == 'wrapat' and sx == 'justifytomax' try to align the start
 % of each text line to the left border and the end of each text line to either
 % the specified 'wrapat' number of columns, or to the width of the widest line
@@ -198,27 +200,23 @@ if nargin < 3 || isempty(sx)
 end
 
 xcenter = 0;
+ljustify = 0;
 rjustify = 0;
 bjustify = 0;
 if ischar(sx)
-    if strcmpi(sx, 'center')
-        xcenter = 1;
-    end
-
-    if strcmpi(sx, 'right')
-        rjustify = 1;
-    end
-
-    if strcmpi(sx, 'wrapat')
-        bjustify = 1;
-    end
-
-    if strcmpi(sx, 'justifytomax')
-        bjustify = 2;
-    end
-
-    if strcmpi(sx, 'centerblock')
-        bjustify = 3;
+    switch lower(sx)
+        case 'center'
+            xcenter = 1;
+        case 'left'
+            ljustify = 1;
+        case 'right'
+            rjustify = 1;
+        case 'wrapat'
+            bjustify = 1;
+        case 'justifytomax'
+            bjustify = 2;
+        case 'centerblock'
+            bjustify = 3;
     end
 
     % Set sx to neutral setting:
@@ -366,7 +364,7 @@ end
 disableClip = (ptb_drawformattedtext_disableClipping ~= -1) && ...
               ((ptb_drawformattedtext_disableClipping > 0) || (nargout >= 3));
 
-if bjustify
+if bjustify || ljustify
     sx = winRect(RectLeft);
 end
 

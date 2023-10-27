@@ -347,10 +347,7 @@ void PsychPrefStateSet_VBLEndlineMaxFactor(double inputDoubleValue)
 }
 
 // Settings for conserving VRAM usage by disabling certain features.
-// Current constants (defined in ScreenTypes.h) that can be or'ed together:
-// kPsychDisableAUXBuffers = Don't use AUX buffers, disable associated features.
-// kPsychDontCacheTextures = Use Client storage for RAM->DMA texturing instead of VRAM texturing.
-// Defaults to zero = Make full use of VRAM.
+// Also used for various workarounds and special op modes.
 int PsychPrefStateGet_ConserveVRAM(void)
 {
     return(screenConserveVRAM);
