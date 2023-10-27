@@ -2030,8 +2030,7 @@ PsychError PsychPortAudioExit(void)
         PsychPAPaUtil_SetDebugPrintFunction(NULL);
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
-            // Disable ALSA error handler:
-            snd_lib_error_set_handler(NULL);
+            // Disable Jack error handler:
             if (myjack_set_error_function) {
                 myjack_set_error_function(NULL);
                 myjack_set_error_function = NULL;
@@ -2055,6 +2054,13 @@ PsychError PsychPortAudioExit(void)
             pulseaudio_isSuspended = FALSE;
         }
     }
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+        // Always disable ALSA error handler, as it could have been set in 'Verbosity' to
+        // our internal function, so a jettison of PsychPortAudio would leave a dangling
+        // pointer from libasound to that internal error handler which no longer exists:
+        snd_lib_error_set_handler(NULL);
+    #endif
 
     return(PsychError_none);
 }
@@ -2837,8 +2843,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             break;
 
         case paPulseAudio:
-            // Pulseaudio does not actually use .suggestedLatency, therefore this lowlatency setting
-            // is actually meaningless atm. Set it to something reasonable anyway:
+            // 10 msecs is fine on a typical 500 Euros PC from 2019, but 5 msecs is aggressive:
             lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
             break;
 
