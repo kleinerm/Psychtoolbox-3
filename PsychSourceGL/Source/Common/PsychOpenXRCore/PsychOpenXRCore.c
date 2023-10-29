@@ -4325,7 +4325,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
             .next = NULL,
             .action = openxr__gazePoseAction,
             .poseInActionSpace = identityPose,
-            .subactionPath = NULL
+            .subactionPath = XR_NULL_PATH
         };
 
         if (!resultOK(xrCreateActionSpace(openxr->hmd, &gazeActionSpaceCreateInfo, &openxr->gazePoseSpace))) {
