@@ -13,7 +13,6 @@
  * (c) 2012 by Mario Kleiner. Licensed under MIT license.
  */
 
-const vec3 ColorToGrayWeights = vec3(0.3, 0.59, 0.11); 
 uniform sampler2D Image;
 uniform vec2 srcSize;
 uniform vec2 dstSize;
@@ -40,16 +39,6 @@ void main()
     incolor += texture2D(Image, inpos + vec2(0.0, +dy)) * kernel[1][2];
     incolor += texture2D(Image, inpos + vec2(+dx, +dy)) * kernel[2][2];
 
-    /* Optionally convert final RGB sample to grayscale: */
-    if (true) {
-        float luminance = dot(incolor.rgb, ColorToGrayWeights);
-        gl_FragColor.rgb = vec3(luminance);
-
-        /* Pass alpha unmodified: */
-        gl_FragColor.a = incolor.a;
-    }
-    else {
-        /* Simply pass sample unmodified: */
-        gl_FragColor = incolor;
-    }
+    /* Simply pass sample unmodified: */
+    gl_FragColor = incolor;
 }
