@@ -45,10 +45,8 @@ function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, ref
 %
 % The optional parameter 'withGazeTracking', if provided and non-zero, will
 % enable some basic tests of eye gaze tracking with VR HMD's which support
-% eye tracking. Please note that this functionality is not available in
-% official Psychtoolbox releases yet, at least not as of v3.0.19.1, and the
-% api used in this demo is highly experimental and subject to backwards
-% incompatible changes!
+% eye tracking. A setting of 1 will visualize the 2D gaze position, a setting of
+% 2 will visualize a 3D gaze ray in addition.
 %
 % After a keypress (or Enter/Back button press on the controller),
 % visualizes tracked hand position and orientation of hand controllers and
@@ -58,7 +56,8 @@ function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, ref
 % Tested with XBox controller, Oculus remote, and the two Oculus touch
 % controllers of the Oculus Rift CV-1 on Windows-10 and Linux, with the
 % OculusVR v1 runtime on Windows, and with various OpenXR runtimes like
-% Monado, OculusVR, SteamVR.
+% Monado, OculusVR, SteamVR. Additionally tested with the Vive Wand
+% controllers and builtin binocular eye gaze tracker of a HTC Vive Pro Eye.
 
 % Constants for use in VR applications:
 global OVR; %#ok<GVMIS> 
@@ -680,9 +679,7 @@ if hmdinfo.handTrackingSupported || withGazeTracking
         glEnd;
       end
 
-      % Visualize 3D gaze direction if requested, but only in left eye
-      % view, because we only track one gaze ray and viz in both eyes gets
-      % confusing:
+      % Visualize 3D gaze direction if requested:
       if (withGazeTracking >= 2) && (length(state.gazeStatus) >= renderPass + 1) && ...
          (state.gazeStatus(renderPass + 1) >= 3)
         % Draw a 15 meters long gaze-ray, using the gaze ray equation
