@@ -2595,8 +2595,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     if hmd{handle}.multiThreaded == 0
       fprintf('PsychOpenXR-WARNING: User script needs multi-threading for its use-case, but multi-threading is disabled! Expect timing/timestamping/jitter/judder problems!\n');
     else
-      % Special troublemakers? SteamVR on Windows, as of version 1.25.6
-      % from March 2023 will cause Matlab to hang / fail / malfunction if
+      % Special troublemakers? SteamVR on Windows, as of version 2.0.10
+      % from November 2023 will cause Matlab to hang / fail / malfunction if
       % Screen('BeginOpenGL') is used for typical 3D rendering, unless
       % OpenGL context isolation is disabled, which is a troublemaker in
       % many other ways! Bug confirmed for both OculusVR backend with
@@ -2609,11 +2609,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
           fprintf('PsychOpenXR-WARNING: I see you disabled OpenGL context isolation to work around the problem. Tread carefully, this\n');
           fprintf('PsychOpenXR-WARNING: may screw up rendering and Screen() operation badly if you don''t know exactly what you are doing!\n');
         else
-          % This is an almost guaranteed crasher as of SteamVR 1.25.6 from
-          % March 2023 - it will fail after a few seconds of 3D rendering
+          % This is an almost guaranteed crasher as of SteamVR 2.0.10 from
+          % November 2023 - it will fail after a few seconds of 3D rendering
           % with a hard hang of Matlab and one needs to kill the
           % application via task manager etc.:
-          fprintf('PsychOpenXR-WARNING: As of SteamVR version 1.25.6 from March 2023, this will almost certainly end in a Psychtoolbox hang or crash\n');
+          fprintf('PsychOpenXR-WARNING: As of SteamVR version 2.0.10 from November 2023, this will almost certainly end in a Psychtoolbox hang or crash\n');
           fprintf('PsychOpenXR-WARNING: if your script calls Screen(''BeginOpenGL'') anywhere. Brace for impact! Report back if you do not experience any\n');
           fprintf('PsychOpenXR-WARNING: problems with a later/future SteamVR version.\n');
         end
