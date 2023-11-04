@@ -1309,7 +1309,9 @@ if strcmpi(cmd, 'PrepareRender')
         % Invert the y-Rotation subvector: Why? I don't know! But without
         % it, vertical gaze vector is wrong with the HTC Vive Pro Eye.
         % Maybe a HTC SRAnipal runtime bug?
-        gazeM(2, 1:3) = -gazeM(2, 1:3);
+        if myhmd.needEyeTrackingYSwitch
+          gazeM(2, 1:3) = -gazeM(2, 1:3);
+        end
 
         % Disabled, as impossible to make compatible with other implementations:
         % result.gazeLocalMatNonPortable{i} = gazeM;
@@ -1907,6 +1909,15 @@ if strcmpi(cmd, 'Open')
   if IsWin && strcmpi(newhmd.modelName, 'SteamVR/OpenXR : oculus')
     % Even 2D modes with quadViews need a thread to keep them stable!
     newhmd.needMTFor2DQuadViews = -1;
+  end
+
+  % Switch of y rotation axis needed for gaze tracking math? Not by default, but
+  % at least for the HTC Vive Pro Eye under Windows, with both SRAnipal native and
+  % XR_EXT_eye_gaze_interaction, both based on HTC SRAnipal eye tracking. Let's
+  % assume all SRAnipal eye tracked devices need this workaround:
+  newhmd.needEyeTrackingYSwitch = 0;
+  if IsWin && ~isempty(strfind(newhmd.modelName, 'SRanipal'))
+    newhmd.needEyeTrackingYSwitch = 1;
   end
 
   % Default autoclose flag to "no autoclose":
@@ -3036,7 +3047,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Tracking api specific setup:
 
     % SRAnipalMex available for HTC Vive SRAnipal eye tracking?
-    if exist('SRAnipalMex', 'file') && ~isempty(strfind(hmd{handle}.modelName, 'SRanipal'))
+    if IsWin && exist('SRAnipalMex', 'file') && ~isempty(strfind(hmd{handle}.modelName, 'SRanipal'))
       % Yes. Use this instead of standard PsychOpenXRCore provided eye tracking OpenXR extensions:
       fprintf('PsychOpenXR-INFO: Trying to enable HTC SRAnipal eye tracking for this session.\n');
 
