@@ -38,9 +38,11 @@
 #include <gst/app/gstappsink.h>
 #include <gst/video/video.h>
 
-// When building against < GStreamer 1.18.0, define missing GST_VIDEO_FORMAT_Y444_16LE:
+// When building against < GStreamer 1.18.0, define some missing video formats:
 #ifndef GST_VIDEO_FORMAT_Y444_16LE
 #define GST_VIDEO_FORMAT_Y444_16LE 88
+#define GST_VIDEO_FORMAT_P012_LE 92
+#define GST_VIDEO_FORMAT_P016_LE 90
 #endif
 
 // Need to define this for playbin as it is not defined
@@ -357,6 +359,7 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "#extension GL_ARB_texture_rectangle : enable\n"
 "\n"
 "uniform sampler2DRect Image;\n"
+"uniform float isSemiPlanar;\n"
 "uniform float yChromaScale;\n"
 "uniform int eotfType;\n"
 "uniform float unormInputScaling;\n"
@@ -384,20 +387,26 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "\n"
 "    /* yChromaScale != 2 signals a sampling layout other than I444, so chroma planes need different (nx,ny) sampling than luma plane: */\n"
 "    if (yChromaScale != 2.0) {\n"
-"        /* Compute lookup positions in U, V planes for chroma samples, for I420, I422 planar layout, depending on */\n"
-"        /* (quasi constant for all invocations of this shader) yChromaScale value: */\n"
+"        /* Compute lookup positions in U, V planes for chroma samples, for I420, I422 planar layout, and P semi-planar */\n"
+"        /* layout, depending on (quasi constant for all invocations of this shader) yChromaScale value: */\n"
 "        ny = floor(ny * yChromaScale);\n"
 "        nx = floor(nx * 0.5);\n"
-"        if (mod(ny, 2.0) >= 0.5) {\n"
-"            nx += texNominalSize.x * 0.5;\n"
-"        }\n"
 "\n"
-"        ny = (ny - mod(ny, 2.0)) * 0.5;\n"
+"        if (isSemiPlanar > 0.5) {\n"
+"            nx = nx * 2.0;\n"
+"        }\n"
+"        else {\n"
+"            if (mod(ny, 2.0) >= 0.5) {\n"
+"                nx += texNominalSize.x * 0.5;\n"
+"            }\n"
+"\n"
+"            ny = (ny - mod(ny, 2.0)) * 0.5;\n"
+"        }\n"
 "    }\n"
 "\n"
 "    /* Get U, V chroma samples, scaled to the full digital signal content range: */\n"
 "    u = texture2DRect(Image, vec2(nx, ny + texNominalSize.y)).r * unormInputScaling;\n"
-"    v = texture2DRect(Image, vec2(nx, ny + texNominalSize.y + (0.5 * yChromaScale * texNominalSize.y))).r * unormInputScaling;\n"
+"    v = texture2DRect(Image, vec2(nx + isSemiPlanar, ny + texNominalSize.y + ((1 - isSemiPlanar) * 0.5 * yChromaScale * texNominalSize.y))).r * unormInputScaling;\n"
 "\n"
 "    /* Undo potential limited video range, scale to normalized range to get back to [0 ; 1] range for luma,\n"
 "     * [-0.5 ; 0.5] range for chroma: */\n"
@@ -592,17 +601,25 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
             case GST_VIDEO_FORMAT_I420:
             case GST_VIDEO_FORMAT_I420_10LE:
             case GST_VIDEO_FORMAT_I420_12LE:
+            case GST_VIDEO_FORMAT_NV12:
+            case GST_VIDEO_FORMAT_P010_10LE:
+            case GST_VIDEO_FORMAT_P012_LE:
+            case GST_VIDEO_FORMAT_P016_LE:
+                // Half horizontal + half vertical resolution 4:2:0 sampling of chroma planes, full resolution luma plane:
                 yChromaScale = 0.5;
                 if (PsychPrefStateGet_Verbosity() > 3)
-                    printf("PTB-DEBUG: Using movie video frame decoding from YUV-I420 -> RGB with %i bpc precision. ", bpc);
+                    printf("PTB-DEBUG: Using movie video frame decoding from YUV-I420/P0xx -> RGB with %i bpc precision. ", bpc);
 
                 break;
 
+            case GST_VIDEO_FORMAT_Y42B:
             case GST_VIDEO_FORMAT_I422_10LE:
             case GST_VIDEO_FORMAT_I422_12LE:
+            case GST_VIDEO_FORMAT_NV16:
+                // Half horizontal + full vertical resolution 4:2:2 sampling of chroma planes, full resolution luma plane:
                 yChromaScale = 1.0;
                 if (PsychPrefStateGet_Verbosity() > 3)
-                    printf("PTB-DEBUG: Using movie video frame decoding from YUV-I422 -> RGB with %i bpc precision. ", bpc);
+                    printf("PTB-DEBUG: Using movie video frame decoding from YUV-I422/P2xx -> RGB with %i bpc precision. ", bpc);
 
                 break;
 
@@ -610,6 +627,7 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
             case GST_VIDEO_FORMAT_Y444_10LE:
             case GST_VIDEO_FORMAT_Y444_12LE:
             case GST_VIDEO_FORMAT_Y444_16LE:
+                // Full resolution 4:4:4 sampling of all planes:
                 yChromaScale = 2.0;
                 if (PsychPrefStateGet_Verbosity() > 3)
                     printf("PTB-DEBUG: Using movie video frame decoding from YUV-I444/Y444 -> RGB with %i bpc precision. ", bpc);
@@ -623,10 +641,28 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
                 return(FALSE);
         }
 
+        // Assign chroma planes vertical scaling factor:
         glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "yChromaScale"), yChromaScale);
 
-        // Tell shader if this is stored in a 16 bpc container or 8 bpc container, ie. which scaling to use:
-        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "unormInputScaling"), (bpc > 8) ? 65535.0 : 255.0);
+        // Tell shader if this is stored in a 16 bpc container or 8 bpc container, ie. which scaling to use,
+        // and if it is a planar format (separate Y, U and V planes) or semi-planar format (Y plane + one chroma
+        // plane with UV samples horizontally interleaved):
+        switch (GST_VIDEO_FORMAT_INFO_FORMAT(movie->sinkVideoInfo.finfo)) {
+            case GST_VIDEO_FORMAT_NV12:       //  8 bpc 4:2:0
+            case GST_VIDEO_FORMAT_P010_10LE:  // 10 bpc 4:2:0
+            case GST_VIDEO_FORMAT_P012_LE:    // 12 bpc 4:2:0
+            case GST_VIDEO_FORMAT_P016_LE:    // 16 bpc 4:2:0
+            case GST_VIDEO_FORMAT_NV16:       //  8 bpc 4:2:2
+                // Semi-planar Pxxx formats have relevant content in MSB's, and zeros in remaining LSB's, need scaling up to 2^bpc - 1:
+                glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "unormInputScaling"), (float) ((1 << bpc) - 1));
+                glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "isSemiPlanar"), 1);
+                break;
+
+            default:
+                // Other - planar - formats have content in LSB's, and a need to scale up to full 8 or 16 bit magnitude in the shader:
+                glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "unormInputScaling"), (bpc > 8) ? 65535.0 : 255.0);
+                glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "isSemiPlanar"), 0);
+        }
 
         // First handle limited vs. full range encoding, and different bit depths, to
         // map all Y luma into [0; 1] range and all U,V chroma into [-0.5 ; 0.5] range:
@@ -788,6 +824,20 @@ void PsychGSMovieInit(void)
         memset(&movieRecordBANK[i], 0, sizeof(PsychMovieRecordType));
     }
     numMovieRecords = 0;
+
+    // On Linux we set an environment variable to tell the GStreamer vaapidecodebin
+    // plugin that it should disable builtin video post processing, ie. it sets the
+    // "disable-vpp" property to true and prevents the use of the vaapipostprocessing
+    // plugin. This is important for hardware accelerated playback of movies which
+    // do not use the BT-709 colorspace, especially HDR/WCG movies, as the post
+    // processor plugin will throw away all colorspace and mastering display color
+    // info otherwise and degrade the HDR/WCG content to some pixel mash!
+    // Note that vaapi plugins are on the way to deprecation, to be replaced with
+    // the new va plugins for the same purpose. GStreamer 1.24+ will probably go
+    // that route.
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    setenv("GST_VAAPI_DISABLE_VPP", "1", 1);
+    #endif
 
     // Note: This is deprecated and not needed anymore on GLib 2.31.0 and later, as
     // GLib's threading system auto-initializes on first use since that version. We
@@ -1597,33 +1647,48 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
              glewIsSupported("GL_ARB_fragment_shader") && glewIsSupported("GL_ARB_vertex_shader")) {
         // Usercode wants optimal format for HDR/WCG playback and GPU suppports needed shaders and FBO's.
         //
-        // This mode accepts HDR/WCG video footage as decoded planar YUV of different layout, range, different bit-depths,
-        // different color spaces, EOTF's, and tries to decode as accurate and fast as possible into a RGB linear
-        // format of high precision suitable for HDR content.
+        // This mode accepts HDR/WCG video footage as decoded (semi-)planar YUV of different layout, range, different
+        // bit-depths, different color spaces, EOTF's, and tries to decode as accurate and fast as possible into a
+        // RGB linear format of high precision suitable for HDR content.
         //
         // As planar YUV is the native output format of all modern codecs like HuffYUV, H264/H265/VP-9 codecs, using
         // it allows to skip cpu intensive colorspace conversion in GStreamer. The format is also highly efficient for
         // texture creation and upload to the GPU, but requires a fragment shader for sampling, color space conversion,
         // EOTF mapping etc. during drawing.
+        //
+        // Planar YUV seems to be mostly output by high performance software codecs, e.g., libav codecs and similar.
+        // Semi-planar YUV seems to be mostly output by GStreamer hardware codecs on at least Windows and Linux, e.g.,
+        // the Direct3D 11 and NVDEC hardware codecs supported on MS-Windows, and the vaapi hardware codecs on Linux,
+        // which all utilize the hardware video decoders in modern AMD, NVidia and Intel gpus.
 
-        // We accept I420 YUV of color depth 8, 10, 12 bpc input:
+        // We accept planar 4:2:0 I420 YUV of color depth 8, 10, 12 bpc input:
         colorcaps = gst_caps_new_simple ("video/x-raw",
                                          "format", G_TYPE_STRING, "I420",
                                          NULL);
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I420_10LE", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I420_12LE", NULL));
 
-        // We also accept I422 YUV of color depth 10 and 12 bpc:
+        // We also accept planar 4:2:2 I422 YUV of color depth 8, 10 and 12 bpc:
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y42B", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I422_10LE", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I422_12LE", NULL));
 
-        // We also accept I444 YUV aka Y444 of color depth 8, 10, 12 and 16 bpc:
+        // We also accept planar 4:4:4 I444 YUV aka Y444 of color depth 8, 10, 12 and 16 bpc:
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_10LE", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_12LE", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_16LE", NULL));
 
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will accept YUV-I420/I422/I444 planar textures of 8, 10, 12 or 16 bpc for optimized decode of HDR/WCG compatible content.\n", slotid);
+        // We also accept the 4:2:0 semi-planar (chroma plane with horizontally UV interleaved samples) P0xx 8/10/12/16 bit formats:
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "NV12", NULL));
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "P010_10LE", NULL));
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "P012_LE", NULL));
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "P016_LE", NULL));
+
+        // We also accept the 4:2:2 semi-planar (chroma plane with horizontally UV interleaved samples) P2xx 8 bit format:
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "NV16", NULL));
+
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will accept YUV-I420/I422/I444/Pxxx (semi-)planar textures of 8, 10, 12 or 16 bpc for optimized decode of HDR/WCG compatible content.\n", slotid);
     }
     else {
         // GPU does not support yuv textures or shader based decoding. Need to go brute-force and convert
@@ -2785,13 +2850,19 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                 case GST_VIDEO_FORMAT_I420:
                 case GST_VIDEO_FORMAT_I420_10LE:
                 case GST_VIDEO_FORMAT_I420_12LE:
+                case GST_VIDEO_FORMAT_NV12:
+                case GST_VIDEO_FORMAT_P010_10LE:
+                case GST_VIDEO_FORMAT_P012_LE:
+                case GST_VIDEO_FORMAT_P016_LE:
                     // 420: Luma at full resolution, chroma half horizontal and half vertical -> 1/4 per plane
                     // times 2 chroma planes = 1/2 frame height for chroma planes, for a total of 1.5x
                     overSize = 1.5;
                     break;
 
+                case GST_VIDEO_FORMAT_Y42B:
                 case GST_VIDEO_FORMAT_I422_10LE:
                 case GST_VIDEO_FORMAT_I422_12LE:
+                case GST_VIDEO_FORMAT_NV16:
                     // 422: Luma at full resolution, chroma half horizontal resolution -> 1/2 per plane
                     // times 2 chroma planes = 1 extra frame height for chroma planes, for a total of 2.0x
                     overSize = 2.0;
