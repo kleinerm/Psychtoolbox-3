@@ -363,9 +363,14 @@ try
                 % Draw the new texture immediately to screen:
                 Screen('DrawTexture', win, tex, [], dstRect, [], [], [], [], shader);
 
-                DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, 0);
-                if coolstuff
-                    DrawFormattedText(win, ['Original URL: ' url '\n\n' credits], 'center', 60, 0);
+                % Draw some info about movie, but only if needed. In HDR mode we only draw text
+                % once in the first frame, then do not clear the framebuffer later on. Why? Because
+                % text drawing can be a rather expensive operation, impairing high fps playback.
+                if colorprobe || ~hdr || (i == 0)
+                    DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, 0);
+                    if coolstuff
+                        DrawFormattedText(win, ['Original URL: ' url '\n\n' credits], 'center', 60, 0);
+                    end
                 end
 
                 if colorprobe
@@ -391,9 +396,17 @@ try
                     Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
                 end
 
-                % Update display:
-                Screen('Flip', win);
-                
+                % Update display asap:
+                if hdr
+                    % Imaging pipeline - Skip clearing the framebuffer, so we can
+                    % get away with drawing info text only on 1st frame, and save
+                    % some overhead:
+                    Screen('Flip', win, [], 1);
+                else
+                    % Regular without real use of imaging pipeline:
+                    Screen('Flip', win);
+                end
+
                 % Release texture:
                 Screen('Close', tex);
                 
