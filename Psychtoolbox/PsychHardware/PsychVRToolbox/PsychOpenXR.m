@@ -642,9 +642,10 @@ function varargout = PsychOpenXR(cmd, varargin)
 %                            data and passed the minimum quality treshold.
 %
 %
-%      state.gazeTime(i) = A timestamps of the time for which the given
-%      gaze information is valid. Depending on gaze tracking method in use,
-%      this could be a time in the past, referring to the hardware
+%      state.gazeTime(i) = A timestamp of the time for which the given
+%      gaze information is valid, or the value NaN if no valid timestamp is
+%      available from the gaze tracker. Depending on gaze tracking method in
+%      use, this could be a time in the past, referring to the hardware
 %      timestamp of when the gaze tracker hardware acquired that sample, or
 %      it could be the time in the past or near future for which the gaze
 %      data was computed via prediction / extrapolation of gaze movement or
@@ -1269,7 +1270,13 @@ if strcmpi(cmd, 'PrepareRender')
       % Process each entry:
       for i = 1:length(gaze)
         result.gazeStatus(i) = gaze(i).Status;
-        result.gazeTime(i) = gaze(i).Time;
+        % TODO FIXME: Replacing 0 by NaN should be done in PsychOpenXRCore. Fix
+        % after initial release in PTB 3.0.19.5!
+        if gaze(i).Time > 0
+          result.gazeTime(i) = gaze(i).Time;
+        else
+          result.gazeTime(i) = NaN;
+        end
         result.gazeConfidence(i) = NaN;
         result.gazeEyeOpening(i) = NaN;
         result.gazeEyePupilDiameter(i) = NaN;

@@ -675,9 +675,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 %                            data and passed the minimum quality treshold.
 %
 %
-%      state.gazeTime(i) = A timestamps of the time for which the given
-%      gaze information is valid. Depending on gaze tracking method in use,
-%      this could be a time in the past, referring to the hardware
+%      state.gazeTime(i) = A timestamp of the time for which the given
+%      gaze information is valid, or the value NaN if no valid timestamp is
+%      available from the gaze tracker. Depending on gaze tracking method in
+%      use, this could be a time in the past, referring to the hardware
 %      timestamp of when the gaze tracker hardware acquired that sample, or
 %      it could be the time in the past or near future for which the gaze
 %      data was computed via prediction / extrapolation of gaze movement or
