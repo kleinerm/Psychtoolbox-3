@@ -27,7 +27,7 @@ function VREyetrackingTest(stereoscopic, render3D, testEye, modulateBackgroundBr
 % History:
 % 31-May-2023  mk Written, derived from VRHMDDemo.
 
-global gazeX; %#ok<*GVMIS> 
+global gazeX; %#ok<*GVMIS>
 global gazeY;
 global tx;
 global ty;
@@ -130,7 +130,7 @@ ipd = 0.065;
 while ~KbCheck
     % Get current eyetracking state and possibly head tracking (in render3D case):
     state = PsychVRHMD('PrepareRender', hmd, [], render3D + 4);
-    tNow(cnt) = GetSecs; %#ok<*AGROW> 
+    tNow(cnt) = GetSecs; %#ok<*AGROW>
 
     % Query and store latest gaze samples:
     for i = 1:length(state.gazeStatus)
@@ -245,7 +245,7 @@ end
 % Close XR display device:
 sca;
 
-fps = 1 / mean(diff(tOnset)) %#ok<NOPRT> 
+fps = 1 / mean(diff(tOnset)) %#ok<NOPRT>
 
 % Data analysis and visualization:
 if 1
@@ -253,7 +253,7 @@ if 1
     plot(1:length(tOnset), [tOnset ; tNow; tSample ; tOnset - tSample ; tNow - tSample]);
     legend('StimOnset', 'NowTime', 'GazeTime', 'StimOnset vs GazeTime', 'Now vs GazeTime');
     title('Absolute timestamps and relative timestamp delta for stim onset vs. gaze sample time');
-    
+
     figure;
     hold on;
     for i = 1:size(gazeX, 1)
@@ -268,7 +268,7 @@ hold on;
 for i = 1:size(gazeX, 1)
     scatter(gazeX(i,:), gazeY(i,:));
     idxs = find(~isnan(gazeX(i,:)));
-    avgpos{i} = round(mean([gazeX(i,idxs); gazeY(i,idxs)]')); %#ok<UDIM> 
+    avgpos{i} = round(mean([gazeX(i,idxs); gazeY(i,idxs)]')); %#ok<UDIM>
 end
 scatter(tx, ty);
 scatter(cx, cy);
@@ -284,7 +284,7 @@ hold off;
 title('2D target/fix position vs. left/right/cyclops tracked gaze');
 
 if 0
-    figure; %#ok<UNRCH> 
+    figure; %#ok<UNRCH>
     KbReleaseWait;
     for i=1:2:size(gazeX, 2)
         hold on;

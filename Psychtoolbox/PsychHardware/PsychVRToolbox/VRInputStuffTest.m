@@ -60,10 +60,10 @@ function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, ref
 % controllers and builtin binocular eye gaze tracker of a HTC Vive Pro Eye.
 
 % Constants for use in VR applications:
-global OVR; %#ok<GVMIS> 
+global OVR; %#ok<GVMIS>
 
 % GL data structure needed for all OpenGL demos:
-global GL; %#ok<GVMIS> 
+global GL; %#ok<GVMIS>
 
 % No testing of haptic feedback by default, as it sucks up batteries a lot:
 if nargin < 1 || isempty(withHapticFeedback)
@@ -132,7 +132,7 @@ if strcmpi(hmdinfo.type, 'OpenXR') && refSpace
 end
 
 % OpenXR and Use2DViewsWhen3DStopped requested for stopped 3D rendering?
-if strcmpi(hmdinfo.type, 'OpenXR') && ~isempty(strfind(specialReqs, 'Use2DViewsWhen3DStopped')) %#ok<STREMP> 
+if strcmpi(hmdinfo.type, 'OpenXR') && ~isempty(strfind(specialReqs, 'Use2DViewsWhen3DStopped')) %#ok<STREMP>
     % Set some default position for the 2D views that matches kleinerm's
     % eyes well and provides matching imaging geometry between 3D
     % projection layers and 2D quadviews, at least as tested with HTC Vive Pro Eye
@@ -456,7 +456,7 @@ if hmdinfo.handTrackingSupported || withGazeTracking
   % also assign an alpha value that makes the particles "fade out" at the end
   % of there lifetime:
   particlecolors = rand(3, nparticles);
-  
+
   % Maximum speed for particles:
   maxspeed = 1.25;
 

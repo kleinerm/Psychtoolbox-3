@@ -625,7 +625,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %      it is also possible for a three element array to be returned, in
 %      which case index 1 is left eye date, 2 is right eye date, and 3 is
 %      synthesized "cyclops eye" data.
-% 
+%
 %      Please write your scripts so they can handle any number of 1, 2 or
 %      three array elements meaningfully:
 %

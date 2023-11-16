@@ -783,7 +783,7 @@ if strcmpi(cmd, 'PrepareRender')
     % Pupil position in normalized 2D sensor space:
     gaze(1).sensor2D = srLastSample(11:12);
     gaze(2).sensor2D = srLastSample(21:22);
-    gaze(3).sensor2D = srLastSample(31:32);    
+    gaze(3).sensor2D = srLastSample(31:32);
   else
     gaze = [];
   end
@@ -885,7 +885,7 @@ if strcmpi(cmd, 'PrepareRender')
           % Only columns 3 and 4 for z-axis and position are valid, just enough:
           gazeM(1:3, 4) = gaze(i).GazePose(1:3);
           gazeM(1:3, 3) = gaze(i).GazePose(4:6);
-        
+
           % Mysterious negation hack needed with SRAnipal:
           gazeM(1:3, 3) = -gazeM(1:3, 3);
         end
@@ -893,7 +893,7 @@ if strcmpi(cmd, 'PrepareRender')
         % Store estimated eye opening and pupil diameter:
         result.gazeEyeOpening(i) = gaze(i).gazeEyeOpening;
         result.gazeEyePupilDiameter(i) = gaze(i).gazeEyePupilDiameter;
-        
+
         % Distance to point of eye convergence - ie. to point of fixation:
         result.gazeEyeConvergenceDistance = srLastSample(33);
 
@@ -2148,7 +2148,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         if SRAnipalMex(0)
           % Start data acquisition:
           SRAnipalMex(2);
-    
+
           % Upgrade eyeTrackingSupported:
           % +1 "Basic" monocular/single gazevector
           % +2 Binocular/separate left/right eye gaze

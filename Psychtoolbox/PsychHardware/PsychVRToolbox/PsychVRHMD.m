@@ -29,7 +29,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % In monoscopic or stereoscopic mode, you can change the imaging parameters, ie.,
 % apparent size and location of the 2D views used with the following command to
 % optimize visual display:
-% 
+%
 % PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 % The command is fully supported under the OpenXR driver, but does nothing
 % and only returns NaN results on other drivers like the old Oculus,
@@ -110,7 +110,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % change the imaging parameters, ie., apparent size and location of the 2D
 % views used in this mode with the following command to minimize visual
 % disorientation:
-% 
+%
 % PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
 % For such 2D views you can also specify the distance of the virtual
@@ -183,7 +183,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 %     rate of your HMD! For this reason you should only request 'TimingSupport'
 %     on non-Monado if you really need it and be willing to pay the performance
 %     price.
-%     
+%
 %     If you omit this keyword, the driver will try to guess if you need
 %     precise presentation timing for your session or not. As long as you only
 %     call Screen('Flip', window) or Screen('Flip', window, [], ...), ie. don't
@@ -658,7 +658,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 %      it is also possible for a three element array to be returned, in
 %      which case index 1 is left eye date, 2 is right eye date, and 3 is
 %      synthesized "cyclops eye" data.
-% 
+%
 %      Please write your scripts so they can handle any number of 1, 2 or
 %      three array elements meaningfully:
 %
@@ -915,7 +915,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % space, ie. a [rx, ry, rz, rw] vector. Or for the most simple and most
 % frequent use case: A rotation angle in degrees around the z-axis aka
 % optical axis aka line of sight, e.g., 22.3 for a 22.3 degrees rotation.
-% 
+%
 %
 % oldSetting = PsychVRHMD('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
@@ -1023,10 +1023,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 23-Sep-2015  mk  Written.
 
 % Global GL handle for access to OpenGL constants needed in setup:
-global GL; %#ok<NUSED,*GVMIS> 
+global GL; %#ok<NUSED,*GVMIS>
 
 % Global OVR handle for access to VR runtime constants:
-global OVR; %#ok<NUSED> 
+global OVR; %#ok<NUSED>
 
 if nargin < 1 || isempty(cmd)
   help PsychVRHMD;
@@ -1101,10 +1101,10 @@ if strcmpi(cmd, 'AutoSetupHMD')
   end
 
   % Probe sequence:
-  hmd = []; %#ok<NASGU> 
+  hmd = []; %#ok<NASGU>
 
   % Does user need highest timing/timestamp precision and trustworthiness?
-  if ~isempty(strfind(basicRequirements, 'TimingPrecisionIsCritical')) %#ok<STREMP> 
+  if ~isempty(strfind(basicRequirements, 'TimingPrecisionIsCritical')) %#ok<STREMP>
     fprintf('PsychVRHMD: INFO: Prioritizing visual stimulation timing above all else in driver selection, as requested.\n');
     needTiming = 1;
   else
@@ -1189,7 +1189,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
     % multi-threading hacks to get not too catastrophic timing precision in
     % some cases -- hangs or crashes thoug with some buggy OpenXR
     % runtimes...
-    % 
+    %
     % Supported and online? At least one real HMD connected?
     if exist('PsychOpenXR', 'file') && PsychOpenXR('Supported') && PsychOpenXR('GetCount') > 0
       try

@@ -15,12 +15,16 @@ function GazeContingentDemo(mode, ms, myimgfile, usehmd)
 % two images based on a spatial gaussian weight mask. Compositing is done
 % by the graphics hardware.
 %
+% If you set the optional 'usehmd' parameter to 1 then the demo will display on
+% a VR HMD, and if that HMD has a suported eyetracker, it will be used to move
+% the foveated area gaze contingent with the users tracked gaze.
+%
 % See also: PsychDemos, MovieDemo, DriftDemo
 
 % HISTORY
 %
-% mm/dd/yy 
-% 
+% mm/dd/yy
+%
 %  7/23/05    mk      Derived it from Frans Cornelissens AlphaImageDemoOSX.
 % 11/19/06    dhb     Remove OSX from name.
 
@@ -56,7 +60,7 @@ end
 gazetracking = 0;
 
 try
-    fprintf('GazeContingentDemo (%s)\n', datestr(now)); %#ok<TNOW1,DATST> 
+    fprintf('GazeContingentDemo (%s)\n', datestr(now)); %#ok<TNOW1,DATST>
     fprintf('Press a key or click on mouse to stop demo.\n');
 
     PsychDefaultSetup(1);
@@ -143,12 +147,12 @@ try
             % Fovea contains color-inverted image data:
             foveaimdata(:,:,:) = 255 - imdata(:,:,:);
             % Periphery contains original data:
-            peripheryimdata = imdata;             
+            peripheryimdata = imdata;
         case 4
             % Test-case: One shouldn't see any foveated region on the
             % screen - this is a basic correctness test for blending.
             foveaimdata = imdata;
-            peripheryimdata = imdata;             
+            peripheryimdata = imdata;
         otherwise
             % Unknown mode! We force abortion:
             fprintf('Invalid mode provided!');
@@ -190,7 +194,7 @@ try
     % initially to center of screen:
     [a,b]=RectCenter(wRect);
     SetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
-    
+
     HideCursor;
     buttons=0;
 
@@ -209,11 +213,11 @@ try
     ncount = 0;
 
     oldvbl = Screen('Flip', w);
-    
+
     % Infinite display loop: Whenever "gaze position" changes, we update
     % the display accordingly. Loop aborts on keyboard press or mouse
     % click or after 10000 frames...
-    while (ncount < 10000)                
+    while (ncount < 10000)
         % Query current mouse cursor position (our "pseudo-eyetracker") -
         % (mx,my) is our gaze position.
         if hurryup == 0
@@ -231,9 +235,9 @@ try
             % without query of the mouse:
             mx=500 + 500*sin(ncount/10); my=300;
         end
-        
+
         % We only redraw if gazepos. has changed:
-        if (mx~=mxold || my~=myold)            
+        if (mx~=mxold || my~=myold)
             % Compute position and size of source- and destinationrect and
             % clip it, if necessary...
             myrect=[mx-ms my-ms mx+ms+1 my+ms+1]; % center dRect on current mouseposition
@@ -243,7 +247,7 @@ try
             % Valid destination rectangle?
             if ~IsEmptyRect(dRect)
                 % Yes! Draw image for current frame:
-                
+
                 % Step 1: Draw the alpha-mask into the backbuffer. It
                 % defines the aperture for foveation: The center of gaze
                 % has zero alpha value. Alpha values increase with distance from
@@ -279,7 +283,7 @@ try
                 % syncing to retrace if hurryup is == 1.
                 vbl = Screen('Flip', w, 0, 2, 2*hurryup);
                 if hurryup
-                    vbl = GetSecs; %#ok<UNRCH> 
+                    vbl = GetSecs; %#ok<UNRCH>
                 end
                 tavg = tavg + (vbl-oldvbl);
                 oldvbl=vbl;
@@ -305,7 +309,7 @@ try
     Screen('BlendFunction', w, GL_ONE, GL_ZERO);
     Screen('DrawTexture', w, foveatex);
     Screen('Flip', w);
-    
+
     % The same command which closes onscreen and offscreen windows also
     % closes textures.
     sca;
@@ -313,7 +317,7 @@ try
     Priority(0);
     tavg = tavg / ncount * 1000;
     fprintf('End of GazeContingentDemo. Avg. redraw time is %f ms = %f Hz.\n\n', tavg, 1000 / tavg);
-	 return;
+    return;
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
