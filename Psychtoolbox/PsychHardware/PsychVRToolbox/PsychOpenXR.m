@@ -559,7 +559,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %      reference frame. They are the inverses of state.modelView{}. These
 %      matrices can be directly used to define cameras for rendering of complex
 %      3D scenes with the Horde3D 3D engine. Left- and right eye matrices are
-%      contained in state.cameraView{1} and {2}.
+%      contained in state.cameraView{1} and state.cameraView{2}.
 %
 %      Additionally tracked/predicted head pose is returned in state.localHeadPoseMatrix
 %      and the global head pose after application of the 'userTransformMatrix' is
@@ -754,7 +754,8 @@ function varargout = PsychOpenXR(cmd, varargin)
 %      state.gazeEyeConvergenceDistance = For binocular gaze tracking, this
 %      may be a scalar estimate of eye convergence distance, ie. the
 %      distance of the fixation point from the eyes. May be supported on
-%      some HTC HMDs under SRAnipal, but not confirmed in practice.
+%      some HTC HMDs under SRAnipal, but has not been confirmed to work in
+%      practice on the tested HTC Vive Pro Eye.
 %
 %
 % More flags to follow...
