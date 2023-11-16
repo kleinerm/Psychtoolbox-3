@@ -29,7 +29,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % In monoscopic or stereoscopic mode, you can change the imaging parameters, ie.,
 % apparent size and location of the 2D views used with the following command to
 % optimize visual display:
-% 
+%
 % PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 % The command is fully supported under the OpenXR driver, but does nothing
 % and only returns NaN results on other drivers like the old Oculus,
@@ -110,7 +110,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % change the imaging parameters, ie., apparent size and location of the 2D
 % views used in this mode with the following command to minimize visual
 % disorientation:
-% 
+%
 % PsychVRHMD('View2DParameters', hmd, eye [, position][, size][, orientation]);
 %
 % For such 2D views you can also specify the distance of the virtual
@@ -183,7 +183,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 %     rate of your HMD! For this reason you should only request 'TimingSupport'
 %     on non-Monado if you really need it and be willing to pay the performance
 %     price.
-%     
+%
 %     If you omit this keyword, the driver will try to guess if you need
 %     precise presentation timing for your session or not. As long as you only
 %     call Screen('Flip', window) or Screen('Flip', window, [], ...), ie. don't
@@ -257,6 +257,72 @@ function varargout = PsychVRHMD(cmd, varargin)
 % relatively expensive post processing step. On any other VR device and
 % runtime other than Oculus Rift DK1/DK2 this option currently has no
 % effect and is therefore redundant.
+%
+%
+% 'Eyetracking' = Request eye gaze tracking via a supported HMD builtin eye tracker.
+% This keyword asks the driver to enable eye gaze tracking. A given combo
+% of VR/AR/MR device (and its builtin eye tracker), operating system, OpenXR
+% runtime and additional optionally installed eye tracking software, may
+% support multiple different gaze tracking api's and runtimes. By default,
+% the driver will try to use the most capable gaze tracking api, ie. the
+% one which provides the most detailed and exhaustive information about the
+% users gaze, at the highest sampling rate, with the most flexibility. It
+% will fall back to less capable or efficient tracking api's if more
+% capable ones are not supported or available. For this reason, the amount
+% of information can differ widely between the most capable api's and the
+% most basic api's. User scripts which strive to be usable on different
+% operating systems, software setups or eyetracking hardware and HMDs must
+% therefore be written in a defensive and adaptive way to be able to work
+% with only the minimal subset of information guaranteed to be available on
+% all implementations. The info struct returned by info = PsychVRHMD('GetInfo');
+% contains info about basic gaze tracking capabilities as a bitmask in
+% info.eyeTrackingSupported: A value of +1 means at least one gaze vector
+% is reported. A value of +2 means reporting of binocular eye tracking data
+% is supported. A value of +1024 means that HTC's proprietary SRAnipal
+% eyetracking is used for more extensive gaze data reporting.
+%
+% If eye tracking is requested via the keyword and supported, then the user
+% script can request return of the most recent eye gaze tracking sample
+% data by calling the state = PsychVRHMD('PrepareRender', ..., reqmask, ...)
+% function with reqmask flag +4. This will cause the returned 'state' struct
+% to contain additional fields with information about the most recent gaze.
+% See help text for the 'PrepareRender' function for more detailed info.
+%
+% The current driver supports the following gazetracking implementations:
+%
+% - With HTC VR HMDs with eyetracking support, under Microsoft Windows, in
+% combination with the optional HTC SRAnipal runtime DLL's installed, and
+% using Matlab, an optional SRAnipal mex driver can be used to provide both
+% binocular per-eye gaze tracking data, separate for the subjects left and
+% right eye, and a virtual 3rd "cyclops eye" which is synthesized info from
+% both hardware eye trackers, sometimes of higher quality due to sensor
+% fusion of the two gaze tracker data streams. For each of both eyes, in
+% addition to eye gaze position and direction, estimated pupil size in
+% millimeters and a measure of eye openess is reported, e.g., for eye
+% blink detection or estimation of gaze data reliability. Reported times
+% are hardware timestamps of when a gaze sample was measured. On the tested
+% "HTC Vive Pro Eye" HMD sampling rates of up to 120 Hz were possible.
+%
+% - On other device + operating system + OpenXR runtime combos with OpenXR
+% gazetracking support, information from the XR_EXT_eye_gaze_interaction
+% gaze tracking extension is returned. This extension is supported on a wider
+% range of XR devices, but the returned information is more limited: A
+% single eye gaze vector and position, but without any information about the
+% subjects eye openess, pupil size or of the systems confidence in the quality
+% of the measured gaze. The gaze vector is of unspecified origin. It could
+% be measured gaze from a monocular eye tracker, ie. either left or right eye
+% gaze, or it could be a "cyclops eye" synthesized gaze computed via sensor
+% fusion of gaze data from a binocular gaze tracker. The gaze data may be
+% measured data from a time in the past, or interpolated or extrapolated
+% gaze data from one or more past measured eye gaze samples. The returned
+% gaze sample timestamp may be a hardware timestamp of when the gaze sample
+% was measured, but could also be the time for which gaze was predicted via
+% interpolation or extrapolation of past hardware measured gaze samples.
+% Temporal resolution of the gaze data is also unspecified. On the tested
+% HTC Vive Pro Eye, the reported gaze seems to correspond to the sensor
+% fusion of gaze samples from the binocular eye tracker, and the temporal
+% resolution is reduced to at best 16.6 msecs for at most 60 gaze samples
+% per second.
 %
 %
 % These basic requirements get translated into a device specific set of
@@ -340,11 +406,13 @@ function varargout = PsychVRHMD(cmd, varargin)
 %                             test for a setting == 1 to know if PsychVRHMD('HapticPulse') works
 %                             in principle, which is considered basic feedback ability.
 %
-% eyeTrackingSupported = 1 if basic eye gaze tracking is supported by the given VR/AR/MR device and
-%                          software setup, 0 otherwise. In other words, if the device is equipped
-%                          with at least a monocular eye tracker. Values bigger than 1 may indicate
-%                          support for more than basic monocular eye gaze tracking, but the exact
-%                          meaning of these values is not yet specified.
+% eyeTrackingSupported = Info about eye gaze tracking capabilities of the given VR/AR/MR device and
+%                        software setup. A value of 0 means that eye gaze tracking is not supported.
+%                        A value of +1 means at least one gaze vector is reported. A value of +2 means
+%                        reporting of binocular per-eye tracking data is supported. A value of
+%                        +1024 means that HTC's proprietary SRAnipal eyetracking is available for
+%                        more extensive gaze data reporting.
+%
 %
 % The info struct may contain much more vendor specific information, but the above
 % set is supported across all devices.
@@ -519,7 +587,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 %      reference frame. They are the inverses of state.modelView{}. These
 %      matrices can be directly used to define cameras for rendering of complex
 %      3D scenes with the Horde3D 3D engine. Left- and right eye matrices are
-%      contained in state.cameraView{1} and {2}.
+%      contained in state.cameraView{1} and state.cameraView{2}.
 %
 %      Additionally tracked/predicted head pose is returned in state.localHeadPoseMatrix
 %      and the global head pose after application of the 'userTransformMatrix' is
@@ -554,6 +622,174 @@ function varargout = PsychVRHMD(cmd, varargin)
 %                                             hand pose of left hand.
 %
 %      state.globalHandPoseInverseMatrix{2} = Ditto for right hand.
+%
+% +4 = Return the most recent eye gaze information on devices with built-in eye tracking hardware.
+%      Returned information may represent the latest available measured eye
+%      gaze data, or it may be predicted eye gaze information for the
+%      specified 'targetTime', computed via interpolation or extrapolation
+%      from actual previously measured eye gaze. This is dependent on the
+%      specific gaze tracker implementation of your system. If the reported
+%      gaze sample timestamps are identical to the provided 'targetTime'
+%      then that is one possible indication that reported gaze may be
+%      predicted gaze instead of a direct hardware measured gaze sample.
+%
+%      The following fields are mandatory as part of the state struct, if gaze
+%      tracking is supported and enabled and requested:
+%
+%      state.gazeRaw = If no new gaze tracking data is available, returns an
+%      empty [] variable. Otherwise a variable in a format that is
+%      dependent on the actually used gaze tracking api and implementation.
+%      It could be a vector, a struct, an array of structs... The format
+%      may change without prior notice, without any regard for backward
+%      compatibility, so it is mostly useful for debugging by the PTB
+%      developers or other Psychtoolbox internal special use cases, not to
+%      be relied on by regular user experiment scripts!
+%
+%      The following variables are arrays, whose length depends on the
+%      used gaze tracking method. Each array element represents properties
+%      of one tracked eye gaze. At a minimum, the arrays have one element
+%      for the most basic gaze tracking, e.g., if the OpenXR extension
+%      XR_EXT_eye_gaze_interaction is used for gaze tracking, it will only
+%      report one gaze vector in index 1: A monocular gaze sample from either
+%      the left or right eye, or a synthetic "cyclops eye" gaze sample, computed
+%      via sensor fusion of data from a binocular gazetracker. The arrays could
+%      also have 2 elements for a purely binocular eye tracker, with index 1 for
+%      the left eye, and index 2 for the right eye data. On a binocular tracker,
+%      it is also possible for a three element array to be returned, in
+%      which case index 1 is left eye date, 2 is right eye date, and 3 is
+%      synthesized "cyclops eye" data.
+%
+%      Please write your scripts so they can handle any number of 1, 2 or
+%      three array elements meaningfully:
+%
+%      state.gazeStatus(i) = A flag telling if i'th gaze is unavailable
+%                            (=0), available (+1) or available and somewhat
+%                            trustworthy (+2). Values other than 3 (=1+2)
+%                            should not really be trusted. A value of only
+%                            1 could, e.g., mean that data was reported,
+%                            but it is not based on an actual measured eye
+%                            gaze sample, but purely extrapolated or
+%                            predicted from past valid data. A value of 3
+%                            is not a guarantee of high quality data, just
+%                            that the data is actually measured eye gaze
+%                            data and passed the minimum quality treshold.
+%
+%
+%      state.gazeTime(i) = A timestamp of the time for which the given
+%      gaze information is valid, or the value NaN if no valid timestamp is
+%      available from the gaze tracker. Depending on gaze tracking method in
+%      use, this could be a time in the past, referring to the hardware
+%      timestamp of when the gaze tracker hardware acquired that sample, or
+%      it could be the time in the past or near future for which the gaze
+%      data was computed via prediction / extrapolation of gaze movement or
+%      interpolation from past gaze tracking data history. OpenXR built in
+%      gaze tracking extensions often may not report the most recent
+%      measured eye gaze sample from a past tracking cycle. Instead they
+%      take the user provided 'targetTime' (or predicted stimulus onset
+%      time for the next to-be-presented VR/AR/MR/XR stimulus image, if
+%      'targetTime' was omitted) and try to predict where the subject will
+%      be looking (for a 'targetTime' in the near future) or has looked
+%      (for a 'targetTime' in the near past). In case of such prediction,
+%      the reported state.gazeTime(i) corresponds to the time for which
+%      gaze was actually predicted. It is a bit of a hazard for scientific
+%      research purposes that there is some uncertainty if timestamps refer
+%      to time of real measured gaze, or to some predicted time, or that
+%      prediction / interpolation / extrapolation may be used instead of
+%      reporting measured data, or that the prediction method - if any - is
+%      not specified or standardized across different devices, gaze
+%      trackers and gaze tracking runtimes and api's. This is unfortunately
+%      unavoidable, as most commercial off the shelf gaze trackers for XR
+%      applications are not targeted at scientific research use cases, but
+%      as human computer interaction method for operating and navigating in
+%      VR and AR, e.g., for gaming and entertainment purposes. Not much we
+%      could do about this, so you will have to deal with this in your
+%      research paradigm or carefully select hardware with known suitable
+%      properties for your specific use case.
+%
+%      Actual gaze information is provided in two formats, a 2D format, in
+%      onscreen window pixel coordinates, ie. where in the image has the
+%      subject looked, and a 3D format, as 3D gaze rays, ie. where in a
+%      rendered 3D scene has the subject looked:
+%
+%      2D - Onscreen window referenced:
+%
+%      state.gazePos{i} = A two-element [x,y] vector of the estimated 2D user
+%      gaze position in Psychtoolbox onscreen window coordinates. Iow. the
+%      x,y coordinates of where the user looked. In mono display mode this
+%      is done by mapping the users gaze vector to the 2D space of the
+%      common image that is displayed in the left and right eye display of
+%      a VR/AR/MR HMD. In stereoscopic 2D display mode or full 3D perspective
+%      correct rendering mode with potential head tracking, where a different
+%      image is rendered and displayed to the subjects left and right eye, the
+%      mapping of indices is as follows: state.gazePos{1} is expressed wrt.
+%      to the left eye image buffer, ie. the one selected via
+%      Screen('SelectStereoDrawBuffer', win, 0);. state.gazePos{2} refers
+%      to the right eye image buffer (Screen('SelectStereoDrawBuffer', win, 0);).
+%      state.gazePos{3} for a potential synthetic "cyclops eye" gaze will
+%      reference the left eye image buffer again.
+%
+%      3D - 3D scene geometry referenced:
+%
+%      state.gazeRayLocal{i} = encodes the subjects gaze direction / line
+%      of sight within a HMD fixed reference frame:
+%
+%      state.gazeRayLocal{i}.gazeC = a [x,y,z] 3D vector denoting the
+%      estimated position of the optical center of the subjects eye balls,
+%      relative to the origin of the head-fixed reference frame.
+%
+%      state.gazeRayLocal{i}.gazeD = a [dx,dy,dz] 3D vector denoting the
+%      gaze direction in the head-fixed x, y and z axis.
+%
+%      The values in gazeRayLocal therefore define a 3D line equation
+%      denoting the users line of sight, a "gaze ray" so to speak:
+%
+%      For all scalar values t from zero to infinity, p(t) with
+%      p(t) = state.gazeRayLocal{i}.gazeC + t * state.gazeRayLocal{i}.gazeD
+%      defines 3D points along the looking direction / gaze vector / gaze
+%      ray of the subject, in a head-fixed reference frame.
+%
+%      Mathematical intersection of such a defined line equation p(t) with 3D
+%      scene geometry in 3D rendering mode that is fixed wrt. to the users head
+%      allows you to figure out where the user is looking in 3D space.
+%
+%      For a typical 3D head tracked VR / AR / MR rendering scenario, where
+%      you would also set the the 'reqmask' flag +1 to retrieve head
+%      tracking information and state.modelView matrices for 3D rendering,
+%      the function also provides state.gazeRayGlobal{i} of the same
+%      format. In this case the HMD head tracking information is used to
+%      locate the subjects head position and orientation in a 3D rendered
+%      scene and the gaze ray is transformed accordingly, so mathematical
+%      intersection of rendered 3D geometry with the 3D line equation ...
+%      p(t) = state.gazeRayGlobal{i}.gazeC + t * state.gazeRayGlobal{i}.gazeD
+%      ... allows to find the point of fixation in a 3D world even if the
+%      subject is moving their head or walking around.
+%
+%
+%      Some of the supported eye tracking implementations may provide the
+%      following additional optional information for each gaze index i. If
+%      the information is not available for a given implementation, either
+%      an empty vector [] or the scalar value NaN is returned:
+%
+%      state.gazeConfidence(i) = A scalar value of confidence, ie. how
+%      certain is the gaze tracker that reported data is trustworthy and
+%      accurate. Currently unsupported on all trackers, returns NaN.
+%
+%      state.gazeEyeOpening(i) = A scalar value of how far the subjects
+%      eyes are open, in a normalized range 0 for closed to 1 for fully
+%      open. This can be used, e.g., as another confidence measure, or for
+%      eye blink detection. Supported for i=1,2 with HTC SRAnipal gaze
+%      tracking on suitable HTC HMDs like the HTC Vive Pro Eye.
+%
+%      state.gazeEyePupilDiameter(i) = The estimated diameter of the
+%      subjects pupil, presumably in millimeters. Supported for i=1,2 with
+%      HTC SRAnipal gaze tracking on suitable HTC HMDs like the HTC Vive Pro Eye.
+%
+%      state.gazeEyeConvergenceDistance = For binocular gaze tracking, this
+%      may be a scalar estimate of eye convergence distance, ie. the
+%      distance of the fixation point from the eyes. May be supported on
+%      some HTC HMDs under SRAnipal, but has not been confirmed to work in
+%      practice on the tested HTC Vive Pro Eye.
+%
 %
 % More flags to follow...
 %
@@ -679,7 +915,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % space, ie. a [rx, ry, rz, rw] vector. Or for the most simple and most
 % frequent use case: A rotation angle in degrees around the z-axis aka
 % optical axis aka line of sight, e.g., 22.3 for a 22.3 degrees rotation.
-% 
+%
 %
 % oldSetting = PsychVRHMD('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
@@ -787,10 +1023,10 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 23-Sep-2015  mk  Written.
 
 % Global GL handle for access to OpenGL constants needed in setup:
-global GL; %#ok<NUSED,*GVMIS> 
+global GL; %#ok<NUSED,*GVMIS>
 
 % Global OVR handle for access to VR runtime constants:
-global OVR; %#ok<NUSED> 
+global OVR; %#ok<NUSED>
 
 if nargin < 1 || isempty(cmd)
   help PsychVRHMD;
@@ -865,10 +1101,10 @@ if strcmpi(cmd, 'AutoSetupHMD')
   end
 
   % Probe sequence:
-  hmd = []; %#ok<NASGU> 
+  hmd = []; %#ok<NASGU>
 
   % Does user need highest timing/timestamp precision and trustworthiness?
-  if ~isempty(strfind(basicRequirements, 'TimingPrecisionIsCritical')) %#ok<STREMP> 
+  if ~isempty(strfind(basicRequirements, 'TimingPrecisionIsCritical')) %#ok<STREMP>
     fprintf('PsychVRHMD: INFO: Prioritizing visual stimulation timing above all else in driver selection, as requested.\n');
     needTiming = 1;
   else
@@ -953,7 +1189,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
     % multi-threading hacks to get not too catastrophic timing precision in
     % some cases -- hangs or crashes thoug with some buggy OpenXR
     % runtimes...
-    % 
+    %
     % Supported and online? At least one real HMD connected?
     if exist('PsychOpenXR', 'file') && PsychOpenXR('Supported') && PsychOpenXR('GetCount') > 0
       try

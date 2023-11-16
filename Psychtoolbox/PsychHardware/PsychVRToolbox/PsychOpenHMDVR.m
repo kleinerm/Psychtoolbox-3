@@ -351,7 +351,7 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 %      reference frame. They are the inverses of state.modelView{}. These
 %      matrices can be directly used to define cameras for rendering of complex
 %      3D scenes with the Horde3D 3D engine. Left- and right eye matrices are
-%      contained in state.cameraView{1} and {2}.
+%      contained in state.cameraView{1} and state.cameraView{2}.
 %
 %      Additionally tracked/predicted head pose is returned in state.localHeadPoseMatrix
 %      and the global head pose after application of the 'userTransformMatrix' is
@@ -681,6 +681,9 @@ if strcmpi(cmd, 'PrepareRender')
     error('PsychOpenHMDVR:PrepareRender: Specified handle does not correspond to an open HMD!');
   end
 
+  % Make local working copy of current hmd total state:
+  myhmd = hmd{myhmd.handle};
+
   % Get 'userTransformMatrix' if any:
   if length(varargin) >= 2 && ~isempty(varargin{2})
     userTransformMatrix = varargin{2};
@@ -710,8 +713,85 @@ if strcmpi(cmd, 'PrepareRender')
     targetTime = winfo.LastVBLTime + 1.5 * hmd{myhmd.handle}.videoRefreshDuration;
   end
 
+  % Eyetracking data via SRAnipalMex requested?
+  if bitand(reqmask, 4) && bitand(myhmd.eyeTrackingSupported, 1024)
+    % Get latest sample from SRAnipalMex:
+    srLastSample = [];
+    srCalibNeeded = 0;
+    [srSample, srNeedCalib, srImprove] = SRAnipalMex(5);
+    srCalibNeeded = srCalibNeeded + srNeedCalib;
+    while ~isempty(srSample)
+      srLastSample = srSample;
+      [srSample, srNeedCalib, srImprove] = SRAnipalMex(5);
+      srCalibNeeded = srCalibNeeded + srNeedCalib;
+    end
+
+    while isempty(srLastSample)
+      [srLastSample, srNeedCalib, srImprove] = SRAnipalMex(5);
+      srCalibNeeded = srCalibNeeded + srNeedCalib;
+    end
+
+    if PsychOpenHMDVRCore('Verbosity') > 2
+      if srCalibNeeded
+        fprintf('PsychOpenHMDVR: At time %f seconds - Eyetracker suggests a calibration might be needed.\n', GetSecs);
+      end
+
+      for i=1:length(srImprove)
+        fprintf('PsychOpenHMDVR: Eyetracker suggests tracking improvement %i\n', srImprove(i));
+      end
+    end
+
+    % Convert time in msecs to GetSecs time in seconds:
+    [gaze(1).Time, gaze(2).Time, gaze(3).Time] = deal(srLastSample(2) / 1000);
+
+    % Map eye openess to tracked status:
+    if srLastSample(9) > 0 && norm(srLastSample(3:5)) > 0.1
+        gaze(1).Status = 3; %#ok<*AGROW>
+    else
+        gaze(1).Status = 1;
+    end
+
+    if srLastSample(19) > 0 && norm(srLastSample(13:15)) > 0.1
+        gaze(2).Status = 3; %#ok<*AGROW>
+    else
+        gaze(2).Status = 1;
+    end
+
+    if gaze(1).Status == 3 && gaze(2).Status == 3
+        gaze(3).Status = 3; %#ok<*AGROW>
+    else
+        gaze(3).Status = 1;
+    end
+
+    % Swap eye center / translation between left eye and right eye, to compensate
+    % for a bug in the SRAnipal runtime on at least HTC Vive Pro Eye:
+    gaze(1).GazePose = [srLastSample(16:18) / 1000, srLastSample(3:5)];
+    gaze(2).GazePose = [srLastSample(6:8) / 1000, srLastSample(13:15)];
+
+    % Need to switch sign of x-axis position of cyclops eye due to HTC eye switching bug above!
+    srLastSample(26) = -srLastSample(26);
+    gaze(3).GazePose = [srLastSample(26:28) / 1000, srLastSample(23:25)];
+
+    gaze(1).gazeEyeOpening = srLastSample(9);
+    gaze(2).gazeEyeOpening = srLastSample(19);
+    gaze(3).gazeEyeOpening = srLastSample(29);
+
+    gaze(1).gazeEyePupilDiameter = srLastSample(10);
+    gaze(2).gazeEyePupilDiameter = srLastSample(20);
+    gaze(3).gazeEyePupilDiameter = srLastSample(30);
+
+    % Pupil position in normalized 2D sensor space:
+    gaze(1).sensor2D = srLastSample(11:12);
+    gaze(2).sensor2D = srLastSample(21:22);
+    gaze(3).sensor2D = srLastSample(31:32);
+  else
+    gaze = [];
+  end
+
   % Get predicted head pose for targetTime:
   [state, touch] = PsychOpenHMDVRCore('GetTrackingState', myhmd.handle, targetTime);
+
+  hmd{myhmd.handle}.state = state;
 
   % Always return basic tracking status:
   result.tracked = state.Status;
@@ -780,6 +860,121 @@ if strcmpi(cmd, 'PrepareRender')
       % Compute inverse matrix, maybe useable for collision testing / virtual grasping of virtual objects:
       % Provides a transform that maps absolute geometry into geometry as "seen" from the pov of the hand.
       result.globalHandPoseInverseMatrix{i} = inv(result.globalHandPoseMatrix{i});
+    end
+  end
+
+  if bitand(reqmask, 4)
+    % Store raw gaze data provided by eyetracker driver in gazeRaw, can be empty:
+    result.gazeRaw = gaze;
+
+    if ~isempty(gaze)
+      % Process each entry:
+      for i = 1:length(gaze)
+        result.gazeStatus(i) = gaze(i).Status;
+        result.gazeTime(i) = gaze(i).Time;
+        result.gazeConfidence(i) = NaN;
+        result.gazeEyeOpening(i) = NaN;
+        result.gazeEyePupilDiameter(i) = NaN;
+        result.gazeEyeConvergenceDistance = NaN;
+
+        gazeM = diag([1 1 1 1]);
+
+        % Valid, tracked sample from SRAnipalMex available?
+        if gaze(i).Status == 3
+          % Override gazeM matrix with a fake matrix, based on SRAnipal data.
+          % Only columns 3 and 4 for z-axis and position are valid, just enough:
+          gazeM(1:3, 4) = gaze(i).GazePose(1:3);
+          gazeM(1:3, 3) = gaze(i).GazePose(4:6);
+
+          % Mysterious negation hack needed with SRAnipal:
+          gazeM(1:3, 3) = -gazeM(1:3, 3);
+        end
+
+        % Store estimated eye opening and pupil diameter:
+        result.gazeEyeOpening(i) = gaze(i).gazeEyeOpening;
+        result.gazeEyePupilDiameter(i) = gaze(i).gazeEyePupilDiameter;
+
+        % Distance to point of eye convergence - ie. to point of fixation:
+        result.gazeEyeConvergenceDistance = srLastSample(33);
+
+        % Invert the y-Rotation subvector: Why? I don't know! But without
+        % it, vertical gaze vector is wrong with the HTC Vive Pro Eye.
+        % Maybe a HTC SRAnipal runtime bug?
+        gazeM(2, 1:3) = -gazeM(2, 1:3);
+
+        % Disabled, as impossible to make compatible with other implementations:
+        % result.gazeLocalMatNonPortable{i} = gazeM;
+
+        % Compute gaze ray in XR device (HMD) local reference frame:
+        result.gazeRayLocal{i}.gazeC = gazeM(1:3, 4);
+        result.gazeRayLocal{i}.gazeD = gazeM(1:3, 3);
+
+        % VR display device (HMD) tracking info available?
+        if bitand(reqmask, 1)
+          % Compute global gaze orientation matrix and gaze ray:
+          gazeM = result.globalHeadPoseMatrix * gazeM;
+          % Disabled, see gazeLocalMatNonPortable result.gazeGlobalMatNonPortable{i} = gazeM;
+          result.gazeRayGlobal{i}.gazeC = gazeM(1:3, 4);
+          result.gazeRayGlobal{i}.gazeD = gazeM(1:3, 3);
+        end
+
+        % Try to compute 2D gaze points in onscreen window coordinates:
+        handle = myhmd.handle;
+        [winw, winh] = Screen('WindowSize', hmd{handle}.win);
+
+        % Get local gaze ray definition:
+        tv = result.gazeRayLocal{i}.gazeC;
+        dv = result.gazeRayLocal{i}.gazeD;
+
+        % Define plane of projectionLayer to be -10 meters away from the
+        % optical center of the virtual camera, ie. translated by MT. Why
+        % 10 meters? Because small values give numerical instability and
+        % wrong results. MT defines shift of 10 meters along negative
+        % z-axis of camera reference frame:
+        clipNear = 10;
+        MT = diag([1 1 1 1]);
+        MT(3,4) = -clipNear;
+
+        % Left eye view, mono view or cyclops view - anything other than right eye?
+        if i ~= 2
+          % Left eye/projectionLayer field of view:
+          fov = hmd{handle}.fovL;
+          MV = hmd{myhmd.handle}.eyeShiftMatrix{1} * MT;
+        else
+          % Right eye/projectionLayer field of view:
+          fov = hmd{handle}.fovR;
+          MV = hmd{myhmd.handle}.eyeShiftMatrix{2} * MT;
+        end
+
+        % Solve ray - plane intersection between gaze ray and projectionLayer plane:
+        GM = [MV(1:3, 1), MV(1:3, 2), -dv];
+        GB = tv - MV(1:3, 4);
+        gaze3D = (GM \ GB)'; % Faster and more accurate implementation of gaze3D = (inv(GM) * GB)';
+
+        % Compute left/right/up/down distance in projectionLayer plane
+        % away from (0,0) 2D center, in meters. Instead of the real
+        % plane, we use a bigger plane that is 10 meters shifted away, to
+        % avoid numerical problems down the road. This takes the
+        % asymetric view frustum of projectionLayers into account:
+        lw = tand(-fov(1)) * clipNear;
+        rw = tand(+fov(2)) * clipNear;
+        th = tand(+fov(3)) * clipNear;
+        bh = tand(-fov(4)) * clipNear;
+
+        % Width and height of plane in meters:
+        aw = rw - lw;
+        ah = th - bh;
+
+        % Map to normalized 2D (x,y) position in view, range [0;1] inside views area:
+        gaze2D = (gaze3D(1:2) - [lw, bh]) ./ [aw, ah];
+        gaze2D(1) = gaze2D(1) * winw;
+        gaze2D(2) = (1 - gaze2D(2)) * winh;
+
+        % Assign as output:
+        result.gazePos{i} = gaze2D;
+      end
+    else
+      warning('PsychOpenHMDVR:PrepareRender: Eye gaze tracking data requested, but gaze tracking not supported or enabled!');
     end
   end
 
@@ -1025,6 +1220,12 @@ if strcmpi(cmd, 'Open')
   end
 
   newhmd.eyeTrackingSupported = 0;
+  newhmd.needEyeTracking = 0;
+
+  % Eye gaze tracking via SRAnipal on MS-Windows on HTC Vive Pro Eye etc. supported?
+  if IsWin && exist('SRAnipalMex', 'file') && ~isempty(strfind(newhmd.modelName, 'Vive'))
+    newhmd.eyeTrackingSupported = 1;
+  end
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -1218,6 +1419,14 @@ if strcmpi(cmd, 'Close')
     if (length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open
       PsychOpenHMDVRCore('Close', myhmd.handle);
       hmd{myhmd.handle}.open = 0;
+
+      % Was SRAnipalMex eyetracking active?
+      if bitand(hmd{myhmd.handle}.eyeTrackingSupported, 1024) && hmd{myhmd.handle}.needEyeTracking
+        % Stop tracking:
+        SRAnipalMex(3);
+        % Shutdown tracker connection
+        SRAnipalMex(1);
+      end
     end
   else
     % Shutdown whole driver:
@@ -1419,6 +1628,16 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     hmd{myhmd.handle}.rbheight = max(1, min(ceil(rbOvrSize(2) * pixelsPerDisplay), hmd{myhmd.handle}.maxrbheight));
     if hmd{myhmd.handle}.rbwidth ~= rbOvrSize(1) || hmd{myhmd.handle}.rbheight ~= rbOvrSize(2)
         warning('SetupRenderingParameters(): Had to clamp ''ForceSize=widthxheight'' requested pixelbuffer size to fit into valid range! Result may look funky.');
+    end
+  end
+
+  % Eye gaze tracking requested?
+  if ~isempty(strfind(basicRequirements, 'Eyetracking'))
+    if ~hmd{myhmd.handle}.eyeTrackingSupported
+      warning('SetupRenderingParameters: ''Eyetracking'' requested in ''basicRequirements'', but this VR system does not support eye tracking!');
+      hmd{myhmd.handle}.needEyeTracking = 0;
+    else
+      hmd{myhmd.handle}.needEyeTracking = 1;
     end
   end
 
@@ -1913,6 +2132,37 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
      fprintf('PsychOpenHMDVR: WARNING: Rift DK2 in 1080x948@120 Hz MONO mode detected, but you are not using the Monoscopic\n');
      fprintf('PsychOpenHMDVR: WARNING: basicTask. Note that stereoscopic rendering and display will not work. You only get the\n');
      fprintf('PsychOpenHMDVR: WARNING: left eye view displayed to both eyes, while still wasting resources on stereo rendering.\n');
+  end
+
+  % Eye tracking wanted in this session and supported by system?
+  if hmd{handle}.needEyeTracking && hmd{handle}.eyeTrackingSupported
+    % Tracking api specific setup:
+
+    % SRAnipalMex available for HTC Vive SRAnipal eye tracking?
+    if IsWin && exist('SRAnipalMex', 'file') && ~isempty(strfind(hmd{handle}.modelName, 'Vive'))
+      % Yes. Use it:
+      fprintf('PsychOpenHMDVR-INFO: Trying to enable HTC SRAnipal eye tracking for this session.\n');
+
+      % Initialize eyetracker connection:
+      try
+        if SRAnipalMex(0)
+          % Start data acquisition:
+          SRAnipalMex(2);
+
+          % Upgrade eyeTrackingSupported:
+          % +1 "Basic" monocular/single gazevector
+          % +2 Binocular/separate left/right eye gaze
+          % +1024 HTC SRAnipal eye tracking in use
+          hmd{handle}.eyeTrackingSupported = 1 + 2 + 1024;
+        else
+          warning('HTC SRAnipal eye tracker startup failed! Eye tracking disabled!');
+          hmd{handle}.eyeTrackingSupported = 0;
+        end
+      catch
+        warning('HTC SRAnipal eye tracker runtime interface DLL unavailable! Eye tracking disabled!');
+        hmd{handle}.eyeTrackingSupported = 0;
+      end
+    end
   end
 
   % Return success result code 1:
