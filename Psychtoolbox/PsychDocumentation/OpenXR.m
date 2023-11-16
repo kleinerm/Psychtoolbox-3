@@ -40,7 +40,14 @@
 % advanced eye gaze tracking is supported via HTC's SRAnipal eye tracker
 % runtime on suitable HMDs, e.g., the "HTC Vive Pro Eye". This allows
 % additionally for binocular eye gaze reporting, reporting of eye opening,
-% and estimated eye pupil diameter.
+% and estimated eye pupil diameter. Some demos have support and demonstration
+% of eye gaze tracking. E.g., GazeContingentDemo.m for gaze contingent
+% manipulation of 2D monoscopic stimuli, VRHMDDemo.m for 2D tracking and
+% visualization of gaze wrt. monoscopic or stereoscopic stimuli.
+% VRInputStuffTest.m shows gaze tracking wrt. 3D VR stereoscopic scenes,
+% both showing 2D gaze position and 3D gaze rays. VREyetrackingTest.m
+% allows to test and assess various aspects of 2D gaze tracking of 2D or 3D
+% stimuli presented monoscopically or stereoscopically.
 %
 % So far successfully tested with the PTB 3.0.19.5 release are:
 %
@@ -154,7 +161,8 @@
 %   started instructions:
 %
 %   - HTC official guide: https://developer.vive.com/resources/openxr/openxr-pcvr/tutorials/how-use-sr_runtime
-%   - Much more detailed webpage by some volunteer: https://github.com/corycorvus/Eye-Tracking-Wiki
+%   - Much more detailed webpage, very well done by some motivated volunteer:
+%     https://github.com/corycorvus/Eye-Tracking-Wiki
 %
 % - Other OpenXR runtimes exist from HTC for their latest devices, or from
 %   other vendors like Varjo for their devices.
