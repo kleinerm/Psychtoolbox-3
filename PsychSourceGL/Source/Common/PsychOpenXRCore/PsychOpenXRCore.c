@@ -159,6 +159,7 @@ typedef struct PsychOpenXRDevice {
     int                                 recSamples;
     int                                 maxSamples;
     int                                 numMSAASamples;
+    XrSpace                             gazePoseSpace;
     XrSpace                             handPoseSpace[2];
     int                                 hasEyeTracking;
     psych_bool                          isTracking;                     // MT mutex.
@@ -286,6 +287,7 @@ PFN_xrConvertTimeToTimespecTimeKHR pxrConvertTimeToTimespecTimeKHR = NULL;
 static XrPath openxr__handPath[4];
 static XrActionSet openxr__actionSet;
 
+static XrAction openxr__gazePoseAction;
 static XrAction openxr__hapticAction;
 static XrAction openxr__handPoseAction;
 static XrAction openxr__triggerValueAction[2];      // 1D
@@ -335,7 +337,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldEnable = PsychOpenXRCore('PresenterThreadEnable', openxrPtr [, enableThread]);";
     synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
     synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
-    synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
+    synopsis[i++] = "[state, touch, gaze] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
     synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR, fovL, fovR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
@@ -1051,6 +1053,9 @@ static psych_bool createDefaultXRInputConfig(XrInstance xrInstance)
     xrStringToPath(xrInstance, "/user/gamepad", &openxr__handPath[2]);
     xrStringToPath(xrInstance, "/user/head", &openxr__handPath[3]);
 
+    XrPath openxr__gazePath;
+    xrStringToPath(xrInstance, "/user/eyes_ext/input/gaze_ext/pose", &openxr__gazePath);
+
     XrPath gripPosePath[2];
     xrStringToPath(xrInstance, "/user/hand/left/input/grip/pose", &gripPosePath[0]);
     xrStringToPath(xrInstance, "/user/hand/right/input/grip/pose", &gripPosePath[1]);
@@ -1101,6 +1106,25 @@ static psych_bool createDefaultXRInputConfig(XrInstance xrInstance)
     if (!resultOK(xrCreateActionSet(xrInstance, &actionSetCreateInfo, &openxr__actionSet))) {
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Failed to create main input/output actionSet: %s\n", errorString);
+
+        // Failure return code:
+        return(FALSE);
+    }
+
+    // Create action and action space for eye gaze vector tracking via EXT_eye_gaze_interaction:
+    XrActionCreateInfo gazePoseActionInfo = {
+        .type = XR_TYPE_ACTION_CREATE_INFO,
+        .next = NULL,
+        .actionType = XR_ACTION_TYPE_POSE_INPUT,
+        .countSubactionPaths = 0,
+        .subactionPaths = NULL,
+        .actionName = "gazeposeaction",
+        .localizedActionName = "Gaze Pose input action"
+    };
+
+    if (!resultOK(xrCreateAction(openxr__actionSet, &gazePoseActionInfo, &openxr__gazePoseAction))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to create gazePoseAction: %s\n", errorString);
 
         // Failure return code:
         return(FALSE);
@@ -1362,6 +1386,16 @@ static psych_bool createDefaultXRInputConfig(XrInstance xrInstance)
     #define ARRAY_SIZE(a) (sizeof((a)) / sizeof((a)[0]))
     #define BBIND(a, b) { .action = openxr__buttonAction[(a)], .binding = toXrPath(xrInstance, (b)) }
     #define TBIND(a, b) { .action = openxr__touchAction[(a)], .binding = toXrPath(xrInstance, (b)) }
+
+    // Establish binding for eye gaze interaction extension if it is supported:
+    if (has_XR_EXT_eye_gaze_interaction) {
+        XrActionSuggestedBinding eyeGazeBinding[] = {
+            { .action = openxr__gazePoseAction, .binding = openxr__gazePath }
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/ext/eye_gaze_interaction", ARRAY_SIZE(eyeGazeBinding), eyeGazeBinding))
+            return(FALSE);
+    }
 
     // Binding set useful to most controllers and devices:
     XrActionSuggestedBinding unused_template[] = {
@@ -3178,16 +3212,16 @@ PsychError PSYCHOPENXRStop(void)
 
 PsychError PSYCHOPENXRGetTrackingState(void)
 {
-    static char useString[] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
-    //                          1      2                                            1            2                           3
+    static char useString[] = "[state, touch, gaze] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
+    //                          1      2      3                                           1            2                           3
     static char synopsisString[] =
-        "Return current state of eye position and orientation tracking for OpenXR device 'openxrPtr'.\n"
+        "Return current state of position and orientation tracking for OpenXR device 'openxrPtr'.\n"
         "Position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
         "then the prediction is performed for the mid-point of the next possible video frame of the device, ie. "
         "the most likely presentation time for immediately rendered images.\n"
         "'reqMask' mask defining which information to return. Defaults to all information. Values are "
-        "+1 for head/eye tracking, +2 for hand controller tracking.\n\n"
+        "+1 for head/eye tracking, +2 for hand controller tracking, +4 for eye gaze tracking.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of returned tracking state.\n"
         "'Status' = Tracking status flags:\n"
@@ -3208,8 +3242,9 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "'EyePoseRight' = Vector with position and orientation of right eye / right eye virtual camera.\n"
         "The vectors are of form [tx, ty, tz, rx, ry, rz, rw] - A 3 component 3D position, followed by a 4 "
         "component rotation quaternion.\n\n"
-        "\n"
-        "Touch controller position and orientation:\n\n"
+        " \n"
+        "Touch controller position and orientation:\n"
+        " \n"
         "The return argument 'touch' is a struct array with 2 structs. touch(1) contains info about "
         "the tracking state and tracked pose of the left hand (= left touch controller) of the user, "
         "touch(2) contains info about the right hand (= right touch controller) of the user.\n"
@@ -3224,6 +3259,26 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "'HandPose' = Position and orientation of the hand, in usual [x,y,z,rx,ry,rz,rw] vector form.\n"
         "'HandLinearSpeed' = Hand linear velocity [vx,vy,vz] in meters/sec.\n"
         "'HandAngularSpeed' = Hand angular velocity [rx,ry,rz] in radians/sec.\n"
+        " \n"
+        "Eye gaze tracking on supported hardware:\n"
+        " \n"
+        "The return argument 'gaze' is a struct array with up to 2 structs. On a system with "
+        "binocular eye tracking support, gaze(1) contains info about the tracking state and "
+        "tracked gaze of the left eye of the user. On a system with only monocular eye tracking, "
+        "it contains the only gaze information available, often the synthesized gaze of a \"cyclops eye\". "
+        "On a system with binocular eye tracking, gaze(2) contains info about the gaze of the right eye.\n"
+        "Each gaze struct contains the following fields:\n\n"
+        "'Time' = Time in seconds of returned gaze tracking sample. This can be the actual acquisition "
+        "time of the gaze sample closest in time to the requested 'predictionTime', but it can also be "
+        "a time for which the users gaze location was interpolated or extrapolated, given 'predictionTime'. "
+        "The behaviour wrt. sample acquisition time, returned vs. requested time, and gaze inter- / extrapolation "
+        "is system dependent and may vary from device to device, runtime to runtime and across operating systems. "
+        "If the gaze sample time can not be determined by the given system, a value of zero is returned.\n"
+        "'Status' = Tracking status flags:\n"
+        " 0 = No gaze tracking info available.\n"
+        "+1 = Some gaze info available, but not based on measurements. Consider this not trustworthy at all!\n"
+        "+2 = Tracked gaze position available. This is possibly subject to interpolation or extrapolation.\n"
+        "'GazePose' = Position and orientation of the eye, expressing a gaze vector in its usual [x,y,z,rx,ry,rz,rw] form.\n"
         "\n";
     static char seeAlsoString[] = "Start Stop GetTrackersState GetInputState";
 
@@ -3232,6 +3287,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     const int FieldCount1 = 6;
     const char *FieldNames2[] = { "Time", "Status", "HandPose", "HandLinearSpeed", "HandAngularSpeed" };
     const int FieldCount2 = 5;
+    const char *FieldNames3[] = { "Time", "Status", "GazePose" };
+    const int FieldCount3 = 3;
 
     int handle, i;
     PsychOpenXRDevice *openxr;
@@ -3240,14 +3297,14 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     double *v;
     double predictionTime = DBL_MAX;
     int StatusFlags = 0;
-    int reqMask = 3;
+    int reqMask = 7;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -3263,8 +3320,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
 
     // Get optional info requirements mask:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &reqMask);
-    if (reqMask < 0 || reqMask > 3)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'reqMask' specified. Valid values are 0 to 3.");
+    if (reqMask < 0 || reqMask > 7)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'reqMask' specified. Valid values are 0 to 7.");
 
     // Lock protect openxr->predictedDisplayTime and locateXRViews() and return of
     // all views[] info and viewState info below:
@@ -3410,11 +3467,14 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     // a potentially running parallel presentation thread:
     PsychUnlockMutex(&(openxr->presenterLock));
 
-    if (reqMask & 2) {
-        // Update tracking and input state from non-HMD controllers etc.:
+    // Update tracking and input state from non-HMD controllers, eye trackers, etc., if such info is requested.
+    // This requires a syncXRActions() call to update all input from all sources in close time-sync:
+    if (reqMask > 1)
         syncXRActions(openxr);
 
-        // Now the tracking info from the OpenXR touch controllers 0 and 1 for left
+    // Hand controllers tracking info requested?
+    if (reqMask & 2) {
+        // Get the tracking info from the OpenXR touch controllers 0 and 1 for left
         // and right hand, in a separate struct array:
         PsychAllocOutStructArray(2, kPsychArgOptional, 2, FieldCount2, FieldNames2, &status);
 
@@ -3493,6 +3553,77 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     else {
         // Allocate out an empty struct:
         PsychAllocOutStructArray(2, kPsychArgOptional, 2, FieldCount2, FieldNames2, &status);
+    }
+
+    // Eye gaze tracking requested?
+    if ((reqMask & 4) && openxr->hasEyeTracking) {
+        // Now the tracking info from the OpenXR eye gaze interaction extension:
+        XrSpaceLocation gazeLocation = { 0 };
+        XrEyeGazeSampleTimeEXT eyeGazeSampleTime = { 0 };
+        XrActionStatePose gazeStatePose = { 0 };
+        XrActionStateGetInfo getGazeStateInfo = { 0 };
+
+        eyeGazeSampleTime.type = XR_TYPE_EYE_GAZE_SAMPLE_TIME_EXT;
+        gazeLocation.type = XR_TYPE_SPACE_LOCATION;
+        gazeLocation.next = &eyeGazeSampleTime;
+        gazeLocation.locationFlags = 0;
+
+        gazeStatePose.type = XR_TYPE_ACTION_STATE_POSE;
+        getGazeStateInfo.type = XR_TYPE_ACTION_STATE_GET_INFO;
+        getGazeStateInfo.action = openxr__gazePoseAction;
+
+        if (!resultOK(xrGetActionStatePose(openxr->hmd, &getGazeStateInfo, &gazeStatePose))) {
+            if (verbosity > 1)
+                printf("PsychOpenXRCore-WARNING: In eye tracking - xrGetActionStatePose() failed: %s\n", errorString);
+        }
+        else if (gazeStatePose.isActive && !resultOK(xrLocateSpace(openxr->gazePoseSpace, openxr->worldSpace, xrPredictionTime, &gazeLocation))) {
+            if (verbosity > 1)
+                printf("PsychOpenXRCore-WARNING: In eye tracking - xrLocateSpace() failed: %s\n", errorString);
+        }
+
+        if (verbosity > 3)
+            printf("PsychOpenXRCore-DEBUG: Eye gaze tracking - isActive %i : locationFlags %i : dT %li\n", gazeStatePose.isActive,
+                   gazeLocation.locationFlags, xrPredictionTime - eyeGazeSampleTime.time);
+
+        // Allocate single struct for return of data:
+        PsychAllocOutStructArray(3, kPsychArgOptional, 1, FieldCount3, FieldNames3, &status);
+
+        // Timestamp for when this tracking info is valid:
+        PsychSetStructArrayDoubleElement("Time", 0, eyeGazeSampleTime.time ? XrTimeToPsychTime(eyeGazeSampleTime.time) : 0, status);
+
+        // Eye tracking state:
+        StatusFlags = 0;
+
+        // Any position and orientation of gaze available? Could be just synthetic inter-/extrapolated data, not based
+        // on actual tracked gaze, ie. not based on recent reliable sensor measurements. Could even be just fake data!
+        if (gazeLocation.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT && gazeLocation.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT)
+            StatusFlags |= 1;
+
+        // Active gaze position and orientation from hardware eye tracking? This is trusworthy, with the caveat that all
+        // current OpenXR gaze tracking extensions are allowed to return data that is based on real hardware measurements,
+        // but multiple past measurements are combined to generate a result that is interpolated or extrapolated for the
+        // requested target time xrPredictionTime. Also allowed is strong smoothing of data in time, ie. low-pass filtering:
+        if (gazeLocation.locationFlags & XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT && gazeLocation.locationFlags & XR_SPACE_LOCATION_POSITION_TRACKED_BIT)
+            StatusFlags |= 2;
+
+        PsychSetStructArrayDoubleElement("Status", 0, StatusFlags, status);
+
+        // Eye pose vector, encoding a 3 component 3D eye ball center position + 4 component orientation quaternion:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+        v[0] = gazeLocation.pose.position.x;
+        v[1] = gazeLocation.pose.position.y;
+        v[2] = gazeLocation.pose.position.z;
+
+        v[3] = gazeLocation.pose.orientation.x;
+        v[4] = gazeLocation.pose.orientation.y;
+        v[5] = gazeLocation.pose.orientation.z;
+        v[6] = gazeLocation.pose.orientation.w;
+        PsychSetStructArrayNativeElement("GazePose", 0, outMat, status);
+    }
+    else {
+        // Allocate out an empty struct:
+        PsychAllocOutStructArray(3, kPsychArgOptional, -1, FieldCount3, FieldNames3, &status);
     }
 
     return(PsychError_none);
@@ -4181,6 +4312,25 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
         if (!resultOK(xrCreateActionSpace(openxr->hmd, &actionSpaceCreateInfo, &openxr->handPoseSpace[i]))) {
             if (verbosity > 0)
                 printf("PsychOpenXRCore-ERROR: Failed to create action space for hand/touch controller %i: %s\n", i, errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    // Create eye tracking action space, if eye tracking supported:
+    if (openxr->hasEyeTracking) {
+        XrActionSpaceCreateInfo gazeActionSpaceCreateInfo = {
+            .type = XR_TYPE_ACTION_SPACE_CREATE_INFO,
+            .next = NULL,
+            .action = openxr__gazePoseAction,
+            .poseInActionSpace = identityPose,
+            .subactionPath = XR_NULL_PATH
+        };
+
+        if (!resultOK(xrCreateActionSpace(openxr->hmd, &gazeActionSpaceCreateInfo, &openxr->gazePoseSpace))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create action space for basic eye gaze tracking: %s\n", errorString);
 
             // Failure return code:
             return(FALSE);

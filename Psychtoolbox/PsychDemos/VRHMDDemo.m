@@ -1,5 +1,5 @@
 function VRHMDDemo(stereoscopic, checkerboard, withGazeTracking, deviceindex)
-% 
+%
 % VRHMDDemo([stereoscopic=1][, checkerboard=0][, withGazeTracking=0][, deviceindex=0])
 %
 % A very basic demo for the most basic setup of VR HMDs, e.g., the Oculus
@@ -131,7 +131,7 @@ while ~KbCheck
       end
     end
   end
-  vbl(end+1) = Screen('Flip', win); %#ok<AGROW> 
+  vbl(end+1) = Screen('Flip', win); %#ok<AGROW>
 end
 
 KbStrokeWait;
@@ -139,6 +139,6 @@ sca;
 
 close all;
 plot(1000 * diff(vbl));
-fps = 1 / mean(diff(vbl)) %#ok<NOPRT,NASGU> 
+fps = 1 / mean(diff(vbl)) %#ok<NOPRT,NASGU>
 
 end

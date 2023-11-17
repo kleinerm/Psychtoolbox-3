@@ -3294,6 +3294,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
                 // printf("UPGRADING TO RGBFAloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? 0:1);
                 if (sourceRecord->textureinternalformat == GL_LUMINANCE16_SNORM) {
                     fboInternalFormat = GL_RGBA16_SNORM;
+                } else if (sourceRecord->textureinternalformat == GL_LUMINANCE16) {
+                    fboInternalFormat = GL_RGBA16;
                 } else {
                     fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
                 }
@@ -3303,6 +3305,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
                 // printf("UPGRADING TO RGBAFloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_ALPHA_FLOAT16_APPLE) ? 0:1);
                 if (sourceRecord->textureinternalformat == GL_LUMINANCE16_ALPHA16_SNORM) {
                     fboInternalFormat = GL_RGBA16_SNORM;
+                } else if (sourceRecord->textureinternalformat == GL_LUMINANCE16_ALPHA16) {
+                    fboInternalFormat = GL_RGBA16;
                 } else {
                     fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_ALPHA_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
                 }
@@ -3318,6 +3322,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
         if (isplanar && (fboInternalFormat != GL_RGBA8 || sourceRecord->depth > 32)) {
             if (sourceRecord->textureinternalformat == GL_LUMINANCE16_SNORM) {
                 fboInternalFormat = GL_RGBA16_SNORM;
+            } else if (sourceRecord->textureinternalformat == GL_LUMINANCE16) {
+                fboInternalFormat = GL_RGBA16;
             } else {
                 fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
             }

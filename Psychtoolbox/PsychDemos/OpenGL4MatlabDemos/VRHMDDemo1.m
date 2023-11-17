@@ -61,7 +61,7 @@ function VRHMDDemo1(multiSample, fountain, checkerboard, gpumeasure, debugView, 
 % 10-Sep-2015  mk  Written. Derived from DrawDots3DDemo.m
 
 % GL data structure needed for all OpenGL demos:
-global GL; %#ok<GVMIS> 
+global GL; %#ok<GVMIS>
 
 if nargin < 1 || isempty(multiSample)
   multiSample = 4;
@@ -224,7 +224,7 @@ try
   % also assign an alpha value that makes the particles "fade out" at the end
   % of there lifetime:
   particlecolors = rand(3, nparticles);
-  
+
   % Maximum speed for particles:
   maxspeed = 1.25;
 

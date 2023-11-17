@@ -78,5 +78,6 @@
 %   TextureChannelsTest             - Test assignment of matrix layers to RGBA texture channels.
 %   TrolandTest                     - Colorimetric conversions.
 %   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
+%   VREyetrackingTest               - Test eye gaze tracking in VR/AR HMDs and other XR devices.
 %   VRRTest                         - Test support of your setup for Variable refresh rate mode.
 %   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.

@@ -83,15 +83,26 @@ if onoctave == 0
         movefile(['..\Projects\Windows\build\IOPort.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
-    if what == 5
-        % Build PsychCV
-        % Disabled for now: As long as it contains 3rd party code, we can't
-        % really distribute it in a precompiled version for Matlab under our
-        % new license. Distribution of compiled mex files for octave would
-        % be possible, but see below...
-        % clear PsychCV
-        % mex -outdir ..\Projects\Windows\build -output PsychCV -DPTBMODULE_PsychCV -largeArrayDims -DMEX_DOUBLE_HANDLE -ID:\install\QuickTimeSDK\CIncludes -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
-        % movefile(['..\Projects\Windows\build\PsychCV.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    if what == 5 && exist('..\..\..\SRAnipalCSDK', 'dir')
+        % Build SRAnipalMex on MS-Windows for Matlab 64 Bit:
+        %
+        % This requires the proprietary HTC SRAnipal SDK installed side by side
+        % to the Psychtoolbox-3 folder in a folder called SRAnipalCSDK.
+        %
+        % The SDK can be found at the time of this writing under the following URL
+        % (free sign up for a developer account with HTC and agreeing to a license
+        % required):
+        %
+        % https://developer-express.vive.com/resources/vive-sense/eye-and-facial-tracking-sdk/
+        %
+        % Specifically, e.g., for the v1.3.6.8 SDK, you have to unzip the SDK zip file,
+        % then move the "01_C" subfolder from "...\SRAnipalSDK-v1.3.6.8\SDK-v1.3.6.8\SDK\01_C"
+        % into a parent folder next to the Psychtoolbox-3 folder and rename it from "01_C" to
+        % "SRAnipalCSDK". This is a one type preparation step on a new build system.
+        %
+        clear SRAnipalMex;
+        mex -outdir ..\Projects\Windows\build -output SRAnipalMex -I..\..\..\SRAnipalCSDK\include -L..\..\..\SRAnipalCSDK\lib ..\Cohorts\SRAnipalMex.cpp -lSRanipal
+        movefile(['..\Projects\Windows\build\SRAnipalMex.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
     if what == 6
@@ -299,14 +310,16 @@ else
         movefile(['..\Projects\Windows\build\IOPort.' mexext], target);
     end
 
-    if what == 5
-        % Build PsychCV.mex
-        % NOTE: Link is currently broken. Also we don't build and
-        % distribute PsychCV.mex at the moment. Let's see if anybody
-        % actually misses this mex file...
-        % clear PsychCV
-        % mexoctave --output ..\Projects\Windows\build\PsychCV.mex -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ID:\install\QuickTimeSDK\CIncludes -ID:\MicrosoftDirectXSDK\Include -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
-        %movefile(['..\Projects\Windows\build\PsychCV.' mexext], target);
+    if what == 5 && exist('..\..\..\SRAnipalCSDK', 'dir')
+        % Build SRAnipalMex on MS-Windows for Octave 64 Bit:
+        %
+        % This requires the proprietary HTC SRAnipal SDK installed side by side
+        % to the Psychtoolbox-3 folder in a folder called SRAnipalCSDK. See above
+        % Matlab build path for the SDK download location and setup instructions.
+        %
+        clear SRAnipalMex;
+        mexoctave --output ..\Projects\Windows\build\SRAnipalMex.mex -I..\..\..\SRAnipalCSDK\include -L..\..\..\SRAnipalCSDK\lib ..\Cohorts\SRAnipalMex.cpp -lSRanipal
+        movefile(['..\Projects\Windows\build\SRAnipalMex.' mexext], target);
     end
 
     if what == 6

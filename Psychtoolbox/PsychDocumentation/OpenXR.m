@@ -27,8 +27,29 @@
 % - Optional, for improved input controller support: XR_EXT_hp_mixed_reality_controller,
 %   XR_HTC_vive_cosmos_controller_interaction, XR_HTC_vive_focus3_controller_interaction,
 %   XR_KHR_binding_modification, XR_EXT_dpad_binding.
+% - Optional, for basic eye gaze tracking: XR_EXT_eye_gaze_interaction.
 %
-% So far successfully tested with the PTB 3.0.19.1 release are:
+% On VR HMDs with a builtin eye gaze tracker, our OpenXR driver is also
+% capable of using such hardware to track and report eye gaze. Basic eye
+% gaze tracking should work with any HMD and OpenXR runtime that supports
+% the optional OpenXR XR_EXT_eye_gaze_interaction extension. This allows
+% reporting of a "cyclops eye" gaze vector and 2D gaze position, possibly
+% synthesized from separate eye gaze measurements on a binocular eye
+% tracker, or the single measurement from a monocular eye tracker.
+% Additionally, on MS-Windows only, with certain HTC HMDs only, more
+% advanced eye gaze tracking is supported via HTC's SRAnipal eye tracker
+% runtime on suitable HMDs, e.g., the "HTC Vive Pro Eye". This allows
+% additionally for binocular eye gaze reporting, reporting of eye opening,
+% and estimated eye pupil diameter. Some demos have support and demonstration
+% of eye gaze tracking. E.g., GazeContingentDemo.m for gaze contingent
+% manipulation of 2D monoscopic stimuli, VRHMDDemo.m for 2D tracking and
+% visualization of gaze wrt. monoscopic or stereoscopic stimuli.
+% VRInputStuffTest.m shows gaze tracking wrt. 3D VR stereoscopic scenes,
+% both showing 2D gaze position and 3D gaze rays. VREyetrackingTest.m
+% allows to test and assess various aspects of 2D gaze tracking of 2D or 3D
+% stimuli presented monoscopically or stereoscopically.
+%
+% So far successfully tested with the PTB 3.0.19.5 release are:
 %
 % - The open-source Monado(XR) runtime version 21.0.0 for Linux/X11, as shipping
 %   with Ubuntu 22.04-LTS and later, or as a 3rd party ppa for Ubuntu 20.04-LTS,
@@ -41,9 +62,10 @@
 %   gpu's so far.
 %
 % - The proprietary Valve SteamVR runtime version 1.24.7 and 1.25.7 on
-%   Linux (Ubuntu 20.04.6-LTS) and on Microsoft Windows 10 21H2.
+%   Linux (Ubuntu 20.04.6-LTS) and on Microsoft Windows 10 21H2 - 22H2.
 %
-% - The proprietary OculusVR runtime version 1.81.0 on Microsoft Windows 10 21H2.
+% - The proprietary OculusVR runtime version 1.81.0 on Microsoft Windows 10
+%   21H2 - 22H2.
 %
 % Testing so far occured with a OculusVR Oculus Rift CV-1 HMD with 2 Oculus
 % tracking cameras and 2 Oculus touch controllers, as well as a Oculus
@@ -51,6 +73,12 @@
 % testing was performed under Monado and SteamVR with a HTC Vive Pro Eye
 % and its two "Vive Wand" controllers, tracked by a Valve Lighthouse
 % version 2 system with two Vive lighthouse emitter stations.
+%
+% Eye gaze tracking was tested under Windows 10 22H2 under SteamVR 1.25.6
+% and HTC SRAnipal SDK 1.3.6.8, under Octave 7.3 and Matlab R2022b, using a
+% HTC Vive Pro Eye VR headset. Both OpenXR "cyclops" gaze tracking, and
+% also binocular gaze tracking with eye opening and pupil diameter reporting
+% worked well.
 %
 % A limitation of the current OpenXR spec is that it doesn't provide any
 % means for reliable, robust, trustworthy, accurate and precise visual
@@ -127,6 +155,14 @@
 %   Windows built-in WMR OpenXR runtime does not support OpenGL interop, so
 %   SteamVR is needed as a middle-man and translator between Psychtoolbox
 %   OpenGL rendering and WMR's Direct3D only rendering.
+%
+%   If you want to use binocular eye tracking via SRAnipal on HTC HMDs with
+%   eye tracker, the following URLs may provide useful setup and getting
+%   started instructions:
+%
+%   - HTC official guide: https://developer.vive.com/resources/openxr/openxr-pcvr/tutorials/how-use-sr_runtime
+%   - Much more detailed webpage, very well done by some motivated volunteer:
+%     https://github.com/corycorvus/Eye-Tracking-Wiki
 %
 % - Other OpenXR runtimes exist from HTC for their latest devices, or from
 %   other vendors like Varjo for their devices.

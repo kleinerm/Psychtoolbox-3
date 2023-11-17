@@ -1468,6 +1468,10 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
                         printf("[%i] Swapchain format VK_FORMAT_B8G8R8A8_UNORM\n", i);
                         break;
 
+                    case VK_FORMAT_R8G8B8A8_UNORM:
+                        printf("[%i] Swapchain format VK_FORMAT_R8G8B8A8_UNORM\n", i);
+                        break;
+
                     case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
                         printf("[%i] Swapchain format VK_FORMAT_A8B8G8R8_SRGB_PACK32\n", i);
                         break;
@@ -2903,7 +2907,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
         .tiling = tiling,
         .usage = usage,
         .flags = 0,
-        .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED,
+        .initialLayout = (!bringup && extmem) ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_PREINITIALIZED,
     };
 
     result = vkCreateImage(vulkan->device, &imageCreateInfo, NULL, &window->interopImage);
@@ -3087,7 +3091,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
         goto out_interop_image;
     }
 
-    if (!PsychTransitionImageLayout(window->swapChainCommandBuffers[0], window->interopImage, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)) {
+    if (!PsychTransitionImageLayout(window->swapChainCommandBuffers[0], window->interopImage, imageCreateInfo.initialLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)) {
         if (verbosity > 0)
             printf("PsychVulkanCore-ERROR: PsychCreateInteropTexture:PsychTransitionImageLayout() failed for window %i.\n", window->index);
 

@@ -144,6 +144,14 @@ PsychError SCREENDrawTexture(void)
     PsychSetDrawingTarget(target);
     PsychUpdateAlphaBlendingFactorLazily(target);
 
+    // If this is a planar encoded texture, then override filterMode to zero, ie.
+    // nearest neighbour sampling only, as planar creates very wrong results otherwise!
+    // E.g., border sampling artifacts when sampling luma spills into missampling chroma,
+    // and especially bad for semi-planar "chroma UV samples interleaved" textures!
+    // TODO: Call PsychNormalizeTextureOrientation(source) instead? Properly correct, but expensive!
+    if (source->specialflags & kPsychPlanarTexture)
+        filterMode = 0;
+
     if(PsychCopyInColorArg(8, kPsychArgOptional, &color)) {
         // set globalAlpha to DBL_MAX to signal that PsychBlitTexture() shouldn't
         // use this parameter and not set any modulate color, cause we do it.
@@ -566,6 +574,14 @@ PsychError SCREENDrawTextures(void)
         if (filterMode > 5) {
             PsychErrorExitMsg(PsychError_user, "filterMode needs to be negative for a specific blur level, or at most 5 for other modes.");
         }
+
+        // If this is a planar encoded texture, then override filterMode to zero, ie.
+        // nearest neighbour sampling only, as planar creates very wrong results otherwise!
+        // E.g., border sampling artifacts when sampling luma spills into missampling chroma,
+        // and especially bad for semi-planar "chroma UV samples interleaved" textures!
+        // TODO: Call PsychNormalizeTextureOrientation(source) instead? Properly correct, but expensive!
+        if (source->specialflags & kPsychPlanarTexture)
+            filterMode = 0;
 
         // Set rotation mode flag for texture matrix rotation if secialFlags is set accordingly:
         if (specialFlags & kPsychUseTextureMatrixForRotation) source->specialflags|=kPsychUseTextureMatrixForRotation;
