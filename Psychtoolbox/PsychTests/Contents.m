@@ -74,9 +74,12 @@
 %   TextBugTest                     - Look for interference between
 %   TextInitBugTest                 - Test for failure of 'DrawText' default font.
 %   TextInOffscreenWindowTest       - Compare text rendered into onscreen and offscreen windows.
+%   TextOffByOneBugTest             - Tests for fix off an off-by-one bug in Screen('Drawtext').
+%   TextToStuffColorMismatchTest    - Test if text is drawn in the color it was requested to be drawn.
 %   TextureChannelsTest             - Test assignment of matrix layers to RGBA texture channels.
-%   TrolandTest                     - Colorimetric conversions.
-%   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
+%   TextureSharingTest              - Test OpenGL context resource sharing.
+%   TrolandTest                     - Test colorimetric conversions.
+%   VBLSyncTest                     - Tests visual stimulus onset timing and timestamping.
 %   VREyetrackingTest               - Test eye gaze tracking in VR/AR HMDs and other XR devices.
 %   VRRTest                         - Test support of your setup for Variable refresh rate mode.
 %   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.
