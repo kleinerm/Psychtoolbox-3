@@ -68,7 +68,6 @@
 %   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
 %   ResolutionTest                  - Use Screen Resolutions to print table of display resolutions.
 %   RodFundamentalTest              - Test the PTB routines generate a good rod fundamental.
-%   ScreenTest                      - Thorough test of hardware/software performance.
 %   StructsFileTest                 - Test routines for reading and writing struct arrays to text files.
 %   SyncedCLUTUpdateTest            - Visual test of clut write synching to vertical retrace.
 %   TextBoundsTest                  - Test Screen('TestBounds')
