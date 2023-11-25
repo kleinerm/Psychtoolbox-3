@@ -40,7 +40,7 @@ function varargout = PsychGPUTestAndTweakGammaTables(win, xoffset, deviceType, i
 %                 broken gfx-drivers. Remove try-catch hack for gamma table
 %                 loading on MS-Windows. Doesn't help, but obscure errors.
 
-global GL;
+global GL; %#ok<GVMIS>
 
     if nargin < 4
         error('Required minimum 3 parameters missing!');
@@ -318,7 +318,7 @@ global GL;
                 Screen('LoadNormalizedGammaTable', win, oldlut);
 
                 if KbCheck(-1)
-                    fprintf('%s: USER ABORT VIA KEYPRESS.\n');
+                    fprintf('%s: USER ABORT VIA KEYPRESS.\n', devName);
                 end
 
                 % Fail:
@@ -374,7 +374,7 @@ global GL;
         end
         fprintf('%s: INFO: I will store this LUT on your filesystem for future use.\n', devName);
         if 0
-            fprintf('%s: INFO: The difference matrix between the original LUT and the corrected LUT looks like this:\n\n', devName);
+            fprintf('%s: INFO: The difference matrix between the original LUT and the corrected LUT looks like this:\n\n', devName); %#ok<UNRCH>
             disp(curlut - oldlut);
         end
         fprintf('\n\n');
