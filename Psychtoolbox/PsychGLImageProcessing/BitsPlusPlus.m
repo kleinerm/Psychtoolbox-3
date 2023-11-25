@@ -1100,15 +1100,15 @@ if strcmpi(cmd, 'OpenWindowBits++')
         % Load & Initalize constants and moglcore, but don't set the 3D gfx
         % flag for Screen():
         InitializeMatlabOpenGL([], [], 1);
-    end;
+    end
 
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = PsychGPURasterizerOffsets(win, drivername); %#ok<ASGLU>
+    [rpfx, rpfy, rpix] = PsychGPURasterizerOffsets(win, drivername); %#ok<ASGLU>
         
     if rpix~=0
         tlockXOffset = -rpix;
-        fprintf('OpenWindow%s: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', bplusname, tlockXOffset);        
+        fprintf('OpenWindow%s: Applying corrective horizontal T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', bplusname, tlockXOffset);        
     end
 
     if targetdevicetype == 1 && checkGPUEncoders
@@ -1143,11 +1143,8 @@ if strcmpi(cmd, 'OpenWindowBits++')
     
     % Now enable finalizer hook chains and load them with the special Bits++
     % command for T-Lock based Bits++ internal CLUT updates:
-    if vix~=0
-        % vix is wrong offset, therefore negate it to get corrective offset:
-        vix = -vix;
-        fprintf('OpenWindow%s: Applying corrective horizontal offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', bplusname, vix);
-        offsetstring = sprintf('xPosition=%i', vix);
+    if tlockXOffset ~= 0
+        offsetstring = sprintf('xPosition=%i', tlockXOffset);
     else
         offsetstring = '';
     end
@@ -1179,7 +1176,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
             % these devices, we need to blit the Clut T-Lock into the right half of
             % our window as well. However, we use the LeftFinalizerBlitChain for this,
             % as the RightFinalizerBlitChain is not operational in stereomode 4 and 5:
-            offsetstring = sprintf('xPosition=%i', vix + Screen('WindowSize', win, 1) / 2);
+            offsetstring = sprintf('xPosition=%i', tlockXOffset + Screen('WindowSize', win, 1) / 2);
             Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
         end
 
@@ -1592,11 +1589,11 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = PsychGPURasterizerOffsets(win, drivername); %#ok<ASGLU>
-        
+    [rpfx, rpfy, rpix] = PsychGPURasterizerOffsets(win, drivername); %#ok<ASGLU>
+
     if rpix~=0
         tlockXOffset = -rpix;
-        fprintf('%s: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', drivername, tlockXOffset);        
+        fprintf('%s: Applying corrective horizontal T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', drivername, tlockXOffset);        
     end
 
     if targetdevicetype == 1 && checkGPUEncoders
@@ -1643,11 +1640,8 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     if useOverlay
         % Now enable finalizer hook chains and load them with the special Bits++
         % command for T-Lock based Bits++ internal CLUT updates:
-        if vix~=0
-            % vix is wrong offset, therefore negate it to get corrective offset:
-            vix = -vix;
-            fprintf('OpenWindow%sWithOverlay: Applying corrective horizontal offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', mononame, vix);
-            offsetstring = sprintf('xPosition=%i', vix);
+        if tlockXOffset ~= 0
+            offsetstring = sprintf('xPosition=%i', tlockXOffset);
         else
             offsetstring = '';
         end
@@ -1679,7 +1673,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
                 % these devices, we need to blit the Clut T-Lock into the right half of
                 % our window as well. However, we use the LeftFinalizerBlitChain for this,
                 % as the RightFinalizerBlitChain is not operational in stereomode 4 and 5:
-                offsetstring = sprintf('xPosition=%i', vix + Screen('WindowSize', win, 1) / 2);
+                offsetstring = sprintf('xPosition=%i', tlockXOffset + Screen('WindowSize', win, 1) / 2);
                 Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
             end
 
