@@ -363,7 +363,8 @@ try
         % Get overlay window handle: Drawing into this window will affect
         % the overlay:
         wo = PsychImaging('GetOverlayWindow', w);
-        Screen('Preference','TextAntiAliasing', 0);
+        Screen('Preference','TextAntiAliasing', 1);
+        Screen('Preference','TextAlphaBlending', 1);
     else
         wo = 0;
     end
@@ -379,21 +380,21 @@ try
     if colorclut
         % Yes. 
         switch colorclut
-            case 1,
+            case 1
                 % Create a standard colormap() 3 channel RGB CLUT for a nice effect:
                 clut = colormap;
-            case 2,
+            case 2
                 % A 1024 slots CLUT with inverted green channel:
                 clut = ((0:1/1023:1)' * ones(1, 3));
                 clut(:, 2) = 1 - clut(:, 2);
-            case 3,
+            case 3
                 % A simple inverted one channel (luminance) map with only two slots
                 % for linearly interpolated values inbetween:
                 clut = 1 - (0:1)';
-            case 4,
+            case 4
                 % Extreme amplification CLUT:
                 clut = 3800 * (0:1)';
-            otherwise,
+            otherwise
                 clut = colormap;
         end
 
@@ -484,7 +485,7 @@ try
            Screen('DrawTexture', w, tex, [], dstRect, i, [], inc);
         end
 
-        [d1 d2 keycode]=KbCheck; %#ok<*ASGLU>
+        [d1, d2, keycode]=KbCheck; %#ok<*ASGLU>
         if d1
             if keycode(UpArrow)
                 yd=yd-0.1;
@@ -513,7 +514,7 @@ try
                 PsychColorCorrection('SetEncodingGamma', w, gamma);
             end
 
-            if keycode(space);
+            if keycode(space)
                 show2nd = 1-show2nd;
                 KbReleaseWait;
                 if show2nd
@@ -523,7 +524,7 @@ try
                 end
             end
 
-            if keycode(esc);
+            if keycode(esc)
                 break;
             end
         end
@@ -575,7 +576,7 @@ try
     fprintf('Average update rate in pipeline was %f Hz.\n', nmaxbench / (tend - tstart));
 
     Screen('Preference','TextAntiAliasing', 1);
-
+    Screen('Preference','TextAlphaBlending', 0);
     % We're done: Close all windows and textures:
     sca;
 
@@ -585,10 +586,11 @@ catch %#ok<*CTCH>
     ShowCursor(screenNumber);
     sca;
     Screen('Preference','TextAntiAliasing', 1);
+    Screen('Preference','TextAlphaBlending', 0);
     psychrethrow(psychlasterror);
 end %try..catch..
 
-if ~isempty(strfind(outputdevice, 'VideoSwitcher'))
+if ~isempty(strfind(outputdevice, 'VideoSwitcher')) %#ok<STREMP>
     % If VideoSwitcher was active, switch it back to standard RGB desktop
     % display mode:
     PsychVideoSwitcher('SwitchMode', screenNumber, 0);
