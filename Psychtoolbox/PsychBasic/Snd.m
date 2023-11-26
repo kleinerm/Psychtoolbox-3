@@ -523,7 +523,7 @@ elseif strcmpi(command,'DefaultRate')
 
     if ptb_snd_oldstyle
         if ~isempty(player)
-            err = get(player).SampleRate;
+            err = get(player, 'SampleRate');
         else
             % Old style - reasonable hard-coded default:
             err = 44100; % default sampling rate in Hz.
