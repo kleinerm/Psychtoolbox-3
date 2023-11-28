@@ -17,6 +17,8 @@ function EyeLink_SimpleVideo(screenNumber)
 % Bring the Command Window to the front if it is already open
 if ~IsOctave; commandwindow; end
 
+PsychDefaultSetup(2);
+
 % Initialize PsychSound for calibration/validation audio feedback
 InitializePsychSound();
 
@@ -115,7 +117,7 @@ try
     if isempty(screenNumber)
         screenNumber = max(Screen('Screens')); % Use default screen if none specified
     end
-    PsychDefaultSetup(2);
+
     window = PsychImaging('OpenWindow', screenNumber, GrayIndex(screenNumber)); % Open graphics window
     Screen('Flip', window);
     
