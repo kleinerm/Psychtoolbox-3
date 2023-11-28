@@ -100,7 +100,6 @@ end
 
 % Wait for go from user:
 KbReleaseWait;
-WaitSecs;
 
 % Get baseline timestamp of vsync:
 tvbl = Screen('Flip', w(1));
