@@ -29,8 +29,7 @@ function EyeLink_StereoPicture(stereoMode, screenNumber)
 % screenNumber = max(Screen('Screens'));
 % will be used.
 
-% Initialize PsychSound for calibration/validation audio feedback
-InitializePsychSound();
+PsychDefaultSetup(2);
 
 % Set default stereoMode if required
 if (nargin < 1) || ((nargin >= 1) && isempty(stereoMode))
@@ -137,7 +136,7 @@ try
             screenNumber = 1;
         end
     end
-    PsychDefaultSetup(2);
+
     [window, ~] = PsychImaging('OpenWindow', screenNumber, GrayIndex(screenNumber), [], [], [], stereoMode);
     
     if stereoMode == 10
@@ -169,6 +168,23 @@ try
     el.calibrationtargetcolour = repmat(BlackIndex(screenNumber),1,3);
     % set "Camera Setup" instructions text colour so it is different from background colour
     el.msgfontcolour = repmat(BlackIndex(screenNumber),1,3);
+
+    % Initialize PsychSound for calibration/validation audio feedback
+    % EyeLink Toolbox now supports PsychPortAudio integration and interop
+    % with legacy Snd() wrapping. Below we open the default audio device in
+    % output mode as master, create a slave device, and pass the device
+    % handle to el.ppa_pahandle.
+    % el.ppa_handle supports passing either standard mode handle, or as
+    % below one opened as a slave device. When el.ppa_handle is empty, for
+    % legacy support EyelinkUpdateDefaults() will open the default device
+    % and use that with Snd() interop, and close the device handle when
+    % calling Eyelink('Shutdown') at the end of the script.
+    InitializePsychSound();
+    pamaster = PsychPortAudio('Open', [], 8+1);
+    PsychPortAudio('Start', pamaster);
+    pahandle = PsychPortAudio('OpenSlave', pamaster, 1);
+    el.ppa_pahandle = pahandle;
+
     % You must call this function to apply the changes made to the el structure above
     EyelinkUpdateDefaults(el);
 
@@ -365,6 +381,9 @@ catch % If syntax error is detected
     % Print error message and line number in Matlab's Command Window
     psychrethrow(psychlasterror);
 end
+PsychPortAudio('Close', pahandle);
+PsychPortAudio('Close', pamaster);
+
 
 % Cleanup function used throughout the script above
     function cleanup
