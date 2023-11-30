@@ -1387,8 +1387,10 @@ int PsychIOOSCheckError(PsychSerialDeviceRecord* device, char* inerrmsg)
         return(0xdeadbeef);
     }
 
+    // Ignore the break condition altogether, meaning no error notification and no error condition (which otherwise could result in discarding received data).
+    estatus &= ~CE_BREAK;
+
     if (estatus > 0 && inerrmsg) {
-        if (estatus & CE_BREAK) { sprintf(errmsg, "IOPort: Break condition on receive line detected.\n"); strcat(inerrmsg, errmsg); }
         if (estatus & CE_FRAME) { sprintf(errmsg, "IOPort: Data packet framing error detected.\n"); strcat(inerrmsg, errmsg); }
         if (estatus & CE_OVERRUN) { sprintf(errmsg, "IOPort: Character buffer overrun detected.\n"); strcat(inerrmsg, errmsg); }
         if (estatus & CE_RXOVER) { sprintf(errmsg, "IOPort: Receive buffer overflow detected.\n"); strcat(inerrmsg, errmsg); }
