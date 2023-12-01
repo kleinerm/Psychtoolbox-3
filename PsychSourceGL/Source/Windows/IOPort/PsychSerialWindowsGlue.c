@@ -761,12 +761,14 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
     //        }
     //        updatetermios = TRUE;
     //    }
+
     // Handling of Break condition:
     if ((p = strstr(configString, "BreakBehaviour="))) {
         if (p != strstr(p, "BreakBehaviour=Ignore")) {
-            printf("Invalid break behaviour not accepted (on Windows, only 'Ignore' is allowed)! - \"%s\"\n", p);
+            printf("Invalid break behaviour %s not accepted (Valid on MS-Windows: Ignore)!", p);
             return(PsychError_user);
         }
+        updatetermios = TRUE;
     }
 
     // Handling of data bits:
