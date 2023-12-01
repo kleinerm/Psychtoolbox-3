@@ -761,6 +761,13 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
     //        }
     //        updatetermios = TRUE;
     //    }
+    // Handling of Break condition:
+    if ((p = strstr(configString, "BreakBehaviour="))) {
+        if (p != strstr(p, "BreakBehaviour=Ignore")) {
+            printf("Invalid break behaviour not accepted (on Windows, only 'Ignore' is allowed)! - \"%s\"\n", p);
+            return(PsychError_user);
+        }
+    }
 
     // Handling of data bits:
     if ((p = strstr(configString, "DataBits="))) {
@@ -1391,6 +1398,7 @@ int PsychIOOSCheckError(PsychSerialDeviceRecord* device, char* inerrmsg)
     estatus &= ~CE_BREAK;
 
     if (estatus > 0 && inerrmsg) {
+        if (estatus & CE_BREAK) { sprintf(errmsg, "IOPort: Break condition on receive line detected.\n"); strcat(inerrmsg, errmsg); } // maybe useful in the future
         if (estatus & CE_FRAME) { sprintf(errmsg, "IOPort: Data packet framing error detected.\n"); strcat(inerrmsg, errmsg); }
         if (estatus & CE_OVERRUN) { sprintf(errmsg, "IOPort: Character buffer overrun detected.\n"); strcat(inerrmsg, errmsg); }
         if (estatus & CE_RXOVER) { sprintf(errmsg, "IOPort: Receive buffer overflow detected.\n"); strcat(inerrmsg, errmsg); }
