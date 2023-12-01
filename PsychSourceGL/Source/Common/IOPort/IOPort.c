@@ -369,7 +369,7 @@ PsychError IOPORTOpenSerialPort(void)
         "or on OS/X and Linux in 'Cooked' processing mode as line delimiter. A setting of -1 will try to disable the line terminator.\n\n"
         "DTR=os default    -- Setting for 'Data Terminal Ready' pin: 0 or 1.\n\n"
         "RTS=os default    -- Setting for 'Request To Send' pin: 0 or 1.\n\n"
-        "BreakBehaviour=Ignore -- Behaviour if a 'Break Condition' is detected on the line: Ignore, Flush, Zero. On Windows, this setting is ignored.\n\n"
+        "BreakBehaviour=Ignore -- Behaviour if a 'Break Condition' is detected on the line: Ignore, Flush, Zero. On Windows, only 'Ignore' is allowed.\n\n"
         "OutputBufferSize=4096 -- Size of output buffer in bytes.\n\n"
         "InputBufferSize=4096 -- Size of input buffer in bytes. You can't read more than that amount per read command.\n\n"
         "HardwareBufferSizes=input,output -- Set size of the hardware driver internal input and output buffers in bytes. "
