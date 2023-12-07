@@ -341,6 +341,7 @@ try
       if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
         fprintf('This will need a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
         fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
+        fprintf('The RaspberryPi 4 and later models do require RaspberryPi OS 11 and Mesa 23.3.1 and later.\n');
       end
 
       if multigpu
