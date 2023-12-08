@@ -98,6 +98,27 @@ try
     fprintf('Uses the xf86-video-modesetting DDX video driver.\n');
   end
 
+  % Find Mesa version, if this is running on Mesa.
+  mesaVerstr = strfind(winfo.GLVersion, 'Mesa');
+  if ~isempty(mesaVerstr)
+    mesaVersion = sscanf(winfo.GLVersion(mesaVerstr:end), 'Mesa %i.%i.%i');
+  else
+    mesaVersion = [0,0,0];
+  end
+
+  % Identify major version of Broadcom VideoCore on a RaspberryPi, and deep color caps:
+  videoCoreDeepColor = 0;
+  if ~isempty(strfind(winfo.GPUCoreId, 'VC4'))
+    videoCoreVersion = sscanf(winfo.GLRenderer(end-2:end), '%i.%i');
+
+    % VideoCore 4 or later, on Mesa 23.3.0 or later? Then it is 10 bpc deep color capable:
+    if videoCoreVersion(1) >= 4 && (mesaVersion(1) > 23 || (mesaVersion(1) == 23 && mesaVersion(2) >= 3))
+      videoCoreDeepColor = 1;
+    end
+  else
+    videoCoreVersion = [];
+  end
+
   % Step 2: Enumerate all available video outputs on all X-Screens:
   outputs = [];
   outputCnt = 0;
@@ -300,8 +321,8 @@ try
   else
     % Ask questions for setup of advanced options:
 
-    % Depth 30 is not supported on Broadcom VideoCore of RaspberryPi atm., otherwise give it a shot:
-    if 1 % ~strcmp(winfo.GPUCoreId, 'VC4')
+    % Depth 30 is not supported on old Broadcom VideoCore-4 of RaspberryPi 1/2/3, otherwise give it a shot:
+    if ~strcmp(winfo.GPUCoreId, 'VC4') || videoCoreDeepColor
       % 10 bpc depth 30 deep color for 1 billion colors wanted? All AMD, Intel and NVidia gpu's support this,
       % both with open-source and proprietary (NVidia) drivers, also with modesetting-ddx. Some SoC gpu's also
       % support it, but not all.
