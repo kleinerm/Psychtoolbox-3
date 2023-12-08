@@ -87,16 +87,8 @@ try
     videoCoreVersion = [];
   end
 
-  % RaspberryPi VideoCore4/6?
-  if strcmp(winfo.GPUCoreId, 'VC4')
-    % Raspbian in early 2021 had a bug which prevented pageflipping from working.
-    % This was fixed a few weeks later.
-    % Add a workaround to the xorg.conf settings, which will fix it:
-    fprintf('This is likely a RaspberryPi with VideoCore-4 or VideoCore-6 gpu.\n');
-    needPreventDrmModifiers = 1;
-  else
-    needPreventDrmModifiers = 0;
-  end
+  % DRM Modifier workaround not needed on any known configuration since 2021:
+  needPreventDrmModifiers = 0;
 
   % Step 2: Enumerate all available video outputs on all X-Screens:
   outputs = [];
@@ -670,8 +662,10 @@ if noautoaddgpu > 0 || needPreventDrmModifiers
 
   if needPreventDrmModifiers
     % Explicitely prevent use of dmabuf_capable flag for modesetting-ddx, as that
-    % can cause broken pageflipping on Raspbian with Linux 5.3 and later.
-    % See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3601
+    % can cause broken pageflipping on some systems. It used to be the case with
+    % Raspbian with Linux 5.3 and later in early 2021, but that bug has been fixed
+    % in February 2021, so this is of no concern anymore atm.
+    % For historical bug, see: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3601
     fprintf(fid, '  Option "Debug"     "None"\n');
   end
 
