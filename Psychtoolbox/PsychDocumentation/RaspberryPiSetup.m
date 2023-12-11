@@ -4,27 +4,29 @@
 % meaningful use for visual and auditory stimulation with Psychtoolbox-3, the
 % older variants RaspberryPi 2 and 3, and the new RaspberryPi 4/400/5 family.
 %
-% Psychtoolbox is currently only tested with up to date versions of the official
-% RaspberryPi Linux operating system distribution known as "RaspberryPi OS" (RPi OS),
-% also known under its former name "Raspbian". Only 32-Bit RPi OS is supported by
-% Psychtoolbox, as provided directly by us via DownloadPsychtoolbox et al., even
-% on 64-Bit processors. Currently the most recent stable RPi OS 11 + GNU/Octave
-% is what PTB will support, with some wiggle room, as we do not keep close track
-% of development and updates to RPi OS. RPi OS itself also provides versions
-% of Psychtoolbox, installable via "sudo apt install octave-psychtoolbox-3", and
-% 64-Bit versions of RPi OS would ship such packages as 64-Bit packages. Other
-% Linux distributions for RaspberryPi, like Ubuntu for RaspberryPi, will also
-% ship Psychtoolbox packages as 32-Bit or 64-Bit variants via the sudo apt install
-% octave-psychtoolbox-3 method. While these packages will likely work just fine,
-% these are currently not tested by the Psychtoolbox developers, or supported in
-% case of questions or problems. These packages are maintained by the NeuroDebian
-% maintainers, and they are usually quite a bit out of date wrt. the current PTB
-% beta releases, as the Linux distributions usually ship whatever PTB was the most
-% recent version at a time sometime before the distributions was released. Those
-% packages do not get updates after initial distribution release, not even bug
-% fixes. E.g., RPi OS at late 2022 ships some Psychtoolbox 3.0.17 variant,
-% whereas PTB betas are now at version 3.0.19 or later.
-%
+% Psychtoolbox is currently only tested with up to date versions of the
+% official RaspberryPi Linux operating system distribution known as
+% "RaspberryPi OS" (RPi OS), also known under its former name "Raspbian".
+% Only the old/legacy 32-Bit RPi OS version 11 is supported by Psychtoolbox
+% at the moment, as provided directly by us via DownloadPsychtoolbox et
+% al., even on 64-Bit processors. Currently the most recent stable RPi OS
+% 11 + GNU/Octave is what PTB will support, with some wiggle room, as we do
+% not keep close track of development and updates to RPi OS. RPi OS itself
+% also provides versions of Psychtoolbox, installable via "sudo apt install
+% octave-psychtoolbox-3", and 64-Bit versions of RPi OS would ship such
+% packages as 64-Bit packages. Other Linux distributions for RaspberryPi,
+% like Ubuntu for RaspberryPi, will also ship Psychtoolbox packages as
+% 32-Bit or 64-Bit variants via the sudo apt install octave-psychtoolbox-3
+% method. While these packages will likely work just fine, these are
+% currently not tested by the Psychtoolbox developers, or supported in case
+% of questions or problems. These packages are maintained by the
+% NeuroDebian maintainers, and they are usually quite a bit out of date
+% wrt. the current PTB beta releases, as the Linux distributions usually
+% ship whatever PTB was the most recent version at a time sometime before
+% the distributions was released. Those packages do not get updates after
+% initial distribution release, not even bug fixes. E.g., RPi OS at late
+% 2022 ships some Psychtoolbox 3.0.17 variant, whereas PTB betas are now at
+% version 3.0.19 or later.
 %
 % The RaspberryPi 2B is tested for compatibility with Psychtoolbox. The test system
 % is a RaspberryPi 2B with 1 GB of RAM. Other models of RaspberryPi 2 and 3 are
@@ -75,7 +77,8 @@
 %   deep color capable, assuming enough video bandwidth, but 12 bit output is not
 %   yet that useful, as of December 2023 and Linux 6.1, as gamma tables are not yet
 %   supported, only identity passthrough of framebuffer pixels, and the maximum
-%   resolution of the framebuffer is 10 bpc.
+%   resolution of the framebuffer is 10 bpc. Therefore choosing 12 bit output is
+%   not yet of practical measurable benefit, and just a waste of video bandwidth.
 %
 %   So far only single-display operation is tested, due to lack of a 2nd
 %   micro-HDMI adapter cable.
@@ -105,23 +108,28 @@
 %
 %   However, on RaspberryPi 4 and later (tested with RaspberryPi 400) you
 %   can achieve 10 bpc output (via the usual XOrgConfCreator setup), if you
-%   install Mesa version 23.3.1 or later, e.g., by compiling it yourself,
-%   or by getting it via PiKISS or similar tools.
+%   manually install Mesa version 23.3.1 or later, e.g., by compiling it
+%   yourself, or by getting it via PiKISS or similar tools from a 3rd party
+%   source.
 %
-%   Movie playback of full HD video at 24 fps is possible on RaspberryPi 4+
-%   with suitably encoded movies and proper playback settings. For playback
-%   of H264 encoded movies, the builtin H264 hardware decoder is used. You
-%   must specify an explicit 'pixelFormat' of 6 in Screen('OpenMovie'); for
-%   this to work at good performance for high resolution movies. At default
-%   settings movie playback would be very slow, e.g., 1-2 fps for full HD
-%   content. Additionally, the H264 hardware decoder is picky wrt. proper
-%   content encoding. While footage e.g., from YouTube or other
-%   professionally encoded sources works, badly encoded footage may not.
-%   Many other movie formats play back with software decoding, at
-%   potentially lower performance. To summarize: Good performance playback
-%   of HD content at good framerates works if you do everything right wrt.
-%   playback parameters and encoding. Otherwise your mileage may vary both
-%   wrt. performance and reliability.
+%   Movie playback of full HD video at 24 fps - 30 fps, and up to 50 fps
+%   stable and almost 60 fps without sound is possible on the RaspberryPi
+%   4/400, and probably at higher stable fps on a RaspberryPi 5, with
+%   suitably encoded movies and proper playback settings. For playback of
+%   H264 encoded movies, the builtin H264 hardware decoder is used by
+%   default, but testing on RPi 400 showed that forcing use of a software
+%   decoder may provide higher performance! See specialFlags1 setting 4 for
+%   that. You must specify an explicit 'pixelFormat' of 6 in
+%   Screen('OpenMovie'); for this to work at good performance for high
+%   resolution movies. At default settings movie playback would be very
+%   slow, e.g., 1-2 fps for full HD content. Additionally, the H264
+%   hardware decoder is picky wrt. proper content encoding. While footage
+%   e.g., from YouTube or other professionally encoded sources works, badly
+%   encoded footage may not. Many other movie formats play back with
+%   software decoding, at potentially lower performance. To summarize: Good
+%   performance playback of HD content at good framerates works if you do
+%   everything right wrt. playback parameters and encoding. Otherwise your
+%   mileage may vary both wrt. performance and reliability.
 %
 %   It is also possible to enable experimental Vulkan display support,
 %   although this is of no meaningful benefit right now (as of December
