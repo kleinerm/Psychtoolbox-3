@@ -99,6 +99,10 @@ if nargin < 4 || isempty(bpc)
     bpc = 8;
 end
 
+if nargin < 5 || isempty(useXR)
+    useXR = 0;
+end
+
 % Is it the standard path for config files?
 if strcmp([PsychtoolboxRoot 'PsychTests' filesep 'TestConfigurations'], basepath)
     % Yes. Then assume target folder is our standard folder in PsychTests.
@@ -453,7 +457,7 @@ try
 
     if useRTbox ~= -1000
         if useRTbox >= 1
-            rtbox = PsychRTBox('Open'); %, 'COM5');
+            rtbox = PsychRTBox('Open');
 
             % Query and print all box settings inside the returned struct 'boxinfo':
             res.boxinfo = PsychRTBox('BoxInfo', rtbox);

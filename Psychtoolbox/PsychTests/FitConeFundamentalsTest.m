@@ -98,8 +98,7 @@ lambdaMaxNominalStockmanSharpeNomogram = [558.9 530.3 420.7]';
 
 %% Look at directly tabulated absorbance versus Stockman-Sharpe nomogram
 figure; clf;
-position = get(gcf,'Position');
-position(3) = 1200; position(4) = 700;
+position = [100, 100, 1200, 700];
 set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(staticParams.S),T_StockmanSharpeAbsorbance','k','LineWidth',3);
@@ -156,8 +155,7 @@ end
 
 % Plot
 figure; clf; hold on
-position = get(gcf,'Position');
-position(3) = 1200; position(4) = 700;
+position = [100, 100, 1200, 700];
 set(gcf,'Position',position);
 subplot(1,2,1); hold on;
 plot(SToWls(staticParams.S),T_targetQuantal2','k','LineWidth',2);

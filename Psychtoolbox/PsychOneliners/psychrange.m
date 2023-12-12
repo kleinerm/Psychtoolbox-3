@@ -16,7 +16,7 @@ function r = psychrange(varargin)
 % 01-Feb-2021   mk  Written.
 
     % range() exists?
-    if exist('range')
+    if ismember(exist('range'), [2,3])
         % Use it:
         r = range(varargin{:});
     else

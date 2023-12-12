@@ -64,8 +64,7 @@ load T_cones_sp
 T_predictQuantalCIE2 = ComputeCIEConeFundamentals(S,2,32,3);
 T_predictQuantalCIE2Nomo = ComputeCIEConeFundamentals(S,2,32,3,[558.9 530.3 420.7]');
 figure; clf; hold on
-position = get(gcf,'Position');
-position(3) = 1200; position(4) = 700;
+position = [100, 100, 1200, 700];
 set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(S),T_targetQuantal2','k','LineWidth',3);
@@ -87,7 +86,7 @@ title('S-S 2-deg fundamentals (blk), table constructed (red), nomo constructed (
 drawnow;
 if (DUMPFIGURES)
     if (exist('savefig','file'))
-        savefig('Construct2DegreeCIE',gcf,'pdf');
+        savefig('Construct2DegreeCIE');
     else
         saveas(gcf,'Construct2DegreeCIE','pdf');
     end
@@ -97,8 +96,7 @@ end
 T_predictQuantalCIE10 = ComputeCIEConeFundamentals(S,10,32,3);
 T_predictQuantalCIE10Nomo = ComputeCIEConeFundamentals(S,10,32,3,[558.9 530.3 420.7]');
 figure; clf; hold on
-position = get(gcf,'Position');
-position(3) = 1200; position(4) = 700;
+position = [100, 100, 1200, 700];
 set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(S),T_targetQuantal10','k','LineWidth',3);
@@ -118,7 +116,7 @@ xlabel('Wavelength');
 drawnow;
 if (DUMPFIGURES)
     if (exist('savefig','file'))
-        savefig('Construct10DegreeCIE',gcf,'pdf');
+        savefig('Construct10DegreeCIE');
     else
         saveas(gcf,'Construct10DegreeCIE','pdf');
     end
@@ -129,8 +127,7 @@ T_predictQuantalCIE20yrs = ComputeCIEConeFundamentals(S,2,20,3);
 T_predictQuantalCIE59yrs = ComputeCIEConeFundamentals(S,2,59,3);
 T_predictQuantalCIE75yrs = ComputeCIEConeFundamentals(S,2,75,3);
 figure; clf; hold on
-position = get(gcf,'Position');
-position(3) = 1200; position(4) = 700;
+position = [100, 100, 1200, 700];
 set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(S),T_predictQuantalCIE2(1,:)','k','LineWidth',2);
@@ -150,7 +147,7 @@ xlabel('Wavelength');
 title('S cones, 32, 20, 59, 75 yo');
 if (DUMPFIGURES)
     if (exist('savefig','file'))
-        savefig('EffectOfAgeCIEFundamentals',gcf,'pdf');
+        savefig('EffectOfAgeCIEFundamentals');
     else
         saveas(gcf,'EffectOfAgeCIEFundamentals','pdf');
     end
@@ -161,8 +158,7 @@ end
 T_predictQuantalCIE5mm = ComputeCIEConeFundamentals(S,2,32,5);
 T_predictQuantalCIE7mm = ComputeCIEConeFundamentals(S,2,32,7);
 figure; clf; hold on
-position = get(gcf,'Position');
-position(3) = 1200; position(4) = 700;
+position = [100, 100, 1200, 700];
 set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(S),T_predictQuantalCIE2(1,:)','k','LineWidth',2);
@@ -180,7 +176,7 @@ xlabel('Wavelength');
 title('S cones, 3 mm, 5 mm, 7 mm');
 if (DUMPFIGURES)
     if (exist('savefig','file'))
-        savefig('EffectOfPupilCIEFundamentals',gcf,'pdf');
+        savefig('EffectOfPupilCIEFundamentals');
     else
         saveas(gcf,'EffectOfPupilCIEFundamentals','pdf');
     end
@@ -191,8 +187,7 @@ T_predictQuantalCIENominal = ComputeCIEConeFundamentals(S,2,32,3,[558.9 530.3 42
 T_predictQuantalCIEShiftPlus = ComputeCIEConeFundamentals(S,2,32,3,[558.9 530.3 420.7]'+15);
 T_predictQuantalCIEShiftMinus = ComputeCIEConeFundamentals(S,2,32,3,[558.9 530.3 420.7]'-15);
 figure; clf; hold on
-position = get(gcf,'Position');
-position(3) = 1200; position(4) = 700;
+position = [100, 100, 1200, 700];
 set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(S),T_predictQuantalCIE2(1,:)','k','LineWidth',2);
@@ -212,7 +207,7 @@ xlabel('Wavelength');
 title('S cones, Nominal, +/- 15 nm lamba max');
 if (DUMPFIGURES)
     if (exist('savefig','file'))
-        savefig('EffectOfLambdaMaxCIEFundamentals',gcf,'pdf');
+        savefig('EffectOfLambdaMaxCIEFundamentals');
     else
         saveas(gcf,'EffectOfLambdaMaxCIEFundamentals','pdf');
     end
@@ -233,8 +228,7 @@ T_targetQuantalRods = QuantaToEnergy(S,T_targetEnergy')';
 T_targetQuantalRods = T_targetQuantalRods/max(T_targetQuantalRods(:));
 T_predictQuantalRods = ComputeCIEConeFundamentals(S,10,32,3,rodLambdaMax,rodNomogram,[],true,rodAxialDensity);
 figure; clf; hold on
-position = get(gcf,'Position');
-position(3) = 600; position(4) = 700;
+position = [100, 100, 600, 700];
 set(gcf,'Position',position);
 plot(SToWls(S),T_targetQuantalRods','k','LineWidth',3);
 plot(SToWls(S),T_predictQuantalRods','r','LineWidth',1);

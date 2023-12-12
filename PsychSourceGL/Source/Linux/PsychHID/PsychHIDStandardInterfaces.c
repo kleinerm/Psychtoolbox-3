@@ -1140,6 +1140,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, psych_uint64 windowHandle)
 {
     XIDeviceInfo* dev = NULL;
+    static psych_bool oneTimeWarningDone = FALSE;
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {
@@ -1196,6 +1197,42 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         // Create an input method and context in the currently set locale
         // for use in translation to the currently set keyboard layout. This
         // is used for the event.CookedKey of returned keyboard queue events.
+        if (!XSupportsLocale()) {
+            // Failed. Maybe this is the latest Matlab compatibility bug, introduced past R2022b, first
+            // noticed in R2023b on Ubuntu 20.04-LTS and in Ubuntu 22.04. The override libX11.so libraries
+            // provided/enforced by Matlab have a buggy locale search path encoded which is incompatible
+            // with at least Debian/Ubuntu distributions, so functions like XSetLocaleModifiers() and
+            // XOpenIM() fail due to not finding the config files for locales. Try to set an override
+            // locale directory path via XLOCALEDIR env variable which is at least correct for Ubuntu,
+            // then retry. If XLOCALEDIR is already set by the user to something then we skip the override:
+            if (!getenv("XLOCALEDIR")) {
+                // XLOCALEDIR not yet set. Set it to a Debian/Ubuntu compatible setting as a workaround.
+                // This at least worked to fix Matlab R2023b bugs on Ubuntu 20.04.6-LTS and 22.04.3-LTS:
+                setenv("XLOCALEDIR", "/usr/share/X11/locale/", 0);
+
+                // Workaround worked?
+                if (!XSupportsLocale()) {
+                    if (!oneTimeWarningDone) {
+                        printf("PsychHID-WARNING: International keyboard handling may be broken due to a misconfiguration of\n");
+                        printf("PsychHID-WARNING: your system, or a Matlab bug, known to be present in at least Matlab R2023b.\n");
+                        printf("PsychHID-WARNING: My automatic workaround of setting the XLOCALEDIR environment variable to the\n");
+                        printf("PsychHID-WARNING: path '/usr/share/X11/locale/' did not fix the problem. Maybe troubleshoot yourself?\n");
+                    }
+                }
+            }
+            else if (strcmp(getenv("XLOCALEDIR"), "/usr/share/X11/locale/") && !oneTimeWarningDone) {
+                // XLOCALEDIR already set, but not by us from a previous PsychHID invocation to our preferred
+                // setting for workaround on Ubuntu. Instead some user or 3rd party code seems to have selected
+                // some different override setting. Clearly this did not make things work, or maybe even broke
+                // them. Tell user about this potential cause of trouble:
+                printf("PsychHID-WARNING: The XLOCALEDIR environment variable is set to an unusual path, which is at least\n");
+                printf("PsychHID-WARNING: unusual or potentially troublesome with Ubuntu 20.04-LTS and later. The setting is:\n");
+                printf("PsychHID-WARNING: %s\n", getenv("XLOCALEDIR"));
+                printf("PsychHID-WARNING: International keyboard handling seems to not work. Maybe this XLOCALEDIR setting\n");
+                printf("PsychHID-WARNING: is the reason for the failure, and you may want to troubleshoot that?\n");
+                printf("PsychHID-WARNING: A good setting for Ubuntu 20.04 / 22.04 would be '/usr/share/X11/locale/'\n");
+            }
+        }
 
         // Try to use env setting for locale modifiers:
         XSetLocaleModifiers("");
@@ -1207,20 +1244,25 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         }
 
         if (!x_inputMethod) {
-            printf("PsychHID-WARNING: Failed to setup international keyboard handling due to failed input method creation.\n");
+            if (!oneTimeWarningDone)
+                printf("PsychHID-WARNING: Failed to setup international keyboard handling due to failed input method creation.\n");
         }
         else {
             x_inputContext = XCreateIC(x_inputMethod, XNInputStyle, XIMPreeditNone | XIMStatusNone, NULL);
             if (!x_inputContext) {
-                printf("PsychHID-WARNING: Failed to setup international keyboard handling due to failed input context creation.\n");
+                if (!oneTimeWarningDone)
+                    printf("PsychHID-WARNING: Failed to setup international keyboard handling due to failed input context creation.\n");
             }
             else {
                 XSetICFocus(x_inputContext);
             }
         }
 
-        if (!x_inputContext)
+        if (!x_inputContext && !oneTimeWarningDone) {
             printf("PsychHID-WARNING: Only US keyboard layouts will be mapped properly due to this failure for GetChar() et al.\n");
+            printf("PsychHID-WARNING: This is a one time warning that won't repeat until you call 'clear all' or 'clear PsychHID'.\n");
+            oneTimeWarningDone = TRUE;
+        }
     }
 
     // Create event buffer:

@@ -114,25 +114,18 @@ if nargin < 5 || isempty(useVulkan)
     useVulkan = 0;
 end
 
-% Disable text anti-aliasing for this test:
-oldAntialias = Screen('Preference', 'TextAntiAliasing', 0);
+% Enable text anti-aliasing for this test. This does not make sense for the
+% purpose of actual anti-aliasing, as the TextAlphaBlending call below
+% defeats this. Instead we do it, because disabling text anti-aliasing
+% triggers OpenGL graphics driver bugs in the AMD drivers for Microsoft
+% Windows, as of November 2023 with at least AMD driver version 23.11.1,
+% specifically glTexImage2D()'s support for GL_BITMAP textures seems
+% broken:
+oldAntialias = Screen('Preference', 'TextAntiAliasing', 1);
 
-% Disable text alpha-blending to avoid color weirdness in the color
-% overlay text due to off-by-one color index values indexing into the
-% wrong clut slot. This is a workaround for some alpha-blending bugs
-% in some MS-Windows graphics drivers. This is fine on MS-Windows and
-% on OSX with its default text renderer, as long as anti-aliasing for
-% text is disabled, which it is. On Linux we must keep alpha-blending
-% enabled/alone, as the text rendering plugin depends on it to actually define
-% the shape of the character glyphs in the alpha-channel, not in the color
-% channels. The same would be true for OSX with the alternate text renderer,
-% but lets not overdo it. TODO: Fix this in a more intelligent way within
-% the text renderers!
-if ~IsLinux
-    oldTextAlpha = Screen('Preference', 'TextAlphaBlending', 1);
-else
-    oldTextAlpha = Screen('Preference', 'TextAlphaBlending');
-end
+% Disable text alpha-blending to avoid color weirdness in the color overlay
+% text due to off-by-one color index values indexing into the wrong clut slot:
+oldTextAlpha = Screen('Preference', 'TextAlphaBlending', 1);
 
 try
     % Setup imaging pipeline:

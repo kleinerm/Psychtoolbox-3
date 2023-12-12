@@ -1,5 +1,5 @@
 function MultiWindowLockStepTest(nrwins, separateScreens)
-% MultiWindowLockStepTest([nrwins=10][, separateScreens=0]);
+% MultiWindowLockStepTest([nrwins=2][, separateScreens=0]);
 %
 % Test if and how many parallel asynchronous window flips
 % Psychtoolbox can handle on multiple onscreen windows.
@@ -100,7 +100,6 @@ end
 
 % Wait for go from user:
 KbReleaseWait;
-WaitSecs;
 
 % Get baseline timestamp of vsync:
 tvbl = Screen('Flip', w(1));
