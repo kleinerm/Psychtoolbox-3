@@ -2107,16 +2107,21 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Videotrack available?
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
-        if (!videocodec) {
+        caps = NULL;
+
+        if (videocodec) {
+            // Try to get the pad/caps from the videocodec, so we get original colorimetry information:
+            pad = gst_element_get_static_pad(videocodec, "src");
+            caps = gst_pad_get_current_caps(pad);
+        }
+
+        // No videocodec for caps query, or codec src caps query failed?
+        if (!caps) {
             // Fallback: Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
             pad = gst_element_get_static_pad(videosink, "sink");
             peerpad = gst_pad_get_peer(pad);
             caps = gst_pad_get_current_caps(peerpad);
             gst_object_unref(peerpad);
-        } else {
-            // Better: Get the pad/caps from the videocodec, so we get original colorimetry information:
-            pad = gst_element_get_static_pad(videocodec, "src");
-            caps = gst_pad_get_current_caps(pad);
         }
 
         // Got valid caps?
