@@ -13,8 +13,8 @@ function err = Snd(command,signal,rate,sampleSize)
 % By default, Snd() uses Matlabs or Octaves audioplayer() function for sound
 % playback. This allows good interoperation with Screen()'s GStreamer based movie
 % playback functionality, as well as with other running audio client applications.
-% This has been tested under Octave 5+ and Matlab R2022b on Windows-10, macOS 13
-% and Ubuntu 20.04-LTS and later. The downside is that audioplayer() operates
+% This has been tested under Octave 5+ and Matlab R2022b and R2023b on Windows-10,
+% macOS 13 and Ubuntu 20.04-LTS and later. The downside is that audioplayer() operates
 % with high audio latency, bad audio timing precision, unreliable and imprecise
 % audio timestamps, as well as very limited audio control and functionality. It
 % is mostly good enough for simple sound playback of stereo sound, e.g., some
