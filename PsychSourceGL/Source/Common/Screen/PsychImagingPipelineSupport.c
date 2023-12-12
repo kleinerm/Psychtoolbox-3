@@ -5114,8 +5114,9 @@ psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *win
 {
     char* strp;
     const int bitshift = 16; // Bits++ expects 16 bit numbers, but ignores 2 least significant bits --> Effective 14 bit.
-    int i, x, y;
+    int i, j, x, y;
     unsigned int r, g, b;
+    GLubyte col[3 * 524];
     double t1, t2;
     y=1;
     x=0;
@@ -5154,35 +5155,23 @@ psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *win
         }
     }
 
-    // Render CLUT as sequence of single points:
-    glPointSize(1);
-    glBegin(GL_POINTS);
+    // Render CLUT as horizontal sequence of single pixels:
+    j = 0;
+    glRasterPos2i(x, y);
 
     // First the T-Lock unlock key:
-    glColor3ub(36, 106, 133);
-    glVertex2i(x++, y);
-    glColor3ub(63, 136, 163);
-    glVertex2i(x++, y);
-    glColor3ub(8, 19, 138);
-    glVertex2i(x++, y);
-    glColor3ub(211, 25, 46);
-    glVertex2i(x++, y);
-    glColor3ub(3, 115, 164);
-    glVertex2i(x++, y);
-    glColor3ub(112, 68, 9);
-    glVertex2i(x++, y);
-    glColor3ub(56, 41, 49);
-    glVertex2i(x++, y);
-    glColor3ub(34, 159, 208);
-    glVertex2i(x++, y);
-    glColor3ub(0, 0, 0);
-    glVertex2i(x++, y);
-    glColor3ub(0, 0, 0);
-    glVertex2i(x++, y);
-    glColor3ub(0, 0, 0);
-    glVertex2i(x++, y);
-    glColor3ub(0, 0, 0);
-    glVertex2i(x++, y);
+    col[j++] = 36; col[j++] = 106; col[j++] = 133;
+    col[j++] = 63; col[j++] = 136; col[j++] = 163;
+    col[j++] = 8; col[j++] = 19; col[j++] = 138;
+    col[j++] = 211; col[j++] = 25; col[j++] = 46;
+    col[j++] = 3; col[j++] = 115; col[j++] = 164;
+    col[j++] = 112; col[j++] = 68; col[j++] = 9;
+    col[j++] = 56; col[j++] = 41; col[j++] = 49;
+    col[j++] = 34; col[j++] = 159; col[j++] = 208;
+    col[j++] = 0; col[j++] = 0; col[j++] = 0;
+    col[j++] = 0; col[j++] = 0; col[j++] = 0;
+    col[j++] = 0; col[j++] = 0; col[j++] = 0;
+    col[j++] = 0; col[j++] = 0; col[j++] = 0;
 
     // Now the encoded CLUT: We encode 16 bit values in a high and a low pixel,
     // Bits++ throws away the two least significant bits - get 14 bit output resolution.
@@ -5193,15 +5182,17 @@ psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *win
         b = (unsigned int)(windowRecord->inBlueTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
 
         // Pixel with high-byte of 16 bit value:
-        glColor3ub((GLubyte) ((r >> 8) & 0xff), (GLubyte) ((g >> 8) & 0xff), (GLubyte) ((b >> 8) & 0xff));
-        glVertex2i(x++, y);
+        col[j++] = (GLubyte) ((r >> 8) & 0xff);
+        col[j++] = (GLubyte) ((g >> 8) & 0xff);
+        col[j++] = (GLubyte) ((b >> 8) & 0xff);
 
         // Pixel with low-byte of 16 bit value:
-        glColor3ub((GLubyte) (r & 0xff), (GLubyte) (g  & 0xff), (GLubyte) (b  & 0xff));
-        glVertex2i(x++, y);
+        col[j++] = (GLubyte) (r & 0xff);
+        col[j++] = (GLubyte) (g & 0xff);
+        col[j++] = (GLubyte) (b & 0xff);
     }
 
-    glEnd();
+    glDrawPixels(524, 1, GL_RGB, GL_UNSIGNED_BYTE, col);
 
     if (PsychPrefStateGet_Verbosity() > 4) {
         glFinish();

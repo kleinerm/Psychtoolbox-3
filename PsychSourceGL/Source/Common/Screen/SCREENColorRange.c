@@ -111,7 +111,7 @@ PsychError SCREENColorRange(void)
 	PsychWindowRecordType *windowRecord;
 	double maxvalue, clampcolors, oldclampcolors;
 	int applyToMakeTexture;
-	GLboolean enabled, enabled1, enabled2, enabled3;
+	GLboolean enabled, enabled1, enabled2, enabled3, clampDriverFail;
 	GLuint tunnelShader = 0;
 
 	//all subfunctions should have these two lines.  
@@ -152,6 +152,7 @@ PsychError SCREENColorRange(void)
 	if (oldclampcolors != clampcolors) {
 		// Yes. Try to set new clamping behaviour:
 		PsychSetGLContext(windowRecord);
+		clampDriverFail = FALSE;
 
 		// Does graphics hardware/OS support clamping mode change via glClampColorARB and shall
 		// we use it? A clampcolors setting of -1 would use our own shader based implementation
@@ -159,28 +160,45 @@ PsychError SCREENColorRange(void)
 		// hardware and to guarantee consistent results even if it means a performance hit.
 		if (glClampColorARB && (clampcolors>=0)) {
 			// Color clamping extension supported: Set new clamp mode in hardware via extension:
-			
+			while (glGetError());
+
 			enabled = (clampcolors > 0) ? GL_TRUE : GL_FALSE;
+			enabled1 = enabled2 = enabled3 = !enabled;
+
 			glClampColorARB(GL_CLAMP_VERTEX_COLOR_ARB, enabled);
 			glClampColorARB(GL_CLAMP_FRAGMENT_COLOR_ARB, enabled);
 			glClampColorARB(GL_CLAMP_READ_COLOR_ARB, enabled);
+
+			if ((glGetError() == GL_INVALID_ENUM) && (PsychPrefStateGet_Verbosity() > 1))
+				printf("PTB-WARNING: glClampColorARB() failed as invalid enum unsupported.\n");
 
 			// Check if the clamp en-/disable worked:
 			glGetBooleanv(GL_CLAMP_VERTEX_COLOR_ARB, &enabled1);
 			glGetBooleanv(GL_CLAMP_FRAGMENT_COLOR_ARB, &enabled2);
 			glGetBooleanv(GL_CLAMP_READ_COLOR_ARB, &enabled3);
-			
-			if ((clampcolors==0 && (enabled1 || enabled2 || enabled3)) || (clampcolors>0 && (!enabled1 || !enabled2 || !enabled3))) {
-				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Could not %s color value clamping as requested. Unsupported by your graphics hardware?\n", (clampcolors>0) ? "enable" : "disable");
 
-				// Reset to old setting if the switch didn't work:
-				clampcolors = oldclampcolors;
+			if ((glGetError() == GL_INVALID_ENUM) && (PsychPrefStateGet_Verbosity() > 1))
+				printf("PTB-WARNING: One of the clamp color queries failed as unsupported. Result may be unreliable, response may be a false positive.\n");
+
+			if ((clampcolors==0 && (enabled1 || enabled2 || enabled3)) || (clampcolors>0 && (!enabled1 || !enabled2 || !enabled3))) {
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not %s hardware color clamping as requested. Unsupported by your graphics hardware? Trying fallback.\n", (clampcolors>0) ? "enable" : "disable");
+				if (PsychPrefStateGet_Verbosity() > 3)
+					printf("PTB-DEBUG: %sClamp vertex %i, fragment %i, readback %i.\n", glClampColorARB == glClampColor ? "glClampColorARB() == glClampColor()! " : "", enabled1, enabled2, enabled3);
+
+				// Mark failure, to trigger shader fallback:
+				clampDriverFail = TRUE;
 			}
 			else if ((PsychPrefStateGet_Verbosity() > 3) && (clampcolors==0)) {
 				printf("PTB-INFO: Disabled color clamping via hardware.\n");
 			}
+
+			// Eat OpenGL errors:
+			while (glGetError());
 		}
-		else {
+
+		// Use shader method if requested by user script, or if hw method unsupported, or if
+		// hw method failed due to OpenGL driver bug, e.g., as observed with AMD on MS-Windows:
+		if (!(glClampColorARB && (clampcolors>=0)) || clampDriverFail) {
 			// Color clamping extensions unsupported, or user wants our own implementation: We need to use quite a bit of shader and cpu magic...
 			if ((PsychPrefStateGet_Verbosity() > 3) && (clampcolors>=0)) printf("PTB-INFO: Switching and query of color clamping via glClampColorARB unsupported by your graphics hardware or operating system.\n");
 			if ((PsychPrefStateGet_Verbosity() > 3) && (clampcolors< 0)) printf("PTB-INFO: Switching of color clamping via internal shader-based solution forcefully enabled by usercode.\n");

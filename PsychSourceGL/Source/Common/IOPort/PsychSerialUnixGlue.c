@@ -746,13 +746,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // received data via special control characters, unless a processing mode of
     // cooked was explicitely requested:
     if ((p=strstr(configString, "ProcessingMode="))!=NULL) {
-        if (strstr(p, "ProcessingMode=Cooked") == NULL) {
-            // Disable cooked mode, switch port to raw ops:
-            cfmakeraw(&options);
-            updatetermios = TRUE;
-            device->cookedMode = 0;
-        }
-        else {
+        if (strstr(p, "ProcessingMode=Cooked")) {
             // Enable cooked mode:
             device->cookedMode = 1;
             updatetermios = TRUE;
@@ -763,6 +757,18 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 
             // If no lineTerminator is set, assign it to be the Unix default of ASCII 10 aka LF aka NL:
             if (device->lineTerminator == _POSIX_VDISABLE) device->lineTerminator = (unsigned char) 10;
+        }
+        else if (strstr(p, "ProcessingMode=Raw")) {
+            // IOPort default setting must come last.
+            // Disable cooked mode, switch port to raw ops:
+            cfmakeraw(&options);
+            updatetermios = TRUE;
+            device->cookedMode = 0;
+        }
+        else {
+            // Invalid ProcessingMode:
+            if (verbosity > 0) printf("Invalid processing mode setting %s not accepted! (Valid are Cooked and Raw).\n", p);
+            return(PsychError_user);
         }
     }
 
@@ -889,6 +895,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
         }
         else
         if (strstr(p, "Parity=None")) {
+            // IOPort default setting must come last.
             // Nothing to do.
         }
         else {
@@ -904,9 +911,9 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
         // Clear all break settings:
         options.c_iflag &= ~(IGNBRK | BRKINT);
 
-        if (strstr(p, "BreakBehaviour=Ignore")) {
-            // Break signals will be ignored:
-            options.c_iflag |= IGNBRK;
+        if (strstr(p, "BreakBehaviour=Zero")) {
+            // Don't change anything, ie. IGNBRK and BRKINT not set:
+            // A break signal will be output as single zero byte.
         }
         else
         if (strstr(p, "BreakBehaviour=Flush")) {
@@ -914,9 +921,10 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
             options.c_iflag |= BRKINT;
         }
         else
-        if (strstr(p, "BreakBehaviour=Zero")) {
-            // Don't change anything, ie. IGNBRK and BRKINT not set:
-            // A break signal will be output as single zero byte.
+        if (strstr(p, "BreakBehaviour=Ignore")) {
+            // IOPort default setting must come last.
+            // Break signals will be ignored:
+            options.c_iflag |= IGNBRK;
         }
         else {
             // Invalid spec:
@@ -944,6 +952,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
         }
         else
         if (strstr(p, "DataBits=8")) {
+            // IOPort default setting must come last.
             options.c_cflag |= CS8;
         }
         else {
@@ -959,12 +968,13 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
         // Clear all stopbit settings:
         options.c_cflag &= ~CSTOPB;
 
-        if (strstr(p, "StopBits=1")) {
-            // Nothing to do, this is already set above.
-        }
-        else
         if (strstr(p, "StopBits=2")) {
             options.c_cflag |= CSTOPB;
+        }
+        else
+        if (strstr(p, "StopBits=1")) {
+            // IOPort default setting must come last.
+            // Nothing to do, this is already set above.
         }
         else {
             // Invalid spec:
@@ -980,16 +990,17 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
         options.c_cflag &= ~CRTSCTS;
         options.c_iflag &= ~(IXON | IXOFF);
 
-        if (strstr(p, "FlowControl=None")) {
-            // Set above already...
-        }
-        else
         if (strstr(p, "FlowControl=Software")) {
             options.c_iflag |= (IXON | IXOFF);
         }
         else
         if (strstr(p, "FlowControl=Hardware")) {
             options.c_cflag |= CRTSCTS;
+        }
+        else
+        if (strstr(p, "FlowControl=None")) {
+            // IOPort default setting must come last.
+            // Set above already...
         }
         else {
             // Invalid spec:

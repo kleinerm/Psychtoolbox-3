@@ -569,7 +569,8 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 
     // Set opmode to binary mode, give a warning if 'Cooked' mode is requested, as only binary mode is supported on Windows:
     options.fBinary = 1;
-    if (strstr(configString, "ProcessingMode=Cooked") && (verbosity > 1)) printf("IOPort: Warning: Requested 'ProcessingMode=Cooked' not supported on Windows. Will use binary mode aka raw mode.\n");
+    if (strstr(configString, "ProcessingMode=Cooked") && (verbosity > 1))
+        printf("IOPort: Warning: Requested 'ProcessingMode=Cooked' not supported on Windows. Will use binary mode aka raw mode.\n");
 
     // Print the current input and output baud rates.
     // See tcsetattr(4) ("man 4 tcsetattr") for details.
@@ -722,7 +723,7 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
             options.Parity  = ODDPARITY;
         }
         else if (strstr(p, "Parity=None")) {
-            // Nothing to do.
+            // IOPort default setting must come last.
             options.fParity = 0;
             options.Parity  = NOPARITY;
         }
@@ -762,6 +763,16 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
     //        updatetermios = TRUE;
     //    }
 
+    // Handling of Break condition:
+    if ((p = strstr(configString, "BreakBehaviour="))) {
+        if (p != strstr(p, "BreakBehaviour=Ignore")) {
+            // IOPort default setting must come last.
+            printf("Invalid break behaviour %s not accepted (Valid on MS-Windows: Ignore)!", p);
+            return(PsychError_user);
+        }
+        updatetermios = TRUE;
+    }
+
     // Handling of data bits:
     if ((p = strstr(configString, "DataBits="))) {
         // Clear all databit settings:
@@ -776,11 +787,12 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
         else if (strstr(p, "DataBits=7")) {
             options.ByteSize = 7;
         }
-        else if (strstr(p, "DataBits=8")) {
-            options.ByteSize = 8;
-        }
         else if (strstr(p, "DataBits=16")) {
             options.ByteSize = 16;
+        }
+        else if (strstr(p, "DataBits=8")) {
+            // IOPort default setting must come last.
+            options.ByteSize = 8;
         }
         else {
             // Invalid spec:
@@ -795,11 +807,12 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
         // Clear all stopbit settings:
         options.StopBits = 0;
 
-        if (strstr(p, "StopBits=1")) {
-            options.StopBits = ONESTOPBIT;
-        }
-        else if (strstr(p, "StopBits=2")) {
+        if (strstr(p, "StopBits=2")) {
             options.StopBits = TWOSTOPBITS;
+        }
+        else if (strstr(p, "StopBits=1")) {
+            // IOPort default setting must come last.
+            options.StopBits = ONESTOPBIT;
         }
         else {
             // Invalid spec:
@@ -819,16 +832,17 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
         options.fOutxCtsFlow = 0;
         options.fOutxDsrFlow = 0;
 
-        if (strstr(p, "FlowControl=None")) {
-            // Set above already...
-        }
-        else if (strstr(p, "FlowControl=Software")) {
+        if (strstr(p, "FlowControl=Software")) {
             options.fOutX = 1;
             options.fInX = 1;
         }
         else if (strstr(p, "FlowControl=Hardware")) {
             options.fRtsControl = RTS_CONTROL_HANDSHAKE;
             options.fOutxCtsFlow = 1;
+        }
+        else if (strstr(p, "FlowControl=None")) {
+            // IOPort default setting must come last.
+            // Set above already...
         }
         else {
             // Invalid spec:
@@ -1387,8 +1401,11 @@ int PsychIOOSCheckError(PsychSerialDeviceRecord* device, char* inerrmsg)
         return(0xdeadbeef);
     }
 
+    // Ignore the break condition altogether, meaning no error notification and no error condition (which otherwise could result in discarding received data).
+    estatus &= ~CE_BREAK;
+
     if (estatus > 0 && inerrmsg) {
-        if (estatus & CE_BREAK) { sprintf(errmsg, "IOPort: Break condition on receive line detected.\n"); strcat(inerrmsg, errmsg); }
+        if (estatus & CE_BREAK) { sprintf(errmsg, "IOPort: Break condition on receive line detected.\n"); strcat(inerrmsg, errmsg); } // maybe useful in the future
         if (estatus & CE_FRAME) { sprintf(errmsg, "IOPort: Data packet framing error detected.\n"); strcat(inerrmsg, errmsg); }
         if (estatus & CE_OVERRUN) { sprintf(errmsg, "IOPort: Character buffer overrun detected.\n"); strcat(inerrmsg, errmsg); }
         if (estatus & CE_RXOVER) { sprintf(errmsg, "IOPort: Receive buffer overflow detected.\n"); strcat(inerrmsg, errmsg); }

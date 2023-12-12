@@ -1,8 +1,23 @@
 function OSSchedulingAccuracyTest(configFile, duration)
-% OSSchedulingAccuracyTest(configFile [, duration=60])
+% OSSchedulingAccuracyTest([configFile][, duration=60])
+%
+% Test accuracy of the operating systems scheduling for code execution of
+% code on the cpu, ie. Psychtoolbox and Matlab/Octave scripting language
+% code.
+%
+% 'configFile' Filename of benchmark configuration file. If none is specified,
+% the file fliptimingdefaultconfig.mat from the Psychtoolbox/PsychTests/TestConfigurations/
+% folder is used for some reasonable default testing setup.
+%
+% 'duration' Duration of the test in seconds. Default is 60 seconds.
+%
 
-if nargin < 1
-    error('Must provide configFile name!');
+if nargin < 1 || isempty(configFile)
+    configFile = [ PsychtoolboxRoot 'PsychTests' filesep 'TestConfigurations' filesep 'fliptimingdefaultconfig.mat' ];
+end
+
+if ~exist(configFile, 'file')
+    error('configFile ''%s'' does not exist or inaccessible!', configFile);
 end
 
 % Build filename for result file: Based on configname, machinename, date

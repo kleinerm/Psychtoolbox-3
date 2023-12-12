@@ -20,9 +20,9 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffset
 % (vix, viy) Corrective offsets for glVertex2i()
 % (vfx, vfy) Corrective offsets for glVertex2f()
 
-    global GL;
+    global GL; %#ok<GVMIS>
 
-    if isempty(GL);
+    if isempty(GL)
         InitializeMatlabOpenGL();
     end
 

@@ -1,6 +1,6 @@
 function osxmakeitoctave3(mode)
 % This is the macOS version of makeit: It is meant for building PTB for
-% 64-Bit Octave-8.3 on macOS 13.4.1 Ventura or later, using the 13.x SDK.
+% 64-Bit Octave-8.4 on macOS 13.4.1 Ventura or later, using the 13.x SDK.
 %
 % The rpath Octave version independent encoding is done by the helper
 % function osxsetoctaverpath().

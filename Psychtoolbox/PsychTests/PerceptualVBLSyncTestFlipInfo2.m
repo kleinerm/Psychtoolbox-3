@@ -191,25 +191,49 @@ try
    xpos = 0;
 
    ifi = Screen('GetFlipInterval', win);
+   winfo = Screen('GetWindowInfo', win);
+
+   % Normally we do not do anything after flip, as a performance optimization:
+   dontclear = 2;
+   if ~isempty(strfind(winfo.GPUCoreId, 'VC4'))
+      % Unless we are on the RaspberryPi with its Broadcom VideoCore gpu,
+      % where we do a full clear to background color after each Flip. Why?
+      % Because it turns out this gives much better performance! E.g., we can
+      % almost do 120 fps stable on a RPi 400 / VideoCore-6 at 1920x1080,
+      % whereas without clear we can only do about 60 fps. Not sure why this
+      % is, but it could be either a VideoCore 6+ thing do to the use of separate
+      % 3D render engine and display engine, and the need to do some buffer
+      % passing, with a possible detiling blit, or it could be related to the VideoCore
+      % gpu being a tiled renderer. In either case, it might be more efficient to
+      % completely invalidate / discard backbuffers, and the driver may get its
+      % hint from a full framebuffer clear to trigger this optimization.
+      % TODO: Other tiled renderers or split gpu + display engine hardware might
+      % benefit from this as well, especially on low powered mobile SoC devices?
+      dontclear = 0;
+   end
 
    VBLTimestamp = Screen('Flip', win, 0, 2);
 
    while (~KbCheck) && (GetSecs < deadline)
-      % Draw left eye view (if stereo enabled):
-      Screen('SelectStereoDrawBuffer', win, 0);
-      % Draw alternating black/white rectangle:
+      % Draw alternating black/white rectangle to left eye view or mono view:
       Screen('FillRect', win, color, flickerRect);
-      % If beamposition is available (on OS-X), visualize it via yellow horizontal line:
+
+      % If beamposition is available, visualize it via yellow horizontal line:
       if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
 
       % Some vertical moving line to test smoothness:
       xpos = mod(xpos + 1, winRect(3));
       Screen('DrawLine', win, [0 255 0], xpos, 0, xpos, winRect(4), thickness);
+
       if stereomode > 0
           % Same for right-eye view...
           Screen('SelectStereoDrawBuffer', win, 1);
           Screen('FillRect', win, color, flickerRect);
+
           if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
+
+         % Back to right eye for next loop iteration:
+         Screen('SelectStereoDrawBuffer', win, 0);
       end
 
       if stereomode == 0 && length(screen)>1
@@ -227,7 +251,7 @@ try
       if doublebuffer>1
           if vblSync
               % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
-              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [1], multiflip);
+              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, dontclear, [1], multiflip);
           else
               if testdualheadsync == 1
                   Screen('DrawingFinished', win, 0, 1);

@@ -1,7 +1,7 @@
 function LosslessMovieWritingTest(codec, nrchannels, bpc)
 % LosslessMovieWritingTest - Test lossless encoding and decoding of video in movie files.
 %
-% LosslessMovieWritingTest([codec=huffyuv][, nrchannels=3][, bpc=8])
+% LosslessMovieWritingTest([codec=avenc_huffyuv][, nrchannels=3][, bpc=8])
 %
 % This test is meant to exercise Screen's movie writing function with
 % different GStreamer video codecs and to test if specific codecs are
@@ -14,11 +14,11 @@ function LosslessMovieWritingTest(codec, nrchannels, bpc)
 %
 % Optional parameters:
 %
-% 'codec' name of video codec to use. Defaults to huffyuv, for use of the
-% lossless FFMpeg Huffman encoder. ffenc_ljpeg would be another option for
-% a lossless codec, however ffenc_ljpeg can't be decoded by Psychtoolbox's
+% 'codec' name of video codec to use. Defaults to avenc_huffyuv, for use of the
+% lossless FFMpeg Huffman encoder. avenc_ljpeg would be another option for
+% a lossless codec, however avenc_ljpeg can't be decoded by Psychtoolbox's
 % GStreamer movie playback functions. Another lossless codec is
-% 'ffenc_sgi', which allows for lossless encoding and relatively high
+% 'avenc_sgi', which allows for lossless encoding and relatively high
 % compression rates, but its movie files can only be read by Psychtoolbox,
 % not by other tools.
 %
@@ -55,7 +55,7 @@ global imgdec;
 
 % Default to ffenc_huffyuv codec, aka lossless Huffmann YUV encoder:
 if nargin < 1 || isempty(codec)
-    codec = 'huffyuv';
+    codec = 'avenc_huffyuv';
 end
 
 % Define codec type:

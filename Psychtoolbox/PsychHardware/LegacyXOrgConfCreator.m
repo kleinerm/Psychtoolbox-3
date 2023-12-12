@@ -66,16 +66,29 @@ try
     fprintf('Uses the xf86-video-modesetting DDX video driver.\n');
   end
 
-  % RaspberryPi VideoCore4/6?
-  if strcmp(winfo.GPUCoreId, 'VC4')
-    % Raspbian in early 2021 had a bug which prevented pageflipping from working.
-    % This was fixed a few weeks later.
-    % Add a workaround to the xorg.conf settings, which will fix it:
-    fprintf('This is likely a RaspberryPi with VideoCore-4 or VideoCore-6 gpu.\n');
-    needPreventDrmModifiers = 1;
+  % Find Mesa version, if this is running on Mesa.
+  mesaVerstr = strfind(winfo.GLVersion, 'Mesa');
+  if ~isempty(mesaVerstr)
+    mesaVersion = sscanf(winfo.GLVersion(mesaVerstr:end), 'Mesa %i.%i.%i');
   else
-    needPreventDrmModifiers = 0;
+    mesaVersion = [0,0,0];
   end
+
+  % Identify major version of Broadcom VideoCore on a RaspberryPi, and deep color caps:
+  videoCoreDeepColor = 0;
+  if ~isempty(strfind(winfo.GPUCoreId, 'VC4'))
+    videoCoreVersion = sscanf(winfo.GLRenderer(end-2:end), '%i.%i');
+
+    % VideoCore 4 or later, on Mesa 23.3.0 or later? Then it is 10 bpc deep color capable:
+    if videoCoreVersion(1) >= 4 && (mesaVersion(1) > 23 || (mesaVersion(1) == 23 && mesaVersion(2) >= 3))
+      videoCoreDeepColor = 1;
+    end
+  else
+    videoCoreVersion = [];
+  end
+
+  % DRM Modifier workaround not needed on any known configuration since 2021:
+  needPreventDrmModifiers = 0;
 
   % Step 2: Enumerate all available video outputs on all X-Screens:
   outputs = [];
@@ -334,13 +347,14 @@ try
     % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
     % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
     % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
-    if (atinotiling ~= 'y') && ...
+    if (atinotiling ~= 'y') && (~strcmp(winfo.GPUCoreId, 'VC4') || videoCoreDeepColor) && ...
        (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
         strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
       fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
       if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
         fprintf('This will need a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
         fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
+        fprintf('The RaspberryPi 4 and later models do require RaspberryPi OS 11 and Mesa 23.3.1 and later.\n');
       end
 
       if multigpu
@@ -648,8 +662,10 @@ if noautoaddgpu > 0 || needPreventDrmModifiers
 
   if needPreventDrmModifiers
     % Explicitely prevent use of dmabuf_capable flag for modesetting-ddx, as that
-    % can cause broken pageflipping on Raspbian with Linux 5.3 and later.
-    % See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3601
+    % can cause broken pageflipping on some systems. It used to be the case with
+    % Raspbian with Linux 5.3 and later in early 2021, but that bug has been fixed
+    % in February 2021, so this is of no concern anymore atm.
+    % For historical bug, see: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3601
     fprintf(fid, '  Option "Debug"     "None"\n');
   end
 

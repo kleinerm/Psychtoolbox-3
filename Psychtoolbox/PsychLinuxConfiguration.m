@@ -558,9 +558,27 @@ if addgroup
 end
 
 if addgroup
-  if ~exist('/etc/X11/xorg.conf.d', 'dir')
-    fprintf('\n\nThe X11 configuration directory /etc/X11/xorg.conf.d does not exist.\n');
-    fprintf('I would like to create it and allow users of the psychtoolbox Unix group\n');
+  % Check if xorg.conf.d exists, but does not have psychtoolbox as owning group.
+  % In that case we need to chown + chmod it to ownership and write permission for
+  % psychtoolbox group. This happens, e.g., on RaspberryPi OS 12, when the system
+  % by itself creates the directory to place some config files, but not with psychtoolbox
+  % ownership. Need different ls() output string handling for Octave vs. Matlab for this:
+  if IsOctave
+    xorgconfdir = vec(ls('/etc/X11/', '-l')')';
+  else
+    xorgconfdir = ls('/etc/X11/', '-l');
+  end
+  xorgnotptbowned = exist('/etc/X11/xorg.conf.d', 'dir') && isempty(strfind(xorgconfdir, 'psychtoolbox'));
+
+  % Does not exist or is not group owned by us?
+  if ~exist('/etc/X11/xorg.conf.d', 'dir') || xorgnotptbowned
+    if xorgnotptbowned
+      fprintf('\n\nThe X11 configuration directory /etc/X11/xorg.conf.d is not owned by\n');
+      fprintf('the psychtoolbox Unix group. I would like to change that, to allow you\n');
+    else
+      fprintf('\n\nThe X11 configuration directory /etc/X11/xorg.conf.d does not exist.\n');
+      fprintf('I would like to create it and allow users of the psychtoolbox Unix group\n');
+    end
     fprintf('to write xorg config files into that directory. This will allow easy change\n');
     fprintf('of display configuration when needed to setup for an experiment by use of the\n');
     fprintf('XOrgConfCreator and XOrgConfSelector functions of Psychtoolbox.\n\n');
@@ -568,7 +586,7 @@ if addgroup
     if ismember(answers(4), 'yn')
       answer = answers(4);
     else
-      answer = input('Should i create a X11 config directory that is writable for you? [y/n] : ', 's');
+      answer = input('Should i create or configure a X11 config directory that is writable for you? [y/n] : ', 's');
       answers(4) = answer;
     end
 
@@ -580,7 +598,9 @@ if addgroup
         fprintf('GUI, e.g., via executing: octave --no-gui\n');
         fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
       else
-        system('sudo mkdir /etc/X11/xorg.conf.d');
+        if ~exist('/etc/X11/xorg.conf.d', 'dir')
+          system('sudo mkdir /etc/X11/xorg.conf.d');
+        end
         system('sudo chown :psychtoolbox /etc/X11/xorg.conf.d');
         system('sudo chmod g+rwxs /etc/X11/xorg.conf.d');
       end

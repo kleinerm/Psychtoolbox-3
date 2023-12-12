@@ -98,6 +98,27 @@ try
     fprintf('Uses the xf86-video-modesetting DDX video driver.\n');
   end
 
+  % Find Mesa version, if this is running on Mesa.
+  mesaVerstr = strfind(winfo.GLVersion, 'Mesa');
+  if ~isempty(mesaVerstr)
+    mesaVersion = sscanf(winfo.GLVersion(mesaVerstr:end), 'Mesa %i.%i.%i');
+  else
+    mesaVersion = [0,0,0];
+  end
+
+  % Identify major version of Broadcom VideoCore on a RaspberryPi, and deep color caps:
+  videoCoreDeepColor = 0;
+  if ~isempty(strfind(winfo.GPUCoreId, 'VC4'))
+    videoCoreVersion = sscanf(winfo.GLRenderer(end-2:end), '%i.%i');
+
+    % VideoCore 4 or later, on Mesa 23.3.0 or later? Then it is 10 bpc deep color capable:
+    if videoCoreVersion(1) >= 4 && (mesaVersion(1) > 23 || (mesaVersion(1) == 23 && mesaVersion(2) >= 3))
+      videoCoreDeepColor = 1;
+    end
+  else
+    videoCoreVersion = [];
+  end
+
   % Step 2: Enumerate all available video outputs on all X-Screens:
   outputs = [];
   outputCnt = 0;
@@ -300,14 +321,15 @@ try
   else
     % Ask questions for setup of advanced options:
 
-    % Depth 30 is not supported on Broadcom VideoCore of RaspberryPi atm., otherwise give it a shot:
-    if ~strcmp(winfo.GPUCoreId, 'VC4')
+    % Depth 30 is not supported on old Broadcom VideoCore-4 of RaspberryPi 1/2/3, otherwise give it a shot:
+    if ~strcmp(winfo.GPUCoreId, 'VC4') || videoCoreDeepColor
       % 10 bpc depth 30 deep color for 1 billion colors wanted? All AMD, Intel and NVidia gpu's support this,
       % both with open-source and proprietary (NVidia) drivers, also with modesetting-ddx. Some SoC gpu's also
       % support it, but not all.
       fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
       fprintf('All AMD, Intel and NVidia gpus since at least 2010, sometimes since 2005 support this,\n');
-      fprintf('as well as some modern SoC gpus from ARM, Qualcomm and others.\n');
+      fprintf('The RaspberryPi 4 and later support 10 bpc with Linux 5.15 + Mesa 23.3.1 and later.\n');
+      fprintf('Some other modern SoC gpus from ARM, Qualcomm and others may support it as well.\n');
       fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
       fprintf('then your system and hardware may not be ready for this depth 30 mode. On AMD hardware sold from the\n');
       fprintf('years 2005 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
