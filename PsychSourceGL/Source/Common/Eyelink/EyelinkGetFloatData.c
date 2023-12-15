@@ -166,13 +166,13 @@ PsychError EyelinkGetFloatDataRaw(void)
                 TrackerOKForRawValues();
                 memset(&fr, 0, sizeof(fr));
                 if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
-                    sprintf(errmsg, "Eyelink: GetFloatDataRaw: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2")); //no snprintf in msvs?  bug: buff overflow
+                    snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetFloatDataRaw: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2"));
                     PsychErrorExitMsg(PsychError_internal, errmsg);
                 }
             } else {
                 mexPrintf("EYELINK: WARNING! Omission of the eye argument to GetFloatDataRaw is deprecated.\n");
                 if((err = eyelink_get_extra_raw_values(&fs, &fr))){ //deprecated as of Dec 1, 2006 (see eyelink sdk core_expt.h)
-                    sprintf(errmsg, "Eyelink: GetFloatDataRaw: eyelink_get_extra_raw_values returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values")); //no snprintf in msvs?  bug: buff overflow
+                    snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetFloatDataRaw: eyelink_get_extra_raw_values returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values"));
                     PsychErrorExitMsg(PsychError_internal, errmsg);
                 }
             }

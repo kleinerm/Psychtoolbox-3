@@ -144,7 +144,6 @@ static char seeAlsoString[] = "";
     -request sr research to let us read inputword_is_window
     -option for output in struct format?  would allow deprecating EyelinkGetFloatData, EyelinkGetFloatDataRaw, and EyelinkGetNextDataType
     -would NaN be a better choice (PsychGetNanValue) than MISSING_DATA for LOST_DATA_EVENT?  right now, MISSING_DATA would not fit into the uint type of many of the fields, if we were to offer them in correctly-typed fields of a struct
-    -(also in GetFloatData and ImageModeDisplay) replace all sprintf's with snprintf
 
 */
 
@@ -211,9 +210,9 @@ PsychError EyelinkGetQueuedData(void)
                     if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: calling get_raw\n");
                     memset(&fr, 0, sizeof(fr));
                     if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
-                        //snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2"));
                         if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: raw value error\n");
-                        sprintf(errmsg, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2")); //no snprintf in msvs?  bug: buff overflow
+                        snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s",
+                                 err, eyelink_get_error(err, "eyelink_get_extra_raw_values_v2"));
                         PsychErrorExitMsg(PsychError_internal, errmsg);
                     }
                 }
@@ -362,7 +361,7 @@ psych_bool TrackerOKForRawValues(void) {
 
     while(tryAgain) {
         if ((err=eyelink_read_request("link_sample_data"))){
-            sprintf(errmsg, "Eyelink: eyelink_read_request returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_request")); //no snprintf in msvs?  bug: buff overflow
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_request returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_request"));
             PsychErrorExitMsg(PsychError_internal, errmsg);
         }
 
@@ -378,7 +377,7 @@ psych_bool TrackerOKForRawValues(void) {
                 // what happened to PUPIL?
 
                 if(!strstr(buf,"INPUT") || !strstr(buf,"HMARKER")){
-                    sprintf(errmsg, "Eyelink: your current link_sample_data is '%s', but you must include INPUT and HMARKER to get raw values.  You must also set inputword_is_window = ON.  Use Eyelink('command','link_sample_data = INPUT,HMARKER') and Eyelink('command','inputword_is_window = ON') to do this.",buf); //no snprintf in msvs?  bug: buff overflow
+                    snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: your current link_sample_data is '%s', but you must include INPUT and HMARKER to get raw values.  You must also set inputword_is_window = ON.  Use Eyelink('command','link_sample_data = INPUT,HMARKER') and Eyelink('command','inputword_is_window = ON') to do this.",buf);
                     PsychErrorExitMsg(PsychError_user, errmsg);
                 }
                 tryAgain=FALSE;
@@ -389,14 +388,14 @@ psych_bool TrackerOKForRawValues(void) {
             }
 
         } else {
-            sprintf(errmsg, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply")); //no snprintf in msvs?  bug: buff overflow
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply"));
             PsychErrorExitMsg(PsychError_internal, errmsg);
         }
     }
 
     /* disabled this check cuz reading inputword_is_window isn't supported
     if (err=eyelink_read_request("inputword_is_window")){
-        sprintf(errmsg, "Eyelink: eyelink_read_request returned error code %d: '%s'", err, eyelink_get_error(err,"eyelink_read_request")); //no snprintf in msvs?  bug: buff overflow
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_request returned error code %d: '%s'", err, eyelink_get_error(err,"eyelink_read_request"));
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
@@ -410,12 +409,12 @@ psych_bool TrackerOKForRawValues(void) {
         // currently getting "Variable read not supported"
 
          if(!strstr(buf,"ON")){
-            sprintf(errmsg, "Eyelink: your current inputword_is_window is '%s', but must be ON to get raw values.  Use Eyelink('command','inputword_is_window = ON') to do this.",buf); //no snprintf in msvs?  bug: buff overflow
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: your current inputword_is_window is '%s', but must be ON to get raw values.  Use Eyelink('command','inputword_is_window = ON') to do this.",buf);
             PsychErrorExitMsg(PsychError_user, errmsg);
         }
 
     } else {
-        sprintf(errmsg, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply")); //no snprintf in msvs?  bug: buff overflow
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply"));
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
      */
@@ -424,11 +423,11 @@ psych_bool TrackerOKForRawValues(void) {
     if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: eyelink dll version: '%s'\n",buf); //currently "1,8,1,0"
     if(sscanf(buf,"%d,%d,%d,%d",&(ver[0]),&(ver[1]),&(ver[2]),&(ver[3]))==4){
         if(ver[0]<1 || (ver[0]==1 && ver[1]<8) || (ver[0]==1 && ver[1]==8 && ver[2]<1)){
-            sprintf(errmsg, "EyeLink: eyelink_dll_version reports '%s' - collecting raw values requires that you install 1.8.1.0 or higher (https://www.sr-support.com/forums/showthread.php?t=6 (windows) or https://www.sr-support.com/forums/showthread.php?t=15 (osx)).",buf); //no snprintf in msvs?  bug: buff overflow
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "EyeLink: eyelink_dll_version reports '%s' - collecting raw values requires that you install 1.8.1.0 or higher (https://www.sr-support.com/forums/showthread.php?t=6 (windows) or https://www.sr-support.com/forums/showthread.php?t=15 (osx)).",buf);
             PsychErrorExitMsg(PsychError_unimplemented, errmsg);
         }
     } else {
-        sprintf(errmsg, "Eyelink: couldn't read output of eyelink_dll_version: '%s'",buf);
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: couldn't read output of eyelink_dll_version: '%s'",buf);
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
@@ -439,11 +438,11 @@ psych_bool TrackerOKForRawValues(void) {
     }
     if(sscanf(buf,"EYELINK CL %d.%d",&(ver[0]),&(ver[1]))==2){
         if(ver[0]<4 || (ver[0]==4 && ver[1]<31)){
-            sprintf(errmsg, "EyeLink: eyelink_get_tracker_version reports '%s' - collecting raw values requires that you install host software 4.31 or higher (https://www.sr-support.com/forums/showthread.php?t=179).",buf); //no snprintf in msvs?  bug: buff overflow
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "EyeLink: eyelink_get_tracker_version reports '%s' - collecting raw values requires that you install host software 4.31 or higher (https://www.sr-support.com/forums/showthread.php?t=179).",buf);
             PsychErrorExitMsg(PsychError_unimplemented,errmsg);
         }
     } else {
-        sprintf(errmsg, "Eyelink: couldn't read output of eyelink_get_tracker_version: '%s'",buf);
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: couldn't read output of eyelink_get_tracker_version: '%s'",buf);
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
