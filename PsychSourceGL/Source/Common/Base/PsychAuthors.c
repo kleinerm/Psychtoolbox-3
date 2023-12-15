@@ -226,15 +226,6 @@ void InitPsychAuthorList(void)
     );
     PsychAddAuthor(
         // Eyelink toolbox:
-        "Brian",
-        "",
-        "Richardson",
-        "br",
-        "brian@sr-research.com",
-        "https://sr-research.com"
-    );
-    PsychAddAuthor(
-        // Eyelink toolbox:
         "Marcus",
         "",
         "Johnson",
