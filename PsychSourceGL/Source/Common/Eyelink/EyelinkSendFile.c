@@ -1,20 +1,20 @@
-/* 
+/*
     Psychtoolbox-3/PsychSourceGL/Source/Common/Eyelink/EyelinkSendFile.c
- 
-    PROJECTS: Eyelink 
- 
+
+    PROJECTS: Eyelink
+
     AUTHORS:
     brian@sr-research.com   br
- 
-    PLATFORMS:    
- 
+
+    PLATFORMS:
+
  */
- 
+
 #include "PsychEyelink.h"
- 
+
  static char useString[] = "[status =] Eyelink('SendFile', src, dest, dest_is_path)";
- 
- static char synopsisString[] = 
+
+ static char synopsisString[] =
  "This function sends a file to the Eyelink tracker. Source destination file name\n"
  "should be given. Using this function, an image or video can be uploaded from the\n"
  "display PC to the host Tracker PC.\n\n"
@@ -29,7 +29,7 @@
  " -5 if transferred file size is unequal to the real file size.";
 
  static char seeAlsoString[] = "";
- 
+
  /*
   ROUTINE: EyelinkSendFile
   PURPOSE:
@@ -42,31 +42,31 @@
      char *src;
      char *dest;
      int dest_is_path;
-     
+
      // all sub functions should have these two lines
      PsychPushHelp(useString, synopsisString, seeAlsoString);
      if(PsychIsGiveHelp()){
          PsychGiveHelp();
          return(PsychError_none);
      };
-     
+
      // check to see if the user supplied superfluous arguments
      PsychErrorExit(PsychCapNumInputArgs(3));
      PsychErrorExit(PsychRequireNumInputArgs(3));
      PsychErrorExit(PsychCapNumOutputArgs(1));
-     
+
      // Verify eyelink is up and running
      EyelinkSystemIsConnected();
      EyelinkSystemIsInitialized();
-     
+
      PsychAllocInCharArg(1, TRUE, &src);
      PsychAllocInCharArg(2, TRUE, &dest);
      PsychCopyInIntegerArg(3, TRUE, &dest_is_path);
-          
+
      iStatus = (int) send_data_file_feedback(src, dest, (INT16) dest_is_path, NULL);
-          
+
      // if there is an output variable available, assign result to it.
      PsychCopyOutDoubleArg(1, FALSE, iStatus);
-     
+
      return(PsychError_none);
  }

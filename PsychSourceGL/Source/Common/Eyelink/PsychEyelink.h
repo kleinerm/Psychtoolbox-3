@@ -1,24 +1,20 @@
 /*
+    PsychSourceGL/Source/Common/Eyelink/PsychEyelink.h
 
-	PsychSourceGL/Source/Common/Eyelink/PsychEyelink.h
-  
-	PROJECTS: Eyelink 
-  
-	AUTHORS:
-		cburns@berkeley.edu				cdb
-		E.Peters@ai.rug.nl				emp
-		f.w.cornelissen@med.rug.nl		fwc
-  
-	PLATFORMS:	All.  
-    
-	HISTORY:
+    PROJECTS: Eyelink
 
-		11/21/05  cdb		Created.
+    AUTHORS:
 
-	TARGET LOCATION:
+    cburns@berkeley.edu                 cdb
+    E.Peters@ai.rug.nl                  emp
+    f.w.cornelissen@med.rug.nl          fwc
 
-		Eyelink.mexmac resides in:
-			EyelinkToolbox
+    PLATFORMS:    All.
+
+    HISTORY:
+
+    11/21/05  cdb        Created.
+
 */
 
 #ifndef PSYCH_IS_INCLUDED_Eyelink
@@ -64,10 +60,10 @@ typedef psych_uint32 UInt32;
 /////////////////////////////////////////////////////////////////////////
 // Global variables used throughout eyelink C files
 
-extern int		giSystemInitialized;
+extern int        giSystemInitialized;
 
 /////////////////////////////////////////////////////////////////////////
-//		Eyelink Function prototypes
+//        Eyelink Function prototypes
 
 // Defined in EyelinkCreateDataStructs.c
 mxArray *CreateMXFSample(const FSAMPLE *fs);
@@ -79,19 +75,19 @@ mxArray *CreateMXIEvent(const IEVENT *ie);
 // Defined in PsychEyelink.c
 int Verbosity(void);
 const char* PsychEyelinkParseToString(int startIdx);
-PsychError	EyelinkSystemIsConnected(void);
-PsychError	EyelinkSystemIsInitialized(void);
+PsychError EyelinkSystemIsConnected(void);
+PsychError EyelinkSystemIsInitialized(void);
 void PsychEyelink_init_core_graphics(const char* callback);
 void PsychEyelink_uninit_core_graphics(void);
 void PsychEyelink_TestEyeImage(void);
 void PsychEyelink_dumpHookfunctions(void);
 
 // Defined in EyelinkSynopsis.c
-void		InitializeSynopsis();
-PsychError	PsychDisplayEyelinkSynopsis(void);
+void InitializeSynopsis();
+PsychError PsychDisplayEyelinkSynopsis(void);
 
 // Defined in MODULEVersion.c
-PsychError	MODULEVersion(void);
+PsychError MODULEVersion(void);
 
 // Defined in EyelinkShutdown.c
 PsychError PsychEyelinkShutdown(void);

@@ -1,9 +1,10 @@
 /*
     Psychtoolbox-3/PsychSourceGL/Source/Common/Eyelink/EyelinkEDKVersion.c
 
-    PROJECTS: Eyelink 
+    PROJECTS: Eyelink
 
     AUTHORS:
+
     brian@sr-research.com   br
 
 */
@@ -11,14 +12,14 @@
 #include "PsychEyelink.h"
 
 static char useString[] = "[edkVersionString] = Eyelink('EDKVersion')";
-
 static char synopsisString[] = "Returns a string with the eyelink_core library version number.\n";
-
 static char seeAlsoString[] = "";
 
 /*
-ROUTINE: EyelinkDllVersion
-PURPOSE:
+    ROUTINE: EyelinkDllVersion
+
+    PURPOSE:
+
     Returns the eyelink_core library version number.
     returns: 0 if no reply, else time
 */
@@ -40,5 +41,5 @@ PsychError EyelinkEDKVersion(void)
 
     PsychCopyOutCharArg(1, FALSE, strEdkVersion);
 
-    return(PsychError_none);	
+    return(PsychError_none);
 }

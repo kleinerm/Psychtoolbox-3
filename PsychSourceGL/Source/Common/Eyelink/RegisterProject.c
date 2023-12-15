@@ -2,16 +2,16 @@
 
     PsychSourceGL/Source/Common/Eyelink/RegisterProject.c
 
-    PROJECTS: Eyelink 
-  
+    PROJECTS: Eyelink
+
     AUTHORS:
-        cburns@berkeley.edu                cdb
-        E.Peters@ai.rug.nl                emp
-        f.w.cornelissen@med.rug.nl        fwc
-        e_flister@yahoo.com                edf
-  
+        cburns@berkeley.edu             cdb
+        E.Peters@ai.rug.nl              emp
+        f.w.cornelissen@med.rug.nl      fwc
+        e_flister@yahoo.com             edf
+
     PLATFORMS:    All.
-    
+
     HISTORY:
         2003      emp        created alpha version
         11/21/05  cdb        Adapted from alpha version.
@@ -21,10 +21,6 @@
         19/02/09  edf        added EyelinkGetFloatDataRaw
         22/03/09  edf        added EyelinkGetQueuedData
 
-    TARGET LOCATION:
-
-        Eyelink.mexmac resides in:
-            EyelinkToolbox
 */
 
 #include "RegisterProject.h"
@@ -34,21 +30,21 @@ PsychError PsychModuleInit(void)
 {
     // Initialize Eyelink project variables
     giSystemInitialized = 0;
-    
+
     // Register the project exit function:
-    PsychErrorExit(PsychRegisterExit(&PsychEyelinkShutdown)); 
-    
+    PsychErrorExit(PsychRegisterExit(&PsychEyelinkShutdown));
+
     // Register the project function which is called when the module
     // is invoked with no arguments:
-    PsychErrorExitMsg(PsychRegister(NULL,  &PsychDisplayEyelinkSynopsis), "Failed to register the Eyelink synopsis function.");        
-    
+    PsychErrorExitMsg(PsychRegister(NULL, &PsychDisplayEyelinkSynopsis), "Failed to register the Eyelink synopsis function.");
+
     // Register the module name:
     PsychErrorExitMsg(PsychRegister("Eyelink", NULL), "Failed to register Eyelink Module name!");
 
     // Report module version:
-    PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
+    PsychErrorExit(PsychRegister("Version", &MODULEVersion));
 
-    // Register sub-commands
+    // Register sub-commands:
     PsychErrorExit(PsychRegister("ButtonStates", &EyelinkButtonStates));
     PsychErrorExit(PsychRegister("Command", &EyelinkCommand));
     PsychErrorExit(PsychRegister("CurrentMode", &EyelinkCurrentMode));
@@ -74,7 +70,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("CloseFile", &EyelinkCloseFile));
     PsychErrorExit(PsychRegister("ReceiveFile", &EyelinkReceiveFile));
     PsychErrorExit(PsychRegister("CheckRecording", &EyelinkCheckRecording));
-    PsychErrorExit(PsychRegister("NewFloatSampleAvailable",    &EyelinkNewFloatSampleAvailable));
+    PsychErrorExit(PsychRegister("NewFloatSampleAvailable", &EyelinkNewFloatSampleAvailable));
     PsychErrorExit(PsychRegister("SetOfflineMode", &EyelinkSetOfflineMode));
     PsychErrorExit(PsychRegister("DriftCorrStart", &EyelinkDriftCorrStart));
     PsychErrorExit(PsychRegister("ApplyDriftCorr", &EyelinkApplyDriftCorr));
@@ -87,8 +83,8 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("NewestFloatSampleRaw", &EyelinkNewestFloatSampleRaw));
 
     //added as of 30/10/06
-    PsychErrorExit(PsychRegister("GetNextDataType",    &EyelinkGetNextDataType));
-    PsychErrorExit(PsychRegister("GetNextData",    &EyelinkGetNextDataType));  // for compatibility reasons only
+    PsychErrorExit(PsychRegister("GetNextDataType", &EyelinkGetNextDataType));
+    PsychErrorExit(PsychRegister("GetNextData", &EyelinkGetNextDataType));  // for compatibility reasons only
     PsychErrorExit(PsychRegister("GetFloatData", &EyelinkGetFloatData));
 
     // added as of 21/01/07
@@ -96,16 +92,16 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("TimeOffset", &EyelinkTimeOffset));
 
     // added as of 19/02/09
-    PsychErrorExit(PsychRegister("GetFloatDataRaw",    &EyelinkGetFloatDataRaw));    
-    
+    PsychErrorExit(PsychRegister("GetFloatDataRaw", &EyelinkGetFloatDataRaw));
+
     // added as of 22/03/09
     PsychErrorExit(PsychRegister("GetQueuedData", &EyelinkGetQueuedData));
     PsychErrorExit(PsychRegister("Verbosity", &EyelinkVerbosity));
     PsychErrorExit(PsychRegister("TestSuite", &EyelinkTestSuite));
-    
+
     // NJ: Added as of 24/05/11
     PsychErrorExit(PsychRegister("ImageTransfer", &EyelinkImageTransfer));
-    PsychErrorExit(PsychRegister("TrackerMode",    &EyelinkTrackerMode));
+    PsychErrorExit(PsychRegister("TrackerMode", &EyelinkTrackerMode));
     PsychErrorExit(PsychRegister("CalMessage", &EyelinkCalMessage));
     PsychErrorExit(PsychRegister("ReadFromTracker", &EyelinkReadFromTracker));
 
@@ -115,7 +111,7 @@ PsychError PsychModuleInit(void)
     // BR: Added as of EyeLink Developers Kit 2.1 maintenance release
     PsychErrorExit(PsychRegister("SendFile", &EyelinkSendFile));
 
-    //register synopsis and named subfunctions.
+    // Register synopsis and named subfunctions:
     InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
     PsychSetModuleAuthorByInitials("emp");
     PsychSetModuleAuthorByInitials("fwc");
@@ -124,8 +120,8 @@ PsychError PsychModuleInit(void)
     PsychSetModuleAuthorByInitials("edf");
     PsychSetModuleAuthorByInitials("nj");
     PsychSetModuleAuthorByInitials("br");
-	PsychSetModuleAuthorByInitials("mj");
-	PsychSetModuleAuthorByInitials("kd");
+    PsychSetModuleAuthorByInitials("mj");
+    PsychSetModuleAuthorByInitials("kd");
 
     return(PsychError_none);
 }
