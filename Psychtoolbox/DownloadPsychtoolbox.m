@@ -355,6 +355,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadm
 %              on macOS, as provided by XCode command line tools.
 % 06/01/19 mk  Give automated hint about updated svn client under Matlab.
 % 10/27/20 mk  Add SVN support via Matlabs SVNKit.
+% 12/16/23 mk  Add warning about, and handling of GitHub SVN frontend shutdown at 8th January 2024.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -366,6 +367,29 @@ end
 
 if nargin < 5 || isempty(tryNonInteractiveSetup)
     tryNonInteractiveSetup = 0;
+end
+
+% It's the end of the world as we know it...
+if datenum(date) > datenum('8-Jan-2024') %#ok<*DATE,*DATNM>
+    fprintf('This Downloader does no longer work after 8th January 2024, as GitHub has removed its\n');
+    fprintf('Subversion download frontend from their services permanently at that day.\n\n');
+else
+    fprintf('This Downloader will no longer work, starting at or after 8th January 2024, as GitHub will\n');
+    fprintf('remove its Subversion download frontend from their services permanently at that day.\n');
+    fprintf('Before this deadline, there may be multiple temporary hour-long or day-long brownouts,\n');
+    fprintf('resulting in download failure, as a heads-up by GitHub about the upcoming permanent end of service.\n\n');
+end
+
+fprintf('Due to the lack of financial support for Psychtoolbox by the vast majority of our non-paying users,\n');
+fprintf('we did not and currently do not have the funding to work on a good alternative solution for this.\n');
+fprintf('Therefore this convenient installation and update method will be unavailable for an unknown period\n');
+fprintf('of time.\n\n');
+fprintf('See http://psychtoolbox.org/download.html#alternate-download for a workable, although way less\n');
+fprintf('convenient and advanced download and installation method, via zip file download and execution\n');
+fprintf('of SetupPsychtoolbox(). Good luck!\n\n\n');
+
+if datenum(date) > datenum('8-Jan-2024')
+    error('Downloader aborted due to currently unsupported installation method.');
 end
 
 oldpause = pause('query');
