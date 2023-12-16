@@ -1,11 +1,11 @@
 <deployment-project plugin="plugin.toolbox" plugin-version="1.0">
-  <configuration file="/home/bpancras/gitRepo/Psychtoolbox-3/Psychtoolbox.prj" location="/home/bpancras/gitRepo/Psychtoolbox-3" name="Psychtoolbox" target="target.toolbox" target-name="Package Toolbox">
+  <configuration file="/home/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3/Psychtoolbox.prj" location="/home/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3" name="Psychtoolbox" target="target.toolbox" target-name="Package Toolbox">
     <param.appname>Psychtoolbox-3</param.appname>
-    <param.authnamewatermark />
-    <param.email />
-    <param.company>Medical Incubator Tuebingen</param.company>
-    <param.summary />
-    <param.description>Psychophysics Toolbox Version 3 (or short "PTB") extends MATLAB with functions for research grade neuroscience stimulus presentation and response collection. The PTB core routines provide trustworthy, precise, and efficient functions for stimulus presentation and response collection in different modalities:
+    <param.authnamewatermark>Mario Kleiner and other contributors</param.authnamewatermark>
+    <param.email>psychtoolbox@mi-incubator.com</param.email>
+    <param.company>The Psychtoolbox developers</param.company>
+    <param.summary>The most advanced toolbox for neuroscience stimulus presentation, response  collection and data collection.</param.summary>
+    <param.description>Psychophysics Toolbox Version 3 (or short "PTB3") extends MATLAB with functions for research grade neuroscience stimulus presentation and response collection. The PTB core routines provide trustworthy, precise, and efficient functions for stimulus presentation and response collection in different modalities:
 - Visual stimulus presentation by use of modern graphics and display hardware via OpenGL hardware acceleration:
 • Drawing of complex 2D stimuli, including use of GPU shaders, framebuffer blending and texture mapping for real-time creation of complex dynamic stimuli and procedural stimuli.
 • Movie playback and movie recording, utilizing the GStreamer multi-media framework.
@@ -28,8 +28,8 @@ Psychtoolbox also provides functions for precisely timed execution of code, and 
 Ancillary routines support common needs like color space transformations, the QUEST threshold seeking algorithm and some other psychometric routines, file i/o and various convenient helper routines. A large set of demos is included.
 Psychtoolbox works best on recent versions of the GNU/Linux operating system, where it takes advantage of some unique features of that operating system (Ubuntu 20.04.3-LTS or later). It also works reasonably well on Microsoft Windows (Windows-10 recommended) and - with substantial limitations due to many operating system flaws and defects - Apple macOS (version 10.15.7 recommended, macOS 11 not recommended), although those systems are often much more restricted in accuracy and reliability of stimulus presentation and response collection.
 Different parts of Psychtoolbox are licensed under different OSI compliant Free Software and Open Source licenses, with the majority of routines licensed under the MIT license.</param.description>
-    <param.screenshot />
-    <param.version>3.0.19.4</param.version>
+    <param.screenshot>${PROJECT_ROOT}/managementtools/PTBOldTVLogoSmall_180x180.png</param.screenshot>
+    <param.version>3.0.19.6</param.version>
     <param.output>${PROJECT_ROOT}/Psychtoolbox-3.mltbx</param.output>
     <param.products.name />
     <param.products.id />
@@ -50,8 +50,8 @@ Different parts of Psychtoolbox are licensed under different OSI compliant Free 
     <param.required.addons />
     <param.matlab.project.id />
     <param.matlab.project.name />
-    <param.release.start />
-    <param.release.end />
+    <param.release.start>R2014b</param.release.start>
+    <param.release.end>latest</param.release.end>
     <param.release.current.only>false</param.release.current.only>
     <param.compatiblity.windows>true</param.compatiblity.windows>
     <param.compatiblity.macos>true</param.compatiblity.macos>
@@ -66,8 +66,7 @@ Different parts of Psychtoolbox are licensed under different OSI compliant Free 
     <unset>
       <param.authnamewatermark />
       <param.email />
-      <param.summary />
-      <param.screenshot />
+      <param.company />
       <param.output />
       <param.products.name />
       <param.products.id />
@@ -87,8 +86,6 @@ Different parts of Psychtoolbox are licensed under different OSI compliant Free 
       <param.required.addons />
       <param.matlab.project.id />
       <param.matlab.project.name />
-      <param.release.start />
-      <param.release.end />
       <param.release.current.only />
       <param.compatiblity.windows />
       <param.compatiblity.macos />
@@ -152,19 +149,12 @@ Different parts of Psychtoolbox are licensed under different OSI compliant Free 
     <fileset.depfun.excluded />
     <fileset.package />
     <build-deliverables>
-      <file location="${PROJECT_ROOT}" name="Psychtoolbox-3.mltbx" optional="false">/home/bpancras/gitRepo/Psychtoolbox-3/Psychtoolbox-3.mltbx</file>
+      <file location="${PROJECT_ROOT}" name="Psychtoolbox-3.mltbx" optional="false">/home/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3/Psychtoolbox-3.mltbx</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>/home/bpancras/2023aprerelease</root>
-      <toolboxes>
-        <toolbox name="neuralnetwork" />
-      </toolboxes>
-      <toolbox>
-        <neuralnetwork>
-          <enabled>true</enabled>
-        </neuralnetwork>
-      </toolbox>
+      <root>/usr/local/MATLAB/R2023b</root>
+      <toolboxes />
     </matlab>
     <platform>
       <unix>true</unix>
@@ -175,7 +165,7 @@ Different parts of Psychtoolbox are licensed under different OSI compliant Free 
       <vista>false</vista>
       <linux>true</linux>
       <solaris>false</solaris>
-      <osver>5.10.0-25-amd64</osver>
+      <osver>5.16.11-surface</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>glnxa64</arch>
