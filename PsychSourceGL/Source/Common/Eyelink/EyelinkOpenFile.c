@@ -59,7 +59,7 @@ PsychError EyelinkOpenFile(void)
    // Should we only open new files, not open - and overwrite - existing ones?
    if (PsychCopyInIntegerArg(2, FALSE, &dontOpenExisting) && dontOpenExisting) {
        // Yes. Check if file already exists, abort with error if so:
-       if (file_exists(filename) != 0) {
+       if (0 == create_path(filename, 0, 0)) {
            printf("Eyelink openfile: The EDF file '%s' already exists and i was asked to abort in this case, so i'll abort.\n", filename);
            PsychErrorExitMsg(PsychError_user, "Tried to open already existing EDF file and user asked to not do that, so i abort.");
        }
