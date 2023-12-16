@@ -13,6 +13,7 @@ function resultFlag = IsWin(is64)
 % 6/30/06  awi Fixed help section.
 % 6/13/12   dn Added support for 64bit and on windows query
 % 10/16/15  mk Add support for 64-Bit Octave on Windows.
+% 12/16/23  mk Simplify.
 
 persistent rc;
 persistent rc64;
@@ -23,11 +24,11 @@ if nargin < 1 || isempty(is64)
 end
 
 if isempty(rc)
-     rc=streq(computer,'PCWIN') || streq(computer,'PCWIN64') || ~isempty(strfind(computer, 'mingw32'));
+     rc = ispc;
 end
 
 if isempty(rc64)
-     rc64 = rc && (~isempty(strfind(computer, 'x86_64')) || streq(computer,'PCWIN64'));
+     rc64 = rc && Is64Bit;
 end
 
 if is64 == 0
