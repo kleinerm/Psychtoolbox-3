@@ -78,6 +78,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % ??/??/2021 64-Bit Octave 6.1.0 support for Windows and OSX. (MK)
 % 02/05/2023 64-Bit Octave 7.3.0 support for Windows and OSX. (MK)
 % 03/12/2023 64-Bit Octave 8.1.0 support for OSX. (MK)
+% 12/16/2023 Guard against running on macOS with Matlab/Octave for native Apple Silicon. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -158,6 +159,14 @@ try
     savepath;
 catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
+end
+
+% No Apple Silicon Matlab/Octave support yet. Only Rosetta 2 emulated Intel.
+if IsOSX && IsARM
+    fprintf('Psychtoolbox does not yet work on native Matlab or Octave for Apple Silicon Macs with 64-Bit ARM architecture.\n');
+    fprintf('You may get a minimally functional Psychtoolbox by installing and running Matlab or Octave for 64-Bit Intel\n');
+    fprintf('under Rosetta 2 emulation.\n');
+    error('Tried to setup on native Matlab or Octave for Apple Silicon 64-Bit ARM. This is not supported.');
 end
 
 % 32-Bit Octave or 32-Bit Matlab on OSX? This is unsupported as of Version 3.0.11.

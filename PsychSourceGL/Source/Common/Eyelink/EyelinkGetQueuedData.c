@@ -1,22 +1,18 @@
 /*
-	/osxptb/trunk/PsychSourceGL/Source/Common/Eyelink/EyelinkGetQueuedData.c
- 
-	PROJECTS: Eyelink
- 
-	AUTHORS:
-		e_flister@yahoo.com			edf
- 
-	PLATFORMS:	all
- 
-	HISTORY:
- 
-		21/03/2009	edf 		created it
- 
-	TARGET LOCATION:
- 
-		Eyelink.mexmac resides in:
-			PsychHardware/EyelinkToolbox
- */
+    Psychtoolbox-3/PsychSourceGL/Source/Common/Eyelink/EyelinkGetQueuedData.c
+
+    PROJECTS: Eyelink
+
+    AUTHORS:
+        e_flister@yahoo.com         edf
+
+    PLATFORMS: all
+
+    HISTORY:
+
+        21/03/2009  edf             created it
+
+*/
 
 #include "PsychEyelink.h"
 
@@ -135,323 +131,321 @@ static char seeAlsoString[] = "";
 #define ERR_BUFF_LEN 1000
 
 /*
-ROUTINE: EyelinkGetQueuedData
-PURPOSE:
-	matlab is slow at dealing with structs and looping over eyelink_get_float_data to drain the queue, so we take care of this for the client.
-	also eliminates usage error of supplying incorrect type from Eyelink('GetNextDataType') to Eyelink('GetFloatData').
- 
- TODO:
+    ROUTINE: EyelinkGetQueuedData
+
+    PURPOSE:
+
+    Matlab is slow at dealing with structs and looping over eyelink_get_float_data to drain the queue, so we take care of this for the client.
+    also eliminates usage error of supplying incorrect type from Eyelink('GetNextDataType') to Eyelink('GetFloatData').
+
+    TODO:
+
     -enable BINOCULAR raws
     -request sr research to let us read inputword_is_window
     -option for output in struct format?  would allow deprecating EyelinkGetFloatData, EyelinkGetFloatDataRaw, and EyelinkGetNextDataType
     -would NaN be a better choice (PsychGetNanValue) than MISSING_DATA for LOST_DATA_EVENT?  right now, MISSING_DATA would not fit into the uint type of many of the fields, if we were to offer them in correctly-typed fields of a struct
-    -(also in GetFloatData and ImageModeDisplay) replace all sprintf's with snprintf and _snprintf ala (note mario is adding a macro for this, probably to be called snprintf):
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
-	snprintf(blah, sizeof(blah) - 1, "str",...);
-#else
-	_snprintf(blah, sizeof(blah) - 1, "str",...);
-#endif
- */
+
+*/
 
 PsychError EyelinkGetQueuedData(void)
 {
-	FSAMPLE      fs;
-	FSAMPLE_RAW  fr;
-	FEVENT       fe;
-	int numSamples = 0, numEvents = 0, maxSamples, maxEvents, type, eye, fieldNum, index, numSampleFields, err;
-	double *samples, *events;
-	psych_bool useEye=FALSE;
-	PsychNativeBooleanType drained=(PsychNativeBooleanType)FALSE;
-	char errmsg[ERR_BUFF_LEN]="";
-	
-	//all sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-	
-	//check to see if the user supplied superfluous arguments
-	PsychErrorExit(PsychCapNumInputArgs(1));
-	PsychErrorExit(PsychRequireNumInputArgs(0));
-	PsychErrorExit(PsychCapNumOutputArgs(3));
-	
-	// Verify eyelink is up and running
-	EyelinkSystemIsConnected();
-	EyelinkSystemIsInitialized();
-	
-	if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: boilerplate done\n");
-	
-	if (PsychCopyInIntegerArg(1, kPsychArgOptional, &eye)) {
-		if (eye!=LEFT_EYE && eye!=RIGHT_EYE) {
-			PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "EyeLink: GetQueuedData:  eye argument must be LEFT_EYE or RIGHT_EYE as returned by EyelinkInitDefaults\n");
-		}
-		
-		TrackerOKForRawValues();
-		
-		useEye=TRUE;
-		numSampleFields=NUM_SAMPLE_FIELDS+NUM_RAW_SAMPLE_FIELDS;
-	} else {
-		numSampleFields=NUM_SAMPLE_FIELDS;
-		useEye=FALSE;
-	}
-	
-	if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: eye/raw chosen\n");
-	
-	maxSamples = FUDGE_FACTOR*eyelink_data_count(1,0) + 1; //need to allocate at least 1 in case we get a eyelink_get_next_data not predicted by eyelink_data_count
-	maxEvents = FUDGE_FACTOR*eyelink_data_count(0,1) + 1;
+    FSAMPLE      fs;
+    FSAMPLE_RAW  fr;
+    FEVENT       fe;
+    int numSamples = 0, numEvents = 0, maxSamples, maxEvents, type, eye, fieldNum, index, numSampleFields, err;
+    double *samples, *events;
+    psych_bool useEye=FALSE;
+    PsychNativeBooleanType drained=(PsychNativeBooleanType)FALSE;
+    char errmsg[ERR_BUFF_LEN]="";
 
-	samples = (double *)PsychMallocTemp(maxSamples*numSampleFields*sizeof(double)); // according to mario if OOM, ultimately calls to mxCreateNumericArray/mxMalloc will error inside matlab rather than return NULL
-	events = (double *)PsychMallocTemp(maxEvents*NUM_EVENT_FIELDS*sizeof(double));
-	
-	if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: memory allocated for %d samples and %d events\n",maxSamples,maxEvents);
-	
-	while(!drained && numSamples<maxSamples && numEvents<maxEvents){
-		type = eyelink_get_next_data(NULL);
-		if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: doing item of type %d\n",type);
-		switch(type) {
-			case SAMPLE_TYPE:
-				if (eyelink_get_float_data((ALLF_DATA*) &fs) != type) {
-					PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same sample type as eyelink_get_next_data.");
-				}
-				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on sample\n");
-				if (useEye) {
-					if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: calling get_raw\n");
-					memset(&fr, 0, sizeof(fr));
-					if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
-						//snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2"));
-						if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: raw value error\n");
-						sprintf(errmsg, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2")); //no snprintf in msvs?  bug: buff overflow
-						PsychErrorExitMsg(PsychError_internal, errmsg);
-					}
-				}
-				
-				index=PsychIndexElementFrom2DArray(numSampleFields, maxSamples, 0, numSamples++);
-				samples[index++]=(double)(FLOAT_TIME(&fs)); // 1
-				samples[index++]=(double)(fs.type); // 2
-				samples[index++]=(double)(fs.flags); // 3
-				samples[index++]=(double)(fs.px[0]); // 4
-				samples[index++]=(double)(fs.px[1]); // 5
-				samples[index++]=(double)(fs.py[0]); // 6
-				samples[index++]=(double)(fs.py[1]); // 7
-				samples[index++]=(double)(fs.hx[0]); // 8
-				samples[index++]=(double)(fs.hx[1]); // 9
-				samples[index++]=(double)(fs.hy[0]); // 10
-				samples[index++]=(double)(fs.hy[1]); // 11
-				samples[index++]=(double)(fs.pa[0]); // 12
-				samples[index++]=(double)(fs.pa[1]); // 13
-				samples[index++]=(double)(fs.gx[0]); // 14
-				samples[index++]=(double)(fs.gx[1]); // 15
-				samples[index++]=(double)(fs.gy[0]); // 16
-				samples[index++]=(double)(fs.gy[1]); // 17
-				samples[index++]=(double)(fs.rx); // 18
-				samples[index++]=(double)(fs.ry); // 19
-				samples[index++]=(double)(fs.status); // 20
-				samples[index++]=(double)(fs.input); // 21
-				samples[index++]=(double)(fs.buttons); // 22
-				samples[index++]=(double)(fs.htype); // 23
-				samples[index++]=(double)(fs.hdata[0]); // 24
-				samples[index++]=(double)(fs.hdata[1]); // 25
-				samples[index++]=(double)(fs.hdata[2]); // 26
-				samples[index++]=(double)(fs.hdata[3]); // 27
-				samples[index++]=(double)(fs.hdata[4]); // 28
-				samples[index++]=(double)(fs.hdata[5]); // 29
-				samples[index++]=(double)(fs.hdata[6]); // 30
-				samples[index++]=(double)(fs.hdata[7]); // 31
-				
-				if (useEye) {
-					samples[index++]=(double)(fr.raw_pupil[0]); // 32
-					samples[index++]=(double)(fr.raw_pupil[1]); // 33
-					samples[index++]=(double)(fr.raw_cr[0]); // 34
-					samples[index++]=(double)(fr.raw_cr[1]); // 35
-					samples[index++]=(double)(fr.pupil_area); // 36
-					samples[index++]=(double)(fr.cr_area); // 37
-					samples[index++]=(double)(fr.pupil_dimension[0]); // 38
-					samples[index++]=(double)(fr.pupil_dimension[1]); // 39
-					samples[index++]=(double)(fr.cr_dimension[0]); // 40
-					samples[index++]=(double)(fr.cr_dimension[1]); // 41
-					samples[index++]=(double)(fr.window_position[0]); // 42
-					samples[index++]=(double)(fr.window_position[1]); // 43
-					samples[index++]=(double)(fr.pupil_cr[0]); // 44
-					samples[index++]=(double)(fr.pupil_cr[1]); // 45
-					samples[index++]=(double)(fr.cr_area2); // 46
-					samples[index++]=(double)(fr.raw_cr2[0]); // 47
-					samples[index++]=(double)(fr.raw_cr2[1]); // 48
-				}
-				
-				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: sample copied\n");
-				break;
-				
-			case LOST_DATA_EVENT: // queue overflowed, we are not supposed to call eyelink_get_float_data on this
-				index=PsychIndexElementFrom2DArray(numSampleFields, maxSamples, 0, numSamples++);
-				for(fieldNum=0; fieldNum<numSampleFields; fieldNum++){
-					samples[index++]= (double)((fieldNum==1) ? LOST_DATA_EVENT : MISSING_DATA);
-				}
-				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: did lost_data\n");
-				break;
-				
-			case 0: // queue empty
-				drained=(PsychNativeBooleanType)TRUE;
-				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: found end of queue\n");
-				break;
-				
-			default: // it is an event
-				if (eyelink_get_float_data((ALLF_DATA*) &fe) != type) {
-					PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same event type as eyelink_get_next_data.");
-				}
-				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on event\n");
-				index=PsychIndexElementFrom2DArray(NUM_EVENT_FIELDS, maxEvents, 0, numEvents++);
-				events[index++]=(double)(fe.time); // 1 %FLOAT_TIME currently a noop on events
-				events[index++]=(double)(fe.type); // 2
-				events[index++]=(double)(fe.read); // 3
-				events[index++]=(double)(fe.eye); // 4
-				events[index++]=(double)(fe.sttime); // 5
-				events[index++]=(double)(fe.entime); // 6
-				events[index++]=(double)(fe.hstx); // 7
-				events[index++]=(double)(fe.hsty); // 8
-				events[index++]=(double)(fe.gstx); // 9
-				events[index++]=(double)(fe.gsty); // 10
-				events[index++]=(double)(fe.sta); // 11
-				events[index++]=(double)(fe.henx); // 12
-				events[index++]=(double)(fe.heny); // 13
-				events[index++]=(double)(fe.genx); // 14
-				events[index++]=(double)(fe.geny); // 15
-				events[index++]=(double)(fe.ena); // 16
-				events[index++]=(double)(fe.havx); // 17
-				events[index++]=(double)(fe.havy); // 18
-				events[index++]=(double)(fe.gavx); // 19
-				events[index++]=(double)(fe.gavy); // 20
-				events[index++]=(double)(fe.ava); // 21
-				events[index++]=(double)(fe.avel); // 22
-				events[index++]=(double)(fe.pvel); // 23
-				events[index++]=(double)(fe.svel); // 24
-				events[index++]=(double)(fe.evel); // 25
-				events[index++]=(double)(fe.supd_x); // 26
-				events[index++]=(double)(fe.eupd_x); // 27
-				events[index++]=(double)(fe.supd_y); // 28
-				events[index++]=(double)(fe.eupd_y); // 29
-				events[index++]=(double)(fe.status); // 30
-		}
-	}
+    //all sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-	if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: done after dequeueing %d samples (of %d) and %d events (of %d) (drained is %d) (clauses: %d %d %d)\n",numSamples,maxSamples,numEvents,maxEvents,drained,!drained, numSamples<maxSamples, numEvents<maxEvents);
-	
-	//bug: who frees memory allocated by PsychAllocOutDoubleMatArg if there is no output arg?  according to matlab doc one should not rely on matlab to do it:
-	//   "It is more efficient to perform this cleanup in the source MEX-file than to rely on the automatic mechanism."
-	//mario reasons that mathworks would have to have done something stupid for this to be true
-	
-	//these only work for cutting off the unused parts of the buffers because matlab storage is columnwise
-	//this is a little fragile - would be nice if PsychCopy* took the dims of the source and handled noncontiguous cases
-	//mario says this is purposesly discouraged and inconvenient to encourage columnwise storage and prevent inefficient fragged memcpys
-	PsychCopyOutDoubleMatArg(1, kPsychArgOptional, numSampleFields, numSamples, 1, samples);
-	PsychCopyOutDoubleMatArg(2, kPsychArgOptional, NUM_EVENT_FIELDS, numEvents, 1, events);
-	
-	PsychCopyOutBooleanArg(3, kPsychArgOptional, drained);
-	
-	if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: done with outputs\n");
-	
-	// PsychFreeTemp(samples); apparently not paradigmatic to do this oneself
-	// PsychFreeTemp(events);
-	
-	return(PsychError_none);
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(0));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
+
+    // Verify eyelink is up and running
+    EyelinkSystemIsConnected();
+    EyelinkSystemIsInitialized();
+
+    if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: boilerplate done\n");
+
+    if (PsychCopyInIntegerArg(1, kPsychArgOptional, &eye)) {
+        if (eye!=LEFT_EYE && eye!=RIGHT_EYE) {
+            PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "EyeLink: GetQueuedData:  eye argument must be LEFT_EYE or RIGHT_EYE as returned by EyelinkInitDefaults\n");
+        }
+
+        TrackerOKForRawValues();
+
+        useEye=TRUE;
+        numSampleFields=NUM_SAMPLE_FIELDS+NUM_RAW_SAMPLE_FIELDS;
+    } else {
+        numSampleFields=NUM_SAMPLE_FIELDS;
+        useEye=FALSE;
+    }
+
+    if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: eye/raw chosen\n");
+
+    maxSamples = FUDGE_FACTOR*eyelink_data_count(1,0) + 1; //need to allocate at least 1 in case we get a eyelink_get_next_data not predicted by eyelink_data_count
+    maxEvents = FUDGE_FACTOR*eyelink_data_count(0,1) + 1;
+
+    samples = (double *)PsychMallocTemp(maxSamples*numSampleFields*sizeof(double)); // according to mario if OOM, ultimately calls to mxCreateNumericArray/mxMalloc will error inside matlab rather than return NULL
+    events = (double *)PsychMallocTemp(maxEvents*NUM_EVENT_FIELDS*sizeof(double));
+
+    if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: memory allocated for %d samples and %d events\n",maxSamples,maxEvents);
+
+    while(!drained && numSamples<maxSamples && numEvents<maxEvents) {
+        type = eyelink_get_next_data(NULL);
+        if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: doing item of type %d\n",type);
+        switch(type) {
+            case SAMPLE_TYPE:
+                if (eyelink_get_float_data((ALLF_DATA*) &fs) != type) {
+                    PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same sample type as eyelink_get_next_data.");
+                }
+                if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on sample\n");
+                if (useEye) {
+                    if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: calling get_raw\n");
+                    memset(&fr, 0, sizeof(fr));
+                    if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
+                        if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: raw value error\n");
+                        snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s",
+                                 err, eyelink_get_error(err, "eyelink_get_extra_raw_values_v2"));
+                        PsychErrorExitMsg(PsychError_internal, errmsg);
+                    }
+                }
+
+                index=PsychIndexElementFrom2DArray(numSampleFields, maxSamples, 0, numSamples++);
+                samples[index++]=(double)(FLOAT_TIME(&fs)); // 1
+                samples[index++]=(double)(fs.type); // 2
+                samples[index++]=(double)(fs.flags); // 3
+                samples[index++]=(double)(fs.px[0]); // 4
+                samples[index++]=(double)(fs.px[1]); // 5
+                samples[index++]=(double)(fs.py[0]); // 6
+                samples[index++]=(double)(fs.py[1]); // 7
+                samples[index++]=(double)(fs.hx[0]); // 8
+                samples[index++]=(double)(fs.hx[1]); // 9
+                samples[index++]=(double)(fs.hy[0]); // 10
+                samples[index++]=(double)(fs.hy[1]); // 11
+                samples[index++]=(double)(fs.pa[0]); // 12
+                samples[index++]=(double)(fs.pa[1]); // 13
+                samples[index++]=(double)(fs.gx[0]); // 14
+                samples[index++]=(double)(fs.gx[1]); // 15
+                samples[index++]=(double)(fs.gy[0]); // 16
+                samples[index++]=(double)(fs.gy[1]); // 17
+                samples[index++]=(double)(fs.rx); // 18
+                samples[index++]=(double)(fs.ry); // 19
+                samples[index++]=(double)(fs.status); // 20
+                samples[index++]=(double)(fs.input); // 21
+                samples[index++]=(double)(fs.buttons); // 22
+                samples[index++]=(double)(fs.htype); // 23
+                samples[index++]=(double)(fs.hdata[0]); // 24
+                samples[index++]=(double)(fs.hdata[1]); // 25
+                samples[index++]=(double)(fs.hdata[2]); // 26
+                samples[index++]=(double)(fs.hdata[3]); // 27
+                samples[index++]=(double)(fs.hdata[4]); // 28
+                samples[index++]=(double)(fs.hdata[5]); // 29
+                samples[index++]=(double)(fs.hdata[6]); // 30
+                samples[index++]=(double)(fs.hdata[7]); // 31
+
+                if (useEye) {
+                    samples[index++]=(double)(fr.raw_pupil[0]); // 32
+                    samples[index++]=(double)(fr.raw_pupil[1]); // 33
+                    samples[index++]=(double)(fr.raw_cr[0]); // 34
+                    samples[index++]=(double)(fr.raw_cr[1]); // 35
+                    samples[index++]=(double)(fr.pupil_area); // 36
+                    samples[index++]=(double)(fr.cr_area); // 37
+                    samples[index++]=(double)(fr.pupil_dimension[0]); // 38
+                    samples[index++]=(double)(fr.pupil_dimension[1]); // 39
+                    samples[index++]=(double)(fr.cr_dimension[0]); // 40
+                    samples[index++]=(double)(fr.cr_dimension[1]); // 41
+                    samples[index++]=(double)(fr.window_position[0]); // 42
+                    samples[index++]=(double)(fr.window_position[1]); // 43
+                    samples[index++]=(double)(fr.pupil_cr[0]); // 44
+                    samples[index++]=(double)(fr.pupil_cr[1]); // 45
+                    samples[index++]=(double)(fr.cr_area2); // 46
+                    samples[index++]=(double)(fr.raw_cr2[0]); // 47
+                    samples[index++]=(double)(fr.raw_cr2[1]); // 48
+                }
+
+                if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: sample copied\n");
+                break;
+
+            case LOST_DATA_EVENT: // queue overflowed, we are not supposed to call eyelink_get_float_data on this
+                index=PsychIndexElementFrom2DArray(numSampleFields, maxSamples, 0, numSamples++);
+                for(fieldNum=0; fieldNum<numSampleFields; fieldNum++){
+                    samples[index++]= (double)((fieldNum==1) ? LOST_DATA_EVENT : MISSING_DATA);
+                }
+                if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: did lost_data\n");
+                break;
+
+            case 0: // queue empty
+                drained=(PsychNativeBooleanType)TRUE;
+                if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: found end of queue\n");
+                break;
+
+            default: // it is an event
+                if (eyelink_get_float_data((ALLF_DATA*) &fe) != type) {
+                    PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same event type as eyelink_get_next_data.");
+                }
+                if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on event\n");
+                index=PsychIndexElementFrom2DArray(NUM_EVENT_FIELDS, maxEvents, 0, numEvents++);
+                events[index++]=(double)(fe.time); // 1 %FLOAT_TIME currently a noop on events
+                events[index++]=(double)(fe.type); // 2
+                events[index++]=(double)(fe.read); // 3
+                events[index++]=(double)(fe.eye); // 4
+                events[index++]=(double)(fe.sttime); // 5
+                events[index++]=(double)(fe.entime); // 6
+                events[index++]=(double)(fe.hstx); // 7
+                events[index++]=(double)(fe.hsty); // 8
+                events[index++]=(double)(fe.gstx); // 9
+                events[index++]=(double)(fe.gsty); // 10
+                events[index++]=(double)(fe.sta); // 11
+                events[index++]=(double)(fe.henx); // 12
+                events[index++]=(double)(fe.heny); // 13
+                events[index++]=(double)(fe.genx); // 14
+                events[index++]=(double)(fe.geny); // 15
+                events[index++]=(double)(fe.ena); // 16
+                events[index++]=(double)(fe.havx); // 17
+                events[index++]=(double)(fe.havy); // 18
+                events[index++]=(double)(fe.gavx); // 19
+                events[index++]=(double)(fe.gavy); // 20
+                events[index++]=(double)(fe.ava); // 21
+                events[index++]=(double)(fe.avel); // 22
+                events[index++]=(double)(fe.pvel); // 23
+                events[index++]=(double)(fe.svel); // 24
+                events[index++]=(double)(fe.evel); // 25
+                events[index++]=(double)(fe.supd_x); // 26
+                events[index++]=(double)(fe.eupd_x); // 27
+                events[index++]=(double)(fe.supd_y); // 28
+                events[index++]=(double)(fe.eupd_y); // 29
+                events[index++]=(double)(fe.status); // 30
+        }
+    }
+
+    if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: done after dequeueing %d samples (of %d) and %d events (of %d) (drained is %d) (clauses: %d %d %d)\n",numSamples,maxSamples,numEvents,maxEvents,drained,!drained, numSamples<maxSamples, numEvents<maxEvents);
+
+    //bug: who frees memory allocated by PsychAllocOutDoubleMatArg if there is no output arg?  according to matlab doc one should not rely on matlab to do it:
+    //   "It is more efficient to perform this cleanup in the source MEX-file than to rely on the automatic mechanism."
+    //mario reasons that mathworks would have to have done something stupid for this to be true
+
+    //these only work for cutting off the unused parts of the buffers because matlab storage is columnwise
+    //this is a little fragile - would be nice if PsychCopy* took the dims of the source and handled noncontiguous cases
+    //mario says this is purposesly discouraged and inconvenient to encourage columnwise storage and prevent inefficient fragged memcpys
+    PsychCopyOutDoubleMatArg(1, kPsychArgOptional, numSampleFields, numSamples, 1, samples);
+    PsychCopyOutDoubleMatArg(2, kPsychArgOptional, NUM_EVENT_FIELDS, numEvents, 1, events);
+
+    PsychCopyOutBooleanArg(3, kPsychArgOptional, drained);
+
+    if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: done with outputs\n");
+
+    // PsychFreeTemp(samples); apparently not paradigmatic to do this oneself
+    // PsychFreeTemp(events);
+
+    return(PsychError_none);
 }
 
 
 psych_bool TrackerOKForRawValues(void) {
-	static psych_bool OK=FALSE;
-	
-	int err,ver[4];
-	char errmsg[2 * ERR_BUFF_LEN]="",buf[ERR_BUFF_LEN]="";
-	psych_bool tryAgain=TRUE;
-	
-	if(OK){ //check static value so we don't do the expensive stuff below more than once
-		return OK;
-	}
-	
-	while(tryAgain){
-		if ((err=eyelink_read_request("link_sample_data"))){
-			sprintf(errmsg, "Eyelink: eyelink_read_request returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_request")); //no snprintf in msvs?  bug: buff overflow
-			PsychErrorExitMsg(PsychError_internal, errmsg);
-		}
-		
-		err=NO_REPLY;
-		while(err==NO_REPLY){
-			err=eyelink_read_reply(buf);
-		}
-		
-		if(err == OK_RESULT){
-			if(strlen(buf)>0){
-				if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: link_sample_data is: '%s'\n",buf);
-				// currently getting "LEFT, RIGHT, , RAW, HREF, GAZE, GAZERES, AREA, STATUS, INPUT, HMARKER,"
-				// what happened to PUPIL?
-				
-				if(!strstr(buf,"INPUT") || !strstr(buf,"HMARKER")){
-					sprintf(errmsg, "Eyelink: your current link_sample_data is '%s', but you must include INPUT and HMARKER to get raw values.  You must also set inputword_is_window = ON.  Use Eyelink('command','link_sample_data = INPUT,HMARKER') and Eyelink('command','inputword_is_window = ON') to do this.",buf); //no snprintf in msvs?  bug: buff overflow
-					PsychErrorExitMsg(PsychError_user, errmsg);
-				}
-				tryAgain=FALSE;
-			} else {
-				// sent mail to suganthan: eyelink_read_reply(buf) is frequently returning OK_RESULT without setting buf
-				// he says send him an eye.log from the tracker host when this happens.
-				mexPrintf("Eyelink: TrackerOKForRawValues: eyelink_read_request(\"link_sample_data\") needs to try again\n");
-			}
-			
-		} else {
-			sprintf(errmsg, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply")); //no snprintf in msvs?  bug: buff overflow
-			PsychErrorExitMsg(PsychError_internal, errmsg);
-		}
-	}
-	
+    static psych_bool OK=FALSE;
+
+    int err,ver[4];
+    char errmsg[2 * ERR_BUFF_LEN]="",buf[ERR_BUFF_LEN]="";
+    psych_bool tryAgain=TRUE;
+
+    if (OK) { //check static value so we don't do the expensive stuff below more than once
+        return OK;
+    }
+
+    while(tryAgain) {
+        if ((err=eyelink_read_request("link_sample_data"))){
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_request returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_request"));
+            PsychErrorExitMsg(PsychError_internal, errmsg);
+        }
+
+        err=NO_REPLY;
+        while(err==NO_REPLY){
+            err=eyelink_read_reply(buf);
+        }
+
+        if(err == OK_RESULT){
+            if(strlen(buf)>0){
+                if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: link_sample_data is: '%s'\n",buf);
+                // currently getting "LEFT, RIGHT, , RAW, HREF, GAZE, GAZERES, AREA, STATUS, INPUT, HMARKER,"
+                // what happened to PUPIL?
+
+                if(!strstr(buf,"INPUT") || !strstr(buf,"HMARKER")){
+                    snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: your current link_sample_data is '%s', but you must include INPUT and HMARKER to get raw values.  You must also set inputword_is_window = ON.  Use Eyelink('command','link_sample_data = INPUT,HMARKER') and Eyelink('command','inputword_is_window = ON') to do this.",buf);
+                    PsychErrorExitMsg(PsychError_user, errmsg);
+                }
+                tryAgain=FALSE;
+            } else {
+                // sent mail to suganthan: eyelink_read_reply(buf) is frequently returning OK_RESULT without setting buf
+                // he says send him an eye.log from the tracker host when this happens.
+                mexPrintf("Eyelink: TrackerOKForRawValues: eyelink_read_request(\"link_sample_data\") needs to try again\n");
+            }
+
+        } else {
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply"));
+            PsychErrorExitMsg(PsychError_internal, errmsg);
+        }
+    }
+
     /* disabled this check cuz reading inputword_is_window isn't supported
-	if (err=eyelink_read_request("inputword_is_window")){
-		sprintf(errmsg, "Eyelink: eyelink_read_request returned error code %d: '%s'", err, eyelink_get_error(err,"eyelink_read_request")); //no snprintf in msvs?  bug: buff overflow
-		PsychErrorExitMsg(PsychError_internal, errmsg);
-	}
-	
-	err=NO_REPLY;
-	while(err==NO_REPLY){
-		err=eyelink_read_reply(buf);
-	}
-	
-	if(err == OK_RESULT){
-		if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: inputword_is_window is: '%s'\n",buf); //must be Eyelink('command','inputword_is_window = ON')
-		// currently getting "Variable read not supported"
-	 
-	 	if(!strstr(buf,"ON")){
-			sprintf(errmsg, "Eyelink: your current inputword_is_window is '%s', but must be ON to get raw values.  Use Eyelink('command','inputword_is_window = ON') to do this.",buf); //no snprintf in msvs?  bug: buff overflow
-			PsychErrorExitMsg(PsychError_user, errmsg);
-		}
-	 
-	} else {
-		sprintf(errmsg, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply")); //no snprintf in msvs?  bug: buff overflow
-		PsychErrorExitMsg(PsychError_internal, errmsg);
-	}
-	 */
-	
-	eyelink_dll_version(buf);
-	if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: eyelink dll version: '%s'\n",buf); //currently "1,8,1,0"
-	if(sscanf(buf,"%d,%d,%d,%d",&(ver[0]),&(ver[1]),&(ver[2]),&(ver[3]))==4){
-		if(ver[0]<1 || (ver[0]==1 && ver[1]<8) || (ver[0]==1 && ver[1]==8 && ver[2]<1)){
-			sprintf(errmsg, "EyeLink: eyelink_dll_version reports '%s' - collecting raw values requires that you install 1.8.1.0 or higher (https://www.sr-support.com/forums/showthread.php?t=6 (windows) or https://www.sr-support.com/forums/showthread.php?t=15 (osx)).",buf); //no snprintf in msvs?  bug: buff overflow
-			PsychErrorExitMsg(PsychError_unimplemented, errmsg);
-		}
-	} else {
-		sprintf(errmsg, "Eyelink: couldn't read output of eyelink_dll_version: '%s'",buf);
-		PsychErrorExitMsg(PsychError_internal, errmsg);
-	}
-	
-	if(eyelink_get_tracker_version(buf)<3){
-		PsychErrorExitMsg(PsychError_unimplemented, "Eyelink: can't get raw values without eyelink 1000 or better");
-	} else {
-		if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: tracker version: '%s'\n",buf); //currently "EYELINK CL 4.31"
-	}
-	if(sscanf(buf,"EYELINK CL %d.%d",&(ver[0]),&(ver[1]))==2){
-		if(ver[0]<4 || (ver[0]==4 && ver[1]<31)){
-			sprintf(errmsg, "EyeLink: eyelink_get_tracker_version reports '%s' - collecting raw values requires that you install host software 4.31 or higher (https://www.sr-support.com/forums/showthread.php?t=179).",buf); //no snprintf in msvs?  bug: buff overflow
-			PsychErrorExitMsg(PsychError_unimplemented,errmsg);
-		}
-	} else {
-		sprintf(errmsg, "Eyelink: couldn't read output of eyelink_get_tracker_version: '%s'",buf);
-		PsychErrorExitMsg(PsychError_internal, errmsg);
-	}
-	
-	OK=TRUE;
-	return OK;
+    if (err=eyelink_read_request("inputword_is_window")){
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_request returned error code %d: '%s'", err, eyelink_get_error(err,"eyelink_read_request"));
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    err=NO_REPLY;
+    while(err==NO_REPLY){
+        err=eyelink_read_reply(buf);
+    }
+
+    if(err == OK_RESULT){
+        if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: inputword_is_window is: '%s'\n",buf); //must be Eyelink('command','inputword_is_window = ON')
+        // currently getting "Variable read not supported"
+
+         if(!strstr(buf,"ON")){
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: your current inputword_is_window is '%s', but must be ON to get raw values.  Use Eyelink('command','inputword_is_window = ON') to do this.",buf);
+            PsychErrorExitMsg(PsychError_user, errmsg);
+        }
+
+    } else {
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: eyelink_read_reply returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_reply"));
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+     */
+
+    eyelink_dll_version(buf);
+    if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: eyelink dll version: '%s'\n",buf); //currently "1,8,1,0"
+    if(sscanf(buf,"%d,%d,%d,%d",&(ver[0]),&(ver[1]),&(ver[2]),&(ver[3]))==4){
+        if(ver[0]<1 || (ver[0]==1 && ver[1]<8) || (ver[0]==1 && ver[1]==8 && ver[2]<1)){
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "EyeLink: eyelink_dll_version reports '%s' - collecting raw values requires that you install 1.8.1.0 or higher (https://www.sr-support.com/forums/showthread.php?t=6 (windows) or https://www.sr-support.com/forums/showthread.php?t=15 (osx)).",buf);
+            PsychErrorExitMsg(PsychError_unimplemented, errmsg);
+        }
+    } else {
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: couldn't read output of eyelink_dll_version: '%s'",buf);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    if(eyelink_get_tracker_version(buf)<3){
+        PsychErrorExitMsg(PsychError_unimplemented, "Eyelink: can't get raw values without eyelink 1000 or better");
+    } else {
+        if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: tracker version: '%s'\n",buf); //currently "EYELINK CL 4.31"
+    }
+    if(sscanf(buf,"EYELINK CL %d.%d",&(ver[0]),&(ver[1]))==2){
+        if(ver[0]<4 || (ver[0]==4 && ver[1]<31)){
+            snprintf(errmsg, 2 * ERR_BUFF_LEN, "EyeLink: eyelink_get_tracker_version reports '%s' - collecting raw values requires that you install host software 4.31 or higher (https://www.sr-support.com/forums/showthread.php?t=179).",buf);
+            PsychErrorExitMsg(PsychError_unimplemented,errmsg);
+        }
+    } else {
+        snprintf(errmsg, 2 * ERR_BUFF_LEN, "Eyelink: couldn't read output of eyelink_get_tracker_version: '%s'",buf);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    OK=TRUE;
+    return OK;
 }

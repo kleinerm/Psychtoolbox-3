@@ -1,0 +1,46 @@
+# This is a GitHub Action workflow to build toolbox MLTBX and release it on GitHub
+
+name: Tag triggered release
+
+# # Start the workflow when a tag is created.
+on:
+  push:
+    tags:
+      - '*'
+
+# A workflow run consists of jobs that run sequentially
+jobs:
+  # This workflow contains one job that builds the zip and MLTBX files.
+  releaseUserFiles:
+    # The type of runner that the job will run on, we use latest Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      # Runs commands using the runners shell
+      - name: checkout the repo
+        uses: actions/checkout@v3
+
+      - name: Zip the toolbox
+        run: zip -r '${{  github.ref_name }}.zip' Psychtoolbox
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v1
+
+      - name: Create MLTBX
+        uses: matlab-actions/run-command@v1
+        continue-on-error: false
+        if: always()
+        with:
+          command: addpath([pwd filesep 'managementtools']); createPsychtoolboxMLTBX("managementtools/Psychtoolbox.prj",  "${{  github.ref_name }}")
+
+      # # This is for diagnostics
+      # - name: list directories
+      #   run: ls -l
+
+      # Create the release
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          draft: true
+          artifacts: "./${{  github.ref_name }}.zip, ./${{  github.ref_name }}.mltbx"
+          generateReleaseNotes: true
+          tag: ${{  github.ref_name }}

@@ -7,7 +7,12 @@ function rc = Is64Bit
 
 % History:
 % 3.09.2012  mk  Written.
+persistent rc64;
 
-rc = IsLinux(1) || IsOSX(1) || IsWin(1);
+if isempty(rc64)
+    rc64 = ~isempty(strfind(computer, '64')); %#ok<STREMP>
+end
+
+rc = rc64;
 
 return;

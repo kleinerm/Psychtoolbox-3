@@ -37,6 +37,7 @@
 #if GST_CHECK_VERSION(1,0,0)
 #include <gst/app/gstappsink.h>
 #include <gst/video/video.h>
+#include <gst/pbutils/pbutils.h>
 
 // When building against < GStreamer 1.18.0, define some missing video formats:
 #ifndef GST_VIDEO_FORMAT_Y444_16LE
@@ -48,16 +49,19 @@
 // Need to define this for playbin as it is not defined
 // in any header file: (Expected behaviour - not a bug)
 typedef enum {
-    GST_PLAY_FLAG_VIDEO         = (1 << 0),
-    GST_PLAY_FLAG_AUDIO         = (1 << 1),
-    GST_PLAY_FLAG_TEXT          = (1 << 2),
-    GST_PLAY_FLAG_VIS           = (1 << 3),
-    GST_PLAY_FLAG_SOFT_VOLUME   = (1 << 4),
-    GST_PLAY_FLAG_NATIVE_AUDIO  = (1 << 5),
-    GST_PLAY_FLAG_NATIVE_VIDEO  = (1 << 6),
-    GST_PLAY_FLAG_DOWNLOAD      = (1 << 7),
-    GST_PLAY_FLAG_BUFFERING     = (1 << 8),
-    GST_PLAY_FLAG_DEINTERLACE   = (1 << 9)
+    GST_PLAY_FLAG_VIDEO             = (1 << 0),
+    GST_PLAY_FLAG_AUDIO             = (1 << 1),
+    GST_PLAY_FLAG_TEXT              = (1 << 2),
+    GST_PLAY_FLAG_VIS               = (1 << 3),
+    GST_PLAY_FLAG_SOFT_VOLUME       = (1 << 4),
+    GST_PLAY_FLAG_NATIVE_AUDIO      = (1 << 5),
+    GST_PLAY_FLAG_NATIVE_VIDEO      = (1 << 6),
+    GST_PLAY_FLAG_DOWNLOAD          = (1 << 7),
+    GST_PLAY_FLAG_BUFFERING         = (1 << 8),
+    GST_PLAY_FLAG_DEINTERLACE       = (1 << 9),
+    GST_PLAY_FLAG_SOFT_COLORBALANCE = (1 << 10),
+    GST_PLAY_FLAG_FORCE_FILTERS     = (1 << 11),
+    GST_PLAY_FLAG_FORCE_SW_DECODERS = (1 << 12)
 } GstPlayFlags;
 
 #define PSYCH_MAX_MOVIES 100
@@ -1282,6 +1286,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
+    0,
     0
 };
 
@@ -1551,15 +1556,24 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Try to disable hardware accelerated movie playback if requested by specialFlags1 flag 4:
     if (specialFlags1 & 4) {
-        // Note TODO: As of Ubuntu 22.04-LTS, GStreamer 1.20+, one could instead simply set the
-        // playbin2 play flag "playflags |= GST_PLAY_FLAG_FORCE_SW_DECODERS;" to dynamically
-        // do this way more easily! However, not supported with playbin3, which we don't use atm.
-        if (PsychEnableGStreamerHardwareVideoDecoding(FALSE)) {
-            if (PsychPrefStateGet_Verbosity() > 3)
-                printf("PTB-INFO: GStreamer hardware accelerated video decoding disabled on user request (specialFlags1 +4).\n");
-        }
-        else if (PsychPrefStateGet_Verbosity() > 1) {
+        guint major, minor;
+        gst_plugins_base_version(&major, &minor, NULL, NULL);
+
+        // GStreamer 1.18+ allows to en/disable hw accelerated decoding dynamically via GST_PLAY_FLAG_FORCE_SW_DECODERS:
+        // Note this would not work with playbin3, but we only use playbin2 aka playbin, so we are fine with this.
+        if (major > 1 || minor >= 18)
+            playflags |= GST_PLAY_FLAG_FORCE_SW_DECODERS;
+
+        // GStreamer 1.16 and earlier only allows easy disable for the duration of a whole session by messing with hw plugin ranks:
+        if ((major == 1 && minor < 18) && !PsychEnableGStreamerHardwareVideoDecoding(FALSE) && (PsychPrefStateGet_Verbosity() > 1)) {
+            // Failed: Tell user.
             printf("PTB-WARNING: Failed to disable GStreamer hardware accelerated video decoding!\n");
+        }
+        else if (PsychPrefStateGet_Verbosity() > 3) {
+            // All good: This statement applies to case-by-case on GStreamer 1.18+ on Ubuntu 22.04-LTS+, and Debian 11+,
+            // and RaspberryPi OS 11+. It applies for the remainder of a Octave/Matlab session on GStreamer < 1.18, e.g.,
+            // Ubuntu 20.04-LTS and earlier:
+            printf("PTB-INFO: GStreamer hardware accelerated video decoding disabled on user request (specialFlags1 +4).\n");
         }
     }
 
@@ -1581,10 +1595,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
 
         // Default flags for playbin: Decode video ...
-        playflags = GST_PLAY_FLAG_VIDEO;
+        playflags |= GST_PLAY_FLAG_VIDEO;
 
         // ... and deinterlace it if needed, unless prevented by specialFlags setting 256:
-        if (!(specialFlags1 & 256)) playflags|= GST_PLAY_FLAG_DEINTERLACE;
+        if (!(specialFlags1 & 256)) playflags |= GST_PLAY_FLAG_DEINTERLACE;
 
         // Decode and play audio by default, with software audio volume control, unless specialFlags setting 2 enabled:
         if (!(specialFlags1 & 2)) playflags |= GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_SOFT_VOLUME;
@@ -2107,16 +2121,21 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Videotrack available?
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
-        if (!videocodec) {
+        caps = NULL;
+
+        if (videocodec) {
+            // Try to get the pad/caps from the videocodec, so we get original colorimetry information:
+            pad = gst_element_get_static_pad(videocodec, "src");
+            caps = gst_pad_get_current_caps(pad);
+        }
+
+        // No videocodec for caps query, or codec src caps query failed?
+        if (!caps) {
             // Fallback: Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
             pad = gst_element_get_static_pad(videosink, "sink");
             peerpad = gst_pad_get_peer(pad);
             caps = gst_pad_get_current_caps(peerpad);
             gst_object_unref(peerpad);
-        } else {
-            // Better: Get the pad/caps from the videocodec, so we get original colorimetry information:
-            pad = gst_element_get_static_pad(videocodec, "src");
-            caps = gst_pad_get_current_caps(pad);
         }
 
         // Got valid caps?

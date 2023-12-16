@@ -131,8 +131,7 @@ PsychError EyelinkImageTransfer(void)
         // Fake suitable BitmapInfo for later code to consume:
         BitmapInfo = malloc(sizeof(BITMAPINFO));
         BitmapInfo->bmiHeader.biWidth =inputN;
-        // biHeight negated/negative, so our image doesn't get vertically flipped below:
-        BitmapInfo->bmiHeader.biHeight = -inputM;
+        BitmapInfo->bmiHeader.biHeight = inputM;
         BitmapInfo->bmiHeader.biBitCount = 32;
 
         // Allocate memory to hold the pixel data that we'll later pass to common code below:
@@ -140,7 +139,7 @@ PsychError EyelinkImageTransfer(void)
 
         // Loop through all rows and columns of the pixel data, extract it,
         // and stick it into 'BitmapBits'.
-        for (iy = 0; iy < inputM; iy++) {
+        for (iy = inputM-1; iy >= 0; iy--) { // decrement iy for correct vertical orientation
             for (ix = 0; ix < inputN; ix++) {
                 if (inputP == 1) { // Grayscale8
                     // Extract the grayscale value.

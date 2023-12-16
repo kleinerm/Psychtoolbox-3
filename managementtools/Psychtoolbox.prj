@@ -1,0 +1,175 @@
+<deployment-project plugin="plugin.toolbox" plugin-version="1.0">
+  <configuration file="/home/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3/Psychtoolbox.prj" location="/home/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3" name="Psychtoolbox" target="target.toolbox" target-name="Package Toolbox">
+    <param.appname>Psychtoolbox-3</param.appname>
+    <param.authnamewatermark>Mario Kleiner and other contributors</param.authnamewatermark>
+    <param.email>psychtoolbox@mi-incubator.com</param.email>
+    <param.company>The Psychtoolbox developers</param.company>
+    <param.summary>The most advanced toolbox for neuroscience stimulus presentation, response  collection and data collection.</param.summary>
+    <param.description>Psychophysics Toolbox Version 3 (or short "PTB3") extends MATLAB with functions for research grade neuroscience stimulus presentation and response collection. The PTB core routines provide trustworthy, precise, and efficient functions for stimulus presentation and response collection in different modalities:
+- Visual stimulus presentation by use of modern graphics and display hardware via OpenGL hardware acceleration:
+• Drawing of complex 2D stimuli, including use of GPU shaders, framebuffer blending and texture mapping for real-time creation of complex dynamic stimuli and procedural stimuli.
+• Movie playback and movie recording, utilizing the GStreamer multi-media framework.
+• Video capture and live display, including GPU post-processing of live video, also with precisely timed
+control of professional class IIDC compliant Firewire and USB-Vision machine vision video cameras and synchronized multi-camera setups (Linux only for IIDC cameras).
+• Drawing of 3D stimuli via direct low level OpenGL commands and via a high level 3D engine.
+• Stereoscopic presentation, supporting different stereoscopic display techniques, including support for some head tracked VR headsets, e.g., from Oculus VR.
+• Presentation of stimuli with high color/luminance/contrast precision on a wide range of suitable display
+hardware for bit depths beyond the typical 8 bits per color range, up to 16 bits per color channel with
+some equipment.
+• High Dynamic Range (HDR) stimulus display on Linux, and MS-Windows, and with more limitations on macOS 10.15.
+• GPU based fast stimulus post-processing to cover many common tasks like color-correction, gamma correction, geometric display distortion correction, vignette/shading correction.
+• Precisely timed and time-stamped stimulus presentation, also on multi-display setups.
+• Support for variable refresh rate displays (FreeSync, DisplayPort adaptive sync) on modern Linux.
+• Support for some types of photometers for display calibration.
+- Auditory stimulus presentation with low-latency, sub-millisecond precise timing and time-stamping, multi-channel support and convenient live control of some auditory stimulus parameters. Interfacing with the OpenAL API for 3D spatial stimuli.
+- Fast low level control of some types of digital and analog input/output hardware for control of stimulation and recording equipment via serial ports, network and USB.
+Response collection, sometimes with millisecond accurate time-stamping is provided from keyboards, keypads, mice, game controllers, and other HID input devices, and also - on Linux and Windows 10 only - on multitouch touchscreens. Different common response button boxes and eye trackers are also supported, as well as auditory response collection.
+Psychtoolbox also provides functions for precisely timed execution of code, and for control of the realtime scheduling facilities of the operating system.
+Ancillary routines support common needs like color space transformations, the QUEST threshold seeking algorithm and some other psychometric routines, file i/o and various convenient helper routines. A large set of demos is included.
+Psychtoolbox works best on recent versions of the GNU/Linux operating system, where it takes advantage of some unique features of that operating system (Ubuntu 20.04.3-LTS or later). It also works reasonably well on Microsoft Windows (Windows-10 recommended) and - with substantial limitations due to many operating system flaws and defects - Apple macOS (version 10.15.7 recommended, macOS 11 not recommended), although those systems are often much more restricted in accuracy and reliability of stimulus presentation and response collection.
+Different parts of Psychtoolbox are licensed under different OSI compliant Free Software and Open Source licenses, with the majority of routines licensed under the MIT license.</param.description>
+    <param.screenshot>${PROJECT_ROOT}/managementtools/PTBOldTVLogoSmall_180x180.png</param.screenshot>
+    <param.version>3.0.19.6</param.version>
+    <param.output>${PROJECT_ROOT}/Psychtoolbox-3.mltbx</param.output>
+    <param.products.name />
+    <param.products.id />
+    <param.products.version />
+    <param.platforms />
+    <param.guid>bfb710c1-4c14-4bff-93d7-518dad0c71fb</param.guid>
+    <param.exclude.filters />
+    <param.exclude.pcodedmfiles>true</param.exclude.pcodedmfiles>
+    <param.examples />
+    <param.demosxml />
+    <param.apps />
+    <param.registered.apps />
+    <param.docs />
+    <param.getting.started.guide />
+    <param.matlabpath.excludes />
+    <param.javaclasspath.excludes />
+    <param.exported.on.package>false</param.exported.on.package>
+    <param.required.addons />
+    <param.matlab.project.id />
+    <param.matlab.project.name />
+    <param.release.start>R2014b</param.release.start>
+    <param.release.end>latest</param.release.end>
+    <param.release.current.only>false</param.release.current.only>
+    <param.compatiblity.windows>true</param.compatiblity.windows>
+    <param.compatiblity.macos>true</param.compatiblity.macos>
+    <param.compatiblity.linux>true</param.compatiblity.linux>
+    <param.compatiblity.matlabonline>false</param.compatiblity.matlabonline>
+    <param.installation.map />
+    <param.additional.sw.names />
+    <param.additional.sw.licenses />
+    <param.additional.sw.win.url />
+    <param.additional.sw.mac.url />
+    <param.additional.sw.linux.url />
+    <unset>
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.output />
+      <param.products.name />
+      <param.products.id />
+      <param.products.version />
+      <param.platforms />
+      <param.exclude.filters />
+      <param.exclude.pcodedmfiles />
+      <param.examples />
+      <param.demosxml />
+      <param.apps />
+      <param.registered.apps />
+      <param.docs />
+      <param.getting.started.guide />
+      <param.matlabpath.excludes />
+      <param.javaclasspath.excludes />
+      <param.exported.on.package />
+      <param.required.addons />
+      <param.matlab.project.id />
+      <param.matlab.project.name />
+      <param.release.current.only />
+      <param.compatiblity.windows />
+      <param.compatiblity.macos />
+      <param.compatiblity.linux />
+      <param.installation.map />
+      <param.additional.sw.names />
+      <param.additional.sw.licenses />
+      <param.additional.sw.win.url />
+      <param.additional.sw.mac.url />
+      <param.additional.sw.linux.url />
+    </unset>
+    <fileset.rootdir>
+      <file>${PROJECT_ROOT}/Psychtoolbox</file>
+    </fileset.rootdir>
+    <fileset.rootfiles>
+      <file>${PROJECT_ROOT}/Psychtoolbox/Contents.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/DownloadAdditionsForLinux.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/DownloadLegacyPsychtoolbox.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/DownloadPsychtoolbox.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/DownloadPsychtoolbox.m.zip</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/License.txt</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychAlpha</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychAlphaBlending</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychBasic</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychCal</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychCalDemoData</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychColorimetric</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychColorimetricData</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychContributed</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychDemos</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychDocumentation</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychFiles</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychGLImageProcessing</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychGPGPU</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychGamma</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychHardware</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychInitialize</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychJava</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychLinuxConfiguration.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychObsolete</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychOneliners</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychOpenGL</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychOptics</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychPriority</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychProbability</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychRadiometric</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychRects</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychSignal</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychSound</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychStairCase</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychTests</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychVideoCapture</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/Psychometric</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/PsychtoolboxPostInstallRoutine.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/Quest</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/SetupPsychtoolbox.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/SwitchToNewPsychtoolboxHoster.m</file>
+      <file>${PROJECT_ROOT}/Psychtoolbox/UpdatePsychtoolbox.m</file>
+    </fileset.rootfiles>
+    <fileset.depfun.included />
+    <fileset.depfun.excluded />
+    <fileset.package />
+    <build-deliverables>
+      <file location="${PROJECT_ROOT}" name="Psychtoolbox-3.mltbx" optional="false">/home/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3/Psychtoolbox-3.mltbx</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>/usr/local/MATLAB/R2023b</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>true</unix>
+      <mac>false</mac>
+      <windows>false</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>true</linux>
+      <solaris>false</solaris>
+      <osver>5.16.11-surface</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>glnxa64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>

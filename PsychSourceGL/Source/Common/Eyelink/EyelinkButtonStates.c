@@ -37,7 +37,7 @@ static char seeAlsoString[] = "SendKeyButton";
 
 PsychError EyelinkButtonStates(void)
 {
-	UInt16	iButtons	= 0;
+    psych_uint16 iButtons	= 0;
 	double	*pfOutArg	= NULL;
 	
 	// Add help strings
