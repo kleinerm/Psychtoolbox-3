@@ -30,7 +30,7 @@ jobs:
         continue-on-error: false
         if: always()
         with:
-          command: addpath([pwd filesep 'managementtools']); createPsychtoolboxMLTBX("managementtools/Psychtoolbox.prj",  "${{  github.ref_name }}")
+          command: addpath([pwd filesep 'managementtools']); createPsychtoolboxMLTBX("Psychtoolbox.prj",  "${{  github.ref_name }}")
 
       # # This is for diagnostics
       # - name: list directories
