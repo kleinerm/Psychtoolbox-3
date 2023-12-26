@@ -50,7 +50,7 @@ persistent okNames mexExtensions;
 % Different processing on Octave build.
 if IsOctave
     myName = char(varargin{1});
-    if isempty(strfind(myName, '.m'))
+    if isempty(strfind(myName, '.m')) %#ok<*STREMP>
         return;
     end
 
@@ -73,10 +73,16 @@ if IsOctave
         % Proper extension for the .mex file?
         if isempty(strfind(fpathext, '.mex'))
             % Nope, wrong file bound:
-            if Is64Bit
-                oext = ['64' filesep];
+            if IsARM
+                oext = 'ARM';
             else
-                oext = filesep;
+                oext = '';
+            end
+
+            if Is64Bit
+                oext = [oext '64' filesep];
+            else
+                oext = [oext filesep];
             end
 
             if IsLinux
@@ -85,7 +91,7 @@ if IsOctave
                     fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles' oext]);
                 else
                     % 32-Bit ARM:
-                    fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFilesARM' oext]);
+                    fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
                 end
             end
             if IsOSX
@@ -115,8 +121,8 @@ end
 
 % Initialize the persistent variables.
 if isempty(okNames)
-    okNames = {      'PCWIN',  'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'GLNX86', 'MAC',    'MAC2', 'MACI',    'i486-pc-linux-gnu', 'MACI64',    'GLNXA64' };
-    mexExtensions = {'mexw32', 'mexw64',  '*',    '*',    '*',     '*',     '*',      '*',   'mexglx', 'mexmac', 'mex',  'mexmaci', 'mex',               'mexmaci64', 'mexa64' };
+    okNames = {      'PCWIN',  'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'GLNX86', 'MAC',    'MAC2', 'MACI',    'i486-pc-linux-gnu', 'MACI64',    'GLNXA64', 'MACA64'};
+    mexExtensions = {'mexw32', 'mexw64',  '*',    '*',    '*',     '*',     '*',      '*',   'mexglx', 'mexmac', 'mex',  'mexmaci', 'mex',               'mexmaci64', 'mexa64',  'mexmaca64'};
 end
 
 inputNames = [];
