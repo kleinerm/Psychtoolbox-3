@@ -658,12 +658,6 @@ outappnapstuff:
 
 void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
 {
-    typedef struct {
-        NSInteger majorVersion;
-        NSInteger minorVersion;
-        NSInteger patchVersion;
-    } MyOperatingSystemVersion;
-
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
@@ -673,20 +667,11 @@ void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
         NSApplicationLoad();
     });
 
-    // Version query supported? Only on OSX 10.9 (inofficially, non-public api), 10.10 (public api):
-    if ([[NSProcessInfo processInfo] respondsToSelector:@selector(operatingSystemVersion)]) {
-        MyOperatingSystemVersion version = ((MyOperatingSystemVersion(*)(id, SEL))objc_msgSend_stret)([NSProcessInfo processInfo], @selector(operatingSystemVersion));
-        if (major) *major = version.majorVersion;
-        if (minor) *minor = version.minorVersion;
-        if (patchlevel) *patchlevel = version.patchVersion;
-    }
-    else {
-        // Unsupported. We must be on OSX 10.8.x, as this is the only OSX version
-        // we support which doesn't support the selector. Make shit up:
-        if (major) *major = 10;
-        if (minor) *minor = 8;
-        if (patchlevel) *patchlevel = 5;
-    }
+    // Version query: Since macOS 10.10, would fail on older versions.
+    NSOperatingSystemVersion version = [[NSProcessInfo processInfo] operatingSystemVersion];
+    if (major) *major = version.majorVersion;
+    if (minor) *minor = version.minorVersion;
+    if (patchlevel) *patchlevel = version.patchVersion;
 
     // Drain the pool:
     [pool drain];
