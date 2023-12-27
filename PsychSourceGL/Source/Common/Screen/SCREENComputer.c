@@ -67,25 +67,8 @@ static char seeAlsoString[] = "";
 
 static void ReportSysctlError(int errorValue)
 {
-    psych_bool  foundError;
-    int sysctlErrors[] = {EFAULT, EINVAL, ENOMEM, ENOTDIR, EISDIR, EOPNOTSUPP, EPERM};
-    int i, errorIndex, numSysctlErrors=7;
-    char *sysctlErrorStrings[]={"EFAULT", "EINVAL", "ENOMEM", "ENOTDIR", "EISDIR", "EOPNOTSUPP", "EPERM", "UNRECOGNIZED"};
-
-    if(errorValue == 0) return;
-
-    foundError=0;
-    errorIndex=7;
-
-    for(i=0; i<numSysctlErrors; i++){
-        if(errno==sysctlErrors[i]){
-            foundError=1;
-            errorIndex=i;
-            break;
-        }
-    }
-
-    PsychErrorExitMsg(PsychError_internal, sysctlErrorStrings[errorIndex]);
+    if (errorValue > 0)
+        PsychErrorExitMsg(PsychError_internal, strerror(errorValue));
 }
 
 PsychError SCREENComputer(void) 
