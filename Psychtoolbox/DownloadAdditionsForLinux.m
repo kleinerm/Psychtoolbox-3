@@ -1,48 +1,39 @@
 function DownloadAdditionsForLinux(targetdirectory, flavor)
 % DownloadAdditionsForLinux(targetdirectory [, flavor]);
 %
-% Install missing Matlab or Octave mex files for older versions of the
-% Psychtoolbox, as provided by some Linux distributions, e.g., Ubuntu 12.10
-% or (as of April 2013) 13.04.
+% THIS FUNCTION DOES NO LONGER WORK, AS GITHUB HAS REMOVED THEIR
+% SUBVERSION FRONTEND, WHICH IT CRITICALLY REQUIRES, FROM THEIR SERVICES
+% PERMANENTLY AT 8TH JANUARY 2024.
 %
-% It needs Subversion to be installed on your machine (sudo apt-get install
-% subversion).
+% Due to the lack of financial support for Psychtoolbox by the vast
+% majority of our non-paying users, we did not and currently do not have
+% the funding to work on a good alternative solution for this.
 %
-% You *do not need* this function if you downloaded Psychtoolbox from its
+% Try to manually download and install the Datapixx or Eyelink mex files,
+% which this function would normally install for you. Other than that,
+% see http://psychtoolbox.org/download.html#alternate-download for a
+% workable, although way less convenient and advanced, download and
+% installation method, via zip file download and execution of
+% SetupPsychtoolbox(). Good luck!
+%
+% =========================================================================
+%
+% Install missing Matlab or Octave mex files for versions of the Psychtoolbox
+% which are directly provided by some Linux distributions, e.g., Ubuntu 20.04
+% and later.
+%
+% You *DO NOT NEED* this function if you downloaded Psychtoolbox from its
 % home-site via DownloadPsychtoolbox(), or if you install Psychtoolbox from
-% the NeuroDebian repository. If you install from NeuroDebian, simply
-% install these packages:
+% the NeuroDebian repository. If you installed from NeuroDebian, then for
+% Matlab nothing extra needs to be done. For Octave, to add the Datapixx
+% or Eyelink functions execute this in a terminal:
 %
-% For Matlab:
+% sudo apt install octave-psychtoolbox-3-nonfree
 %
-% Basic Mex files:      sudo apt-get install matlab-psychtoolbox-3
-% Datapixx and Eyelink: sudo apt-get install matlab-psychtoolbox-3-nonfree
-%
-% For Octave, if you want to use the Datapixx or Eyelink functions:
-% sudo apt-get install octave-psychtoolbox-3-nonfree
-%
-% However, some Linux distributinos bundle Psychtoolbox as part of their
-% standard package repository, e.g., Ubuntu 12.10 and 13.04, and they
-% provide outdated packages (as of April 2013) which require you to run
-% this script manually after each installation or update in order to
-% retrieve mex files for Matlab, or the Datapixx and Eyelink mex files for
-% octave.
-%
-% You can call this function from within Matlab, providing the full path to
-% a directory. The function will create a new folder PsychtoolboxAddOns
-% inside that directory and add it to your path. The add on files will be
-% downloaded from the Psychtoolbox main repository and stored there.
-%
-% After this function successfully completes, your Psychtoolbox should work
-% with Matlab on Linux as well.
-%
-% If you call this function from within Octave, it will download only a few
-% additional addon files for the Octave Psychtoolbox. Currently the only
-% added files are the Eyelink mex files for SR-Research Eyelink
+% If you would call this function from within Octave, it will download only
+% a few additional addon files for the Octave Psychtoolbox. Currently the
+% only added files are the Eyelink mex files for SR-Research Eyelink
 % Gazetrackers, and the Datapixx mex file for VPixx Inc. products.
-%
-% This function should eventually become obsolete when the regular mainstream
-% Linux distributions update their packaged versions of Psychtoolbox.
 %
 
 % History:
@@ -63,6 +54,8 @@ function DownloadAdditionsForLinux(targetdirectory, flavor)
 %                 - Use javaclasspath.txt instead of classpath.txt on
 %                   R2013a and later.
 %
+
+error('Function aborted due to currently unsupported update method. Read "help DownloadAdditionsForLinux".');
 
 % Psychtoolbox package installed?
 if ~exist('/usr/share/octave/site/m/psychtoolbox-3/', 'dir')
