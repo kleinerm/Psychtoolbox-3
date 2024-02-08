@@ -1,6 +1,6 @@
 # This is a GitHub Action workflow to build toolbox zip/ MLTBX and upload it to a GitHub release
 
-name: Workflow to update a draft release with build artifacts
+name: Update a published release with build artifacts
 
 # Start the workflow when a draft release is created.
 on:
@@ -10,7 +10,7 @@ on:
 # A workflow run consists of jobs that run sequentially
 jobs:
   # This workflow contains one job that builds the zip and MLTBX files.
-  releaseUserFiles:
+  AttachBuildArtifacts:
     # The type of runner that the job will run on, we use latest Ubuntu
     runs-on: ubuntu-latest
     steps:
