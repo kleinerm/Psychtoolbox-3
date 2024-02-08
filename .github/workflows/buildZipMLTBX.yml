@@ -4,9 +4,12 @@ name: Tag triggered release
 
 # # Start the workflow when a tag is created.
 on:
-  push:
-    tags:
-      - '*'
+  # push:
+  #   tags:
+  #     - '*'
+  workflow_dispatch:
+
+
 
 # A workflow run consists of jobs that run sequentially
 jobs:
