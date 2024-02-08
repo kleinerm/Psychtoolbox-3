@@ -34,7 +34,7 @@ jobs:
       - name: Upload artifacts to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run:
+        run: |
           gh release upload "${{  github.ref_name }}" "./${{  github.ref_name }}.mltbx"
           gh release upload "${{  github.ref_name }}" "./${{  github.ref_name }}.zip"
     
