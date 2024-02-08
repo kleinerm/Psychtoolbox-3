@@ -1,8 +1,8 @@
 # This is a GitHub Action workflow to build toolbox zip/ MLTBX and upload it to a GitHub release
 
-name: Workflow to update a release with artifacts
+name: Workflow to update a draft release with build artifacts
 
-# Start the workflow when a tag is created.
+# Start the workflow when a draft release is created.
 on:
   release:
     types: [published]
