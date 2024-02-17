@@ -1,11 +1,7 @@
 function rect=EyelinkDrawCalTarget(el, x, y)
-warning('EyelinkToolbox:LegacyDrawCalTarget',['The function EyelinkDrawCalTarget() is deprecated. Please update your ', ...
-    'script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
-warning('off', 'EyelinkToolbox:LegacyDrawCalTarget');
-
 % draw simple calibration target
 %
-% USAGE: rect=EyelinkLegacyDrawCalTarget(el, x, y)
+% USAGE: rect=EyelinkDrawCalTarget(el, x, y)
 %
 %        el: eyelink default values
 %        x,y: position at which it should be drawn
@@ -13,6 +9,10 @@ warning('off', 'EyelinkToolbox:LegacyDrawCalTarget');
 
 % simple, standard eyelink version
 %   22-06-06    fwc OSX-ed
+
+warning('EyelinkToolbox:LegacyDrawCalTarget',['The function EyelinkDrawCalTarget() is deprecated. Please update your ', ...
+    'script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
+warning('off', 'EyelinkToolbox:LegacyDrawCalTarget');
 
 [width, height]=Screen('WindowSize', el.window);
 size=round(el.calibrationtargetsize/100*width);

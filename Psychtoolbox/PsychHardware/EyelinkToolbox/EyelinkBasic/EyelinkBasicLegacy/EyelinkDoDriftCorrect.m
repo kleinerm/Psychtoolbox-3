@@ -1,17 +1,12 @@
 function result=EyelinkDoDriftCorrect(el, x, y, draw, allowsetup)
-warning('EyelinkToolbox:LegacyDoDriftCorrect',['The function EyelinkDoDriftCorrect() is deprecated. Please update ', ...
-    'your script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
-warning('off', 'EyelinkToolbox:LegacyDoDriftCorrect');
-
-
-% USAGE: result=EyelinkLegacyDoDriftCorrect(el [, x, y, draw, allowsetup])
+% USAGE: result=EyelinkDoDriftCorrect(el [, x, y, draw, allowsetup])
 %
 % el: eyelink default values
 % x,y: position of driftcorrection target
 % draw: set to 1 to draw driftcorrection target
 % allowsetup: set to 1 to allow to go in to go to trackersetup
 %
-% Note that EyelinkLegacyDoDriftCorrect() internally uses Beeper() and Snd() to play
+% Note that EyelinkDoDriftCorrect() internally uses Beeper() and Snd() to play
 % auditory feedback tones if el.targetbeep=1 or el.feedbackbeep=1 and the
 % el.callback function is set to the default PsychEyelinkDispatchCallback().
 % If you want to use PsychPortAudio in a script that also calls EyelinkDoDriftCorrect,
@@ -45,6 +40,9 @@ warning('off', 'EyelinkToolbox:LegacyDoDriftCorrect');
 % 18-10-02    fwc    made sure missing variables were filled in with defaults
 % 15-06-10    fwc added code for new callback version
 
+warning('EyelinkToolbox:LegacyDoDriftCorrect',['The function EyelinkDoDriftCorrect() is deprecated. Please update ', ...
+    'your script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
+warning('off', 'EyelinkToolbox:LegacyDoDriftCorrect');
 
 result=-1; % initialize
 if nargin < 1 || ~exist('el', 'var') || isempty(el)
