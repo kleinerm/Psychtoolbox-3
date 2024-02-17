@@ -1,10 +1,11 @@
 % 	EyelinkToolbox.
 % 	History and list of changes
 %
-%   May 2021
+%   February 2024
+%   Various improvements and fixes all over the place
 %   Updates to EyelinkBasic
 %       Support for
-%           - Static clibration target images from file
+%           - Static calibration target images from file
 %           - Animated calibration targets from media file
 %           - Stereomodes supported by Screen()
 %   Updates to EyelinkDemos/SR-ResearchDemos/
@@ -18,7 +19,6 @@
 %           - PursuitTarget
 %           - SimplePicture
 %           - SimpleVideo
-%           - SimplePicture
 %
 %   July 2010
 %   Enabled use of callbacks by default
