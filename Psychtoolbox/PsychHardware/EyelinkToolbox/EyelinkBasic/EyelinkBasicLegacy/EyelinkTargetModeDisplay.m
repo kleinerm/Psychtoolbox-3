@@ -1,9 +1,5 @@
 function result=EyelinkTargetModeDisplay(el)
-warning('EyelinkToolbox:LegacyTargetModeDisplay',['The function EyelinkTargetModeDisplay() is deprecated. Please update your ', ...
-    'script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
-warning('off', 'EyelinkToolbox:LegacyTargetModeDisplay');
-
-% USAGE: result=EyelinkLegacyTargetModeDisplay(el)
+% USAGE: result=EyelinkTargetModeDisplay(el)
 %
 %        el: Eyelink default values
 % History
@@ -12,6 +8,9 @@ warning('off', 'EyelinkToolbox:LegacyTargetModeDisplay');
 % 02-06-01    fwc removed use of global el, as suggested by John Palmer.
 %   22-06-06    fwc OSX-ed
 
+warning('EyelinkToolbox:LegacyTargetModeDisplay',['The function EyelinkTargetModeDisplay() is deprecated. Please update your ', ...
+    'script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
+warning('off', 'EyelinkToolbox:LegacyTargetModeDisplay');
 
 result=-1; % initialize
 if nargin < 1

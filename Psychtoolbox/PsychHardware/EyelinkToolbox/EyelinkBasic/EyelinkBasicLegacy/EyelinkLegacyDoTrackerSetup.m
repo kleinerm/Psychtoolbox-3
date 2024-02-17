@@ -1,8 +1,4 @@
 function result=EyelinkLegacyDoTrackerSetup(el, sendkey)
-warning('EyelinkToolbox:LegacyDoTrackerSetup',['Use of the function EyelinkDoTrackerSetup() without providing a callback handler ', ...
-    '(such as the included PsychEyelinkDispatchCallback) is deprecated. Please update your script to use the currently supported conventions.']);
-warning('off', 'EyelinkToolbox:LegacyDoTrackerSetup');
-
 % USAGE: result=EyelinkLegacyDoTrackerSetup(el [, sendkey])
 %
 % el: Eyelink default values
@@ -30,6 +26,10 @@ warning('off', 'EyelinkToolbox:LegacyDoTrackerSetup');
 % 15-10-02  fwc added sendkey variable that allows to go directly into a particular mode
 % 22-06-06  fwc OSX-ed
 % 15-06-10  fwc added code for new callback version
+
+warning('EyelinkToolbox:LegacyDoTrackerSetup',['Use of the function EyelinkDoTrackerSetup() without providing a callback handler ', ...
+    '(such as the included PsychEyelinkDispatchCallback) is deprecated. Please update your script to use the currently supported conventions.']);
+warning('off', 'EyelinkToolbox:LegacyDoTrackerSetup');
 
 result=-1;
 if nargin < 1
