@@ -335,7 +335,7 @@ switch eyecmd
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 11; Exit Cal Display\n');
         end
         calxy = [];
-        if(~isempty(eyelinkanimationtarget)	)
+        if ~isempty(eyelinkanimationtarget)
             eyelinkanimationtarget.calxy=calxy;
         end
         
@@ -438,12 +438,11 @@ switch eyecmd
     otherwise % Unknown Command
         fprintf('PsychEyelinkDispatchCallback: Unknown eyelink command (%i)\n', eyecmd);
         return;
-        
-end
+end % switch
 
 if ~needsupdate     % Display redraw and update needed?
     if ~isempty(eyelinkanimationtarget) && ~isempty(calxy)
-        EyelinkDrawCalibrationTarget(eyewin, el, calxy);
+        EyelinkDrawCalibrationTarget(eyewin, el, calxy, eyelinkanimationtarget);
     end
     return;
 end
@@ -473,7 +472,7 @@ end
 
 if ~isempty(calxy)  % Draw Cal Target
     drawInstructions=0;
-    EyelinkDrawCalibrationTarget(eyewin, el, calxy);
+    EyelinkDrawCalibrationTarget(eyewin, el, calxy, eyelinkanimationtarget);
     if strcmpi(el.calTargetType, 'video')
         return;
     end
@@ -491,9 +490,7 @@ Screen('Flip', eyewin, [], dontclear, dontsync);   % Show it
 return;
 
 
-
 % Start of nested EyelinkDraw* function declarations
-
     function EyelinkDrawClearScreen(eyewin, el)
         % Set drawScreens 0 for mono modes, 1 for stereo modes:
         drawScreens = double(el.winInfo.StereoMode ~= 0);
@@ -520,8 +517,6 @@ return;
         Screen(eyewin,'TextFont',oldFont);
         Screen(eyewin,'TextSize',oldFontSize);
     end
-
-
 
     function  imgtitle=EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage)
         persistent lasttitle;
@@ -568,11 +563,7 @@ return;
         end
     end
 
-
-
-
-
-    function EyelinkDrawCalibrationTarget(eyewin, el, calxy)
+    function EyelinkDrawCalibrationTarget(eyewin, el, calxy, eyelinkanimationtarget)
         [width, height]=Screen('WindowSize', eyewin);
 
         % Set drawScreens 0 for mono modes, 1 for stereo modes:
@@ -611,7 +602,6 @@ return;
         end
     end
 
-
     function EyelinkMakeSound(el, s, i)
         % set all sounds in one place, sound params defined in
         % eyelinkInitDefaults
@@ -632,7 +622,6 @@ return;
                     PsychPortAudio('Stop', el.ppa_pahandle, 1);
                 end
             end
-
         else
             % some defaults
             if isempty(el.ppa_pahandle)
@@ -644,6 +633,3 @@ return;
         end
     end
 end
-
-
-

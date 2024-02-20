@@ -12,6 +12,7 @@ function success=EyelinkDoDriftCorrection(el, x, y, draw, allowsetup)
 % then read "help Snd" for instructions on how to provide proper interoperation
 % between PsychPortAudio and the feedback sounds created by Eyelink.
 %
+global eyelinkanimationtarget
 
 success=1;
 
@@ -35,9 +36,8 @@ while 1
     end
     
     if ~isempty(el.callback) % if we have a callback set, we call it.
-        global eyelinkanimationtarget;
         if isempty(eyelinkanimationtarget)
-            initmoviestruct();
+            eyelinkanimationtarget = initmoviestruct();
         end
 
         global inDoTrackerSetup;
@@ -51,7 +51,7 @@ while 1
         end
 
         if strcmpi(el.calTargetType, 'video') && ~eyelinkanimationtarget.init
-            loadanimationmovie(el);
+            eyelinkanimationtarget = loadanimationmovie(el, eyelinkanimationtarget);
         end
         result = Eyelink('DriftCorrStart', x, y, 1, draw, allowsetup);
 
@@ -74,24 +74,25 @@ end % while
 
 % fprintf('~isempty(el.callback): %d, el.calTargetType: %s, ~inDoTrackerSetup: %d, eyelinkanimationtarget.init: %d\n', ~isempty(el.callback), el.calTargetType, ~inDoTrackerSetup, eyelinkanimationtarget.init)
 if ~isempty(el.callback) && strcmpi(el.calTargetType, 'video') && ~inDoTrackerSetup && eyelinkanimationtarget.init
-    cleanupmovie(el);
+    eyelinkanimationtarget = cleanupmovie(el, eyelinkanimationtarget);
     inDoDriftCorrection = false;
 end
 
 return
 
-    function initmoviestruct()
+
+    function eyelinkanimationtarget = initmoviestruct()
         eyelinkanimationtarget.init = false;
         eyelinkanimationtarget.movie = [];
         eyelinkanimationtarget.movieduration = [];
         eyelinkanimationtarget.fps = [];
         eyelinkanimationtarget.imgw = [];
         eyelinkanimationtarget.imgh = [];
-        eyelinkanimationtarget.calxy =[];
+        eyelinkanimationtarget.calxy = [];
     end
 
-    function loadanimationmovie(el)
-        [movie, movieduration, fps, imgw, imgh] = Screen('OpenMovie',  el.window, el.calAnimationTargetFilename, el.calAnimationOpenAsync, el.calAnimationOpenPreloadSecs, el.calAnimationOpenSpecialFlags1);
+    function eyelinkanimationtarget = loadanimationmovie(el, eyelinkanimationtarget)
+        [movie, movieduration, fps, imgw, imgh] = Screen('OpenMovie', el.window, el.calAnimationTargetFilename, el.calAnimationOpenAsync, el.calAnimationOpenPreloadSecs, el.calAnimationOpenSpecialFlags1);
         eyelinkanimationtarget.init = true;
         eyelinkanimationtarget.movie = movie;
         eyelinkanimationtarget.movieduration = movieduration;
@@ -100,13 +101,14 @@ return
         eyelinkanimationtarget.imgh = imgh;
     end
 
-    function cleanupmovie(el)
+    function eyelinkanimationtarget = cleanupmovie(el, eyelinkanimationtarget)
         texkill = Screen('GetMovieImage', el.window, eyelinkanimationtarget.movie, el.calAnimationWaitTexClose);
         Screen('PlayMovie', eyelinkanimationtarget.movie, 0, el.calAnimationLoopParam);
         if texkill > 0
             Screen('Close', texkill);
         end
         Screen('CloseMovie', eyelinkanimationtarget.movie);
-        initmoviestruct();
+        eyelinkanimationtarget = initmoviestruct();
     end
+
 end
