@@ -1,6 +1,9 @@
 function result=EyelinkLegacyDoTrackerSetup(el, sendkey)
 % USAGE: result=EyelinkLegacyDoTrackerSetup(el [, sendkey])
 %
+% NOTE: This function is deprecated, unmaintained, and not recommended anymore.
+% Use EyelinkDoTrackerSetup() for a modern solution instead.
+%
 % el: Eyelink default values
 %
 % sendkey:  set to go directly into a particular mode
@@ -44,7 +47,7 @@ end
 Eyelink( 'StartSetup' );        % start setup mode
 Eyelink( 'WaitForModeReady', el.waitformodereadytime );  % time for mode change
 
-EyelinkLegacyClearCalDisplay(el);    % setup_cal_display()
+EyelinkClearCalDisplay(el);    % setup_cal_display()
 key=1;
 while key~= 0
     key=EyelinkGetKey(el);        % dump old keys
@@ -73,13 +76,13 @@ while stop==0 && bitand(Eyelink( 'CurrentMode'), el.IN_SETUP_MODE)
     end
 
     if bitand(i, el.IN_TARGET_MODE)            % calibrate, validate, etc: show targets
-        EyelinkLegacyTargetModeDisplay(el);
+        EyelinkTargetModeDisplay(el);
     elseif bitand(i, el.IN_IMAGE_MODE)        % display image until we're back
         if Eyelink ('ImageModeDisplay')==el.TERMINATE_KEY
             result=el.TERMINATE_KEY;
             return;    % breakout key pressed
         else
-            EyelinkLegacyClearCalDisplay(el);    % setup_cal_display()
+            EyelinkClearCalDisplay(el);    % setup_cal_display()
         end
     end
 
@@ -108,6 +111,6 @@ while stop==0 && bitand(Eyelink( 'CurrentMode'), el.IN_SETUP_MODE)
 end % while IN_SETUP_MODE
 
 % exit:
-EyelinkLegacyClearCalDisplay(el);    % exit_cal_display()
+EyelinkClearCalDisplay(el);    % exit_cal_display()
 result=0;
 return;

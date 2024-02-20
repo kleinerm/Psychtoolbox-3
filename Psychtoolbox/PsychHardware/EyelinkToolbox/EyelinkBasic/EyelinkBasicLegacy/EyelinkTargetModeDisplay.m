@@ -1,15 +1,19 @@
 function result=EyelinkTargetModeDisplay(el)
 % USAGE: result=EyelinkTargetModeDisplay(el)
 %
+% NOTE: This function is deprecated, unmaintained, and not recommended anymore.
+% Use EyelinkDoTrackerSetup() for a modern solution instead.
+%
 %        el: Eyelink default values
+%
 % History
 % 15-05-01    fwc created first version
 % 22-05-01    fwc    little debugging
 % 02-06-01    fwc removed use of global el, as suggested by John Palmer.
-%   22-06-06    fwc OSX-ed
+% 22-06-06    fwc OSX-ed
 
 warning('EyelinkToolbox:LegacyTargetModeDisplay',['The function EyelinkTargetModeDisplay() is deprecated. Please update your ', ...
-    'script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
+    'script to use the current method EyelinkDoTrackerSetup() for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
 warning('off', 'EyelinkToolbox:LegacyTargetModeDisplay');
 
 result=-1; % initialize
@@ -26,7 +30,7 @@ ty=el.MISSING;
 otx=el.MISSING;    % current target position
 oty=el.MISSING;
 
-EyelinkLegacyClearCalDisplay(el);    % setup_cal_display()
+EyelinkClearCalDisplay(el);    % setup_cal_display()
 
 key=1;
 while key~= 0
@@ -45,7 +49,7 @@ while stop==0 && bitand(Eyelink('CurrentMode'), el.IN_TARGET_MODE)
 
     switch key
         case el.TERMINATE_KEY,       % breakout key code
-            EyelinkLegacyClearCalDisplay(el); % clear_cal_display();
+            EyelinkClearCalDisplay(el); % clear_cal_display();
             result=el.TERMINATE_KEY;
             return;
         case el.SPACE_BAR,                     % 32: accept fixation
@@ -74,19 +78,19 @@ while stop==0 && bitand(Eyelink('CurrentMode'), el.IN_TARGET_MODE)
 
     % erased or moved: erase target
     if (targetvisible==1 && result==0) || tx~=otx || ty~=oty
-        EyelinkLegacyEraseCalTarget(el, targetrect);
+        EyelinkEraseCalTarget(el, targetrect);
         targetvisible = 0;
     end
     % redraw if invisible
     if targetvisible==0 && result==1
         %         fprintf( 'Target drawn at: x=%d, y=%d\n', tx, ty );
 
-        targetrect=EyelinkLegacyDrawCalTarget(el, tx, ty);
+        targetrect=EyelinkDrawCalTarget(el, tx, ty);
         targetvisible = 1;
         otx = tx;        % record position for future tests
         oty = ty;
         if el.targetbeep==1
-            EyelinkLegacyCalTargetBeep(el);    % optional beep to alert subject
+            EyelinkCalTargetBeep(el);    % optional beep to alert subject
         end
     end
 
@@ -96,16 +100,16 @@ end % while IN_TARGET_MODE
 % exit:                    % CLEAN UP ON EXIT
 if el.targetbeep==1
     if Eyelink('CalResult')==1  % does 1 signal success?
-        EyelinkLegacyCalDoneBeep(el, 1);
+        EyelinkCalDoneBeep(el, 1);
     else
-        EyelinkLegacyCalDoneBeep(el, -1);
+        EyelinkCalDoneBeep(el, -1);
     end
 end
 
 if targetvisible==1
-    EyelinkLegacyEraseCalTarget(el, targetrect);   % erase target on exit, bit superfluous actually
+    EyelinkEraseCalTarget(el, targetrect);   % erase target on exit, bit superfluous actually
 end
-EyelinkLegacyClearCalDisplay(el); % clear_cal_display();
+EyelinkClearCalDisplay(el); % clear_cal_display();
 
 result=0;
 return;

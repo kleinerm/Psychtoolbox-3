@@ -1,6 +1,9 @@
 function result=EyelinkDoDriftCorrect(el, x, y, draw, allowsetup)
 % USAGE: result=EyelinkDoDriftCorrect(el [, x, y, draw, allowsetup])
 %
+% NOTE: This function is deprecated, unmaintained, and not recommended anymore.
+% Use EyelinkDoDriftCorrection() for a modern solution instead.
+%
 % el: eyelink default values
 % x,y: position of driftcorrection target
 % draw: set to 1 to draw driftcorrection target
@@ -41,12 +44,12 @@ function result=EyelinkDoDriftCorrect(el, x, y, draw, allowsetup)
 % 15-06-10    fwc added code for new callback version
 
 warning('EyelinkToolbox:LegacyDoDriftCorrect',['The function EyelinkDoDriftCorrect() is deprecated. Please update ', ...
-    'your script to use the current method for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
+    'your script to use the current method, EyelinkDoDriftCorrection(), for handling camera setup mode callbacks with PsychEyelinkDispatchCallback.m.']);
 warning('off', 'EyelinkToolbox:LegacyDoDriftCorrect');
 
 result=-1; % initialize
 if nargin < 1 || ~exist('el', 'var') || isempty(el)
-    error( 'USAGE: result=EyelinkLegacyDoDriftCorrect(el [, x, y, draw, allowsetup])' );
+    error( 'USAGE: result=EyelinkDoDriftCorrect(el [, x, y, draw, allowsetup])' );
 end
 
 % fill in missing variables
@@ -70,12 +73,12 @@ while key~= 0
 end
 
 if draw==1
-    EyelinkLegacyClearCalDisplay(el);        % setup_cal_display()
-    targetrect=EyelinkLegacyDrawCalTarget(el, x, y);     % we are told where it should be.
+    EyelinkClearCalDisplay(el);        % setup_cal_display()
+    targetrect=EyelinkDrawCalTarget(el, x, y);     % we are told where it should be.
 end
 
 if el.targetbeep==1
-    EyelinkLegacyCalTargetBeep(el);
+    EyelinkCalTargetBeep(el);
 end
 
 status=Eyelink( 'DriftCorrStart', x, y);
@@ -124,14 +127,14 @@ while result==el.NO_REPLY
 end % while cal_result==NO_REPLY
 
 if draw==1
-    EyelinkLegacyEraseCalTarget(el, targetrect); % bit superfluous actually
-    EyelinkLegacyClearCalDisplay(el);    % exit_cal_display()
+    EyelinkEraseCalTarget(el, targetrect); % bit superfluous actually
+    EyelinkClearCalDisplay(el);    % exit_cal_display()
 end
 
 if result==el.ESC_KEY || result==-1    % Did we abort drift correction?
     % yes: go to setup menu to fix any problems
     if el.targetbeep==1
-        EyelinkLegacyCalDoneBeep(el, 0);
+        EyelinkCalDoneBeep(el, 0);
     end
     if allowsetup==1
         EyelinkLegacyDoTrackerSetup(el);
@@ -141,7 +144,7 @@ if result==el.ESC_KEY || result==-1    % Did we abort drift correction?
 else
     % Otherwise, we apply the drift correction
     if el.targetbeep==1
-        EyelinkLegacyCalDoneBeep(el, 1);
+        EyelinkCalDoneBeep(el, 1);
     end
     Eyelink('ApplyDriftCorr' );
     result=0;
