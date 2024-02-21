@@ -227,27 +227,27 @@ needsupdate = 0;
 
 switch eyecmd
     case 1  % New Camera Image Received
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 1; New Camera Image Received\n');
         end
         newcamimage = 1;
         needsupdate = 1;
         
     case 2  % EyeLink Keyboard Query
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 2; Keyboard Query\n');
         end
         [rc, el] = EyelinkGetKey(el);
         
     case 3  % Alert message
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 3; Alert Message\n');
         end
         fprintf('Eyelink Alert: %s.\n', msg);
         needsupdate = 0;
         
     case 4  % Camera Image Caption Text
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 4; Camera Image Caption Text\n');
         end
         if callArgs(2) ~= -1
@@ -258,7 +258,7 @@ switch eyecmd
         needsupdate = 1;
         
     case 5  % Draw Cal Target
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 5; Draw Cal Target\n');
         end
         calxy = callArgs(2:3);
@@ -272,7 +272,7 @@ switch eyecmd
         end
         
     case 6  % Clear Cal Display
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 6; Clear Cal Display\n');
         end
         clearScreen=1;
@@ -280,7 +280,7 @@ switch eyecmd
         needsupdate = 1;
         
     case 7  % Setup Cal Display
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 7; Setup Cal Display\n');
         end
         if inDrift
@@ -292,7 +292,7 @@ switch eyecmd
         needsupdate = 1;
         
     case 8  % Setup Image Display
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 8; Setup Image Display\n');
         end
         newImage = 1;
@@ -303,7 +303,7 @@ switch eyecmd
         needsupdate = 1;
         
     case 9  % Exit Image Display
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 9; Exit Image Display\n');
         end
         clearScreen=1;
@@ -312,7 +312,7 @@ switch eyecmd
         needsupdate = 1;
         
     case 10 % Erase Cal Target
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 10; Erase Cal Target\n');
         end
         calxy = [];
@@ -331,7 +331,7 @@ switch eyecmd
         end
         
     case 11 % Exit Cal Display
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 11; Exit Cal Display\n');
         end
         calxy = [];
@@ -357,7 +357,7 @@ switch eyecmd
         end
 
     case 12 % New Cal Target Sound
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 12; New Cal Target Sound\n');
         end
         if el.targetbeep && ~strcmpi(el.calTargetType, 'video')
@@ -365,7 +365,7 @@ switch eyecmd
         end
         
     case 13 % New Drift Chk/Corr Target Sound
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 13; New Drift Target Sound\n');
         end
         if el.targetbeep && ~strcmpi(el.calTargetType, 'video')
@@ -373,7 +373,7 @@ switch eyecmd
         end
         
     case 14 % Cal Done Sound
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 14; Cal Done Sound\n');
         end
         if el.feedbackbeep && ~strcmpi(el.calTargetType, 'video')
@@ -388,7 +388,7 @@ switch eyecmd
         end
         
     case 15 % Drift Chk/Corr Done Sound
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 15; Drift Done Sound\n');
         end
         if el.feedbackbeep && ~strcmpi(el.calTargetType, 'video')
@@ -403,7 +403,7 @@ switch eyecmd
         end
         
     case 16 % Get Mouse Position
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 16; Get Mouse Position\n');
         end
         [width, height]=Screen('WindowSize', eyewin);
@@ -416,13 +416,13 @@ switch eyecmd
         end
         % add by NJ to prevent flashing of text in drift correct
     case 17 % Non-native callback, from PsychEyelink_setup_cal_display()
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 17; Flag in drift check/correction mode\n');
         end
         inDrift = 1;
     
     case -1 % Non-native callback, from Eyelink('Shutdown') for runtime cleanup
-        if Eyelink('Verbosity', -1) >= 5
+        if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == -1; Runtime cleanup\n');
         end
         if any(strcmp(fieldnames(el), 'ppa_sndhandle')) && ~isempty(el.ppa_sndhandle)
