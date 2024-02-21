@@ -186,27 +186,6 @@ if isempty(beep_waveforms)
         beep_waveforms{6} = NaN;
     end
 end
-persistent ppa_beep_buffers;
-if ~isempty(el.ppa_pahandle) && isempty(ppa_beep_buffers)
-    if el.targetbeep
-        ppa_beep_buffers(1) = PsychPortAudio('CreateBuffer', [], beep_waveforms{1});
-        ppa_beep_buffers(2) = PsychPortAudio('CreateBuffer', [], beep_waveforms{2});
-    else
-        ppa_beep_buffers(1) = NaN;
-        ppa_beep_buffers(2) = NaN;
-    end
-    if el.feedbackbeep
-        ppa_beep_buffers(3) = PsychPortAudio('CreateBuffer', [], beep_waveforms{3});
-        ppa_beep_buffers(4) = PsychPortAudio('CreateBuffer', [], beep_waveforms{4});
-        ppa_beep_buffers(5) = PsychPortAudio('CreateBuffer', [], beep_waveforms{5});
-        ppa_beep_buffers(6) = PsychPortAudio('CreateBuffer', [], beep_waveforms{6});
-    else
-        ppa_beep_buffers(3) = NaN;
-        ppa_beep_buffers(4) = NaN;
-        ppa_beep_buffers(5) = NaN;
-        ppa_beep_buffers(6) = NaN;
-    end
-end
 
 % Not an eyelink struct.  Either a 4 component vector from Eyelink(), or something wrong:
 if length(callArgs) ~= 4
@@ -622,7 +601,7 @@ return;
             if isempty(el.ppa_pahandle)
                 Snd('Play', beep_waveforms{i}, audio_fs);
             else
-                PsychPortAudio('FillBuffer', el.ppa_pahandle, ppa_beep_buffers(i));
+                PsychPortAudio('FillBuffer', el.ppa_pahandle, beep_waveforms{i});
                 PsychPortAudio('Start', el.ppa_pahandle);
                 if strcmp('drift_correction_success_beep', s)
                     PsychPortAudio('Stop', el.ppa_pahandle, 1);
