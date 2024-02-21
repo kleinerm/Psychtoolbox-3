@@ -66,10 +66,11 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %                   previous comments where code was previously added, this
 %                   was done for easier reading of the code.
 
-% Cached texture handle for eyelink texture:
-persistent eyelinktex;
-global dw dh offscreen;
 global eyelinkanimationtarget;
+
+% Cached texture handle and size for eyelink eye image and texture:
+persistent eyelinktex;
+persistent dw dh;
 
 % Cached window handle for target onscreen window:
 persistent eyewin;
@@ -90,7 +91,6 @@ persistent GL_RGBA8;
 persistent hostDataFormat;
 
 persistent inDrift;
-offscreen = 0;
 newImage = 0;
 
 if 0 == Screen('WindowKind', eyelinktex)
@@ -452,7 +452,7 @@ if newcamimage      % New image frame received from EyeLink camera stream
 end
 
 if ~isempty(eyelinktex) && ineyeimagemodedisplay==1     % Draw cam image and caption
-    imgtitle=EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage);
+    [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage);
 end
 
 if ~isempty(calxy)  % Draw Cal Target
@@ -503,9 +503,7 @@ return;
         Screen(eyewin,'TextSize',oldFontSize);
     end
 
-    function  imgtitle=EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage)
-        persistent lasttitle;
-
+    function [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage)
         eyerect=Screen('Rect', eyelinktex);
         % we could cash some of the below values....
         wrect=Screen('Rect', eyewin);
@@ -514,6 +512,15 @@ return;
         dh=round(dw * eyerect(4)/eyerect(3));
         drect=[ 0 0 dw dh ];
         drect=CenterRect(drect, wrect);
+        tx = drect(1);
+        ty = drect(4) + el.imgtitlefontsize;
+
+        if ~isempty(imgtitle)
+            otf = Screen('TextFont', eyewin, el.imgtitlefont);
+            ots = Screen('TextSize', eyewin, el.imgtitlefontsize);
+        else
+            imgtitle = '';
+        end
 
         % Set drawScreens 0 for mono modes, 1 for stereo modes:
         drawScreens = double(el.winInfo.StereoMode ~= 0);
@@ -521,30 +528,16 @@ return;
             try
                 Screen('SelectStereoDrawBuffer', eyewin, it); % select current-eye window
                 Screen('DrawTexture', eyewin, eyelinktex, [], drect);
-
-                % imgtitle
-                % if title is provided, we also draw title
-                if ~isempty(imgtitle)
-                    rect=Screen('TextBounds', eyewin, imgtitle );
-                    [w2, h2]=RectSize(rect);
-                    
-                    if -1 == Screen('WindowKind', offscreen)
-                        Screen('Close', offscreen);
-                    end
-                    sn = Screen('WindowScreenNumber', eyewin);
-                    offscreen = Screen('OpenOffscreenWindow', sn, el.backgroundcolour, [], [], 32);
-                    Screen(offscreen,'TextFont',el.imgtitlefont);
-                    Screen(offscreen,'TextSize',el.imgtitlefontsize);
-                    Screen('DrawText', offscreen, imgtitle, width/2-dw/2, height/2+dh/2+h2, el.imgtitlecolour);
-                    Screen('DrawTexture',eyewin,offscreen,  [width/2-dw/2 height/2+dh/2+h2 width/2-dw/2+500 height/2+dh/2+h2+500], [width/2-dw/2 height/2+dh/2+h2 width/2-dw/2+500 height/2+dh/2+h2+500]);
-                    Screen('Close',offscreen);
-                    
-                    lasttitle = imgtitle;
-                end
-            catch %myerr
+                Screen('DrawText', eyewin, imgtitle, tx, ty, el.imgtitlecolour);
+            catch
                 fprintf('EyelinkDrawCameraImage:error \n');
                 disp(psychlasterror);
             end
+        end
+
+        if ~isempty(imgtitle)
+            Screen('TextFont', eyewin, otf);
+            Screen('TextSize', eyewin, ots);
         end
     end
 
