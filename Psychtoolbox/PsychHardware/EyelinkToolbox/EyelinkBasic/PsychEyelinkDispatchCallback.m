@@ -425,7 +425,13 @@ switch eyecmd
         if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == -1; Runtime cleanup\n');
         end
-        if any(strcmp(fieldnames(el), 'ppa_sndhandle')) && ~isempty(el.ppa_sndhandle)
+
+        % Using the Snd() path for audio output?
+        if isfield(el, 'ppa_sndhandle') && ~isempty(el.ppa_sndhandle)
+            % Let Snd() fully detach from the sound device:
+            Snd('Close', 1);
+
+            % Close sound device:
             PsychPortAudio('Close', el.ppa_sndhandle);
             el.ppa_sndhandle = [];
         end
@@ -627,7 +633,7 @@ return;
             if isempty(el.ppa_pahandle)
                 Snd('Play', MakeBeep(500, 1.5) .* 0.5, audio_fs);
             else
-                PsychPortAudio('CreateBuffer', el.ppa_pahandle, repmat(MakeBeep(500, 1.5, audio_fs) .* 0.5, audio_n_chan, 1));
+                PsychPortAudio('FillBuffer', el.ppa_pahandle, repmat(MakeBeep(500, 1.5, audio_fs) .* 0.5, audio_n_chan, 1));
                 PsychPortAudio('Start', el.ppa_pahandle);
             end
         end
