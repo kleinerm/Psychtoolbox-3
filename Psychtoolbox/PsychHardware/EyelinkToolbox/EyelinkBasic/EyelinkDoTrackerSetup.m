@@ -12,12 +12,16 @@ function result=EyelinkDoTrackerSetup(el, sendkey)
 %           'd', start driftcorrection
 %           13, or el.ENTER_KEY, show 'eye' setup image
 %
-% Note that EyelinkDoTrackerSetup() internally uses Beeper() and Snd() to play
+% Note that EyelinkDoTrackerSetup() internally may use Snd() to play
 % auditory feedback tones if el.targetbeep=1 or el.feedbackbeep=1 and the
 % el.callback function is set to the default PsychEyelinkDispatchCallback().
+%
 % If you want to use PsychPortAudio in a script that also calls EyelinkDoTrackerSetup,
 % then read "help Snd" for instructions on how to provide proper interoperation
-% between PsychPortAudio and the feedback sounds created by Eyelink.
+% between PsychPortAudio and the feedback sounds created by Eyelink. The demos
+% referenced under "help SR-ResearchDemos" show an even better approach than the
+% one described in "help Snd".
+%
 
 %
 % 02-06-01  fwc removed use of global el, as suggest by John Palmer.

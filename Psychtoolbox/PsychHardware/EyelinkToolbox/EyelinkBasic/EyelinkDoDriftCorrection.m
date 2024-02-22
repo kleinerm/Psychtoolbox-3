@@ -5,12 +5,15 @@ function success=EyelinkDoDriftCorrection(el, x, y, draw, allowsetup)
 % We repeat if ESC key pressed to do setup.
 % Setup might also have erased any pre-drawn graphics.
 %
-% Note that EyelinkDoDriftCorrection() internally uses Beeper() and Snd() to play
+% Note that EyelinkDoDriftCorrection() internally may use Snd() to play
 % auditory feedback tones if el.targetbeep=1 or el.feedbackbeep=1 and the
 % el.callback function is set to the default PsychEyelinkDispatchCallback().
+%
 % If you want to use PsychPortAudio in a script that also calls EyelinkDoDriftCorrection,
 % then read "help Snd" for instructions on how to provide proper interoperation
-% between PsychPortAudio and the feedback sounds created by Eyelink.
+% between PsychPortAudio and the feedback sounds created by Eyelink. The demos
+% referenced under "help SR-ResearchDemos" show an even better approach than the
+% one described in "help Snd".
 %
 global eyelinkanimationtarget
 
