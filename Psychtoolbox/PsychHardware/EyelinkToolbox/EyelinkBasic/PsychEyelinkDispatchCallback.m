@@ -414,10 +414,12 @@ switch eyecmd
             PsychPortAudio('Close', el.ppa_sndhandle);
             el.ppa_sndhandle = [];
         end
-        % vars = whos;
-        % whos
-        % clear(vars([vars.persistent]).name{:});
-        % whos
+
+        % Clear all persistent and local variables, effectively resetting all:
+        clear variables;
+
+        % Done with cleanup / shutdown:
+        rc = 0;
         return;
 
     otherwise % Unknown Command
