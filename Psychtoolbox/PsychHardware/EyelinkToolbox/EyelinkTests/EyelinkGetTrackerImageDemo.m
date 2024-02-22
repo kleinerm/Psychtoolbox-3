@@ -1,5 +1,16 @@
-function EyelinkGetTrackerImageDemo
-% This shows you how to register a callback m-file that can display the tracker's eye image in PTB
+function EyelinkGetTrackerImageDemo(sndinit)
+% EyelinkGetTrackerImageDemo([sndinit = 0])
+% This shows you how to register a callback m-file that can display the
+% tracker's eye image in PTB.
+%
+% sndinit = 0: No sound init / legacy behavior.
+%           1: EyelinkUpdateDefaults for default init.
+%           2: Pass in our own PsychPortAudio sound handle for optimal method.
+%
+
+if nargin < 1 || isempty(sndinit)
+    sndinit = 0;
+end
 
 PsychDefaultSetup(1);
 
@@ -12,7 +23,7 @@ try
 
     % Initialize 'el' eyelink struct with proper defaults for output to
     % window 'w':
-    el=EyelinkInitDefaults(w);
+    el = EyelinkInitDefaults(w);
 
     % Initialize Eyelink connection (real or dummy). The flag '1' requests
     % use of callback function and eye camera image display:
@@ -22,20 +33,26 @@ try
         return;
     end
 
+    if sndinit == 2
+        el.ppa_pahandle = PsychPortAudio('Open', [], 1, 0, [], 2);
+    end
+
     % This would display additional debug output, if commented in:
     %    Eyelink('Verbosity',10);
+
+    if sndinit > 0
+        EyelinkUpdateDefaults(el);
+    end
 
     % Run synthetic test suite for the fun of it, if commented in:
     Eyelink('TestSuite');
 
-    % Perform tracker setup: The flag 1 requests interactive setup with
-    % video display:
-    result = Eyelink('StartSetup',1);
+    % Perform tracker setup - interactive setup with video display:
+    result = EyelinkDoTrackerSetup(el);
 
-    % Perform drift correction: The special flags 1,1,1 request
-    % interactive correction with video display:
-    % You have to hit esc before return.
-    result = Eyelink('DriftCorrStart',30,30,1,1,1);
+    % Perform drift correction: The special flags 1,1 request interactive
+    % correction with video display: You have to hit esc before return.
+    result = EyelinkDoDriftCorrection(el, 30, 30, 1, 1);
 
     % Done.
 catch
@@ -45,6 +62,10 @@ end
 
 % Shutdown everything at regular end:
 cleanup;
+
+if sndinit == 2
+    PsychPortAudio('Close', el.ppa_pahandle);
+end
 
 end
 
