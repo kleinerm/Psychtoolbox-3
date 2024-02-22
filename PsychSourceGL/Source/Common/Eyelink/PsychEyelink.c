@@ -30,11 +30,13 @@
 /////////////////////////////////////////////////////////////////////////
 // Global variables used throughout eyelink C files
 
-int        giSystemInitialized = 0;
-int        verbosity = 2;
+int giSystemInitialized = 0;
+
+// Level of verbosity: Do only query via Verbosity() accessor function outside this file!
+static int verbosity = 2;
 
 // Callback string for eyelink display callback function:
-char eyelinkDisplayCallbackFunc[1024];
+static char eyelinkDisplayCallbackFunc[1024];
 
 // Memory pointer to malloc()'ed image pixel buffer that holds the
 // image data for a RGBA8 texture with the most recent eye camera image:
