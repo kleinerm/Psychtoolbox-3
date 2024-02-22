@@ -66,7 +66,7 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %                   previous comments where code was previously added, this
 %                   was done for easier reading of the code.
 
-global eyelinkanimationtarget;
+global eyelinkanimationtarget; %#ok<GVMIS>
 
 % Cached texture handle and size for eyelink eye image and texture:
 persistent eyelinktex;
@@ -89,6 +89,14 @@ persistent drawInstructions;
 persistent GL_RGBA;
 persistent GL_RGBA8;
 persistent hostDataFormat;
+
+% target & feedback beep waveforms and PsychPortAudio buffers
+persistent audio_status;
+persistent audio_devinfo;
+persistent audio_n_chan;
+persistent audio_fs;
+%persistent audio_ppa_isSlave;
+persistent beep_waveforms;
 
 persistent inDrift;
 newImage = 0;
@@ -146,12 +154,6 @@ if isstruct(callArgs) && isfield(callArgs,'window')
     return;
 end
 
-% target & feedback beep waveforms and PsychPortAudio buffers
-persistent audio_status;
-persistent audio_devinfo;
-persistent audio_n_chan;
-persistent audio_fs;
-%persistent audio_ppa_isSlave;
 if ~isempty(el.ppa_pahandle) && isempty(audio_status)
     audio_status = PsychPortAudio('GetStatus', el.ppa_pahandle);
     audio_devinfo = PsychPortAudio('GetDevices', [], audio_status.OutDeviceIndex);
@@ -165,7 +167,7 @@ elseif isempty(el.ppa_pahandle) && isempty(audio_fs)
     audio_n_chan = 1;
     audio_fs = Snd('DefaultRate');
 end
-persistent beep_waveforms;
+
 if isempty(beep_waveforms)
     if el.targetbeep
         beep_waveforms{1} = repmat(MakeBeep(el.cal_target_beep(1), el.cal_target_beep(3), audio_fs) .* el.cal_target_beep(2), audio_n_chan, 1);
