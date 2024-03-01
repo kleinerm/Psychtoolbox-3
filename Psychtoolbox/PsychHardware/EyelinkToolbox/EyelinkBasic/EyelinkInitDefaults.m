@@ -10,9 +10,9 @@ function el=EyelinkInitDefaults(window)
 % Note that these values are only used by the m-file
 % versions of dotrackersetup and dodriftcorrect.
 
-% 02-06-01	fwc created, as suggested by John Palmer.
-%				added also all control codes and defaults
-% 17-10-02	fwc added event types
+% 02-06-01    fwc created, as suggested by John Palmer.
+%                added also all control codes and defaults
+% 17-10-02    fwc added event types
 % 26-11-02  fwc&emp added PC support
 % 11-01-04  fwc OS X changes
 % 22-06-06  fwc further OSX changes
@@ -26,12 +26,15 @@ function el=EyelinkInitDefaults(window)
 %               and eye image size. Note that many default settings
 %               are no longer used in the "callback" version of calibration
 %               and driftcorrection.
-% 15-01-13	ia	Added el.devicenumber to allow better control of multiple
-%				input devices
+% 15-01-13    ia    Added el.devicenumber to allow better control of multiple
+%                input devices
 
 el=[];
 
-% eyelink computer check
+% EyeLink Toolbox debug messages (reserved for future use)
+el.debugPrint = false;
+
+% EyeLink Toolbox (Display PC) Computer Type
 el.computer = computer;
 
 % Enable unified keyname -> keycode mapping for all operating systems:
@@ -42,34 +45,40 @@ el.LEFT_EYE=0;
 el.RIGHT_EYE=1;
 el.BINOCULAR=2;
 
-% eyelink connection states
+% EyeLink connection states
 el.notconnected=0;
 el.connected=1;
 el.dummyconnected=-1;
 el.broadcastconnected=2;
 
-
+% Calibration Feedback
 el.displayCalResults = 0;
 
-if ~exist('window', 'var')
+if ~exist('window', 'var') || isempty(window)
     window = [];
-end
-
-if ~isempty(window)
-	el.window=window;
-	el.backgroundcolour = WhiteIndex(el.window);
-	el.backgroundcolour = GrayIndex(el.window);
-	el.foregroundcolour = BlackIndex(el.window);
+    infoStruct = [];
+    el.window = window;
+    el.winInfo = infoStruct;
+    el.backgroundcolour = GrayIndex(0);
+    el.foregroundcolour = 0;
+    el.msgfontcolour    = 0;
+    el.imgtitlecolour   = 0;
+else
+    el.window=window;
+    el.winInfo = Screen('GetWindowInfo', window, 0);
+    el.backgroundcolour = GrayIndex(el.window);
+    el.foregroundcolour = BlackIndex(el.window);
     el.msgfontcolour    = BlackIndex(el.window);
     el.imgtitlecolour   = BlackIndex(el.window);
-
-	rect=Screen(el.window,'Rect');
+    
+    rect=Screen(el.window,'Rect');
     if Eyelink('IsConnected') ~= el.notconnected
         Eyelink('Command', 'screen_pixel_coords = %d %d %d %d',rect(1),rect(2),rect(3)-1,rect(4)-1);
     end
-else
-	el.window=[];
 end
+
+% PsychPortAudio configuration
+el.ppa_pahandle = [];
 
 % set some more global info parameters
 % below are old sound definitions
@@ -90,16 +99,33 @@ el.drift_correction_success_beep=[800 0.8 0.25];
 el.allowlocaltrigger=1; % allow user to trigger him or herself
 el.allowlocalcontrol=1; % allow control from subject-computer
 el.mousetriggersdriftcorr=0; % 1=allow mouse to trigger drift correction (fwc trick)
-el.quitkey=KbName('ESCAPE'); % when pressed in combination with modifier key
-                             % forces getkeyforeyelink to return 'TERMINATE_KEY' !
+el.quitkey=KbName('ESCAPE');  
 
 % Modifier key is always LeftGUI due to unified keyname mapping:
 el.modifierkey=KbName('LeftGUI');
 
 el.waitformodereadytime=500;
+el.calTargetType = 'ellipse'; % available types: 'ellipse', 'image', 'video'
+
 el.calibrationtargetsize=2.5;  % size of calibration target as percentage of screen
 el.calibrationtargetwidth=1; % width of calibration target's border as percentage of screen
 el.calibrationtargetcolour=[0 0 0];
+
+el.calImageTargetFilename=[];
+el.calImageInfo=[];
+el.calImageData=[];
+el.calImageTexture=[];
+
+el.calAnimationTargetFilename=[];
+el.calAnimationResetOnTargetMove = false;
+el.calAnimationAudioVolume = 1.0;
+el.calAnimationLoopParam = 1; % For testing if default is problematic: 'loop' param passed to Screen('PlayMovie', ...); 1=PTBDefaultLooping, 2=GaplessReload, 5=SegmentSeeksRewing, 8=RewindFlushGPU
+el.calAnimationOpenSpecialFlags1 = 0; % For testing if default is problematic: 'specialFlags1' param passed to Screen('OpenMovie', ...); 0=PTBDefault, 1=YUVnotRGB-decoding, 2=NoSound, 4=DrawMotionVectors, 8=SkipBFrameDecode
+el.calAnimationSetIndexIsFrames = 0; % For testing if default is problematic (only used: following 'OpenMovie' and for rewind when el.calAnimationResetOnTargetMove = true): 'indexIsFrames' param passed to Screen('SetMovieTimeIndex', ...); 0=timeindexIsSeconds, 1=timeindexIsFrames
+el.calAnimationOpenAsync = 0;
+el.calAnimationOpenPreloadSecs = 1;
+el.calAnimationWaitTex = 0;
+el.calAnimationWaitTexClose = 0;
 
 el.devicenumber = []; %see KbCheck for details of this value
 el.getkeyrepeat=1/5; % "sample time" for eyelinkgetkey
@@ -110,10 +136,9 @@ el.msgfont='Helvetica';
 el.msgfontsize=20; % absolute, should perhaps be percentage of screen
 el.eyeimgsize=30; % percentage of screen
 el.helptext='Press RETURN (on either display computer or tracker host computer) to toggle camera image';
-el.helptext=[el.helptext '\n' 'Press ESC to Output/Record'];
+el.helptext=[el.helptext '\n' 'Press Esc/O for Output/Record'];
 el.helptext=[el.helptext '\n' 'Press C to Calibrate'];
 el.helptext=[el.helptext '\n' 'Press V to Validate'];
-% el.helptext=[el.helptext '\n' 'Press D for Drift correction'];
 
 % font info for camera image title
 el.imgtitlefont='Helvetica';
@@ -133,7 +158,11 @@ el.pagedown=KbName('PageDown');
 el.return=KbName('Return');
 el.escape=KbName('ESCAPE');
 el.space=KbName('space');
-el.backspace=KbName('DELETE'); % is this delete backspace?
+if IsOSX 
+    el.backspace=KbName('DELETE');
+else
+    el.backspace=KbName('BackSpace');  
+end
 
 el.f1=KbName('F1');
 el.f2=KbName('F2');
@@ -152,19 +181,16 @@ el.left_control=KbName('LeftControl');
 el.right_control=KbName('RightControl');
 el.lalt=KbName('LeftAlt');
 el.ralt=KbName('RightAlt');
-%el.lmeta=KbName('');
-%el.rmeta=KbName('');
 el.num=KbName('NumLock');
 el.caps=KbName('CapsLock');
-%el.mode=KbName('');
 
 if IsOSX
-	% OS-X supports a separate keycode for the Enter key:
-	el.enter=KbName('ENTER');
+    % OS-X supports a separate keycode for the Enter key:
+    el.enter=KbName('ENTER');
 else
-	% M$-Windows and GNU/Linux don't have a separate code for Enter,
-	% so we will map it to the 'Return' key:
-	el.enter=el.return;
+    % M$-Windows and GNU/Linux don't have a separate code for Enter,
+    % so we will map it to the 'Return' key:
+    el.enter=el.return;
 end
 el.keysCached=1;
 
@@ -172,7 +198,7 @@ el.keysCached=1;
 % up quickly. Hence we disable warnings for fillup problems:
 % This is try-catch protected for compatibility to Matlab R11 and Octave...
 try
-	warning off MATLAB:namelengthmaxexceeded
+    warning off MATLAB:namelengthmaxexceeded
 catch
     % Nothing to do. We just swallow the error we'd get if that warning
     % statement wouldn't be supported.
@@ -180,19 +206,19 @@ end
 
 % Eyelink Tracker state bit: bitand() with flag word to test functionality
 
-el.IN_DISCONNECT_MODE=16384;   	% disconnected
-el.IN_UNKNOWN_MODE=0;    		% mode fits no class (i.e setup menu)
-el.IN_IDLE_MODE=1;    			% off-line
-el.IN_SETUP_MODE=2;   			% setup or cal/val/dcorr
-el.IN_RECORD_MODE=4;    		% data flowing
-el.IN_TARGET_MODE=8;    		% some mode that needs fixation targets
-el.IN_DRIFTCORR_MODE=16;   		% drift correction
-el.IN_IMAGE_MODE=32;   			% image-display mode
-el.IN_USER_MENU=64;				% user menu
-el.IN_PLAYBACK_MODE=256;		% tracker sending playback data
+el.IN_DISCONNECT_MODE=16384;        % disconnected
+el.IN_UNKNOWN_MODE=0;               % mode fits no class (i.e setup menu)
+el.IN_IDLE_MODE=1;                  % off-line
+el.IN_SETUP_MODE=2;                 % setup or cal/val/dcorr
+el.IN_RECORD_MODE=4;                % data flowing
+el.IN_TARGET_MODE=8;                % some mode that needs fixation targets
+el.IN_DRIFTCORR_MODE=16;            % drift correction
+el.IN_IMAGE_MODE=32;                % image-display mode
+el.IN_USER_MENU=64;                 % user menu
+el.IN_PLAYBACK_MODE=256;            % tracker sending playback data
 
 % Eyelink key values
-el.JUNK_KEY=1;		% return code for untranslatable key
+el.JUNK_KEY=1;        % return code for untranslatable key
 el.TERMINATE_KEY=hex2dec('7FFF'); % return code for program exit/breakout key
 el.CURS_UP=hex2dec('4800');
 el.CURS_DOWN=hex2dec('5000');
@@ -203,6 +229,7 @@ el.ENTER_KEY=hex2dec('000D');
 el.PAGE_UP=hex2dec('4900');
 el.PAGE_DOWN=hex2dec('5100');
 el.SPACE_BAR=32;
+el.BACKSPACE=hex2dec('0008'); % BRedit - added for supporting back-stepping through targets
 
 el.F1_KEY=hex2dec('3B00');
 el.F2_KEY=hex2dec('3C00');
@@ -231,7 +258,6 @@ el.ELKMOD_MODE=hex2dec('4000');
 
 % other Eyelink values
 
-
 el.ELKEY_DOWN=1;
 el.ELKEY_UP=0;
 
@@ -239,7 +265,7 @@ el.KB_PRESS=10; % Eyelink.h
 el.MISSING=-32768; % eyedata.h
 el.MISSING_DATA=-32768;
 
-el.KEYDOWN=1; %Eyelink manual and core_expt.h have these backwards
+el.KEYDOWN=1; % Eyelink manual and core_expt.h have these backwards
 el.KEYUP=0;
 
 % LINK RETURN CODES
@@ -252,57 +278,46 @@ el.REPEAT_TRIAL=1;
 el.SKIP_TRIAL=2;
 el.ABORT_EXPT=3;
 
-el.TRIAL_ERROR=-1; 	% Bad trial: no data, etc.
+el.TRIAL_ERROR=-1;     % Bad trial: no data, etc.
 
 
 % EVENT types
 el.SAMPLE_TYPE=200;
 
-el.STARTPARSE=1; % 	/* these only have time and eye data */
+el.STARTPARSE=1;           % /* these only have time and eye data */
 el.ENDPARSE=2;
 el.BREAKPARSE=10;
 
-el.STARTBLINK=3;    % /* EYE DATA: contents determined by evt_data */
-el.ENDBLINK=4;   	% /* and by "read" data item */
-el.STARTSACC=5;		% /* all use IEVENT format */
+el.STARTBLINK=3;           % /* EYE DATA: contents determined by evt_data */
+el.ENDBLINK=4;             % /* and by "read" data item */
+el.STARTSACC=5;            % /* all use IEVENT format */
 el.ENDSACC=6;
 el.STARTFIX=7;
 el.ENDFIX=8;
 el.FIXUPDATE=9;
 
-el.STARTSAMPLES=15;  	%/* start of events in block *//* control events: all put data into */
-el.ENDSAMPLES=16;  		%/* end of samples in block *//* the EDF_FILE or ILINKDATA status  */
-el.STARTEVENTS=17; 		% /* start of events in block */
-el.ENDEVENTS=18;  		%/* end of events in block */
+el.STARTSAMPLES=15;        % /* start of events in block *//* control events: all put data into */
+el.ENDSAMPLES=16;          % /* end of samples in block *//* the EDF_FILE or ILINKDATA status  */
+el.STARTEVENTS=17;         % /* start of events in block */
+el.ENDEVENTS=18;           % /* end of events in block */
 
-el.MESSAGEEVENT=24;  % /* user-definable text or data */
-el.BUTTONEVENT=25;  %/* button state change */
-el.INPUTEVENT=28;  % /* change of input port */
+el.MESSAGEEVENT=24;        % /* user-definable text or data */
+el.BUTTONEVENT=25;         % /* button state change */
+el.INPUTEVENT=28;          % /* change of input port */
 
-el.LOSTDATAEVENT=hex2dec('3F'); %/*new addition v2.1, returned by eyelink_get_next_data() to flag a gap in the data stream due to queue filling up (need to get data more frequently)
-                                %/*described in 'EyeLink Programmers Guide.pdf' section 7.2.2, 13.3.2, 18.5.4
+el.LOSTDATAEVENT=hex2dec('3F'); % /* new addition v2.1, returned by eyelink_get_next_data() to flag */
+                                % /* a gap in the data stream due to queue filling up (need to get data more frequently) */
+                                % /* described in 'EyeLink Programmers Guide.pdf' section 7.2.2, 13.3.2, 18.5.4
 
-% if exist('EyelinkDispatchCallback') %#ok<EXIST>
-%     el.callback = 'EyelinkDispatchCallback';
-% else
-%     el.callback = [];
-% end
-
+el.FIVE_SAMPLE_MODEL = 1;
+el.NINE_SAMPLE_MODEL = 2;
+el.SEVENTEEN_SAMPLE_MODEL = 3;
+el.EL1000_TRACKER_MODEL = 4;
+                                
 if exist('PsychEyelinkDispatchCallback') %#ok<EXIST>
     el.callback = 'PsychEyelinkDispatchCallback';
 else
     el.callback = [];
 end
 
-
 EyelinkUpdateDefaults(el);
-
-
-% % Window assigned?
-% if ~isempty(el.window) && ~isempty(el.callback)
-%     % Yes. Assign it to our dispatch callback:
-% %     EyelinkDispatchCallback(el);
-%     PsychEyelinkDispatchCallback(el);
-% end
-
-% el % uncomment to show contents of this default eyelink structure
