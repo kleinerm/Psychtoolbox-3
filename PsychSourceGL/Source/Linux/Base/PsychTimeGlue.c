@@ -204,7 +204,7 @@ void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)
 {
     double secs;
 
-    // MK: Simply map current systemtime to microseconds...
+    // Simply map current systemtime to microseconds...
     PsychGetPrecisionTimerSeconds(&secs);
     *ticks = (psych_uint64) (secs * 1000000.0 + 0.5);
     return;
@@ -212,9 +212,8 @@ void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)
 
 void PsychGetPrecisionTimerTicksPerSecond(double *frequency)
 {
-    // MK: Ok, set this to 1 million. Our timesource is gettimeofday(), which
-    // resolves time at microsecond resolution, so one can think of it as a
-    // virtual timer with a tickrate of 1 Mhz
+    // Our timesource resolves time at microsecond resolution or better,
+    // so one can think of it as a virtual timer with a tickrate of 1 Mhz:
     *frequency=1000000.0f;
     return;
 }
@@ -223,8 +222,7 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
 {
     struct timespec res;
 
-    // We return the real clock tick resolution in microseconds, as 1 tick == 1 microsec
-    // in our implementation.
+    // We return the real clock tick resolution in microseconds:
     clock_getres(CLOCK_REALTIME, &res);
     *delta = (psych_uint32) ((((double) res.tv_sec) + ((double) res.tv_nsec / 1e9)) * 1e6);
 }
@@ -337,20 +335,26 @@ void PsychGetPrecisionTimerSeconds(double *secs)
         firstTime = FALSE;
     }
 
-    // We use gettimeofday() - It works with microsecond resolution and
-    // is implemented via the highest precision time source on each
-    // Linux system, e.g., the processors performance counters on
-    // Intel Pentium systems. Actually, the resolution of the underlying
-    // clocksource is often much better than 1 microsecond, e.g., nanoseconds,
+    // We use clock_gettime() - It returns time with nanosecond resolution and
+    // is implemented via the highest precision time source on each Linux
+    // system, e.g., the processors performance counters (TSC) on Intel
+    // architecture processors. The resolution of the underlying hardware clock
+    // source is often much better than 1 microsecond, e.g., indeed nanoseconds,
     // but Linux chooses always the highest precision reliable source, so in
-    // case TSC's are broken and HPET's are not available and ACPI PM-Timers
+    // case TSC's are broken, and HPET's are not available, and ACPI PM-Timers
     // aren't available, it could be a worse than 1 usec source, although this
     // is extremely unlikely...
     static double oldss = -1;
     double ss;
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    ss = ((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0);
+    struct timespec ts;
+    if (0 != clock_gettime(CLOCK_REALTIME, &ts)) {
+        // This error is basically impossible, but for beauty points we check for it anyway:
+        ss = 0;
+        printf("PTB-CRITICAL_ERROR: clock_gettime(%i) failed!!\n", CLOCK_REALTIME);
+    }
+    else {
+        ss = ((double) ts.tv_sec) + ((double) ts.tv_nsec / (double) 1e9);
+    }
 
     // Some correctness checks against last queried value, if initialized:
     if (oldss > -1) {
@@ -392,10 +396,9 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 
 double PsychGetAdjustedPrecisionTimerSeconds(double *secs)
 {
-    double rawSecs, factor;
+    double rawSecs;
 
     PsychGetPrecisionTimerSeconds(&rawSecs);
-    PsychGetPrecisionTimerAdjustmentFactor(&factor);
     rawSecs = rawSecs * precisionTimerAdjustmentFactor;
 
     if (secs) *secs = rawSecs;
@@ -427,13 +430,15 @@ double PsychGetEstimatedSecsValueAtTickCountZero(void)
     return(estimatedGetSecsValueAtTickCountZero);
 }
 
-/* PsychGetWallClockSeconds - Return gettimeofday() wall clock time. */
+/* PsychGetWallClockSeconds - Always return CLOCK_REALTIME (aka gettimeofday()) wall clock time. */
 double PsychGetWallClockSeconds(void)
 {
-    struct timeval tv;
+    struct timespec ts;
 
-    gettimeofday(&tv, NULL);
-    return(((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0));
+    if (0 != clock_gettime(CLOCK_REALTIME, &ts))
+        return(0.0);
+
+    return((double) ts.tv_sec + ((double) ts.tv_nsec / (double) 1e9));
 }
 
 /* Init a Mutex: */
@@ -678,11 +683,11 @@ int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
 int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs)
 {
     struct timespec abstime;
-    double tnow;
 
-    // Convert relative wait time to absolute system time:
-    PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-    maxwaittimesecs+=tnow;
+    // Convert relative wait time to absolute CLOCK_REALTIME system time:
+    // Note: Would go wrong if condition was initialized to use CLOCK_MONOTONIC instead, by
+    // passing a corresponding non-standard-clockid condition_attribute to PsychInitCondition().
+    maxwaittimesecs += PsychGetWallClockSeconds();
 
     // Split maxwaittimesecs in...
 
