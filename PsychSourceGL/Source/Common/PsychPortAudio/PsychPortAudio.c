@@ -23,7 +23,7 @@
 
 #include "PsychPortAudio.h"
 
-unsigned int verbosity = 4;
+static unsigned int verbosity = 4;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "pa_mac_core.h"
