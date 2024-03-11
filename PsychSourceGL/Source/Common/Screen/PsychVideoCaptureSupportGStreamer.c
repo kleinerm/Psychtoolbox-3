@@ -294,10 +294,12 @@ void PsychGSCheckInit(const char* engineName)
 
         // Select opmode of GStreamers master clock:
         // We use monotonic clock on Windows and OS/X, as these correspond to the
-        // clocks we use for GetSecs(), but realtime clock on Linux:
+        // clocks we use for GetSecs(), but realtime clock or monotonic clock on Linux,
+        // whatever GetSecs uses:
         system_clock = gst_system_clock_obtain();
         if (system_clock) {
-            g_object_set(G_OBJECT(system_clock), "clock-type", ((PSYCH_SYSTEM == PSYCH_LINUX) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
+            g_object_set(G_OBJECT(system_clock), "clock-type",
+                         (((PSYCH_SYSTEM == PSYCH_LINUX) && (PsychOSMonotonicToRefTime(0) != 0)) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
         }
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GStreamer version '%s'.\n", (char*) gst_version_string());
 

@@ -205,6 +205,18 @@ double PsychGetWallClockSeconds(void)
     return(((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0));
 }
 
+/* CLOCK_REALTIME / gettimeofday() time to macOS GetSecs time. */
+double PsychOSRealtimeToRefTime(double t)
+{
+    // Standard monotonic GetSecs timebase?
+    if (PsychOSMonotonicToRefTime(0) == 0) {
+        // Yes. Need to convert from CLOCK_REALTIME / gettimeofday() to monotonic:
+        t -= PsychGetWallClockSeconds() - PsychGetAdjustedPrecisionTimerSeconds(NULL);
+    }
+
+    return(t);
+}
+
 /* No-Op function on macOS atm. */
 double PsychOSMonotonicToRefTime(double monotonicTime)
 {

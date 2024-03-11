@@ -1444,6 +1444,10 @@ void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
                 capdev->current_pts = nowTimeSecs - (nowCycleTimeSecs + (128 - frameCycleTimeSecs));
             }
 
+            // On both macOS and Linux our libdc1394 code computes CLOCK_REALTIME / gettimeofday()
+            // timestamps. Need to convert them to GetSecs reference time:
+            capdev->current_pts = PsychOSRealtimeToRefTime(capdev->current_pts);
+
             if (PsychPrefStateGet_Verbosity() > 10) {
                 printf("PTB-INFO: Basler SFF timestamp on device %i is %f secs [raw value %i].\n", capdev->capturehandle, capdev->current_pts, sff_cycletimestamp->cycle_time_stamp.unstructured.value);
             }
@@ -1456,17 +1460,9 @@ void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
         // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
         capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
 
-        // On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
-        // clock represents host uptime, not gettimeofday() time. Therefore we need to remap
-        // on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
-        // clock calibration between both clocks and offset correction:
-        #if PSYCH_SYSTEM == PSYCH_OSX
-        struct timeval tv;
-        double tRef;
-        gettimeofday(&tv, NULL);
-        PsychGetAdjustedPrecisionTimerSeconds(&tRef);
-        capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tRef;
-        #endif
+        // On both macOS and Linux our libdc1394 code computes CLOCK_REALTIME / gettimeofday()
+        // timestamps. Need to convert them to GetSecs reference time:
+        capdev->current_pts = PsychOSRealtimeToRefTime(capdev->current_pts);
     }
 }
 
@@ -3417,16 +3413,20 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     if (strstr(pname, "GetCycleTimer")!=0) {
         dc1394basler_sff_cycle_time_stamp_t ct;
         uint64_t systemtime;
+        double getsecstime;
 
         err = dc1394_read_cycle_timer(capdev->camera, &(ct.cycle_time_stamp.unstructured.value), &systemtime);
         if (err && (err != DC1394_FUNCTION_NOT_SUPPORTED)) PsychErrorExitMsg(PsychError_system, "Failed to query cycle timer!");
         if (err == DC1394_FUNCTION_NOT_SUPPORTED) return(oldvalue);
 
+        // System time is CLOCK_REALTIME time in microseconds, so convert to GetSecs seconds:
+        getsecstime = PsychOSRealtimeToRefTime(((double) ((psych_uint64) systemtime)) / 1000000.0f);
+
         // Copy out Firewire bus time converted into seconds:
         PsychCopyOutDoubleArg(1, FALSE, PsychDCBusCycleTimeToSecs(ct.cycle_time_stamp.unstructured.value));
 
-        // System time is CLOCK_REALTIME time in microseconds, so convert to GetSecs() seconds:
-        PsychCopyOutDoubleArg(2, FALSE, ((double) ((psych_uint64) systemtime)) / 1000000.0f);
+        // Copy out GetSecs timestamp:
+        PsychCopyOutDoubleArg(2, FALSE, getsecstime);
 
         // Copy out Firewire bus time in seconds:
         PsychCopyOutDoubleArg(3, FALSE, (double) ct.cycle_time_stamp.structured.second_count);

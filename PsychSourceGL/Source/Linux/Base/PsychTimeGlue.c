@@ -42,6 +42,7 @@ static psych_bool   isKernelTimebaseFrequencyHzInitialized = FALSE;
 static double       kernelTimebaseFrequencyHz;
 static double       sleepwait_threshold = 0.001;
 static double       clockinc = 0;
+static clockid_t    main_clock = CLOCK_REALTIME;
 
 double PsychWaitUntilSeconds(double whenSecs)
 {
@@ -88,7 +89,7 @@ double PsychWaitUntilSeconds(double whenSecs)
         // signals. If clock_nanosleep gets EINTR - Interrupted by a posix signal, we simply loop and restart the
         // sleep. If it returns a different error condition, we abort sleep iteration -- something would be seriously
         // wrong...
-        if ((rc = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &rqtp, NULL)) && (rc != EINTR)) break;
+        if ((rc = clock_nanosleep(main_clock, TIMER_ABSTIME, &rqtp, NULL)) && (rc != EINTR)) break;
 
         // Update our 'now' time for reiterating or continuing with busy-sleep...
         PsychGetPrecisionTimerSeconds(&now);
@@ -187,6 +188,33 @@ double PsychGetKernelTimebaseFrequencyHz(void)
 
 void PsychInitTimeGlue(void)
 {
+    // Selection of main clock, aka GetSecs() clock, which is used pretty much
+    // everywhere. Default to CLOCK_REALTIME aka gettimeofday() clock aka
+    // wall clock, which is what was used on Linux since day one:
+    main_clock = CLOCK_REALTIME;
+
+    // Allow user override via environment variable, to be set via PsychTweak():
+    if (getenv("PSYCH_GETSECS_CLOCK")) {
+        main_clock = atoi(getenv("PSYCH_GETSECS_CLOCK"));
+        switch (main_clock) {
+            case CLOCK_REALTIME:        // 0
+            case CLOCK_MONOTONIC:       // 1
+            case CLOCK_MONOTONIC_RAW:   // 4
+            case CLOCK_BOOTTIME:        // 7
+            case CLOCK_TAI:             // 11
+                errno = 0;
+                if (clock_getres(main_clock, NULL) && (errno == EINVAL)) {
+                    printf("PTB-ERROR: Selected clock_id %i for GetSecs and timekeeping unsupported by operating system! Reverting to 0 == CLOCK_REALTIME.\n", main_clock);
+                    main_clock = CLOCK_REALTIME;
+                }
+                break;
+
+            default:
+                printf("PTB-ERROR: Tried to select an unsupported clock_id %i for GetSecs and timekeeping! Reverting to default 0 == CLOCK_REALTIME.\n", main_clock);
+                main_clock = CLOCK_REALTIME;
+        }
+    }
+
     // Set this, although its totally pointless on our implementation...
     PsychEstimateGetSecsValueAtTickCountZero();
 }
@@ -223,8 +251,23 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
     struct timespec res;
 
     // We return the real clock tick resolution in microseconds:
-    clock_getres(CLOCK_REALTIME, &res);
+    clock_getres(main_clock, &res);
     *delta = (psych_uint32) ((((double) res.tv_sec) + ((double) res.tv_nsec / 1e9)) * 1e6);
+}
+
+/* CLOCK_REALTIME / gettimeofday() time to Linux GetSecs time. */
+double PsychOSRealtimeToRefTime(double t)
+{
+    // TODO FIXME: This only works for CLOCK_MONOTONIC GetSecs main_clock timebase,
+    // and can be inaccurate! Should use same approach as in PsychOSMonotonicToRefTime()!
+
+    // CLOCK_MONOTONIC GetSecs timebase?
+    if (main_clock == CLOCK_MONOTONIC) {
+        // Yes. Need to convert from CLOCK_REALTIME / gettimeofday() to CLOCK_MONOTONIC:
+        t -= PsychGetWallClockSeconds() - PsychOSGetLinuxMonotonicTime();
+    }
+
+    return(t);
 }
 
 /* PsychOSGetLinuxMonotonicTime() -- Linux only.
@@ -232,10 +275,9 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
  * Return CLOCK_MONOTONIC time (usually system uptime) in seconds.
  * Return zero on failure.
  *
- * Some subsystems return time not in gettimeofday() time aka CLOCK_REALTIME time,
- * but in CLOCK_MONOTONIC time. In such cases we need to query this time to compute
- * proper offsets for remapping into the gettimeofday() timebase which is used
- * everywhere in PTB.
+ * Some subsystems return time not in main_clock time, but in CLOCK_MONOTONIC
+ * time. In such cases we need to query this time to compute proper offsets for
+ * remapping into the main_clock timebase which is used everywhere in PTB.
  *
  * An example is ALSA audio support in PsychPortAudio: ALSA drivers are free to
  * return their audio timestamps in CLOCK_REALTIME time or CLOCK_MONOTONIC time,
@@ -254,13 +296,14 @@ double PsychOSGetLinuxMonotonicTime(void)
  * Map given input time value monotonicTime to PTB reference time if
  * neccessary, pass-through otherwise.
  *
- * Can conditionally convert from CLOCK_MONOTONIC time to reftime, e.g.,
- * to CLOCK_REALTIME aka gettimeofday().
- *
  */
 double PsychOSMonotonicToRefTime(double monotonicTime)
 {
     double now, now2, tMonotonic;
+
+    // Short-cut this if main "reference" clock is already CLOCK_MONOTONIC:
+    if (main_clock == CLOCK_MONOTONIC)
+        return(monotonicTime);
 
     // Get current reftime:
     PsychGetAdjustedPrecisionTimerSeconds(&now);
@@ -300,11 +343,15 @@ double PsychOSMonotonicToRefTime(double monotonicTime)
  *
  * Map given input PTB reference time to CLOCK_MONOTONIC time.
  *
- * Iow CLOCK_REALTIME to CLOCK_MONOTONIC time.
+ * Iow main_clock to CLOCK_MONOTONIC time.
  *
  */
 double PsychOSRefTimeToMonotonicTime(double refInputTime)
 {
+    // Short-cut this if main "reference" clock is already CLOCK_MONOTONIC:
+    if (main_clock == CLOCK_MONOTONIC)
+        return(refInputTime);
+
     double monotonicNowTime = PsychOSGetLinuxMonotonicTime();
     double referenceNowTime = PsychOSMonotonicToRefTime(monotonicNowTime);
     return(monotonicNowTime + (refInputTime - referenceNowTime));
@@ -319,7 +366,7 @@ void PsychGetPrecisionTimerSeconds(double *secs)
     if (firstTime) {
         // We query the real clock tick resolution in secs and store in global clockinc.
         // This is useful as a constraint on sleepwait_threshold etc. for our sleep routines...
-        clock_getres(CLOCK_REALTIME, &res);
+        clock_getres(main_clock, &res);
         clockinc = ((double) res.tv_sec) + ((double) res.tv_nsec / 1.e9);
 
         // sleepwait_threshold should be significantly higher than the granularity of
@@ -347,10 +394,10 @@ void PsychGetPrecisionTimerSeconds(double *secs)
     static double oldss = -1;
     double ss;
     struct timespec ts;
-    if (0 != clock_gettime(CLOCK_REALTIME, &ts)) {
+    if (0 != clock_gettime(main_clock, &ts)) {
         // This error is basically impossible, but for beauty points we check for it anyway:
         ss = 0;
-        printf("PTB-CRITICAL_ERROR: clock_gettime(%i) failed!!\n", CLOCK_REALTIME);
+        printf("PTB-CRITICAL_ERROR: clock_gettime(%i) failed!!\n", main_clock);
     }
     else {
         ss = ((double) ts.tv_sec) + ((double) ts.tv_nsec / (double) 1e9);
