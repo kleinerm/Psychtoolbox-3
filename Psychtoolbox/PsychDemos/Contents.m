@@ -9,6 +9,7 @@
 %
 %    AlphaImageDemo          - Simple demo of OpenGL alpha blending.
 %    AlphaRotateDemo         - A variant of AlphaImageDemoOSX, demonstrates rotated drawing.
+%    ApriltagsDemo           - Demonstrate use of the apriltag library for fiducial April tag marker tracking.
 %    ArcDemo                 - Demonstrate the 'FrameArc', 'FillArc' functions.
 %    ARToolkitDemo           - Use ARToolkit to track and visualize 3D objects in live-video.
 %    AudioTunnel3DDemo       - Very sketchy demo on how to use OpenAL for 3D spatialized sound.

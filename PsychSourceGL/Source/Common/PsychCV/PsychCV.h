@@ -20,6 +20,10 @@
 #include "Psych.h"
 #include "PsychTimeGlue.h"
 #include "PsychCVARToolkit.h"
+#ifdef PSYCHCV_USE_APRILTAGS
+#include "PsychCVAprilTags.h"
+#endif
+
 
 // Data structure for setting/returning/exchanging eye tracking data
 // between PsychCV and the OpenEyes cvEyeTracker:

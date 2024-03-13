@@ -78,8 +78,9 @@ void InitializeSynopsis()
     int i = 0;
     const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 
-    synopsis[i++] = "PsychCV - Helper module for miscellaneous stuff related to OpenCV and/or computer vision:\n\n";
-    synopsis[i++] = "This module contains a large amount of 3rd party software, so here are the credits for those parts:\n";
+    synopsis[i++] = "PsychCV - Helper module for miscellaneous functionality related to image processing and/or computer vision:\n";
+    synopsis[i++] = "Copyright 2008 - 2024 Mario Kleiner. Licensed under MIT license. For potential statically included libraries,";
+    synopsis[i++] = "see licenses below. This module employs various different 3rd party software, so here are the credits for those parts:\n";
     #ifdef PSYCHCV_USE_OPENCV
     synopsis[i++] = "OpenEyes eye tracking is based mostly on a modified version of the OpenEyes toolkit,";
     synopsis[i++] = "http://hcvl.hci.iastate.edu/openEyes which was written by Dongheng Li, Derrick Parkhurst,";
@@ -91,6 +92,11 @@ void InitializeSynopsis()
     #ifdef PSYCHCV_USE_ARTOOLKIT
     synopsis[i++] = "The 'ARxxx' subfunctions are based on the ARToolkit: http://www.hitl.washington.edu/artoolkit/";
     synopsis[i++] = "ARToolkit is licensed to you under GPL v2.\n";
+    #endif
+    #ifdef PSYCHCV_USE_APRILTAGS
+    synopsis[i++] = "The 'Aprilxxx' subfunctions for April tag tracking are implemented by use of the apriltag library from:";
+    synopsis[i++] = "https://april.eecs.umich.edu/software/apriltag and https://github.com/AprilRobotics/apriltag .";
+    synopsis[i++] = "The apriltag library is licensed under BSD-2 clause license. See Psychtoolbox main License.txt file for details.\n";
     #endif
     synopsis[i++] = "\nGeneral information and settings:\n";
     synopsis[i++] = "version = PsychCV('Version');";
@@ -114,7 +120,14 @@ void InitializeSynopsis()
     synopsis[i++] = "[scale, minDist, maxDist] = PsychCV('ARRenderSettings' [, scale][, minDist][, maxDist]);";
     synopsis[i++] = "PsychCV('ARRenderImage');";
     #endif
-//    synopsis[i++]
+    #ifdef PSYCHCV_USE_APRILTAGS
+    synopsis[i++] = "\nSupport for the apriltag 2D/3D april tag marker tracking library:\n";
+    synopsis[i++] = "[inputImageMemBuffer] = PsychCV('AprilInitialize', tagFamilyName, imgWidth, imgHeight, imgChannels [, imgFormat]);";
+    synopsis[i++] = "[detectedMarkers] = PsychCV('AprilDetectMarkers'[, markerSubset=all][, infoType=all]);";
+    synopsis[i++] = "PsychCV('AprilShutdown');";
+    synopsis[i++] = "[nrThreads, imageDecimation, quadSigma, refineEdges, decodeSharpening] = PsychCV('AprilSettings' [, nrThreads][, imageDecimation][, quadSigma][, refineEdges][, decodeSharpening]);";
+    synopsis[i++] = "[glProjectionMatrix, camCalib, tagSize, minD, maxD] = PsychCV('April3DSettings' [, camCalib][, tagSize][, minD][, maxD]);";
+    #endif
 
     synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -143,6 +156,10 @@ PsychError PsychCVExit(void)
         PsychCVARExit();
         #endif
 
+        #ifdef PSYCHCV_USE_APRILTAGS
+        PsychCVAprilExit();
+        #endif
+
         // Mark us dead:
         psychCVInitialized = FALSE;
     }
@@ -153,7 +170,7 @@ PsychError PsychCVExit(void)
 // Startup function: Called at module load time / First time invocation:
 void PsychCVInitialize(void)
 {
-    // PortAudio already initialized?
+    // Already initialized?
     if (!psychCVInitialized) {
         // We're alive :-)
         psychCVInitialized = TRUE;
