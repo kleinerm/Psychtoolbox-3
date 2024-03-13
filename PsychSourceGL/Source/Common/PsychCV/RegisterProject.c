@@ -52,6 +52,14 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("ARRenderSettings", &PSYCHCVARRenderSettings));
     #endif
 
+    #ifdef PSYCHCV_USE_APRILTAGS
+    PsychErrorExit(PsychRegister("AprilInitialize", &PSYCHCVAprilInitialize));
+    PsychErrorExit(PsychRegister("AprilShutdown", &PSYCHCVAprilShutdown));
+    PsychErrorExit(PsychRegister("AprilDetectMarkers", &PSYCHCVAprilDetectMarkers));
+    PsychErrorExit(PsychRegister("AprilSettings", &PSYCHCVAprilSettings));
+    PsychErrorExit(PsychRegister("April3DSettings", &PSYCHCVApril3DSettings));
+    #endif
+
     // Setup synopsis help strings:
     InitializeSynopsis();
 

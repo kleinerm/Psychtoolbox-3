@@ -107,6 +107,12 @@ if mode==9
     cd(curdir);
 end
 
+if mode == 10
+    % Build PsychCV.mexa64:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychCV -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychCV -DPSYCHCV_USE_APRILTAGS -I/usr/include/apriltag -ICommon/Base -ILinux/Base -ICommon/PsychCV "Common/Base/*.c" "Linux/Base/*.c" "Common/PsychCV/*.c" -lc -lrt -ldl -lapriltag -lapriltag-utils
+    unix(['mv ../Projects/Linux/build/PsychCV.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
 if mode == 11
     % Build pnet.mexa64:
     curdir = pwd;

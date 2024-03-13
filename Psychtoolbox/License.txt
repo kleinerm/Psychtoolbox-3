@@ -233,6 +233,8 @@
 %
 % The PsychtoolboxKernelDriver.kext - MIT license : Mario Kleiner.
 %
+% Screen MEX file:
+%
 % Screen statically includes the "tinyexr" library for reading some common OpenEXR
 % HDR image file formats via the Screen('ReadHDRImage') subfunction. tinyexr is
 % licensed under the MIT compatible BSD-3 license - see below for exact licensing
@@ -267,11 +269,25 @@
 % That code is Copyright (c) 2013 Ryan Hileman and provided to us and others under the MIT
 % license. Thanks!
 %
-% PsychCV MEX file        - Individual source files BSD-3 or GPL v2+
-%                           license, see their source code for details.
-%                           Compiled MEX file GPL v2+ license. Various
-%                           authors - See individual licenses in source
-%                           code.
+% PsychCV MEX file:
+%
+% Individual source files are under MIT (core code), BSD-3 (svd used by OpenEyes),
+% or GPL v2+ (OpeEyes derived code) license. Various authors - See individual licenses in
+% source code.
+%
+% For the compiled PsychCV MEX file, the license depends on the specific build configuration:
+%
+% - The default configuration, with only libapriltag support enabled for AprilTag marker
+%   tracking, uses MIT code written by us, and dynamically links against a system installed
+%   libapriltag library, which itself is BSD-2 licensed. See license text below.
+%
+% - If compiled with a non-default configuration, which would use statically included
+%   derived code from OpenEyes, and/or a statically linked version of libARToolkit v1
+%   (code included in the PsychSourceGL/Cohorts/ARToolkit subfolder), would be GPL v2+
+%   licensed, and could be only used with GNU/Octave (GPL v3+) as host runtime, not with
+%   Matlab. We do not ship this configuration with Psychtoolbox to avoid all the GPL v2+
+%   license complexity, and most likely will remove all that code completely in the future.
+%
 %
 % All other MEX files     - All compiled binaries and most source code under
 %                           MIT license. Some bits of source code include X11
@@ -1794,6 +1810,40 @@
 % the use of this software, even if advised of the possibility of such damage.
 %
 % End of the HTC SRAnipal SDK license text.
+%
+% =========================================================================
+%
+% The license of the apriltag library:
+%
+% BSD 2-Clause License
+%
+% Copyright (C) 2013-2016, The Regents of The University of Michigan. All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without modification, are
+% permitted provided that the following conditions are met:
+%
+%   Redistributions of source code must retain the above copyright notice, this list of
+%   conditions and the following disclaimer.
+%
+%   Redistributions in binary form must reproduce the above copyright notice, this list
+%   of conditions and the following disclaimer in the documentation and/or other materials
+%   provided with the distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+% EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+% OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+% SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+% INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+% PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+% LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+% OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+%
+% The views and conclusions contained in the software and documentation are those of the
+% authors and should not be interpreted as representing official policies, either expressed
+% or implied, of the Regents of The University of Michigan.
+%
+% End of the apriltag library license text.
 %
 % =========================================================================
 
