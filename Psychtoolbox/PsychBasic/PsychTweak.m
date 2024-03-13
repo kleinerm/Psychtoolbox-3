@@ -4,13 +4,9 @@ function varargout = PsychTweak(cmd, varargin)
 % This function allows to tweak some low-level operating parameters of
 % Psychtoolbox. Such tweaks often affect all mex files, not only specific
 % files. You must execute this function before any other Psychtoolbox mex
-% file is used, otherwise mex files will not pick up consistent settings
+% file is used, otherwise mex files may not pick up consistent settings
 % and weird things may happen! If in doubt, execute "clear mex" before
 % executing this function.
-%
-% Currently the function mostly implements tweaks for MS-Windows to allow
-% to cope with the brokenness of the system, especially in the domain of
-% timing and timestamping.
 %
 %
 % Available subfunctions:
@@ -82,12 +78,41 @@ function varargout = PsychTweak(cmd, varargin)
 %
 %
 % PsychTweak('LibUSBDebug', verbosity);
-%
 % -- Select level of verbosity for low-level debug output of USB functions.
 % This currently sets the debug level of libusb-1.0 based functions, e.g,
 % PsychHID, PsychKinectCore, some videocapture functions and others.
 % Possible values: 0 = Silence (default), 1 = Errors, 2 = Errors +
 % Warnings, 3 = Errors + Warnings + Info messages.
+%
+%
+% Linux only tweaks:
+% ------------------
+%
+% PsychTweak('GetSecsClock', clockid);
+% -- Select type of system clock to use for all timing functions like GetSecs,
+% WaitSecs, all timing and timestamps in Screen(), PsychPortAudio() etc.
+% clockid can be any of:
+%
+% 0 = CLOCK_REALTIME (aka gettimeofday() time or wall clock). This is the default.
+%     It counts the seconds since 1st January 1970 midnight. This clock can be set
+%     by the system administrator, or external time services like NTP network time
+%     service. If NTP or the system administrator so desires, time can jump forward
+%     or backwards. Leap seconds can do similar things. Allows easy synchronization
+%     of clocks across computers if they are all driven by a NTP or PTP time source.
+%
+% 1 = CLOCK_MONOTONIC. This clock can not jump backwards, but is always monotonically
+%     increasing. Its zero point is typically system boot time. It freezes if the
+%     system is suspended / sleeping. The clock is still slowly adjusted (slewed) by
+%     external time sources like NTP or PTP if available. This can be the most efficient
+%     selection if you don't need to have consistent time across computers or equipment.
+%
+% 4 = CLOCK_MONOTONIC_RAW. Like CLOCK_MONOTONIC, but no time correction wrt. an external
+%     reference time source like NTP or PTP is performed.
+%
+% 7 = CLOCK_BOOTTIME. Like CLOCK_MONOTONIC, but keeps counting while system is sleeping.
+%
+% Note that only clockid 0 and 1 have been verified for precision and correctness to some
+% degree. Other settings may cause to functions to malfunction or be imprecise.
 %
 %
 % MS-Windows only tweaks:
@@ -359,7 +384,7 @@ end
 % otherwise they won't pick up the tweak settings consistently. Check if
 % any ptb mex files are loaded:
 
-% inmem not yet implemented as of Octave 3.6.x, so Matlab only:
+% inmem not yet implemented as of Octave 8.4, so Matlab only:
 if exist('inmem') %#ok<EXIST>
     % Get list of all loaded mex files in cell array mexf:
     [foo, mexf] = inmem('-completenames'); %#ok<ASGLU>
@@ -378,10 +403,31 @@ end
 % Reset some signalling environment variables used by mex files:
 if strcmpi(cmd, 'Reset')
     setenv('PSYCH_LOWRESCLOCK_FALLBACK');
+    setenv('PSYCH_GETSECS_CLOCK');
     return;
 else
     % Reset this one even if no 'Reset' command given:
     setenv('PSYCH_LOWRESCLOCK_FALLBACK');    
+end
+
+if strcmpi(cmd, 'GetSecsClock')
+    if length(varargin) < 1
+        error('Must provide a clockid.');
+    end
+
+    val = varargin{1};
+    if ~isnumeric(val) || ~isscalar(val)
+        error('Must provide a single integer as argument!');
+    end
+
+    val = round(val);
+
+    if ~ismember(val, [0, 1])
+        warning('A clockid other than 0 or 1 may cause some functions not to work correctly, or not with high precision.');
+    end
+
+    setenv('PSYCH_GETSECS_CLOCK', sprintf('%i', val));
+    return;
 end
 
 if strcmpi(cmd, 'BackwardTimejumpTolerance')

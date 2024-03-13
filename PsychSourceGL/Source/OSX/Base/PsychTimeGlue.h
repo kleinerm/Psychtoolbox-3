@@ -88,6 +88,7 @@ int PsychGetOSXMinorVersion(psych_bool* isARM);
 const char* PsychSupportStatus(void);
 double PsychOSMonotonicToRefTime(double monotonicTime);
 double PsychOSRefTimeToMonotonicTime(double refInputTime);
+double PsychOSRealtimeToRefTime(double t);
 
 // Execute a block of code { statement1; statement2; ...; statementn; } on the
 // application main thread. Execute directly if current thread is main thread,
