@@ -1,26 +1,23 @@
 /*
-	PsychToolbox3/Source/Common/PsychCV/PsychCVARToolkit.h
-	
-	PLATFORMS:	All
+    PsychToolbox-3/PsychSourceGL/Source/Common/PsychCV/PsychCVARToolkit.h
 
-	AUTHORS:
+    PLATFORMS:  All
 
-	Mario Kleiner   mk      mario.kleiner at tuebingen.mpg.de
-	
-	HISTORY:
+    AUTHORS:
 
-	19.04.09		mk		Initial implementation.  
+    Mario Kleiner   mk      mario.kleiner.de@gmail.com
 
-	NOTES:
+    HISTORY:
 
+    19.04.09        mk      Initial implementation.
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychCVARToolkit
 #define PSYCH_IS_INCLUDED_PsychCVARToolkit
 
 //project includes
-#include "Psych.h" 
+#include "Psych.h"
 #include "PsychTimeGlue.h"
 #include "PsychCV.h"
 

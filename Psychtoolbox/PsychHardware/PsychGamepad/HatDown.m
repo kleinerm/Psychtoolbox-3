@@ -1,7 +1,7 @@
 function result = HatDown
 % result = HatDown
 % Return a constant for hat down position.  To read a hat position, use:
-% JOYSTICK(joystickNumber,'GetHat',hatNumber).  
+% Gamepad('GetHat', gamepadIndex, hatIndex).
 
 % 8/17/01   awi wrote it
 % 7/21/03   awi added switch and OS X condition.

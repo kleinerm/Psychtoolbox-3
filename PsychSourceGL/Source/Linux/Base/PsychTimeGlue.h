@@ -72,6 +72,7 @@ const char* PsychSupportStatus(void);
 double PsychOSGetLinuxMonotonicTime(void);
 double PsychOSMonotonicToRefTime(double monotonicTime);
 double PsychOSRefTimeToMonotonicTime(double refInputTime);
+double PsychOSRealtimeToRefTime(double t);
 
 // Test if module needs to call XInitThreads() itself during startup:
 int PsychOSNeedXInitThreads(int verbose);

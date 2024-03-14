@@ -1,5 +1,6 @@
 function result = Joystick(arg1, arg2, arg3)
-
+% Joystick() is deprecated and will call GamePad() as its replacement.
+% See 'help GamePad'.
 
 if nargin>3
     error('Too many arguments');
@@ -18,5 +19,5 @@ if ~isnan(tempResult)
     result=tempResult; 
 end
 
-% warning('"Joystick has been renamed to "Gamepad".  To avoid this warning message use the new name,  "Gamepad".');
-
+warning('Psychtoolbox:Joystick', '"Joystick" has been renamed to "Gamepad". For improved performance use the new name, "Gamepad".');
+warning('off', 'Psychtoolbox:Joystick');

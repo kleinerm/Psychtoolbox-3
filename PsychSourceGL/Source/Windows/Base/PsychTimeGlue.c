@@ -1196,6 +1196,12 @@ double PsychGetWallClockSeconds(void)
 }
 
 /* No-Op function on MS-Windows atm. */
+double PsychOSRealtimeToRefTime(double t)
+{
+    return(t);
+}
+
+/* No-Op function on MS-Windows atm. */
 double PsychOSMonotonicToRefTime(double monotonicTime)
 {
     return(monotonicTime);

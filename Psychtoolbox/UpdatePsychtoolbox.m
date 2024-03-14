@@ -1,12 +1,29 @@
 function UpdatePsychtoolbox(targetdirectory, targetRevision, tryNonInteractiveSetup)
 % UpdatePsychtoolbox([targetdirectory][, targetRevision][, tryNonInteractiveSetup=0])
 %
+% THIS UPDATER DOES NO LONGER WORK, AS GITHUB HAS REMOVED THEIR
+% SUBVERSION FRONTEND, WHICH IT CRITICALLY REQUIRES, FROM THEIR SERVICES
+% PERMANENTLY AT 8TH JANUARY 2024.
+%
+% Due to the lack of financial support for Psychtoolbox by the vast
+% majority of our non-paying users, we did not and currently do not have
+% the funding to work on a good alternative solution for this. Therefore
+% this convenient installation and update method will be unavailable for an
+% unknown period of time.
+%
+% See http://psychtoolbox.org/download.html#alternate-download for a
+% workable, although way less convenient and advanced, download and
+% installation method, via zip file download and execution of
+% SetupPsychtoolbox(). Good luck!
+%
+% =========================================================================
+%
 % Update your working copy of the Psychtoolbox with the latest bug fixes,
 % enhancements, and features from our Git server.
 %
 % If you are using a Psychtoolbox provided by NeuroDebian, then this is not
 % needed. You will be automatically notified of updates to Psychtoolbox by
-% your operating systems update manager as soon as they become available.
+% your operating systems update manager, as soon as they become available.
 %
 % The "targetdirectory" argument is optional. If present, it specifies the path
 % of the Psychtoolbox folder to update. If omitted, UpdatePsychtoolbox will
@@ -26,8 +43,8 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision, tryNonInteractiveSe
 % multiple times with the 'PREV' specifier, you could incrementally
 % downgrade until stuff works for you.
 %
-% UpdatePsychtoolbox cannot change the beta-vs-stable flavor of your
-% Psychtoolbox. To change the flavor, run DownloadPsychtoolbox again.
+% UpdatePsychtoolbox cannot change the flavor of your Psychtoolbox. To
+% change the flavor, run DownloadPsychtoolbox again.
 %
 % The optional parameter 'tryNonInteractiveSetup' if provided as 1 (true), will
 % try a setup without user interaction, not asking users for input in certain
@@ -109,27 +126,20 @@ if nargin < 3 || isempty(tryNonInteractiveSetup)
 end
 
 % It's the end of the world as we know it...
-if datenum(date) > datenum('8-Jan-2024') %#ok<*DATE,*DATNM>
-    fprintf('This Updater does no longer work after 8th January 2024, as GitHub has removed its\n');
-    fprintf('Subversion download frontend from their services permanently at that day.\n\n');
-else
-    fprintf('This Updater will no longer work, starting at or after 8th January 2024, as GitHub will\n');
-    fprintf('remove its Subversion download frontend from their services permanently at that day.\n');
-    fprintf('Before this deadline, there may be multiple temporary hour-long or day-long brownouts,\n');
-    fprintf('resulting in update failure, as a heads-up by GitHub about the upcoming permanent end of service.\n\n');
-end
-
+fprintf('This Updater does no longer work, as GitHub has removed their Subversion frontend,\n');
+fprintf('which we critically require, from their services permanently at 8th January 2024.\n\n');
 fprintf('Due to the lack of financial support for Psychtoolbox by the vast majority of our non-paying users,\n');
 fprintf('we did not and currently do not have the funding to work on a good alternative solution for this.\n');
 fprintf('Therefore this convenient installation and update method will be unavailable for an unknown period\n');
 fprintf('of time.\n\n');
 fprintf('See http://psychtoolbox.org/download.html#alternate-download for a workable, although way less\n');
-fprintf('convenient and advanced download and installation method, via zip file download and execution\n');
+fprintf('convenient and advanced, download and installation method, via zip file download and execution\n');
 fprintf('of SetupPsychtoolbox(). Good luck!\n\n\n');
+error('Updater aborted due to currently unsupported update method.');
 
-if datenum(date) > datenum('8-Jan-2024')
-    error('Updater aborted due to currently unsupported update method.');
-end
+% After date check, leave here commented out as it may be useful in the future...
+%if datenum(date) > datenum('8-Jan-2024') %#ok<*DATE,*DATNM>
+%end
 
 oldpause = pause('query');
 if tryNonInteractiveSetup

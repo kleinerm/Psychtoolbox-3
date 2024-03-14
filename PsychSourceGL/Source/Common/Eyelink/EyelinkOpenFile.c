@@ -20,9 +20,15 @@
 static char useString[] = "[status =] Eyelink('OpenFile', filename [, dontOpenExisting=0])";
 static char synopsisString[] =
     "Opens an EDF file 'filename' on the tracker computer, closes any existing file.\n"
-    "If the optional flag 'dontOpenExisting' is set to a non-zero value, then the file "
-    "is only opened, and thereby created, if it doesn't already exist. Otherwise the function "
-    "aborts with an error.\n"
+    "If a file of the name 'filename' already exists, it will be overwritten!\n"
+    "The optional flag 'dontOpenExisting' only exists for backwards compatibility, and to warn "
+    "users to *not* use or rely on this flag in their scripts, as it never ever worked as intended! "
+    "If it is now set to a non-zero value, then Eyelink will abort with an error message to that "
+    "effect, to protect users from potential data loss. The intended purpose of setting the flag "
+    "to a non-zero value was that a data file 'filename' would only be opened, and thereby "
+    "created, if it would not already exist. Otherwise the function would abort with an error. "
+    "According to authoritative feedback from SR-Research, this does not and did not ever work, "
+    "and it is currently impossible to implement this functionality."
     "Returns 0 if success, else error code" ;
 
 static char seeAlsoString[] = "";
@@ -58,11 +64,10 @@ PsychError EyelinkOpenFile(void)
 
    // Should we only open new files, not open - and overwrite - existing ones?
    if (PsychCopyInIntegerArg(2, FALSE, &dontOpenExisting) && dontOpenExisting) {
-       // Yes. Check if file already exists, abort with error if so:
-       if (0 == create_path(filename, 0, 0)) {
-           printf("Eyelink openfile: The EDF file '%s' already exists and i was asked to abort in this case, so i'll abort.\n", filename);
-           PsychErrorExitMsg(PsychError_user, "Tried to open already existing EDF file and user asked to not do that, so i abort.");
-       }
+       // Yes. Abort with error, as this functionality is impossible to implement with
+       // all current and all past Eyelink runtimes and tracker host software:
+       printf("Eyelink Openfile: ERROR: The 'dontOpenExisting' flag was set to a non-zero value, which is unsupportable! Aborting.\n");
+       PsychErrorExitMsg(PsychError_user, "Unsupported functionality requested. Read the help 'Eyelink OpenFile?' for explanation.");
    }
 
    iOpenFileStatus = open_data_file(filename);

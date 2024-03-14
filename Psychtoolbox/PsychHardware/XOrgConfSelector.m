@@ -16,6 +16,7 @@ function XOrgConfSelector(sdir)
 % History:
 % 04-Nov-2015  mk  Created.
 % 25-Apr-2016  mk  Add troubleshooting tips in case somebody needs them.
+% 02-Feb-2024  mk  Add error handling and troubleshooting tips in case of error.
 
   if nargin < 1 || isempty(sdir)
     sdir = PsychtoolboxConfigDir ('XorgConfs');
@@ -36,7 +37,7 @@ function XOrgConfSelector(sdir)
   fprintf('\n');
   answer = [];
   while isempty(answer) || ~ismember(answer, 0:length(conffiles))
-    answer = input('Which one should i use? (Choose 0 for remove the current active file): ');
+    answer = input('Which one should I use? (Choose 0 to remove a current active file): ');
   end
   fprintf('\n\n');
 
@@ -46,16 +47,35 @@ function XOrgConfSelector(sdir)
     % Remove existing file:
     if exist('/etc/X11/xorg.conf.d/90-ptbxorg.conf')
       delete('/etc/X11/xorg.conf.d/90-ptbxorg.conf');
-      fprintf('Removed the old existing xorg.conf file from the X11 config folder under:\n');
-      updated = 1;
+      if exist('/etc/X11/xorg.conf.d/90-ptbxorg.conf')
+        fprintf('Delete operation failed. See warning message above this line.\nPlease try to fix the error and retry.\n');
+        fprintf('Running the command PsychLinuxConfiguration might help, if you forgot to do it\n');
+        fprintf('after installing Psychtoolbox from Debian, Ubuntu or NeuroDebian.\n\n');
+        fprintf('Failed to remove the configuration file from the X11 config folder under:\n');
+      else
+        fprintf('Removed the old existing xorg.conf file from the X11 config folder under:\n');
+        updated = 1;
+      end
     else
       fprintf('There isn''t any old configuration file to remove in the X11 config folder under:\n');
     end
   else
     % Copy selected file into the X11 config directory:
-    copyfile([sdir conffiles{answer}], '/etc/X11/xorg.conf.d/90-ptbxorg.conf');
-    fprintf('Copied the xorg.conf file into the X11 config folder under:\n');
-    updated = 1;
+    [rc, err] = copyfile([sdir conffiles{answer}], '/etc/X11/xorg.conf.d/90-ptbxorg.conf');
+    if rc
+      fprintf('Copied the xorg.conf file into the X11 config folder under:\n');
+      updated = 1;
+    else
+      if isempty(err)
+        err = 'See system error message above this line';
+      else
+        err = ['System error message is: ' err];
+      end
+      fprintf('Copy operation failed. %s.\nPlease try to fix the error and retry.\n', err);
+      fprintf('Running the command PsychLinuxConfiguration might help, if you forgot to do it\n');
+      fprintf('after installing Psychtoolbox from Debian, Ubuntu or NeuroDebian.\n\n');
+      fprintf('Failed to copy the xorg.conf file into the X11 config folder under:\n');
+    end
   end
 
   fprintf('/etc/X11/xorg.conf.d/90-ptbxorg.conf\n\n');
