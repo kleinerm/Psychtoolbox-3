@@ -59,7 +59,7 @@
 % for complex rendering code! Make sure to explicitely set the debuglevel
 % to '0' once your experiment code is performing as expected, so you can
 % get higher rendering performance.
-% 
+%
 %
 % Each time after calling a Psychtoolbox Screen() command for 2D drawing,
 % you need to call Screen('BeginOpenGL', window); to tell PTB that you want
@@ -195,6 +195,11 @@
 % http://www.opengl.org
 %
 % Enjoy!
+%
+%
+% Supported functions:
+%
+% PsychCamIntrinsicsToGLProjectionMatrix   - Compute GL_PROJECTION_MATRIX from camera intrinsics.
 
 % History:
 % 17.04.2006 -- created (MK)
