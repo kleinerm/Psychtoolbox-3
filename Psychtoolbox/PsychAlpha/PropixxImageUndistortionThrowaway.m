@@ -208,12 +208,12 @@ PsychProPixx('GetTimingSamples');
 % Reenable KbCheck for all keys:
 RestrictKeysForKbCheck([]);
 
+% Disable driver, plot some timing plots:
+PsychProPixx('DisableFastDisplayMode', 1);
+
 % Close all windows and ressources:
 sca;
 
 avgframetimemsecs = 1000 * (tend - tstart) / (count / rate)
-
-% Disable driver, plot some timing plots:
-PsychProPixx('DisableFastDisplayMode', 1);
 
 return;
