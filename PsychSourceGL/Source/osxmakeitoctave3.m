@@ -112,10 +112,9 @@ if mode==3
 end
 
 if mode==4
-    % Depends: eyelink-SDK: eyelink_core.framework
-    % Needs the eyelink_core.framework/Headers/ folder copied into /usr/local/include/eyelink_core/
+    % Depends: eyelink-SDK: eyelink_core.framework installed under default location /Library/Frameworks/
     % Build Eyelink:
-    mex --output ../Projects/MacOSX/build/Eyelink -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-F/Library/Frameworks/,-framework,eyelink_core" -I/usr/local/include/eyelink_core -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
+    mex --output ../Projects/MacOSX/build/Eyelink -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-F/Library/Frameworks/,-framework,eyelink_core,-rpath,/Library/Frameworks/" -I/Library/Frameworks/eyelink_core.framework/Headers -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
     osxsetoctaverpath('Eyelink');
     unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' dst]);
 end
