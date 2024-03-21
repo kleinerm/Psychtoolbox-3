@@ -109,7 +109,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-        mex -outdir ./ -output moglcore -DMACOSX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework OpenGL -framework GLUT" -I./ moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+        mex -outdir ./ -output moglcore -DMACOSX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE CFLAGS="\$CFLAGS -Wno-deprecated-declarations -Wno-tautological-pointer-compare -Wno-incompatible-pointer-types -Wno-incompatible-pointer-types-discards-qualifiers -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework OpenGL -framework GLUT" -I./ moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
         ple;
     end
