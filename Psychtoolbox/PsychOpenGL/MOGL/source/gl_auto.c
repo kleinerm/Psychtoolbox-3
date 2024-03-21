@@ -21629,19 +21629,6 @@ void gl_stencilthencoverstrokepathinstancednv( int nlhs, mxArray *plhs[], int nr
 
 }
 
-void gl_pathglyphindexrangenv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glPathGlyphIndexRangeNV) mogl_glunsupported("glPathGlyphIndexRangeNV");
-	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
-	*mxGetPr(plhs[0])=(double)glPathGlyphIndexRangeNV((GLenum)mxGetScalar(prhs[0]),
-		(const void*)mxGetData(prhs[1]),
-		(GLbitfield)mxGetScalar(prhs[2]),
-		(GLuint)mxGetScalar(prhs[3]),
-		(GLfloat)mxGetScalar(prhs[4]),
-		(GLuint)mxGetScalar(prhs[5]));
-
-}
-
 void gl_pathglyphindexarraynv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glPathGlyphIndexArrayNV) mogl_glunsupported("glPathGlyphIndexArrayNV");
@@ -24648,7 +24635,7 @@ void gl_replacementcodeuitexcoord2fcolor4fnormal3fvertex3fvsun( int nlhs, mxArra
 
 }
 
-int gl_auto_map_count=2618;
+int gl_auto_map_count=2617;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glAcquireKeyedMutexWin32EXT",     gl_acquirekeyedmutexwin32ext        },
@@ -26074,7 +26061,6 @@ cmdhandler gl_auto_map[] = {
 { "glPathDashArrayNV",               gl_pathdasharraynv                  },
 { "glPathFogGenNV",                  gl_pathfoggennv                     },
 { "glPathGlyphIndexArrayNV",         gl_pathglyphindexarraynv            },
-{ "glPathGlyphIndexRangeNV",         gl_pathglyphindexrangenv            },
 { "glPathGlyphRangeNV",              gl_pathglyphrangenv                 },
 { "glPathGlyphsNV",                  gl_pathglyphsnv                     },
 { "glPathMemoryGlyphIndexArrayNV",   gl_pathmemoryglyphindexarraynv      },

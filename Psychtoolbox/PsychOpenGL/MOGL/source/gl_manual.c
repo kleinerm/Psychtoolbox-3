@@ -934,6 +934,18 @@ void glu_tesscallback( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 
 }
 
+void gl_pathglyphindexrangenv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glPathGlyphIndexRangeNV) mogl_glunsupported("glPathGlyphIndexRangeNV");
+	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+	*mxGetPr(plhs[0])=(double)glPathGlyphIndexRangeNV((GLenum)mxGetScalar(prhs[0]),
+		(const void*)mxGetData(prhs[1]),
+		(GLbitfield)mxGetScalar(prhs[2]),
+		(GLuint)mxGetScalar(prhs[3]),
+		(GLfloat)mxGetScalar(prhs[4]),
+		(GLuint*)mxGetData(prhs[5]));
+}
+
 // GLES emulation wrapper wrappers:
 void gles_color4f( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
@@ -983,7 +995,7 @@ void gles_end( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 // *** it's important that this list be kept in alphabetical order,
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=46;
+int gl_manual_map_count=47;
 cmdhandler gl_manual_map[] = {
 { "ftglBegin",                      gles_begin                          },
 { "ftglColor4f",                    gles_color4f                        },
@@ -1002,6 +1014,7 @@ cmdhandler gl_manual_map[] = {
 { "glGetString",                    gl_getstring                        },
 { "glGetVertexAttribPointerv",      gl_getvertexattribpointerv          },
 { "glNormalPointer",                gl_normalpointer                    },
+{ "glPathGlyphIndexRangeNV",        gl_pathglyphindexrangenv            },
 { "glReadPixels",                   gl_readpixels                       },
 { "glSamplePass",                   gl_samplepass                       },
 { "glSelectBuffer",                 gl_selectbuffer                     },
