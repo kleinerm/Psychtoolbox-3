@@ -1,5 +1,5 @@
-function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency, device)
-% DelayedSoundFeedbackDemo([reqlatency=150 ms][, duplex=0][, freq]=48000[, minLatency=10 ms][, device])
+function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency, device, channels)
+% DelayedSoundFeedbackDemo([reqlatency=150 ms][, duplex=0][, freq]=48000[, minLatency=10 ms][, device][, channels=2])
 %
 % CAUTION: TEST TIMING OF THIS SCRIPT WITH MEASUREMENT EQUIPMENT IF YOU
 % DEPEND ON ACCURATE FEEDBACK TIMING!!!
@@ -51,6 +51,8 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency, device)
 % msecs, low-end cards may malfunction at lower settings.
 %
 % 'device' Optional device index of soundcard to use.
+%
+% 'channels' Number of input and output channels to use. Defaults to 2.
 %
 % Specific tips for different setups:
 %
@@ -159,13 +161,17 @@ InitializePsychSound(1);
 % fail with an error if it can't achieve the most high-perf settings:
 latmode = 4;
 
+if nargin < 6 || isempty(channels)
+    channels = 2;
+end
+
 if (reqlatency == 0) && duplex
     % Special case: Full-duplex mode with minimum latency. We bypass Matlab
     % by activating PsychPortAudios full-duplex monitoring mode. The driver
     % itself will feed back all captured sound to the outputs with lowest
     % possible latency. However we don't have any control over latency or
     % sound and this only works on full-duplex hardware...
-    pa = PsychPortAudio('Open', device, 4+2+1, latmode, freq, 2, [], minLatency);
+    pa = PsychPortAudio('Open', device, 4+2+1, latmode, freq, channels, [], minLatency);
 
     % Now that the device is open, try to enable the "Zero latency direct input
     % monitoring" feature of some subset of some sound cards.
@@ -239,12 +245,12 @@ end
 if ~duplex
     % Open the default audio device [], with mode 2 (== Only audio capture),
     % and a required latencyclass of latmode == low-latency mode, as well as
-    % a frequency of freq Hz and 2 sound channels for stereo capture.
+    % a frequency of freq Hz and 'channels' sound channels for stereo capture.
     % This returns a handle to the audio device:
-    painput = PsychPortAudio('Open', device, 2, latmode, freq, 2, [], minLatency);
+    painput = PsychPortAudio('Open', device, 2, latmode, freq, channels, [], minLatency);
 else
     % Same procedure, but open for full-duplex operation:
-    painput = PsychPortAudio('Open', device, 2+1, latmode, freq, 2, [], minLatency);
+    painput = PsychPortAudio('Open', device, 2+1, latmode, freq, channels, [], minLatency);
     % Output- and input device are the same...
     paoutput = painput;
 end
@@ -254,9 +260,8 @@ end
 PsychPortAudio('GetAudioData', painput, max(2 * lat, 10));
 
 if ~duplex
-    % Open default audio device [] for playback (mode 1), low latency (2), freq Hz,
-    % stereo output:
-    paoutput = PsychPortAudio('Open', device, 1, latmode, freq, 2, [], minLatency);
+    % Open default audio device [] for playback (mode 1), low latency (2), freq Hz output:
+    paoutput = PsychPortAudio('Open', device, 1, latmode, freq, channels, [], minLatency);
 end
 
 % Get actually chosen sampling frequency:
@@ -268,7 +273,7 @@ freq = s.SampleRate;
 % One could do this more clever, but this is a safe no-brainer and memory
 % is cheap:
 outbuffersize = floor(freq * 3 * max(lat, 10));
-PsychPortAudio('FillBuffer', paoutput, zeros(2, outbuffersize));
+PsychPortAudio('FillBuffer', paoutput, zeros(channels, outbuffersize));
 
 % Start audio playback immediately, wait for the start to happen. Retrieve the
 % start timestamp, ie., the system time when the first sample in the output
@@ -306,7 +311,7 @@ if verbose > 1
     fprintf('CaptureQuantum (Duty cycle length) is %f msecs, for a buffersize of %i samples.\n', captureQuantum * 1000, s.BufferSize);
 end
 
-[audiodata offset overflow capturestart] = PsychPortAudio('GetAudioData', painput, [], captureQuantum);
+[audiodata, offset, overflow, capturestart] = PsychPortAudio('GetAudioData', painput, [], captureQuantum);
 
 % Sanity check returned values: audiodata should be at least headroom * s.BufferSize
 % samples, offset should be zero as this is the first 'GetAudioData' call
