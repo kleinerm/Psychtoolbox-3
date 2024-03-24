@@ -7,14 +7,14 @@
  *
  * mario.kleiner.de@gmail.com   mk
  *
- * PLATFORMS:   Linux, Windows.
+ * PLATFORMS:   Linux, Windows, macOS.
  *
  * DESCRIPTION:
  *
  * A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API
  * for special purpose display and compute tasks.
  *
- * Copyright (c) 2020 Mario Kleiner. Licensed under the MIT license:
+ * Copyright (c) 2020 - 2024 Mario Kleiner. Licensed under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -248,7 +248,10 @@ PFN_vkGetPastPresentationTimingGOOGLE fpGetPastPresentationTimingGOOGLE = NULL;
 #ifdef VK_KHR_present_id
 PFN_vkWaitForPresentKHR fpWaitForPresentKHR = NULL;
 #else
-#warning VK_KHR_PRESENT_ID extension not supported by ancient build system. Update the Vulkan SDK headers to at least SDK 1.2.189
+#if PSYCH_SYSTEM != PSYCH_OSX
+    // Only warn on non-macOS, on macOS this is unsupported anyway by MoltenVK Vulkan ICD as of MoltenVK 1.2.8 in March 2024.
+    #warning VK_KHR_PRESENT_ID extension not supported by ancient build system. Update the Vulkan SDK headers to at least SDK 1.2.189
+#endif
 #endif
 PFN_vkSetHdrMetadataEXT fpSetHdrMetadataEXT = NULL;
 PFN_vkSetLocalDimmingAMD fpSetLocalDimmingAMD = NULL;
@@ -284,7 +287,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychVulkanCore - A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API\n";
     synopsis[i++] = "This driver allows to utilize the Vulkan graphics API for special purpose display and compute tasks.";
-    synopsis[i++] = "Copyright (c) 2020, 2021 Mario Kleiner. Licensed to you under the terms of the MIT license.";
+    synopsis[i++] = "Copyright (c) 2020 - 2024 Mario Kleiner. Licensed to you under the terms of the MIT license.";
     synopsis[i++] = "";
     synopsis[i++] = "This driver is used internally by Psychtoolbox. You should not call its functions";
     synopsis[i++] = "directly as a regular end-user from your scripts, as the API may change at any time";
@@ -502,7 +505,7 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
         *hasWait &= addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_PRESENT_ID_EXTENSION_NAME);
         #else
         *hasWait = FALSE;
-        {
+        if (PSYCH_SYSTEM != PSYCH_OSX) {
             static unsigned int oneTimeInfoDone = 0;
             if ((verbosity > 2) && !(oneTimeInfoDone++))
                 printf("PsychVulkanCore-INFO: Lacking support for efficient flip-wait. For maximum efficiency, try DownloadPsychtoolbox for upstream PTB.\n");
