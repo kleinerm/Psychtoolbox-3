@@ -184,7 +184,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         % If predictedOnset is valid, use it. Otherwise fall back to vblTime:
         if predictedOnset > 0
             % Valid timestamp from Vulkan? Validate a bit and warn if not:
-            if (verbosity > 4) || ((verbosity > 1) && (abs(predictedOnset - vblTime) > 0.001))
+            if (verbosity > 4) || ((verbosity > 1) && (winfo.VBLEndline > 0) && (abs(predictedOnset - vblTime) > 0.001))
                 fprintf('PsychVulkan-DEBUG: Delta between Vulkan and reference timestamps is %f usecs.\n', 1e6 * (predictedOnset - vblTime));
             end
 
@@ -617,8 +617,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % frame latency is gone, but now stimulus onset scheduling is
             % broken whenever a flip is more than 2 frames in the future!
             %
+            % On macOS 14.4 on Apple M1, it seems to work reasonably well,
+            % apart from the sporadic failure during the first few
+            % presents, so there's some hope. Not yet tested thoroughly
+            % yet, but lets activate this mode on Apple Silicon for now.
             % Broken stuff all around on the iToys operating system:
-            flags = mor(flags, 2);
+            if ~IsARM
+                flags = mor(flags, 2);
+            end
         else
             flags = mor(flags, 1);
             noInterop = 1;
