@@ -7100,6 +7100,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     psych_bool intel = FALSE;
     psych_bool llvmpipe = FALSE;
     psych_bool vc4 = FALSE;
+    psych_bool apple = FALSE;
     GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
     GLboolean nativeStereo = FALSE;
     int mesaversion[3];
@@ -7164,6 +7165,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
     if (strstr((char*) glGetString(GL_VENDOR), "Broadcom") || strstr((char*) glGetString(GL_RENDERER), "VC4")) {
         vc4 = TRUE; sprintf(windowRecord->gpuCoreId, "VC4");
+    }
+
+    if (strstr((char*) glGetString(GL_VENDOR), "Apple") || strstr((char*) glGetString(GL_RENDERER), "Apple") || strstr((const char*) glGetString(GL_VERSION), "Metal")) {
+        apple = TRUE; sprintf(windowRecord->gpuCoreId, "AGFX");
     }
 
     // Is this a hybrid graphics dual-gpu laptop which uses DRI PRIME for muxless render offload?
@@ -7645,7 +7650,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         }
 
         // FBO + float textures support on Intel gfx, Broadcom VideoCore 5/6, software renderers?
-        if ((vc4 || intel || llvmpipe) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
+        if ((vc4 || intel || llvmpipe || apple) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
             // Intel GPUs with FBO and ARB_texture_float support: These are usually of the HD graphics series and
             // recent enough to support floating point textures and rendertargets with 16 bpc and 32 bpc float, including
             // texture filtering and frame buffer blending, and as a bonus FP32 shading. Iow. they support the whole
@@ -7665,14 +7670,16 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             // and avoid 32 bpc framebuffers for blending, or avoid blending on 32 bpc framebuffers:
             if (verbose && vc4) printf("Assuming VideoCore-6: Renderer supports full 16/32 bit floating point textures and frame buffers, but only 16 bit float filtering and blending, as well as some 32 bit float shading.\n");
 
+            if (verbose && apple) printf("Assuming Apple Silicon AGFX gpu: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+
             windowRecord->gfxcaps |= kPsychGfxCapFP32Shading;
             windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
             windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
             windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
             windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;
 
-            if (intel || llvmpipe) {
-                // 32 bpc float filtering and blending only on Intel and software, not on v3d / VideoCore-6:
+            if (intel || llvmpipe || apple) {
+                // 32 bpc float filtering and blending only on Intel, Apple, and software, not on v3d / VideoCore-6:
                 windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
                 windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
             }
