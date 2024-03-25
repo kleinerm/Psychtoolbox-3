@@ -78,7 +78,7 @@ if mode==0
     -U,DisplayServicesCanChangeBrightness,-U,DisplayServicesBrightnessChanged,\
     -U,CoreDisplay_Display_SetAutoBrightnessIsEnabled,\
     -framework,Cocoa" ...
-    -I/usr/include -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-1.0 ...
+    -I/usr/include -I/usr/local/include -I/opt/homebrew/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-1.0 ...
     -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/libxml2 -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/glib-2.0 ...
     -I/Library/Frameworks/GStreamer.framework/Versions/Current/lib/glib-2.0/include ...
     -I/Library/Frameworks/GStreamer.framework/Versions/Current/lib/gstreamer-1.0/include/ ...
@@ -146,15 +146,14 @@ end
 if mode==7
     % Depends: libfreenect, libusb-1.0
     % Build PsychKinectCore:
-    mex --output ../Projects/MacOSX/build/PsychKinectCore -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio" -I/usr/include -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -lfreenect -lusb-1.0
+    mex --output ../Projects/MacOSX/build/PsychKinectCore -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio" -I/usr/include -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -I/opt/homebrew/include/libusb-1.0 -I/opt/homebrew/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -L/opt/homebrew/lib -lfreenect -lusb-1.0
     osxsetoctaverpath('PsychKinectCore');
     unix(['mv ../Projects/MacOSX/build/PsychKinectCore.' mexext ' ' dst]);
 end
 
 if mode==8
     % Build PsychHID:
-    % Dynamic link:   mex --output ../Projects/MacOSX/build/PsychHID -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names,-framework,ApplicationServices,-framework,Carbon,-framework,CoreAudio,-framework,IOKit" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" -L../Cohorts/HID_Utilities_64Bit/build/Release -lHID_Utilities
-    mex --output ../Projects/MacOSX/build/PsychHID -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,ApplicationServices,-framework,CoreServices,-framework,CoreFoundation,-framework,Carbon,-framework,CoreAudio,-framework,IOKit,-weak_library,/usr/local/lib/libusb-1.0.dylib" -I/usr/local/include/libusb-1.0 -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
+    mex --output ../Projects/MacOSX/build/PsychHID -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,ApplicationServices,-framework,CoreServices,-framework,CoreFoundation,-framework,Carbon,-framework,CoreAudio,-framework,IOKit,-weak_library,/usr/local/lib/libusb-1.0.dylib" -I/usr/local/include/libusb-1.0 -I/opt/homebrew/include/libusb-1.0 -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
     osxsetoctaverpath('PsychHID');
     unix(['mv ../Projects/MacOSX/build/PsychHID.' mexext ' ' dst]);
 end
@@ -242,7 +241,9 @@ if mode==15
     % https://vulkan.lunarg.com for prebuilt SDK and Vulkan ICD,
     % https://github.com/KhronosGroup/MoltenVK for source code.
     try
-        mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c -lvulkan -lMoltenVK
+        %mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c -lvulkan -lMoltenVK
+        % Build against Headers in GStreamer 1.24+ development framework, link statically against libMoltenVK.a from GStreamer:
+        mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,AppKit,-framework,IOKit,-framework,IOSurface,-framework,Metal,-framework,Foundation,-framework,QuartzCore,-framework,CoreGraphics,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Headers Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c /Library/Frameworks/GStreamer.framework/Libraries/libMoltenVK.a
     catch
         disp(psychlasterror);
     end
