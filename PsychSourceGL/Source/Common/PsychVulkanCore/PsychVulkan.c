@@ -56,7 +56,20 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
+// For building against an up to date LunarG Vulkan SDK, we'd only need to
+// #include <MoltenVK/vk_mvk_moltenvk.h>
+// but using the following trickery of define and includes in exactly the
+// given order will allow to compile against the subset of Vulkan SDK headers
+// shipping with GStreamer 1.24 development framework, which can save us installing
+// the full SDK on a build machine. Not sure if we'll keep it this way, lets see...
+#define __mvk_vulkan_h_ 1
+#define VK_USE_PLATFORM_METAL_EXT 1
+#include <Availability.h>
+#include <vulkan/vulkan.h>
 #include <MoltenVK/vk_mvk_moltenvk.h>
+#ifndef VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
+#define VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME "VK_KHR_portability_subset"
+#endif
 #endif
 
 #include <vulkan/vulkan.h>
