@@ -759,6 +759,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // First reference to this screen by a window?
     if (screenRefCount[screenSettings->screenNumber] == 0) {
+        // Find out if running on ARM Apple Silicon SoC, which does not support the PsychtoolboxKernelDriver at all:
+        psych_bool isARM;
+        PsychGetOSXMinorVersion(&isARM);
+
         // High precision timestamping enabled? If so, we need to setup the fallback
         // timestamping methods in case beamposition timestamping doesn't work:
         if (PsychPrefStateGet_VBLTimestampingMode() > 0) {
@@ -766,7 +770,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             if (PsychPrefStateGet_Verbosity() > 2) {
                 printf("PTB-INFO: Will use fragile CoreVideo timestamping as fallback if beamposition timestamping doesn't work.\n");
                 // Recommend use of kernel driver if it isn't installed already:
-                if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) /* && !strstr((char*) glGetString(GL_VENDOR), "Intel") */) {
+                if (!isARM && !PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
                     printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
                     printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
                 }
@@ -816,7 +820,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             // This is the new default as of Psychtoolbox 3.0.12 to avoid the buggy, crashy, unreliably CoreVideo fallback.
 
             // Recommend use of kernel driver if it isn't installed already:
-            if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && (PsychPrefStateGet_Verbosity() > 2) /* && !strstr((char*) glGetString(GL_VENDOR), "Intel") */) {
+            if (!isARM && !PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && (PsychPrefStateGet_Verbosity() > 2)) {
                 printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
                 printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
             }
