@@ -29,7 +29,7 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen:
-    % Depends: GStreamer-1.0 (actually 1.18.0+), libdc1394-2, libusb-1.0
+    % Depends: GStreamer-1.0 (actually 1.18.0+), libdc1394-2
 
     % Must build tinyexr separately, because it needs C++ compile
     % incompatible with the C/Obj-C compile in the main mex cmd below:

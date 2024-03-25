@@ -33,7 +33,7 @@ function varargout = PsychVulkan(cmd, varargin)
 % History:
 % 28-Jun-2020   mk  Written.
 
-global GL;
+global GL; %#ok<GVMIS>
 persistent verbosity;
 persistent supported;
 persistent vulkan;
