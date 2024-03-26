@@ -1,5 +1,5 @@
-function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device, reqlatencyclass)
-% BasicSoundInputDemo([wavfilename][, voicetrigger=0][, maxsecs=inf][, device][, reqlatencyclass])
+function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device, reqlatencyclass, channels)
+% BasicSoundInputDemo([wavfilename][, voicetrigger=0][, maxsecs=inf][, device][, reqlatencyclass][, channels=2])
 %
 % Demonstrates very basic usage of the new Psychtoolbox sound driver
 % PsychPortAudio() for audio capture / recording.
@@ -31,6 +31,8 @@ function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device, reqlate
 %
 % reqlatencyclass = Override reqlatencyclass parameter for audio capture. Defaults
 %                   to standard [] for low-latency, high timing precision if omitted.
+%
+% channels     = Number of input and output channels to use. Defaults to 2.
 %
 
 % History:
@@ -77,8 +79,12 @@ if isempty(reqlatencyclass) && (voicetrigger > 0)
     reqlatencyclass = 2;
 end
 
+if nargin < 6 || isempty(channels)
+    channels = 2;
+end
+
 % Workaround broken qt plotting on some Octave setups:
-if IsOctave && exist('graphics_toolkit')
+if IsOctave && exist('graphics_toolkit') %#ok<EXIST>
     try
         graphics_toolkit ('fltk');
     catch
@@ -94,9 +100,9 @@ InitializePsychSound(double(reqlatencyclass > 1));
 
 % Open audio device 'device', with mode 2 (== Only audio capture),
 % and a required latencyclass of 'reqlatencyclass', with the preferred
-% default sampling frequency of the audio device, and 2 sound channels
+% default sampling frequency of the audio device, and 'channels' sound channels
 % for stereo capture. This returns a handle to the audio device:
-pahandle = PsychPortAudio('Open', device, 2, reqlatencyclass, [], 2);
+pahandle = PsychPortAudio('Open', device, 2, reqlatencyclass, [], channels);
 
 % Get what freq'uency we are actually using:
 s = PsychPortAudio('GetStatus', pahandle);
@@ -120,7 +126,7 @@ if voicetrigger > 0
     % Repeat as long as below trigger-threshold:
     while level < voicetrigger
         % Fetch current audiodata:
-        [audiodata offset overflow tCaptureStart] = PsychPortAudio('GetAudioData', pahandle);
+        [audiodata, offset, ~, tCaptureStart] = PsychPortAudio('GetAudioData', pahandle);
 
         % Compute maximum signal amplitude in this chunk of data:
         if ~isempty(audiodata)
@@ -174,7 +180,11 @@ while ~KbCheck && ((length(recordedaudio) / s.SampleRate) < maxsecs)
     nrsamples = size(audiodata, 2);
 
     % Plot it, just for the fun of it:
-    plot(1:nrsamples, audiodata(1,:), 'r', 1:nrsamples, audiodata(2,:), 'b');
+    if channels > 1
+        plot(1:nrsamples, audiodata(1,:), 'r', 1:nrsamples, audiodata(2,:), 'b');
+    else
+        plot(1:nrsamples, audiodata(1,:), 'r');
+    end
     drawnow;
 
     % And attach it to our full sound vector:
@@ -202,7 +212,7 @@ end
 
 % Replay recorded data: Open 'device' for output, push recorded sound
 % data into its output buffer:
-pahandle = PsychPortAudio('Open', device, 1, 0, freq, 2);
+pahandle = PsychPortAudio('Open', device, 1, 0, freq, channels);
 PsychPortAudio('FillBuffer', pahandle, recordedaudio);
 
 % Start playback immediately, wait for start, play once:

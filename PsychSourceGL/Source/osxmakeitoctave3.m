@@ -6,6 +6,10 @@ function osxmakeitoctave3(mode)
 % function osxsetoctaverpath().
 dst = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFiles64/'];
 
+if IsARM
+    dst = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFilesARM64/'];
+end
+
 if ~IsOSX(1) || ~IsOctave
     error('osxmakeitoctave3 only works with a 64-Bit version of Octave 8 for macOS!');
 end
@@ -34,7 +38,7 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen:
-    % Depends: GStreamer-1.18+, libdc1394-2, libusb-1.0
+    % Depends: GStreamer-1.18+, libdc1394-2
 
     % Need to build the PsychCocoaGlue.c separately as Objective-C code,
     % whereas the mex call below only compiles C-Code and links it with the
@@ -112,10 +116,9 @@ if mode==3
 end
 
 if mode==4
-    % Depends: eyelink-SDK: eyelink_core.framework
-    % Needs the eyelink_core.framework/Headers/ folder copied into /usr/local/include/eyelink_core/
+    % Depends: eyelink-SDK: eyelink_core.framework installed under default location /Library/Frameworks/
     % Build Eyelink:
-    mex --output ../Projects/MacOSX/build/Eyelink -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-F/Library/Frameworks/,-framework,eyelink_core" -I/usr/local/include/eyelink_core -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
+    mex --output ../Projects/MacOSX/build/Eyelink -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-F/Library/Frameworks/,-framework,eyelink_core,-rpath,/Library/Frameworks/" -I/Library/Frameworks/eyelink_core.framework/Headers -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
     osxsetoctaverpath('Eyelink');
     unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' dst]);
 end

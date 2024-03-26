@@ -200,17 +200,21 @@ if IsOSX
     % Apples trainwreck needs special treatment. If Psychtoolbox has been
     % downloaded via a webbrowser as a zip file or tgz file and then
     % extracted, then all binary executable files like .dylib's and
-    % .mexmaci64 mex files will have the com.apple.quarantine attribute set
-    % to prevent them from working in any meaningfully user fixable way -
+    % mex files will have the com.apple.quarantine attribute set to
+    % prevent them from working in any meaningfully user fixable way -
     % Thanks Apple! Use the xattr command to remove the quarantine flag.
     fprintf('Trying to fixup Apple macOS broken security workflow by removing the quarantine flag from our mex files...\n\n');
 
     if IsOctave
         % Fix the Octave mex files:
-        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave8OSXFiles64/*.mex 2>&1']);
+        if IsARM
+            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave8OSXFilesARM64/*.mex 2>&1']);
+        else
+            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave8OSXFiles64/*.mex 2>&1']);
+        end
     else
         % Fix the Matlab mex files:
-        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/*.mexmaci64']);
+        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/*.' mexext]);
     end
 
     % Fix the DrawText plugin and other plugins:

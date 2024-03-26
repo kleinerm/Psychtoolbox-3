@@ -27,6 +27,7 @@ glTransformFeedbackVaryingsNV - Arrays of strings - manually implemented.
 - these use pointers to structs and other impossible to handle stuff
 glCreateSyncFromCLeventARB
 glGetUniformIndices
+glPathGlyphIndexRangeNV
 
 - these are part of the ARB_imaging extension, which we will never ever support:
 glGetColorTable

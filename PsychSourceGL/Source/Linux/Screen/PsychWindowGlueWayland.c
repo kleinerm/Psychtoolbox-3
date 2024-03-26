@@ -1754,6 +1754,8 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 
                 // Delivery to user-code?
                 if (cmd == 3 && windowRecord->swapevents_enabled == 1) {
+                    double *dummy;
+
                     // Try to fetch oldest pending one for this window:
                     PsychLockDisplay();
                     struct wayland_feedback *sce, *tmp;
@@ -1865,6 +1867,10 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                     }
 
                     PsychUnlockDisplay();
+
+                    // Return empty [] argument, so client code can detect "no new result":
+                    PsychAllocOutDoubleMatArg(aux1, FALSE, 0, 0, 0, &dummy);
+
                     return(FALSE);
                 }
 

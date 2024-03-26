@@ -349,8 +349,6 @@ PsychError SCREENOpenWindow(void)
                 printf("PTB-WARNING: task, and 'help PsychHDR' for some more setup instructions for MoltenVK on macOS.\n");
                 printf("PTB-WARNING: Note that this approach is completely unsupported by us in case of any problems, and\n");
                 printf("PTB-WARNING: may just be as bad performance and timing-wise. It is completely untested on M1.\n");
-                printf("PTB-WARNING: A simple test case would be running SimpleHDRDemo. If it wouldn't flood the command\n");
-                printf("PTB-WARNING: window with error and warning messages, that would be mildly encouraging. Let us know.\n\n");
             }
         }
     }

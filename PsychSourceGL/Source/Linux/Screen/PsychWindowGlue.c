@@ -4360,9 +4360,12 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 
                 // Delivery to user-code?
                 if (cmd == 3 && windowRecord->swapevents_enabled == 1) {
+                    double *dummy;
+
                     // Try to fetch oldest pending one for this window:
                     PsychLockDisplay();
-                    if (XCheckTypedWindowEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
+                    if (XCheckTypedWindowEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle,
+                        glx_event_base + GLX_BufferSwapComplete, &evt)) {
                         PsychUnlockDisplay();
                         // Cast to proper event type:
                         GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
@@ -4399,6 +4402,9 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         return(TRUE);
                     }
                     PsychUnlockDisplay();
+
+                    // Return empty [] argument, so client code can detect "no new result":
+                    PsychAllocOutDoubleMatArg(aux1, FALSE, 0, 0, 0, &dummy);
                 }
 
                 // Delivery to internal code "us"?

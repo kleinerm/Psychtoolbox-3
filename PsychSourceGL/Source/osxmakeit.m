@@ -29,7 +29,7 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen:
-    % Depends: GStreamer-1.0 (actually 1.18.0+), libdc1394-2, libusb-1.0
+    % Depends: GStreamer-1.0 (actually 1.18.0+), libdc1394-2
 
     % Must build tinyexr separately, because it needs C++ compile
     % incompatible with the C/Obj-C compile in the main mex cmd below:
@@ -92,9 +92,9 @@ if mode==3
 end
 
 if mode==4
-    % Depends: eyelink-SDK: eyelink_core.framework
+    % Depends: eyelink-SDK: eyelink_core.framework installed under default location /Library/Frameworks/
     % Build Eyelink:
-    mex -outdir ../Projects/MacOSX/build -output Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Eyelink CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core" -I/usr/local/include/eyelink_core -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
+    mex -outdir ../Projects/MacOSX/build -output Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Eyelink CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core -rpath /Library/Frameworks/" -I/Library/Frameworks/eyelink_core.framework/Headers -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
     unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -109,7 +109,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-        mex -outdir ./ -output moglcore -DMACOSX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework OpenGL -framework GLUT" -I./ moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+        mex -outdir ./ -output moglcore -DMACOSX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE CFLAGS="\$CFLAGS -Wno-deprecated-declarations -Wno-tautological-pointer-compare -Wno-incompatible-pointer-types -Wno-incompatible-pointer-types-discards-qualifiers -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework OpenGL -framework GLUT" -I./ moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
         ple;
     end
