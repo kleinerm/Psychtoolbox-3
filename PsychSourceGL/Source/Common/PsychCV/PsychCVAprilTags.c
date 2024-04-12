@@ -621,8 +621,25 @@ PsychError PSYCHCVAprilDetectMarkers(void)
         detected = NULL;
         for (j = 0; j < marker_num; j++) {
             zarray_get(marker_info, j, &detcand);
-            if ((candHandle == detcand->id) && (detected == NULL))
-                detected = detcand;
+            if (candHandle == detcand->id) {
+                // detcand is a candidate for marker with id candHandle:
+                if (detected == NULL) {
+                    // First candidate, assign as best choice so far:
+                    detected = detcand;
+                }
+                else {
+                    // Already got a choice. Lets see if the new candidate is a better
+                    // contender for the spot, ie. if the new 'detcand' is a higher quality
+                    // detection than the previous 'detected' candidate. If so, we make 'detcand'
+                    // our new favorite. Criteria for better: Lower Hamming bit error, or if hamming
+                    // error is the same, a higher decision margin:
+                    if ((detected->hamming > detcand->hamming) ||
+                        ((detected->hamming == detcand->hamming) && (detected->decision_margin < detcand->decision_margin))) {
+                        // A new champ! Assign:
+                        detected = detcand;
+                    }
+                }
+            }
         }
 
         matchQuality = 0;
