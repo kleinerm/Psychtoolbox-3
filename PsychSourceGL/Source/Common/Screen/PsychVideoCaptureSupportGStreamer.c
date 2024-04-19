@@ -3681,8 +3681,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // we can get choppy or truncated video recordings and/or audio-video sync problems), and
     // optionally in pure video feedback mode if explicitely requested by usercode via
     // recordingflags & 128, as this is usually not what one wants for live video processing or
-    // feedback.
-    if (capdev->recording_active || (recordingflags & 128)) {
+    // feedback. recordingflags & 8192 disables use of videorate converters in all cases.
+    if ((capdev->recording_active || (recordingflags & 128)) && !(recordingflags & 8192)) {
         // Attach a videorate converter as source filter. It should take care of adjusting
         // for fluctuating framerates from the videosource device by dropping or duplicating
         // videoframes and adjusting timestamps as needed to generate a video stream with the
