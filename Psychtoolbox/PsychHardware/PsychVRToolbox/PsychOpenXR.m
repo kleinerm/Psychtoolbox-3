@@ -314,6 +314,27 @@ function varargout = PsychOpenXR(cmd, varargin)
 % resolution is reduced to at best 16.6 msecs for at most 60 gaze samples
 % per second.
 %
+%
+% 'Handtracking' = Request articulated hand and finger tracking via a supported
+% hand tracker. This keyword asks the driver to enable articulated hand tracking.
+% Typical methods are markerless vision based hand and finger tracking, e.g.,
+% from external cameras or HMD builtin cameras, or marker based optical tracking,
+% or sensor equipped hand gloves, or other technologies, depending on your OpenXR
+% runtime. The info struct returned by info = PsychVRHMD('GetInfo'); contains info
+% about hand tracking capabilities as a bitmask in info.articulatedHandTrackingSupported:
+% A value of +1 means that basic OpenXR hand tracking of finger and hand joint poses,
+% typically for both hands of a user, is supported. A value of zero means lack of
+% any support. NOTE: Current Psychtoolbox releases do not yet support hand tracking,
+% this help text is preparation for future use and subject to incompatible changes!
+%
+% If hand tracking is requested via the keyword, and supported, then the user
+% script can request return of hand tracking sample data by calling the
+% state = PsychVRHMD('PrepareRender', ..., reqmask, ...) function with reqmask
+% flag +8. This will cause the returned 'state' struct to contain additional fields
+% with information about recently tracked articulated hand configuration. See the
+% help text for the 'PrepareRender' function for details.
+%
+%
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
 % lowest performance requirements. A setting of 1 gives maximum quality at
@@ -368,6 +389,15 @@ function varargout = PsychOpenXR(cmd, varargin)
 % reporting of binocular per-eye tracking data is supported. A value of
 % +1024 means that HTC's proprietary SRAnipal eyetracking is available for
 % more extensive gaze data reporting.
+%
+% articulatedHandTrackingSupported = Info about hand tracking capabilities. A
+% value of +1 means that basic articulated hand tracking is supported, usually
+% for both hands. Zero means no support for articulated hand tracking. The hand
+% tracking methods could be based on cameras and computer-vision markerless optical
+% tracking, or on marker based tracking, or it could be, e.g., with some sensor
+% glove input device, or with any other suitable future modality supported by your
+% OpenXR runtime.
+%
 %
 % The returned struct may contain more information, but the fields mentioned
 % above are the only ones guaranteed to be available over the long run. Other
@@ -756,6 +786,55 @@ function varargout = PsychOpenXR(cmd, varargin)
 %      distance of the fixation point from the eyes. May be supported on
 %      some HTC HMDs under SRAnipal, but has not been confirmed to work in
 %      practice on the tested HTC Vive Pro Eye.
+%
+% +8 = Request return of articulated hand tracking information on suitable OpenXR
+%      systems.
+%
+%      NOTE: This feature is NOT YET IMPLEMENTED in current Psychtoolbox releases!
+%
+%      Returned information may represent the latest available measured hand and
+%      finger configuration data, or it may be predicted configuration information
+%      for the specified 'targetTime', computed via interpolation or extrapolation
+%      from actual previously tracked configurations. This is dependent on the
+%      specific hand tracker implementation of your XR system.
+%
+%      The following fields are mandatory as part of the returned state struct,
+%      if hand tracking is supported and enabled and requested:
+%
+%      TODO
+%
+%      The following constants allow to index the returned set of 26 hand joints
+%      by symbolic names for the different parts of the fingers and hand, or you
+%      can use the numbers behind each symbolic name:
+%
+%        OVR.XR_HAND_JOINT_PALM = 0 + 1;
+%        OVR.XR_HAND_JOINT_WRIST = 1 + 1;
+%        OVR.XR_HAND_JOINT_THUMB_METACARPAL = 2 + 1;
+%        OVR.XR_HAND_JOINT_THUMB_PROXIMAL = 3 + 1;
+%        OVR.XR_HAND_JOINT_THUMB_DISTAL = 4 + 1;
+%        OVR.XR_HAND_JOINT_THUMB_TIP = 5 + 1;
+%        OVR.XR_HAND_JOINT_INDEX_METACARPAL = 6 + 1;
+%        OVR.XR_HAND_JOINT_INDEX_PROXIMAL = 7 + 1;
+%        OVR.XR_HAND_JOINT_INDEX_INTERMEDIATE = 8 + 1;
+%        OVR.XR_HAND_JOINT_INDEX_DISTAL = 9 + 1;
+%        OVR.XR_HAND_JOINT_INDEX_TIP = 10 + 1;
+%        OVR.XR_HAND_JOINT_MIDDLE_METACARPAL = 11 + 1;
+%        OVR.XR_HAND_JOINT_MIDDLE_PROXIMAL = 12 + 1;
+%        OVR.XR_HAND_JOINT_MIDDLE_INTERMEDIATE = 13 + 1;
+%        OVR.XR_HAND_JOINT_MIDDLE_DISTAL = 14 + 1;
+%        OVR.XR_HAND_JOINT_MIDDLE_TIP = 15 + 1;
+%        OVR.XR_HAND_JOINT_RING_METACARPAL = 16 + 1;
+%        OVR.XR_HAND_JOINT_RING_PROXIMAL = 17 + 1;
+%        OVR.XR_HAND_JOINT_RING_INTERMEDIATE = 18 + 1;
+%        OVR.XR_HAND_JOINT_RING_DISTAL = 19 + 1;
+%        OVR.XR_HAND_JOINT_RING_TIP = 20 + 1;
+%        OVR.XR_HAND_JOINT_LITTLE_METACARPAL = 21 + 1;
+%        OVR.XR_HAND_JOINT_LITTLE_PROXIMAL = 22 + 1;
+%        OVR.XR_HAND_JOINT_LITTLE_INTERMEDIATE = 23 + 1;
+%        OVR.XR_HAND_JOINT_LITTLE_DISTAL = 24 + 1;
+%        OVR.XR_HAND_JOINT_LITTLE_TIP = 25 + 1;
+%
+%      TODO, IMPLEMENTATION OF FEATURE NOT YET FINISHED.
 %
 %
 % More flags to follow...
@@ -1785,7 +1864,7 @@ end
 if strcmpi(cmd, 'Open')
   if isempty(firsttime)
     firsttime = 1;
-    fprintf('Copyright (c) 2022-2023 Mario Kleiner. Licensed to you under the MIT license.\n');
+    fprintf('Copyright (c) 2022-2024 Mario Kleiner. Licensed to you under the MIT license.\n');
     fprintf('Our underlying PsychOpenXRCore mex driver builds against the Khronos OpenXR SDK public\n');
     fprintf('headers, and links against the OpenXR open-source dynamic loader, to implement the\n');
     fprintf('interface to a system-installed OpenXR runtime. These components are dual-licensed by\n');
@@ -1809,6 +1888,8 @@ if strcmpi(cmd, 'Open')
   newhmd.controllerTypes = 0;
   newhmd.eyeTrackingSupported = hasEyeTracking;
   newhmd.needEyeTracking = 0;
+  newhmd.articulatedHandTrackingSupported = 0;
+  newhmd.needHandTracking = 0;
 
   % Usually HMD tracking also works for mono display mode:
   newhmd.noTrackingInMono = 0;
@@ -2017,6 +2098,36 @@ if strcmpi(cmd, 'Open')
     OVR.KEY_EYE_HEIGHT = 'EyeHeight';
     OVR.KEY_NECK_TO_EYE_DISTANCE = 'NeckEyeDistance';
     OVR.KEY_EYE_TO_NOSE_DISTANCE = 'EyeToNoseDist';
+
+    % Define hand joint name to index mappings from OpenXR XR_EXT_hand_tracking
+    % extension. This is the default set with 26 joints per hand. We add 1 to each
+    % index value, as Matlab/Octave are 1-based, whereas OpenXR is 0-based:
+    OVR.XR_HAND_JOINT_PALM = 0 + 1;
+    OVR.XR_HAND_JOINT_WRIST = 1 + 1;
+    OVR.XR_HAND_JOINT_THUMB_METACARPAL = 2 + 1;
+    OVR.XR_HAND_JOINT_THUMB_PROXIMAL = 3 + 1;
+    OVR.XR_HAND_JOINT_THUMB_DISTAL = 4 + 1;
+    OVR.XR_HAND_JOINT_THUMB_TIP = 5 + 1;
+    OVR.XR_HAND_JOINT_INDEX_METACARPAL = 6 + 1;
+    OVR.XR_HAND_JOINT_INDEX_PROXIMAL = 7 + 1;
+    OVR.XR_HAND_JOINT_INDEX_INTERMEDIATE = 8 + 1;
+    OVR.XR_HAND_JOINT_INDEX_DISTAL = 9 + 1;
+    OVR.XR_HAND_JOINT_INDEX_TIP = 10 + 1;
+    OVR.XR_HAND_JOINT_MIDDLE_METACARPAL = 11 + 1;
+    OVR.XR_HAND_JOINT_MIDDLE_PROXIMAL = 12 + 1;
+    OVR.XR_HAND_JOINT_MIDDLE_INTERMEDIATE = 13 + 1;
+    OVR.XR_HAND_JOINT_MIDDLE_DISTAL = 14 + 1;
+    OVR.XR_HAND_JOINT_MIDDLE_TIP = 15 + 1;
+    OVR.XR_HAND_JOINT_RING_METACARPAL = 16 + 1;
+    OVR.XR_HAND_JOINT_RING_PROXIMAL = 17 + 1;
+    OVR.XR_HAND_JOINT_RING_INTERMEDIATE = 18 + 1;
+    OVR.XR_HAND_JOINT_RING_DISTAL = 19 + 1;
+    OVR.XR_HAND_JOINT_RING_TIP = 20 + 1;
+    OVR.XR_HAND_JOINT_LITTLE_METACARPAL = 21 + 1;
+    OVR.XR_HAND_JOINT_LITTLE_PROXIMAL = 22 + 1;
+    OVR.XR_HAND_JOINT_LITTLE_INTERMEDIATE = 23 + 1;
+    OVR.XR_HAND_JOINT_LITTLE_DISTAL = 24 + 1;
+    OVR.XR_HAND_JOINT_LITTLE_TIP = 25 + 1;
 
     newhmd.OVR = OVR;
     evalin('caller','global OVR');
@@ -2294,6 +2405,16 @@ if strcmpi(cmd, 'SetupRenderingParameters')
       hmd{myhmd.handle}.needEyeTracking = 0;
     else
       hmd{myhmd.handle}.needEyeTracking = 1;
+    end
+  end
+
+  % Hand tracking requested?
+  if ~isempty(strfind(basicRequirements, 'Handtracking'))
+    if ~hmd{myhmd.handle}.articulatedHandTrackingSupported
+      warning('PsychOpenXR:SetupRenderingParameters: Articulated ''Handtracking'' requested in ''basicRequirements'', but this XR system does not support it!');
+      hmd{myhmd.handle}.needHandTracking = 0;
+    else
+      hmd{myhmd.handle}.needHandTracking = 1;
     end
   end
 

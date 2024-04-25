@@ -1235,7 +1235,7 @@ end
 if strcmpi(cmd, 'Open')
   if isempty(firsttime)
     firsttime = 1;
-    fprintf('Copyright (c) 2018 - 2023 Mario Kleiner. Licensed under the MIT license.\n');
+    fprintf('Copyright (c) 2018 - 2024 Mario Kleiner. Licensed under the MIT license.\n');
     fprintf('The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is\n');
     fprintf('“Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”\n');
     fprintf('A copy of the Oculus SDK license, its terms of use and thereby redistribution\n');
@@ -1261,6 +1261,7 @@ if strcmpi(cmd, 'Open')
   newhmd.handTrackingSupported = 1;
   newhmd.hapticFeedbackSupported = 1;
   newhmd.eyeTrackingSupported = 0;
+  newhmd.articulatedHandTrackingSupported = 0;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
