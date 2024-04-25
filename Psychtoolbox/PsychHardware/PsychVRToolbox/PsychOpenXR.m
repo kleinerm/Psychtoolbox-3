@@ -1265,10 +1265,10 @@ if strcmpi(cmd, 'PrepareRender')
     gaze(3).sensor2D = srLastSample(31:32);
 
     % Get predicted tracking state and hand controller poses (if supported) for targetTime:
-    [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask - 4);
+    [state, touch, ~, hands] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask - 4);
   else
     % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
-    [state, touch, gaze] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
+    [state, touch, gaze, hands] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime, reqmask);
   end
 
   hmd{myhmd.handle}.state = state;
@@ -1513,6 +1513,44 @@ if strcmpi(cmd, 'PrepareRender')
     else
       warning('PsychOpenXR:PrepareRender: Eye gaze tracking data requested, but gaze tracking not supported or enabled!');
     end
+  end
+
+  % Articulated hand tracking data requested?
+  if bitand(reqmask, 8)
+    if ~hmd{myhmd.handle}.needHandTracking
+      error('PsychOpenXR:PrepareRender: Articulated hand tracking data requested, but not supported or enabled!');
+    end
+
+    global tHandsMsecs
+    handy = tic;
+    % Store raw data returned from driver:
+    result.handTrackingRaw = hands;
+
+    for hand = 1:length(hands)
+      result.trackedHandStatus(hand) = hands(hand).Tracked;
+      jointsMatrix = hands(hand).Joints;
+      result.trackedJoints(hand, :) = jointsMatrix(1, :) == 3;
+      result.trackedJointsRadius(hand, :) = jointsMatrix(2, :);
+      result.trackedJointsPosition(hand, 1:3, :) = jointsMatrix(3:5, :);
+      result.trackedJointsOrientationQuat(hand, 1:4, :) = jointsMatrix(6:9, :);
+
+      % Iterate over all joints:
+      for j = 1:size(jointsMatrix, 2)
+        % Joint tracked and valid?
+        if result.trackedJoints(hand, j)
+          % Convert j'th joint pose vector to 4x4 OpenGL right handed reference frame matrix:
+          result.localJointPoseMatrix{hand, j} = eyePoseToCameraMatrix(jointsMatrix(3:9, j)');
+
+          % Premultiply usercode provided global transformation matrix:
+          result.globalJointPoseMatrix{hand, j} = userTransformMatrix * result.localJointPoseMatrix{hand, j};
+        else
+          % Nope: Assign identity matrices:
+          result.localJointPoseMatrix{hand, j} = diag([1,1,1,1]);
+          result.globalJointPoseMatrix{hand, j} = diag([1,1,1,1]);
+        end
+      end
+    end
+    % tHandsMsecs(end+1) = 1000 * toc(handy);
   end
 
   varargout{1} = result;
@@ -1871,7 +1909,7 @@ if strcmpi(cmd, 'Open')
     fprintf('Khronos under Apache 2.0 and MIT license: SPDX license identifier “Apache-2.0 OR MIT”\n\n');
   end
 
-  [handle, modelName, runtimeName, hasEyeTracking] = PsychOpenXRCore('Open', varargin{:});
+  [handle, modelName, runtimeName, hasEyeTracking, hasHandTracking] = PsychOpenXRCore('Open', varargin{:});
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOpenXR;
@@ -1888,7 +1926,7 @@ if strcmpi(cmd, 'Open')
   newhmd.controllerTypes = 0;
   newhmd.eyeTrackingSupported = hasEyeTracking;
   newhmd.needEyeTracking = 0;
-  newhmd.articulatedHandTrackingSupported = 0;
+  newhmd.articulatedHandTrackingSupported = hasHandTracking;
   newhmd.needHandTracking = 0;
 
   % Usually HMD tracking also works for mono display mode:

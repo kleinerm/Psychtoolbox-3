@@ -162,6 +162,8 @@ typedef struct PsychOpenXRDevice {
     XrSpace                             gazePoseSpace;
     XrSpace                             handPoseSpace[2];
     int                                 hasEyeTracking;
+    int                                 hasHandTracking;
+    XrHandTrackerEXT                    handTracker[2];
     psych_bool                          isTracking;                     // MT mutex.
     psych_bool                          needLocate;                     // MT mutex.
     int                                 viewLayerType;                  // MT mutex.
@@ -221,6 +223,7 @@ static psych_bool has_XR_HTC_vive_cosmos_controller_interaction = FALSE;
 static psych_bool has_XR_HTC_vive_focus3_controller_interaction = FALSE;
 static psych_bool has_XR_EXT_eye_gaze_interaction = FALSE;
 static psych_bool has_XR_EXT_dpad_binding = FALSE;
+static psych_bool has_XR_EXT_hand_tracking = FALSE;
 
 // Shared debug messenger for the whole process:
 XrDebugUtilsMessengerEXT debugMessenger = XR_NULL_HANDLE;
@@ -236,6 +239,7 @@ static unsigned int devicecount = 0;
 
 // List and count of available XR system devices for use:
 XrSystemEyeGazeInteractionPropertiesEXT eyeGazeAvailable[MAX_PSYCH_OPENXR_DEVS];
+XrSystemHandTrackingPropertiesEXT handTrackingAvailable[MAX_PSYCH_OPENXR_DEVS];
 XrSystemProperties availableSystems[MAX_PSYCH_OPENXR_DEVS];
 static int numAvailableDevices = 0;
 
@@ -262,6 +266,11 @@ PFN_xrGetOpenGLGraphicsRequirementsKHR pxrGetOpenGLGraphicsRequirementsKHR = NUL
 
 // XR_FB_display_refresh_rate for HMD video refresh rate query and control:
 PFN_xrGetDisplayRefreshRateFB pxrGetDisplayRefreshRateFB = NULL;
+
+// XR_EXT_hand_tracking for articulated hand and finger tracking:
+PFN_xrCreateHandTrackerEXT pxrCreateHandTrackerEXT = NULL;
+PFN_xrLocateHandJointsEXT pxrLocateHandJointsEXT = NULL;
+PFN_xrDestroyHandTrackerEXT pxrDestroyHandTrackerEXT = NULL;
 
 #if defined(XR_USE_PLATFORM_WIN32)
 // XR_KHR_WIN32_convert_performance_counter_time for MS-Windows timestamp mapping:
@@ -327,7 +336,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "";
     synopsis[i++] = "oldVerbosity = PsychOpenXRCore('Verbosity' [, verbosity]);";
     synopsis[i++] = "numDevices = PsychOpenXRCore('GetCount');";
-    synopsis[i++] = "[openxrPtr, modelName, runtimeName, hasEyeTracking] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
+    synopsis[i++] = "[openxrPtr, modelName, runtimeName, hasEyeTracking, hasHandTracking] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOpenXRCore('Close' [, openxrPtr]);";
     synopsis[i++] = "controllerTypes = PsychOpenXRCore('Controllers', openxrPtr);";
     synopsis[i++] = "[oldType, spaceSize] = PsychOpenXRCore('ReferenceSpaceType', openxrPtr [, newType]);";
@@ -337,7 +346,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldEnable = PsychOpenXRCore('PresenterThreadEnable', openxrPtr [, enableThread]);";
     synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
     synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
-    synopsis[i++] = "[state, touch, gaze] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
+    synopsis[i++] = "[state, touch, gaze, hands] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
     synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR, fovL, fovR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
@@ -885,6 +894,11 @@ static int enumerateXRDevices(XrInstance instance) {
     if (has_XR_EXT_eye_gaze_interaction)
         availableSystems[numAvailableDevices].next = &eyeGazeAvailable[numAvailableDevices];
 
+    if (has_XR_EXT_hand_tracking) {
+        handTrackingAvailable[numAvailableDevices].next = availableSystems[numAvailableDevices].next;
+        availableSystems[numAvailableDevices].next = &handTrackingAvailable[numAvailableDevices];
+    }
+
     // Got a hardware XR system. Query and store its properties and systemId:
     result = xrGetSystemProperties(instance, systemId, &availableSystems[numAvailableDevices]);
     if (!resultOK(result)) {
@@ -896,7 +910,7 @@ static int enumerateXRDevices(XrInstance instance) {
     }
 
     if (verbosity > 3) {
-        printf("PsychOpenXRCore-INFO: %i. XR system: VendorId 0x%x : \"%s\" : orientationTracking %i : positionTracking %i : %i layers of max size %i x %i : Gaze tracking: %i.\n",
+        printf("PsychOpenXRCore-INFO: %i. XR system: VendorId 0x%x : \"%s\" : orientationTracking %i : positionTracking %i : %i layers of max size %i x %i : Gaze tracking: %i : Hand tracking: %i.\n",
                numAvailableDevices,
                availableSystems[numAvailableDevices].vendorId, availableSystems[numAvailableDevices].systemName,
                availableSystems[numAvailableDevices].trackingProperties.orientationTracking,
@@ -904,7 +918,8 @@ static int enumerateXRDevices(XrInstance instance) {
                availableSystems[numAvailableDevices].graphicsProperties.maxLayerCount,
                availableSystems[numAvailableDevices].graphicsProperties.maxSwapchainImageWidth,
                availableSystems[numAvailableDevices].graphicsProperties.maxSwapchainImageHeight,
-               eyeGazeAvailable[numAvailableDevices].supportsEyeGazeInteraction);
+               eyeGazeAvailable[numAvailableDevices].supportsEyeGazeInteraction,
+               handTrackingAvailable[numAvailableDevices].supportsHandTracking);
     }
 
     // Increment count of available devices:
@@ -2162,6 +2177,9 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     // Enable basic eye tracking extension:
     has_XR_EXT_eye_gaze_interaction = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME);
 
+    // Enable basic hand tracking extension:
+    has_XR_EXT_hand_tracking = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+
     // XR_KHR_binding_modification supported? If so, try to enable extensions which depend on it:
     if (addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME)) {
         has_XR_EXT_dpad_binding = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_DPAD_BINDING_EXTENSION_NAME);
@@ -2237,6 +2255,13 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     // Bind optional refresh rate query and control functions:
     if (has_XR_FB_display_refresh_rate) {
         GET_INSTANCE_PROC_ADDR(xrInstance, xrGetDisplayRefreshRateFB);
+    }
+
+    // Bind optional articulated hand and finger tracking functions:
+    if (has_XR_EXT_hand_tracking) {
+        GET_INSTANCE_PROC_ADDR(xrInstance, xrCreateHandTrackerEXT);
+        GET_INSTANCE_PROC_ADDR(xrInstance, xrLocateHandJointsEXT);
+        GET_INSTANCE_PROC_ADDR(xrInstance, xrDestroyHandTrackerEXT);
     }
 
     #if defined(XR_USE_PLATFORM_WIN32)
@@ -2372,6 +2397,16 @@ void PsychOpenXRClose(int handle)
                 openxr->textureSwapChainLength[1] = 0;
             }
 
+            // Destroy hand trackers, if any active:
+            if (openxr->handTracker[0])
+                pxrDestroyHandTrackerEXT(openxr->handTracker[0]);
+
+            if (openxr->handTracker[1])
+                pxrDestroyHandTrackerEXT(openxr->handTracker[1]);
+
+            openxr->handTracker[0] = XR_NULL_HANDLE;
+            openxr->handTracker[1] = XR_NULL_HANDLE;
+
             // Close the HMD aka XrSession:
             xrDestroySession(openxr->hmd);
             hasHadSession = TRUE;
@@ -2456,6 +2491,8 @@ void PsychOpenXRCoreInit(void) {
     }
 
     for (handle = 0 ; handle < MAX_PSYCH_OPENXR_DEVS; handle++) {
+        memset(&handTrackingAvailable[handle], 0, sizeof(handTrackingAvailable[0]));
+        handTrackingAvailable[handle].type = XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT;
         memset(&eyeGazeAvailable[handle], 0, sizeof(eyeGazeAvailable[0]));
         eyeGazeAvailable[handle].type = XR_TYPE_SYSTEM_EYE_GAZE_INTERACTION_PROPERTIES_EXT;
         memset(&availableSystems[handle], 0, sizeof(availableSystems[0]));
@@ -2532,8 +2569,8 @@ PsychError PSYCHOPENXRGetCount(void)
 
 PsychError PSYCHOPENXROpen(void)
 {
-    static char useString[] = "[openxrPtr, modelName, runtimeName, hasEyeTracking] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
-    //                          1          2          3            4                                           1
+    static char useString[] = "[openxrPtr, modelName, runtimeName, hasEyeTracking, hasHandTracking] = PsychOpenXRCore('Open' [, deviceIndex=0]);";
+    //                          1          2          3            4               5                                            1
     static char synopsisString[] =
         "Open connection to OpenXR device, return a 'openxrPtr' handle to it.\n\n"
         "The call tries to open the device with index 'deviceIndex', or the first detected "
@@ -2543,7 +2580,8 @@ PsychError PSYCHOPENXROpen(void)
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
         "'modelName' returns the model name string of the OpenXR device.\n"
         "'runtimeName' returns the name of the OpenXR runtime.\n"
-        "'hasEyeTracking' returns the level of eye tracking support: 0 = None, 1 = Basic.\n";
+        "'hasEyeTracking' returns the level of eye tracking support: 0 = None, 1 = Basic.\n"
+        "'hasHandTracking' returns the level of hand tracking support: 0 = None, 1 = Basic.\n";
     static char seeAlsoString[] = "GetCount Close";
 
     PsychOpenXRDevice* openxr;
@@ -2556,7 +2594,7 @@ PsychError PSYCHOPENXROpen(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(4));
+    PsychErrorExit(PsychCapNumOutputArgs(5));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -2596,14 +2634,17 @@ PsychError PSYCHOPENXROpen(void)
     // Record if basic eye gaze tracking is available:
     openxr->hasEyeTracking = eyeGazeAvailable[deviceIndex].supportsEyeGazeInteraction ? 1 : 0;
 
+    // Record if basic hand tracking is available:
+    openxr->hasHandTracking = handTrackingAvailable[deviceIndex].supportsHandTracking ? 0 : 0;
+
     // Use a fixed stereo view type by default for now, for typical HMD use:
     openxr->viewType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 
     // Stats for nerds:
     if (verbosity >= 3) {
         printf("PsychOpenXRCore-INFO: Opened OpenXR device with deviceIndex %i as handle %i.\n", deviceIndex, handle + 1);
-        printf("PsychOpenXRCore-INFO: Product: \"%s\" - [VendorId: 0x%x eyeTracking: %i]\n", availableSystems[deviceIndex].systemName, availableSystems[deviceIndex].vendorId, openxr->hasEyeTracking);
-        printf("PsychOpenXRCore-INFO: ----------------------------------------------------------------------------------\n");
+        printf("PsychOpenXRCore-INFO: Product: \"%s\" - [VendorId: 0x%x eyeTracking: %i handJointsTracking: %i]\n", availableSystems[deviceIndex].systemName, availableSystems[deviceIndex].vendorId, openxr->hasEyeTracking, openxr->hasHandTracking);
+        printf("PsychOpenXRCore-INFO: -----------------------------------------------------------------------------------------------\n");
     }
 
     // Assign multi-threading mode as "off" by default:
@@ -2643,6 +2684,9 @@ PsychError PSYCHOPENXROpen(void)
 
     // Return eye tracking support level:
     PsychCopyOutDoubleArg(4, kPsychArgOptional, openxr->hasEyeTracking);
+
+    // Return hand tracking support level:
+    PsychCopyOutDoubleArg(5, kPsychArgOptional, openxr->hasHandTracking);
 
     return(PsychError_none);
 }
@@ -3210,10 +3254,30 @@ PsychError PSYCHOPENXRStop(void)
     return(PsychError_none);
 }
 
+static PsychError PsychOpenXRTrackHands(PsychOpenXRDevice* openxr, int outArgPos, XrTime xrPredictionTime)
+{
+    const char *FieldNamesHand[] = { "Tracked", "Joints" };
+    const int FieldCountHand = 2;
+
+    int StatusFlags;
+    PsychGenericScriptType *status;
+    PsychGenericScriptType *outMat;
+    double *v;
+
+    if (openxr->hasHandTracking) {
+    }
+    else {
+        // Allocate out an empty struct:
+        PsychAllocOutStructArray(outArgPos, kPsychArgOptional, -1, FieldCountHand, FieldNamesHand, &status);
+    }
+
+    return(PsychError_none);
+}
+
 PsychError PSYCHOPENXRGetTrackingState(void)
 {
-    static char useString[] = "[state, touch, gaze] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
-    //                          1      2      3                                           1            2                           3
+    static char useString[] = "[state, touch, gaze, hands] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame][, reqMask=all]);";
+    //                          1      2      3     4                                            1            2                           3
     static char synopsisString[] =
         "Return current state of position and orientation tracking for OpenXR device 'openxrPtr'.\n"
         "Position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
@@ -3221,7 +3285,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "then the prediction is performed for the mid-point of the next possible video frame of the device, ie. "
         "the most likely presentation time for immediately rendered images.\n"
         "'reqMask' mask defining which information to return. Defaults to all information. Values are "
-        "+1 for head/eye tracking, +2 for hand controller tracking, +4 for eye gaze tracking.\n\n"
+        "+1 for head/eye tracking, +2 for hand controller tracking, +4 for eye gaze tracking, "
+        "+8 for articulated hand and finger tracking (Not yet supported in this driver release).\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of returned tracking state.\n"
         "'Status' = Tracking status flags:\n"
@@ -3279,6 +3344,23 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "+1 = Some gaze info available, but not based on measurements. Consider this not trustworthy at all!\n"
         "+2 = Tracked gaze position available. This is possibly subject to interpolation or extrapolation.\n"
         "'GazePose' = Position and orientation of the eye, expressing a gaze vector in its usual [x,y,z,rx,ry,rz,rw] form.\n"
+        " \n"
+        "Articulated hand tracking on supported hardware: PRELIMINARY DOCS, SUBJECT TO INCOMPATIBLE CHANGES!\n"
+        " \n"
+        "The return argument 'hands' is a struct array with 2 structs, one for each hand. hands(1) returns "
+        "information about the left hand, hands(2) returns information about the right hand.\n"
+        "Each struct has the following fields:\n"
+        "'Tracked' The tracking status of the hand. 0 if the hand was not tracked and all further info is invalid, "
+        "or 1 if at least part of the hand was tracked and some of the per-joint tracking info is valid.\n"
+        "'Joints' A 9 rows by 26 column double matrix, where the rows of each column encode tracked info about "
+        "one joint. Specific column indices correspond to specific named joints on the hand. The indices are standardized "
+        "in the OpenXR specification for the XR_EXT_hand_tracking extension, which specifies 26 separate joints per hand. "
+        "See section 12.30.6 \"Conventions of hand joints\" of the OpenXR extension spec for joint names, indices and reference.\n"
+        " \n"
+        "Row 1 of the matrix encodes tracking status: 0 = No info about this joint, 1 = Some inter-/extrapolated info, 3 = Fully tracked.\n"
+        "Row 2 encodes the radius in meters of this joint - The estimated distance from joint axis to skin of the hand.\n"
+        "Rows 3-5 encode the 3D [x; y; z] position in meters of the joint in the tracking reference space.\n"
+        "Rows 6-9 define the [rx; ry; rz; rw] quaternion, encoding the relative orientation of the joint with respect to the tracking reference space.\n"
         "\n";
     static char seeAlsoString[] = "Start Stop GetTrackersState GetInputState";
 
@@ -3304,7 +3386,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -3320,8 +3402,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
 
     // Get optional info requirements mask:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &reqMask);
-    if (reqMask < 0 || reqMask > 7)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'reqMask' specified. Valid values are 0 to 7.");
+    if (reqMask < 0 || reqMask > 15)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'reqMask' specified. Valid values are 0 to 15.");
 
     // Lock protect openxr->predictedDisplayTime and locateXRViews() and return of
     // all views[] info and viewState info below:
@@ -3624,6 +3706,15 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     else {
         // Allocate out an empty struct:
         PsychAllocOutStructArray(3, kPsychArgOptional, -1, FieldCount3, FieldNames3, &status);
+    }
+
+    // Articulated hand tracking requested?
+    if (reqMask & 8) {
+        PsychOpenXRTrackHands(openxr, 4, xrPredictionTime);
+    }
+    else {
+        // Allocate out an empty struct:
+        PsychAllocOutStructArray(4, kPsychArgOptional, -1, 0, NULL, &status);
     }
 
     return(PsychError_none);
