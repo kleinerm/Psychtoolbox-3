@@ -775,6 +775,15 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXI
     end
   end
 
+  % Disable use of ARB contexts for Matlab's plotting, as Mathworks can't be bothered to fix this
+  % bug for Linux + Intel gpu's now since at least the year 2020, but still present in R2024a:
+  cmd = sprintf('echo "-Djogl.disable.openglarbcontext=1" | sudo tee %s/bin/glnxa64/java.opts', matlabroot);
+  fprintf('Matlab releases from R2020b up to at least R2024a, possibly later ones as well, have\n');
+  fprintf('a bug that makes plotting with Matlab fail on Intel graphics chips. Will apply a fix to\n');
+  fprintf('your Matlab installation to work around this bug. You may have to enter your administrator\n');
+  fprintf('password to execute the following command:\n%s\n\n', cmd);
+  system(cmd);
+
   % If R2014b detects a Mesa OpenGL renderer as default system OpenGL
   % library, it will blacklist it and switch to its own utterly outdated
   % Mesa X11 software renderer (Version 7.2 !!). This is utterly inadequate
