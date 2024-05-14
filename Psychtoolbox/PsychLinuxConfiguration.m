@@ -731,6 +731,23 @@ if needinstall && answer == 'y'
   end
 end
 
+% Ubuntu 24.04-LTS no longer has libglut.so.3, but now only exposes libglut.so.3.12,
+% so our moglcore mex file built against Ubuntu 20.04 or 22.04 will fail to link and load.
+% Try to create a suitable symlink. First to libglut.so, ideally, and if that fails, to the
+% specific version shipping in Ubuntu 24.04-LTS. libglut.so would be there if the user installed
+% apt build-dep psychtoolbox-3 as recommended:
+if ~IsARM && ~exist('/usr/lib/x86_64-linux-gnu/libglut.so.3', 'file')
+  fprintf('Required libglut.so.3 symlink is missing on your (Ubuntu 24.04-LTS or later?) system.\n');
+  fprintf('Creating it. You may have to enter your administrator password if you haven''t done already.\n\n');
+  if system('sudo -S ln -s /usr/lib/x86_64-linux-gnu/libglut.so /usr/lib/x86_64-linux-gnu/libglut.so.3')
+    system('sudo -S ln -s /usr/lib/x86_64-linux-gnu/libglut.so.3.12 /usr/lib/x86_64-linux-gnu/libglut.so.3');
+  end
+
+  if ~exist('/usr/lib/x86_64-linux-gnu/libglut.so.3', 'file')
+    warning('Creating libglut.so.3 symlink FAILED. Various OpenGL and drawing commands may fail until this is fixed.');
+  end
+end
+
 if updateinitramfs
   fprintf('\nNow updating the initramfs for some settings to take effect. This can take some time.\n');
   system('sudo update-initramfs -u -k all');
