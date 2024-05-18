@@ -1,5 +1,7 @@
-function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, refSpace, withGazeTracking)
-% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay'][, refSpace][, withGazeTracking=0]) - Test input functionality related to VR devices.
+function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, refSpace, withGazeTracking, withHandTracking)
+% VRInputStuffTest([withHapticFeedback=0][, withMTStressTest=0][, specialReqs='DebugDisplay'][, refSpace][, withGazeTracking=0][, withHandTracking=0])
+%
+% Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
 % input. After any key press or controller button press, reports live state
@@ -48,6 +50,10 @@ function VRInputStuffTest(withHapticFeedback, withMTStressTest, specialReqs, ref
 % eye tracking. A setting of 1 will visualize the 2D gaze position, a setting of
 % 2 will visualize a 3D gaze ray in addition.
 %
+% The optional parameter 'withHandTracking', if provided and non-zero, will
+% enable some basic tests of hand tracking with VR hardware that supports hand
+% tracking. A setting of 1 will visualize the measured hand joint locations.
+%
 % After a keypress (or Enter/Back button press on the controller),
 % visualizes tracked hand position and orientation of hand controllers and
 % allows to do some nice visual effects based on trigger / grip button
@@ -93,6 +99,15 @@ end
 if withGazeTracking
     % Tell that eyetracking is desired:
     specialReqs = [specialReqs ' Eyetracking '];
+end
+
+if nargin < 6 || isempty(withHandTracking)
+    withHandTracking = 0;
+end
+
+if withHandTracking
+    % Tell that hand tracking is desired:
+    specialReqs = [specialReqs ' Handtracking '];
 end
 
 canary = onCleanup(@sca);
@@ -153,6 +168,14 @@ else
     % No. Disable any eye gaze tracking:
     reqMask = 1 + 2;
     withGazeTracking = 0;
+end
+
+if withHandTracking && hmdinfo.articulatedHandTrackingSupported
+    % Yes. Request hand tracker samples during calls to 'PrepareRender':
+    reqMask = reqMask + 8;
+else
+    % No. Disable any hand tracking:
+    withHandTracking = 0;
 end
 
 clc;
@@ -412,7 +435,7 @@ while any(istate.Buttons)
 end
 
 % Part 3: Actual hand tracking and visualisation:
-if hmdinfo.handTrackingSupported || withGazeTracking
+if hmdinfo.handTrackingSupported || withGazeTracking || withHandTracking
   % Number of fountain particles whose positions are computed on the GPU:
   nparticles = 10000;
 
@@ -718,6 +741,12 @@ if hmdinfo.handTrackingSupported || withGazeTracking
 
       % Visualize users hands / hand controllers:
       for hand = 1:2
+        % Skip hand controller visualization if hand tracking is enabled and this
+        % hand is tracked. We use hand tracking visualization instead in this case:
+        if withHandTracking && state.trackedHandStatus(hand)
+          continue;
+        end
+
         % Position and orientation of hand tracked? Otherwise we don't show them:
         if bitand(state.handStatus(hand), 3) == 3
           % Yes: Lets visualize it:
@@ -755,6 +784,27 @@ if hmdinfo.handTrackingSupported || withGazeTracking
           end
 
           glPopMatrix;
+        end
+      end
+
+      % Visualize tracked hand joints locations if withHandTracking:
+      if withHandTracking
+        glDisable(GL.LIGHTING);
+
+        % Iterate over both hands:
+        for hand = 1:2
+          % hand fully tracked? Otherwise we don't show it:
+          if state.trackedHandStatus(hand)
+            % Yes: Lets visualize all its tracked joint locations.
+            glColor3f(hand - 1, 1, 1);
+
+            for joint = find(state.trackedJoints(hand, :))
+              glPushMatrix;
+              glMultMatrixd(state.globalJointPoseMatrix{hand, joint});
+              glutSolidCube(state.trackedJointsRadius(hand, joint));
+              glPopMatrix;
+            end
+          end
         end
       end
 

@@ -2873,6 +2873,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
             inwasapiapisettings.flags |= paWinWasapiExclusive;
             outwasapiapisettings.flags |= paWinWasapiExclusive;
         }
+        else {
+            // In non-exclusive / shared mode, allow auto conversion of sample rate
+            // to system mixer sample rate, or most requested sample rates would fail in
+            // shared mode. Needs at least Windows 7SP1, and at least Portaudio V19.7.0:
+            inwasapiapisettings.flags |= paWinWasapiAutoConvert;
+            outwasapiapisettings.flags |= paWinWasapiAutoConvert;
+        }
 
         if (latencyclass > 2) {
             // Windows 10 or later?

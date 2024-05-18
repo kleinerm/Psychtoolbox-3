@@ -731,6 +731,23 @@ if needinstall && answer == 'y'
   end
 end
 
+% Ubuntu 24.04-LTS no longer has libglut.so.3, but now only exposes libglut.so.3.12,
+% so our moglcore mex file built against Ubuntu 20.04 or 22.04 will fail to link and load.
+% Try to create a suitable symlink. First to libglut.so, ideally, and if that fails, to the
+% specific version shipping in Ubuntu 24.04-LTS. libglut.so would be there if the user installed
+% apt build-dep psychtoolbox-3 as recommended:
+if ~IsARM && ~exist('/usr/lib/x86_64-linux-gnu/libglut.so.3', 'file')
+  fprintf('\nRequired libglut.so.3 symlink is missing on your (Ubuntu 24.04-LTS or later?) system.\n');
+  fprintf('Creating it. You may have to enter your administrator password if you haven''t done already.\n\n');
+  if system('sudo -S ln -s /usr/lib/x86_64-linux-gnu/libglut.so /usr/lib/x86_64-linux-gnu/libglut.so.3')
+    system('sudo -S ln -s /usr/lib/x86_64-linux-gnu/libglut.so.3.12 /usr/lib/x86_64-linux-gnu/libglut.so.3');
+  end
+
+  if ~exist('/usr/lib/x86_64-linux-gnu/libglut.so.3', 'file')
+    warning('Creating libglut.so.3 symlink FAILED. Various OpenGL and drawing commands may fail until this is fixed.');
+  end
+end
+
 if updateinitramfs
   fprintf('\nNow updating the initramfs for some settings to take effect. This can take some time.\n');
   system('sudo update-initramfs -u -k all');
@@ -774,6 +791,15 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXI
       fprintf('Success. Vulkan should work now.\n');
     end
   end
+
+  % Disable use of ARB contexts for Matlab's plotting, as Mathworks can't be bothered to fix this
+  % bug for Linux + Intel gpu's now since at least the year 2020, but still present in R2024a:
+  cmd = sprintf('echo "-Djogl.disable.openglarbcontext=1" | sudo tee -a %s/bin/glnxa64/java.opts', matlabroot);
+  fprintf('Matlab releases from R2020b up to at least R2024a, possibly later ones as well, have\n');
+  fprintf('a bug that makes plotting with Matlab fail on Intel graphics chips. Will apply a fix to\n');
+  fprintf('your Matlab installation to work around this bug. You may have to enter your administrator\n');
+  fprintf('password to execute the following command:\n%s\n\n', cmd);
+  system(cmd);
 
   % If R2014b detects a Mesa OpenGL renderer as default system OpenGL
   % library, it will blacklist it and switch to its own utterly outdated

@@ -17,7 +17,7 @@
  * The runtime must support OpenGL as rendering backend for XR content.
  *
  * The driver was initially derived from PsychOculusVRCore1.
- * Copyright (c) 2022-2023 Mario Kleiner. Licensed to you under the MIT license:
+ * Copyright (c) 2022-2024 Mario Kleiner. Licensed to you under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -309,7 +309,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychOpenXRCore - A Psychtoolbox driver for OpenXR compatible VR/AR/MR/XR hardware.";
     synopsis[i++] = "This driver allows to use XR devices supported by a suitable OpenXR runtime of version 1.x.\n";
-    synopsis[i++] = "Copyright (c) 2022-2023 Mario Kleiner.";
+    synopsis[i++] = "Copyright (c) 2022-2024 Mario Kleiner.";
     synopsis[i++] = "The PsychOpenXRCore driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "";
     synopsis[i++] = "For some experimental Monado specific timestamping implementation, the driver currently";
@@ -4417,7 +4417,7 @@ PsychError PSYCHOPENXRTimingSupport(void)
     "Return available level of precise timing and timestamping support for OpenXR device 'openxrPtr'. "
     "If 'openxrPtr' is omitted, a more basic, general assessment of the OpenXR runtimes capabilities "
     "is returned.\n"
-    "Standard unextended OpenXR-1 runtimes, as of February 2023, do not support reliable visual onset "
+    "Standard unextended OpenXR-1 runtimes, as of April 2024, do not support reliable visual onset "
     "timestamping, and most tested runtimes don't support reliable onset timing either. These runtimes "
     "will return zero, hinting at the need for multi-threading tricks for bearable precision.\n"
     "The open-source Monado runtime does support precise onset timing, and may support some better "
