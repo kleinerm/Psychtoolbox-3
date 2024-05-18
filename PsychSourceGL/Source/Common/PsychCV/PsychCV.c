@@ -122,10 +122,10 @@ void InitializeSynopsis()
     #endif
     #ifdef PSYCHCV_USE_APRILTAGS
     synopsis[i++] = "\nSupport for the apriltag 2D/3D april tag marker tracking library:\n";
-    synopsis[i++] = "[inputImageMemBuffer] = PsychCV('AprilInitialize', tagFamilyName, imgWidth, imgHeight, imgChannels [, imgFormat]);";
+    synopsis[i++] = "[inputImageMemBuffer] = PsychCV('AprilInitialize', tagFamilyName, imgWidth, imgHeight, imgChannels [, imgFormat][, maxNrTags]);";
     synopsis[i++] = "[detectedMarkers] = PsychCV('AprilDetectMarkers'[, markerSubset=all][, infoType=all]);";
     synopsis[i++] = "PsychCV('AprilShutdown');";
-    synopsis[i++] = "[nrThreads, imageDecimation, quadSigma, refineEdges, decodeSharpening] = PsychCV('AprilSettings' [, nrThreads][, imageDecimation][, quadSigma][, refineEdges][, decodeSharpening]);";
+    synopsis[i++] = "[nrThreads, imageDecimation, quadSigma, refineEdges, decodeSharpening, criticalRadAngle, deglitch, maxLineFitMse, minWhiteBlackDiff, minClusterPixels, maxNMaxima] = PsychCV('AprilSettings' [, nrThreads][, imageDecimation][, quadSigma][, refineEdges][, decodeSharpening][, criticalRadAngle][, deglitch][, maxLineFitMse][, minWhiteBlackDiff][, minClusterPixels][, maxNMaxima]);";
     synopsis[i++] = "[glProjectionMatrix, camCalib, tagSize, minD, maxD] = PsychCV('April3DSettings' [, camCalib][, tagSize][, minD][, maxD]);";
     #endif
 

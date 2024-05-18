@@ -58,10 +58,10 @@ jobs:
       - name: Build all eligible Psychtoolbox Matlab mex files.
         uses: matlab-actions/run-command@v1
         with:
-          command: cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); pwd, linuxmakeit64(-1, 1);
+          command: cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); disp(version); pwd, linuxmakeit64(-1, 1);
 
       - name: Build all eligible Psychtoolbox Octave mex files.
-        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); pwd, linuxmakeitoctave3(-1, 1); linuxmakeitoctave3(12, 0); linuxmakeitoctave3(4, 0); cd('../Cohorts/FTGLTextRenderer'); makeftglplugin;"
+        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); disp(version); pwd, linuxmakeitoctave3(-1, 1); linuxmakeitoctave3(12, 0); linuxmakeitoctave3(4, 0); cd('../Cohorts/FTGLTextRenderer'); makeftglplugin;"
 
       - name: Archive built 64-Bit Matlab and Octave mex files for 64-Bit Intel
         uses: actions/upload-artifact@v3

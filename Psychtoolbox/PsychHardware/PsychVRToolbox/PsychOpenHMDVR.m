@@ -1221,6 +1221,7 @@ if strcmpi(cmd, 'Open')
 
   newhmd.eyeTrackingSupported = 0;
   newhmd.needEyeTracking = 0;
+  newhmd.articulatedHandTrackingSupported = 0;
 
   % Eye gaze tracking via SRAnipal on MS-Windows on HTC Vive Pro Eye etc. supported?
   if IsWin && exist('SRAnipalMex', 'file') && ~isempty(strfind(newhmd.modelName, 'Vive'))

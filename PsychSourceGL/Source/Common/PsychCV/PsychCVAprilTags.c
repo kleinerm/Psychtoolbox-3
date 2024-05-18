@@ -234,8 +234,8 @@ void PsychCVAprilExit(void)
 PsychError PSYCHCVAprilInitialize(void)
 {
     static char useString[] =
-    "[inputImageMemBuffer] = PsychCV('AprilInitialize', tagFamilyName, imgWidth, imgHeight, imgChannels [, imgFormat]);";
-    //1                                                 1              2         3          4              5
+    "[inputImageMemBuffer] = PsychCV('AprilInitialize', tagFamilyName, imgWidth, imgHeight, imgChannels [, imgFormat][, maxNrTags]);";
+    //1                                                 1              2         3          4              5            6
 
     static char synopsisString[] =
         "Initialize apriltag prior to first use.\n\n"
@@ -245,10 +245,10 @@ PsychError PSYCHCVAprilInitialize(void)
         "    tag25h9\n"
         "    tag16h5\n"
         "    tagCircle21h7\n"
-        "    tagCircle49h12\n"
-        "    tagCustom48h12\n"
+        "    tagCircle49h12    - Use maxNrTags to restrict size!\n"
+        "    tagCustom48h12    - Use maxNrTags to restrict size!\n"
         "    tagStandard41h12\n"
-        "    tagStandard52h13\n"
+        "    tagStandard52h13  - Use maxNrTags to restrict size!\n"
         " \n"
         "Internal video image memory buffers are set up for input images of size "
         "'imgWidth' x 'imgHeight' pixels, with 'imgChannels' mono or color channels "
@@ -264,6 +264,10 @@ PsychError PSYCHCVAprilInitialize(void)
         "4 channel content with alpha channel, you may have to specify 'imgFormat' if "
         "your machine does not return BGRA ordered pixels, but ARGB ordered pixels, or "
         "marker detection on 4 channel content may fail or perform poorly.\n"
+        "When using a tag family with many potential tags, you can limit the number of "
+        "tags to use to the first 'maxNrTags' tags if you specify 'maxNrTags'. This is "
+        "important for certain large tag families, as using the tag family at its full "
+        "capacity may consume a lot of memory and take a very long time to initialize!\n"
         "Then apriltags is initialized, and a memory buffer handle 'inputImageMemBuffer' "
         "to the internal video memory input buffer is returned.\n\n"
         "You should pass this handle to Psychtoolbox functions for videocapture "
@@ -275,12 +279,13 @@ PsychError PSYCHCVAprilInitialize(void)
     static char seeAlsoString[] = "AprilShutdown AprilDetectMarkers AprilSettings April3DSettings";
 
     char* tagFamilyName;
+    int maxNrTags;
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(5));        // The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(6));        // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(4));    // The required number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(1));       // The maximum number of outputs
 
@@ -349,6 +354,15 @@ PsychError PSYCHCVAprilInitialize(void)
         PsychErrorExitMsg(PsychError_user, "Startup failed due to failure to create apriltag detector.");
     }
 
+    // Clamp number of tags to use to nTagsMax, if any specified:
+    if (PsychCopyInIntegerArg(6, kPsychArgOptional, &maxNrTags)) {
+        if (maxNrTags < 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid maxNrTags specified. Must be at least 1.");
+
+        tagFamily->ncodes = (tagFamily->ncodes <= maxNrTags) ? tagFamily->ncodes : maxNrTags;
+    }
+
+    // Attach tagFamily to detector:
     apriltag_detector_add_family(tagDetector, tagFamily);
 
     // Allocate internal memory buffer of sufficient size:
@@ -534,7 +548,7 @@ PsychError PSYCHCVAprilDetectMarkers(void)
         // Validate...
         for (i = 0; i < n; i++) {
             if (markerSubset[i] < 0 || markerSubset[i] >= tagFamily->ncodes) {
-                printf("PsychCV-ERROR: Invalid markerhandle %i passed in 'markerSubset' argument! No such marker available!\n", markerSubset[i]);
+                printf("PsychCV-ERROR: Invalid markerhandle %i passed in 'markerSubset' argument! No such marker available!\n", (int) markerSubset[i]);
                 PsychErrorExitMsg(PsychError_user, "Invalid 'markerSubset' specified: Must be a 1D or 2D vector or matrix with handles!");
             }
         }
@@ -621,8 +635,25 @@ PsychError PSYCHCVAprilDetectMarkers(void)
         detected = NULL;
         for (j = 0; j < marker_num; j++) {
             zarray_get(marker_info, j, &detcand);
-            if ((candHandle == detcand->id) && (detected == NULL))
-                detected = detcand;
+            if (candHandle == detcand->id) {
+                // detcand is a candidate for marker with id candHandle:
+                if (detected == NULL) {
+                    // First candidate, assign as best choice so far:
+                    detected = detcand;
+                }
+                else {
+                    // Already got a choice. Lets see if the new candidate is a better
+                    // contender for the spot, ie. if the new 'detcand' is a higher quality
+                    // detection than the previous 'detected' candidate. If so, we make 'detcand'
+                    // our new favorite. Criteria for better: Lower Hamming bit error, or if hamming
+                    // error is the same, a higher decision margin:
+                    if ((detected->hamming > detcand->hamming) ||
+                        ((detected->hamming == detcand->hamming) && (detected->decision_margin < detcand->decision_margin))) {
+                        // A new champ! Assign:
+                        detected = detcand;
+                    }
+                }
+            }
         }
 
         matchQuality = 0;
@@ -656,8 +687,18 @@ PsychError PSYCHCVAprilDetectMarkers(void)
                 detinfo.fx = cam_fx;        // In pixels.
                 detinfo.fy = cam_fy;        // In pixels.
 
+                // At low/standard verbosity levels, redirect stderr to /dev/null during
+                // calls to estimate_tag_pose(), to prevent spill of some pointless debug
+                // messages from libapriltag v3:
+                if (verbosity <= 3)
+                    stderr = freopen("/dev/null", "a", stderr);
+
                 // Estimate 3D pose from monocular video, ie. 6 DoF position and orientation:
                 poseError = estimate_tag_pose(&detinfo, &pose);
+
+                // Reassing stderr to its regular place:
+                if (verbosity <=3)
+                    stderr = fdopen(STDERR_FILENO, "a");
 
                 // Return translation column vector:
                 T[0] = MATD_EL(pose.t, 0, 0);
@@ -865,8 +906,8 @@ PsychError PSYCHCVApril3DSettings(void)
 PsychError PSYCHCVAprilSettings(void)
 {
     static char useString[] =
-    "[nrThreads, imageDecimation, quadSigma, refineEdges, decodeSharpening] = PsychCV('AprilSettings' [, nrThreads][, imageDecimation][, quadSigma][, refineEdges][, decodeSharpening]);";
-    //1          2                3          4            5                                              1            2                  3            4              5
+    "[nrThreads, imageDecimation, quadSigma, refineEdges, decodeSharpening, criticalRadAngle, deglitch, maxLineFitMse, minWhiteBlackDiff, minClusterPixels, maxNMaxima] = PsychCV('AprilSettings' [, nrThreads][, imageDecimation][, quadSigma][, refineEdges][, decodeSharpening][, criticalRadAngle][, deglitch][, maxLineFitMse][, minWhiteBlackDiff][, minClusterPixels][, maxNMaxima]);";
+    //1          2                3          4            5                 6                 7         8              9                  10                11
     static char synopsisString[] =
         "Return current tracker parameters, optionally change tracker parameters.\n"
         "These settings are set to reasonable defaults at startup, but can be changed "
@@ -877,19 +918,27 @@ PsychError PSYCHCVAprilSettings(void)
         "'imageDecimation' 1 = Process full image. > 1 = Only work on resolution decimated image for higher speed at lower precision. Default is 2.\n"
         "'quadSigma' How much blurring (values > 0) or sharpening (values < 0) to apply to input images to reduce noise. Default is 0 for none.\n"
         "'refineEdges' 1 = Perform edge refinement on detected edges (cheap, and the default), 0 = Use simpler strategy.\n"
-        "'decodeSharpening' How much sharpening should be done to decoded images? Can help small tags. Default is 0.25.\n";
+        "'decodeSharpening' How much sharpening should be done to decoded images? Can help small tags. Default is 0.25.\n"
+        "'criticalRadAngle' How close pairs of edges can be to straight before rejection. 0 = Don't reject. Default is 10 degrees.\n"
+        "'deglitch' Should the thresholded image be deglitched (1) or not (0)? Only useful for very noisy images. Default is 0 for false.\n"
+        "'maxLineFitMse' When fitting lines to contours, what is the maximum mean squared error allowed? For rejecting contours far from quad shape. Default is 10.0.\n"
+        "'minWhiteBlackDiff' How much brighter (in pixel values 0 - 255) must white pixels be than black pixels? Default is 5.\n"
+        "'minClusterPixels' Reject quads containing less than this number of pixels. Default is 5.\n"
+        "'maxNMaxima' How many corner candidates to consider when segmenting a group of pixels into a quad. Default is 10.\n";
+
     static char seeAlsoString[] = "AprilDetectMarkers";
 
-    int nrThreads, refineEdges;
+    int nrThreads, refineEdges, deglitch, minWhiteBlackDiff, minClusterPixels, maxNMaxima;
     double quadSigma, imageDecimation, decodeSharpening;
+    double criticalRadAngle, maxLineFitMse;
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(5));        // The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(11));       // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(0));    // The required number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(5));       // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(11));      // The maximum number of outputs
 
     if (!psychCVAprilInitialized)
         PsychErrorExitMsg(PsychError_user, "apriltags not yet initialized! Call PsychCV('AprilInitialize') first and retry!");
@@ -900,6 +949,12 @@ PsychError PSYCHCVAprilSettings(void)
     PsychCopyOutDoubleArg(3, FALSE, tagDetector->quad_sigma);
     PsychCopyOutDoubleArg(4, FALSE, tagDetector->refine_edges ? 1 : 0);
     PsychCopyOutDoubleArg(5, FALSE, tagDetector->decode_sharpening);
+    PsychCopyOutDoubleArg(6, FALSE, acos(tagDetector->qtp.cos_critical_rad) * 180 / M_PI);
+    PsychCopyOutDoubleArg(7, FALSE, tagDetector->qtp.deglitch ? 1 : 0);
+    PsychCopyOutDoubleArg(8, FALSE, tagDetector->qtp.max_line_fit_mse);
+    PsychCopyOutDoubleArg(9, FALSE, tagDetector->qtp.min_white_black_diff);
+    PsychCopyOutDoubleArg(10, FALSE, tagDetector->qtp.min_cluster_pixels);
+    PsychCopyOutDoubleArg(11, FALSE, tagDetector->qtp.max_nmaxima);
 
     // Copy in optional new settings:
     if (PsychCopyInIntegerArg(1, FALSE, &nrThreads) && (nrThreads > 0))
@@ -917,13 +972,23 @@ PsychError PSYCHCVAprilSettings(void)
     if (PsychCopyInDoubleArg(5, FALSE, &decodeSharpening) && (decodeSharpening >= 0))
         tagDetector->decode_sharpening = decodeSharpening;
 
-    // TODO further potential tunables:
-    // td->qtp.max_nmaxima = 10;
-    // t d->qtp.min_cluster_pixels = 5;
-    // td->qtp.max_line_fit_mse = 10.0;
-    // td->qtp.cos_critical_rad = cos(10 * M_PI / 180);
-    // td->qtp.deglitch = false;
-    // td->qtp.min_white_black_diff = 5;
+    if (PsychCopyInDoubleArg(6, FALSE, &criticalRadAngle) && (criticalRadAngle > 0))
+        tagDetector->qtp.cos_critical_rad = cos(criticalRadAngle * M_PI / 180);
+
+    if (PsychCopyInIntegerArg(7, FALSE, &deglitch))
+        tagDetector->qtp.deglitch = (deglitch > 0) ? true : false;
+
+    if (PsychCopyInDoubleArg(8, FALSE, &maxLineFitMse) && (maxLineFitMse > 0))
+        tagDetector->qtp.max_line_fit_mse = maxLineFitMse;
+
+    if (PsychCopyInIntegerArg(9, FALSE, &minWhiteBlackDiff) && (minWhiteBlackDiff > 0))
+        tagDetector->qtp.min_white_black_diff = minWhiteBlackDiff;
+
+    if (PsychCopyInIntegerArg(10, FALSE, &minClusterPixels) && (minClusterPixels > 0))
+        tagDetector->qtp.min_cluster_pixels = minClusterPixels;
+
+    if (PsychCopyInIntegerArg(11, FALSE, &maxNMaxima) && (maxNMaxima > 0))
+        tagDetector->qtp.max_nmaxima = maxNMaxima;
 
     return(PsychError_none);
 }

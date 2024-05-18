@@ -995,6 +995,7 @@ if strcmpi(cmd, 'Open')
   newhmd.handTrackingSupported = 0;
   newhmd.hapticFeedbackSupported = 0;
   newhmd.eyeTrackingSupported = 0;
+  newhmd.articulatedHandTrackingSupported = 0;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;

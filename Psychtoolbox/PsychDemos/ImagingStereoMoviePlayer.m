@@ -1,5 +1,5 @@
-function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, screenid, hdr)
-% ImagingStereoMoviePlayer(moviefile [, stereoMode=8][, imaging=1][, anaglyphmode=0][, screenid=max][, hdr=0])
+function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, screenid, hdr, topBottom)
+% ImagingStereoMoviePlayer(moviefile [, stereoMode=8][, imaging=1][, anaglyphmode=0][, screenid=max][, hdr=0][, topBottom=0])
 %
 % Minimalistic movie player for stereo movies. Reads movie from file
 % 'moviefile'. Left half of each movie video frame must contain left-eye
@@ -43,6 +43,9 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % Linux/X11 for dual-display HDR playback. This is currently not supported on other
 % operating systems, where you only have single-display stereo for HDR playback.
 %
+% 'topBottom' If this optional flag is set to 1, then top-bottom encoding in the
+% movie is assumed and handled accordignly, otherwise left-right encoding is assumed.
+%
 %
 % The left image is centered on the screen, the right images position can
 % be moved by moving the mouse cursor to align for inter-eye distance.
@@ -54,6 +57,7 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % 17.06.2013 Cleaned up (MK)
 % 30.09.2015 Add VR HMD support. (MK)
 % 18.12.2020 Add HDR support. (MK)
+% 18.04.2024 Add handling of top-bottom encoded movies. (MK)
 
 AssertOpenGL;
 
@@ -95,6 +99,10 @@ end
 
 if nargin < 6 || isempty(hdr)
     hdr = 0;
+end
+
+if nargin < 7 || isempty(topBottom)
+    topBottom = 0;
 end
 
 % No special movieOptions by default:
@@ -158,7 +166,7 @@ if imaging
         otherwise
             %error('Unknown stereoMode specified.');
     end
-    
+
     if stereoMode > 5 && stereoMode < 10
         switch anaglyphmode
             case 0,
@@ -179,7 +187,7 @@ if imaging
             otherwise
                 error('Invalid anaglyphmode specified!');
         end
-        
+
         overlay = SetAnaglyphStereoParameters('CreateMonoOverlay', win);
         Screen('TextSize', overlay, 24);
         DrawFormattedText(overlay, ['Loading file: ' moviefile ], 0, 25, [255 255 0]);
@@ -228,57 +236,60 @@ end
 try
     % Playback loop: Run until keypress or error:
     while ~KbCheck && tex~=-1
-        
         % Fetch next image from movie:
         tex = Screen('GetMovieImage', win, movie, 1);
-        
+
         % Valid image to draw?
         if tex>0
             % Query mouse position:
             x = GetMouse(win);
-            
+
             % Setup drawing regions based on size of first frame:
             if isempty(imgrect)
-                imgrect = Screen('Rect', tex) ;
-                imglrect = [0, 0, RectWidth(imgrect)/2, RectHeight(imgrect)];
-                imgrrect = [RectWidth(imgrect)/2, 0, RectWidth(imgrect), RectHeight(imgrect)];
+                imgrect = Screen('Rect', tex);
+                if topBottom
+                    imglrect = [0, 0, RectWidth(imgrect), RectHeight(imgrect)/2];
+                    imgrrect = [0, RectHeight(imgrect)/2, RectWidth(imgrect), RectHeight(imgrect)];
+                else
+                    imglrect = [0, 0, RectWidth(imgrect)/2, RectHeight(imgrect)];
+                    imgrrect = [RectWidth(imgrect)/2, 0, RectWidth(imgrect), RectHeight(imgrect)];
+                end
                 sf = min([RectWidth(winRect)/RectWidth(imglrect) , RectHeight(winRect)/RectHeight(imglrect)]);
                 dstrect = ScaleRect(imglrect,sf,sf);
             end
-            
+
             % Left eye image == left half of movie texture:
             Screen('SelectStereoDrawBuffer', win, 0);
             Screen('DrawTexture', win, tex, imglrect, CenterRect(dstrect, winRect));
-            
+
             Screen('SelectStereoDrawBuffer', win, 1);
             % Draw right image centered on mouse position -- mouse controls image
             % offsets:
             Screen('DrawTexture', win, tex, imgrrect, CenterRectOnPoint(dstrect, x, y));
-            
+
             % Show at next retrace:
             Screen('Flip', win);
-            
+
             % Release old image texture:
             Screen('Close', tex);
             tex = 0;
         end
         % Next frame...
     end
-    
+
     % Done with playback:
-    
+
     % Show mouse cursor:
     ShowCursor(screenid);
-    
+
     % Stop and close movie:
     Screen('PlayMovie', movie, 0);
     Screen('CloseMovie', movie);
-    
+
     % Close screen:
     sca;
 
     return;
-    
 catch %#ok<CTCH>
     sca;
     psychrethrow(psychlasterror);
