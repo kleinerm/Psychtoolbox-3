@@ -514,6 +514,8 @@ if addgroup
   fprintf('sudo usermod -a -G lp %s\n\n', username);
   fprintf('One should also add oneself to the ''video'' group for use on hybrid graphics laptops:\n\n');
   fprintf('sudo usermod -a -G video %s\n\n', username);
+  fprintf('One should also add oneself to the ''gamemode'' group for additional performance optimizations:\n\n');
+  fprintf('sudo usermod -a -G gamemode %s\n\n', username);
   if IsARM
     fprintf('One should also add oneself to the ''gpio'' group for access to GPIO pins:\n\n');
     fprintf('sudo usermod -a -G gpio %s\n\n', username);
@@ -539,6 +541,8 @@ if addgroup
       cmd = sprintf('sudo usermod -a -G lp %s', username);
       system(cmd);
       cmd = sprintf('sudo usermod -a -G video %s', username);
+      system(cmd);
+      cmd = sprintf('sudo usermod -a -G gamemode %s', username);
       system(cmd);
 
       % On RaspberryPi also add to the gpio group for GPIO access:
@@ -702,6 +706,9 @@ if needinstall && answer == 'y'
         fprintf('Failed! The error message was: %s\n', msg);
       end
 
+      % Note: These executables are located in /usr/libexec/ as of Ubuntu 20.04-LTS and later.
+      % That is fine, as this check will not trigger there, and in fact shouldn't, so all is good.
+      % TODO: We could remove this code, as we no longer support pre Ubuntu 20.04-LTS...
       if ~exist('/usr/lib/x86_64-linux-gnu/gpuclockctl', 'file') && exist('/usr/lib/x86_64-linux-gnu/cpugovctl', 'file')
         % gpuclockctl seems to be missing in the expected location while its sibling cpugovctl exists?
         % This suggests dealing with a buggy gamemode package that is missing gpuclockctl for some weird reason,
