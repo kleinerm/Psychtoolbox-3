@@ -67,7 +67,10 @@ end
 % MK: Always use this one, even on Matlab. I can not see the advantage of
 % the Matlab specific contraption below? It seems to provide the same
 % functionality, but with way more ugly formatting?
-if IsOctave || 1
+% Except on Matlab for macOS on Apple Silicon, where questdlg() is broken
+% as of R2024a - Half of the time it works, the other half clicking on a
+% button causes Matlab to hang with the spinning beach ball of death.
+if IsOctave || ~(IsOSX && IsARM)
   button = questdlg(TheQuestion, 'Question', TheChoices{1}, TheChoices{2}, 'Cancel', 'Cancel');
   if ~isempty(strfind(button, TheChoices{1}))
     UserResponse = 1;
@@ -91,7 +94,7 @@ NoBPos = [295 30];
 PrimeFontSize = 36;
 
 QueryFigh = figure('Position',[FigPos FigWidth FigHeight],'Resize','off','NumberTitle','off', ...
-                  'Name','Cross the Rubicon','MenuBar','none','Color','k');
+                  'Name','Question','MenuBar','none','Color','k');
 QueryFighNr = QueryFigh;
 if ~isnumeric(QueryFighNr)
     QueryFighNr = QueryFigh.Number;
