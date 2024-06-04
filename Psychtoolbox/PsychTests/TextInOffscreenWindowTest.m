@@ -3,33 +3,16 @@
 % Compare text drawn into an offscreen window to text drawn into an
 % onscreen window.
 %
-% Screen currently fails this test; Screen('DrawText') draws slightly
-% differently into onscreen and offscreen windows. Visual examination of
-% the difference between onscreen and offscreen text shows that the
-% onscreen texts is larger by about two pixels.
-%
-% Until this is resolved, we recommend not mixing onscreen and offscreen
-% text rendering if you require exact matching between text.
-% 
-% We don't yet know why this fails. The problem seems to have to do with
-% differences between how textures are rendered into onscreen and offscreen
-% windows.  That could be either because of a bug in Screen, or because the
-% OpenGL software renderer used for offscreen windows rasterizes textures
-% slightly differently than the  hardware renderer used for onscreen
-% windows. We don't yet have a way to compare textures in onscreen and
-% offscreen windows indepently of drawing text because 'DrawTexture' still
-% uses OpenGL extensions not provided in offscreen contexts.
-%
 
 % HISTORY
 %
 % mm/dd/yy
 %
-%  3/18/04  awi     Wrote it.      
-
+%  3/18/04  awi     Wrote it.
+%  6/04/24   mk     Fixups.
 
 s=max(Screen('Screens'));
-[w, wRect]=Screen('OpenWindow', s, [], [], 32, 2);
+[w, wRect]=PsychImaging('OpenWindow', s);
 [osw, oswRect]=Screen('OpenOffscreenWindow', w);
 
 
@@ -40,14 +23,13 @@ Screen('TextStyle', osw, 0);
 Screen('DrawText', osw, 'This is text.', 100, 100, [255, 255, 255]);
 oswImage=double(Screen('GetImage', osw));
 
-
 Screen('FillRect', w, 0);
 Screen('TextFont',w, 'Courier');
 Screen('TextSize', w, 50);
 Screen('TextStyle', w, 0);
 Screen('DrawText', w, 'This is text.', 100, 100, [255, 255, 255]);
+wImage=double(Screen('GetImage', w, [], 'drawBuffer'));
 Screen('Flip', w);
-wImage=double(Screen('GetImage', w));
 
 Screen('PutImage', w, abs(oswImage - wImage));
 %Screen('PutImage', w, oswImage);
@@ -66,7 +48,7 @@ Screen('CloseAll');
 doesMatch=isempty(find(oswImage ~= wImage));
 di=oswImage - wImage;
 maxDiff=abs(max(max(max(di))));
-if maxDiff ~= 0;  
+if maxDiff ~= 0  
     ampFactor=floor(255/maxDiff);
 else
     ampFactor=1;
@@ -84,12 +66,3 @@ else
     fprintf('     For further explanation and advice, see help for "TextInOffscreenWindowTest"\n');  
     imshow(di* ampFactor);
 end
-
-
-
-   
-
-    
-
-    
-
