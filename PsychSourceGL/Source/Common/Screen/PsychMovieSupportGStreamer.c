@@ -1960,6 +1960,19 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                 return;
         }
     }
+    else if (PSYCH_SYSTEM == PSYCH_LINUX) {
+        // Need a workaround for Pulseaudio 16.x libpulse bugs shipping without fix in at least Ubuntu 22.04 - 24.04.
+        // See: https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues/814
+        // Try to use pipewiresink as audio sink, directly connecting to the pipewire audio server, as this
+        // circumvents the bug, at least on Ubuntu 24.04.0-LTS and later:
+        audiosink = gst_element_factory_make("pipewiresink", NULL);
+        if (audiosink) {
+            g_object_set(G_OBJECT(theMovie), "audio-sink", audiosink, NULL);
+            audiosink = NULL;
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-INFO: Workaround: Attached pipewiresink audio sink for lag-less playback of movie on Ubuntu 24.04+.\n");
+        }
+    }
 
     // Preload / Preroll the pipeline:
     if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
@@ -3415,6 +3428,15 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
                         g_object_get(G_OBJECT(actual_audiosink), "device-name", &pstring, NULL);
                         if (pstring) {
                             printf(" [%s].", pstring);
+                            g_free(pstring); pstring = NULL;
+                        }
+                    }
+
+                    if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "target-object")) {
+                        pstring = NULL;
+                        g_object_get(G_OBJECT(actual_audiosink), "target-object", &pstring, NULL);
+                        if (pstring) {
+                            printf("PTB-INFO: Audio output pipewire sink name/serial for movie playback was '%s'.", pstring);
                             g_free(pstring); pstring = NULL;
                         }
                     }

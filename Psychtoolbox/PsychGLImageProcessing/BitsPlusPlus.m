@@ -1287,7 +1287,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     end
 
     % Imagingmode must at least include the following:
-    imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, ourspec);
+    imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, kPsychNeedRetinaResolution, ourspec);
 
     if strcmpi(cmd, 'OpenWindowColor++')
         if isempty(colorConversionMode)

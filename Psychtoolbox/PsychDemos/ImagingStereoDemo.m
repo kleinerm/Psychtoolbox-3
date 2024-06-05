@@ -167,6 +167,7 @@ end
 % Prepare pipeline for configuration. This marks the start of a list of
 % requirements/tasks to be met/executed in the pipeline:
 PsychImaging('PrepareConfiguration');
+PsychImaging('AddTask', 'General', 'UseRetinaResolution');
 
 if usedatapixx
     % Tell PTB we want to display on a DataPixx device:
@@ -463,7 +464,7 @@ while (count < nmax) && ~any(buttons)
         % Virtual Machine software when running a Windows-7 VM. This exotic
         % setup is used for testing of PTB, you should not need this
         % workaround on your system.
-        Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', scrnNum)), 'frontBuffer');
+        Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', windowPtr)), 'frontBuffer');
     end
     
     % Flip stim to display and take timestamp of stimulus-onset after

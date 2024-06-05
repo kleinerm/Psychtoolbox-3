@@ -255,7 +255,7 @@ end
 newlinepos = strfind(char(tstring), '\n');
 
 % If '\n' is already encoded as a char(10) as in Octave, then
-% there's no need for replacemet.
+% there's no need for replacement.
 if char(10) == '\n' %#ok<STCMP>
    newlinepos = [];
 end

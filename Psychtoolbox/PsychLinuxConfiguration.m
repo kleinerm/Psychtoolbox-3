@@ -166,7 +166,7 @@ if needinstall && answer == 'y'
     fprintf('I will copy my most recent rules file to your system. Please enter\n');
     fprintf('now your system administrator password. You will not see any feedback.\n');
     drawnow;
-    cmd = sprintf('sudo cp %s/PsychBasic/psychtoolbox.rules /etc/udev/rules.d/', PsychtoolboxRoot);
+    cmd = sprintf('sudo cp "%s/PsychBasic/psychtoolbox.rules" /etc/udev/rules.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
       fprintf('Success! Trying to apply the new rules file.\n');
@@ -233,7 +233,7 @@ if needinstall && answer == 'y'
     fprintf('I will copy my most recent blacklist file to your system. Please enter\n');
     fprintf('now your system administrator password. You will not see any feedback.\n');
     drawnow;
-    cmd = sprintf('sudo cp %s/PsychHardware/blacklist-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
+    cmd = sprintf('sudo cp "%s/PsychHardware/blacklist-psychtoolbox.conf" /etc/modprobe.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
       updateinitramfs = 1;
@@ -319,7 +319,7 @@ if needinstall && answer == 'y'
     fprintf('now your system administrator password. You will not see any feedback.\n');
     drawnow;
     if needinstall == 3
-      cmd = sprintf('sudo cp %s/PsychHardware/amddeepcolor-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
+      cmd = sprintf('sudo cp "%s/PsychHardware/amddeepcolor-psychtoolbox.conf" /etc/modprobe.d/', PsychtoolboxRoot);
       [rc, msg] = system(cmd);
       if rc == 0
         updateinitramfs = 1;
@@ -329,7 +329,7 @@ if needinstall && answer == 'y'
       end
     end
 
-    cmd = sprintf('sudo cp %s/PsychHardware/90-psychtoolbox-deepcolor.conf /usr/share/drirc.d/', PsychtoolboxRoot);
+    cmd = sprintf('sudo cp "%s/PsychHardware/90-psychtoolbox-deepcolor.conf" /usr/share/drirc.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
       fprintf('Success! You will need to logout and login again for this change to take effect.\n');
@@ -463,7 +463,7 @@ else
         fprintf('I will try to install it now to your system. Please enter\n');
         fprintf('now your system administrator password. You will not see any feedback.\n');
         drawnow;
-        cmd = sprintf('sudo cp %s/PsychBasic/99-psychtoolboxlimits.conf /etc/security/limits.d/', PsychtoolboxRoot);
+        cmd = sprintf('sudo cp "%s/PsychBasic/99-psychtoolboxlimits.conf" /etc/security/limits.d/', PsychtoolboxRoot);
         [rc, msg] = system(cmd);
         if rc ~= 0
           fprintf('Failed! The error message was: %s\n', msg);
@@ -514,6 +514,8 @@ if addgroup
   fprintf('sudo usermod -a -G lp %s\n\n', username);
   fprintf('One should also add oneself to the ''video'' group for use on hybrid graphics laptops:\n\n');
   fprintf('sudo usermod -a -G video %s\n\n', username);
+  fprintf('One should also add oneself to the ''gamemode'' group for additional performance optimizations:\n\n');
+  fprintf('sudo usermod -a -G gamemode %s\n\n', username);
   if IsARM
     fprintf('One should also add oneself to the ''gpio'' group for access to GPIO pins:\n\n');
     fprintf('sudo usermod -a -G gpio %s\n\n', username);
@@ -539,6 +541,8 @@ if addgroup
       cmd = sprintf('sudo usermod -a -G lp %s', username);
       system(cmd);
       cmd = sprintf('sudo usermod -a -G video %s', username);
+      system(cmd);
+      cmd = sprintf('sudo usermod -a -G gamemode %s', username);
       system(cmd);
 
       % On RaspberryPi also add to the gpio group for GPIO access:
@@ -691,7 +695,7 @@ if needinstall && answer == 'y'
       fprintf('I will now copy my most recent gamemode.ini file to your system. Please enter\n');
       fprintf('your system administrator password. You will not see any feedback.\n');
       drawnow;
-      cmd = sprintf('sudo cp %s/PsychBasic/gamemode.ini /etc/gamemode.ini', PsychtoolboxRoot);
+      cmd = sprintf('sudo cp "%s/PsychBasic/gamemode.ini" /etc/gamemode.ini', PsychtoolboxRoot);
       [rc, msg] = system(cmd);
       if rc == 0
         % Sucess: kill a potentially running gamemoded, so it will get restarted as needed and
@@ -702,6 +706,9 @@ if needinstall && answer == 'y'
         fprintf('Failed! The error message was: %s\n', msg);
       end
 
+      % Note: These executables are located in /usr/libexec/ as of Ubuntu 20.04-LTS and later.
+      % That is fine, as this check will not trigger there, and in fact shouldn't, so all is good.
+      % TODO: We could remove this code, as we no longer support pre Ubuntu 20.04-LTS...
       if ~exist('/usr/lib/x86_64-linux-gnu/gpuclockctl', 'file') && exist('/usr/lib/x86_64-linux-gnu/cpugovctl', 'file')
         % gpuclockctl seems to be missing in the expected location while its sibling cpugovctl exists?
         % This suggests dealing with a buggy gamemode package that is missing gpuclockctl for some weird reason,
@@ -714,7 +721,7 @@ if needinstall && answer == 'y'
         fprintf('with gamemode PPA version 1.3.1.\n');
         answer = input('Should i update/replace the missing file with my version? [y/n] : ', 's');
         if answer == 'y'
-          cmd = sprintf('sudo cp %s/PsychContributed/gpuclockctl /usr/lib/x86_64-linux-gnu/gpuclockctl', PsychtoolboxRoot);
+          cmd = sprintf('sudo cp "%s/PsychContributed/gpuclockctl" /usr/lib/x86_64-linux-gnu/gpuclockctl', PsychtoolboxRoot);
           [rc, msg] = system(cmd);
           if rc == 0
             fprintf('Success! GPU performance optimizations at Priority() > 0 should now hopefully work.\n');
@@ -780,7 +787,7 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXI
   % Try to detect this and and rename the file:
   libvulkan = ([matlabroot '/bin/glnxa64/libvulkan.so.1']);
   if exist(libvulkan, 'file')
-    cmd = ['sudo mv ' libvulkan ' ' libvulkan '.DISABLED'];
+    cmd = ['sudo mv "' libvulkan '" "' libvulkan '.DISABLED"'];
     fprintf('\nThis Matlab version ships a broken libvulkan.so.1 library. Renaming it to disable it...\n');
     fprintf('You may have to enter your administrator password to execute the following command:\n%s\n\n', cmd);
     system(cmd);
@@ -794,7 +801,7 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXI
 
   % Disable use of ARB contexts for Matlab's plotting, as Mathworks can't be bothered to fix this
   % bug for Linux + Intel gpu's now since at least the year 2020, but still present in R2024a:
-  cmd = sprintf('echo "-Djogl.disable.openglarbcontext=1" | sudo tee -a %s/bin/glnxa64/java.opts', matlabroot);
+  cmd = sprintf('echo "-Djogl.disable.openglarbcontext=1" | sudo tee -a "%s/bin/glnxa64/java.opts"', matlabroot);
   fprintf('Matlab releases from R2020b up to at least R2024a, possibly later ones as well, have\n');
   fprintf('a bug that makes plotting with Matlab fail on Intel graphics chips. Will apply a fix to\n');
   fprintf('your Matlab installation to work around this bug. You may have to enter your administrator\n');
