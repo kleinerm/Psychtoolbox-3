@@ -11,4 +11,3 @@
 %   MeasureLuminancePrecision - Automatically determine visual output luminance precision.
 %   PrintStruct               - Print structure & cell array to any depth
 %   PropixxImageUndistortionThrowaway - Experimental demo for VPixx ProPixx projector fast mode.
-%   ShowHDRDemo               - Incomplete demo of how to show HDR images.

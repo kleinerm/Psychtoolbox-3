@@ -208,21 +208,21 @@ if IsOSX
     if IsOctave
         % Fix the Octave mex files:
         if IsARM
-            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave8OSXFilesARM64/*.mex 2>&1']);
+            [rc, msg] = system(['xattr -d com.apple.quarantine "' p filesep 'PsychBasic/Octave8OSXFilesARM64/*.mex" 2>&1']);
         else
-            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave8OSXFiles64/*.mex 2>&1']);
+            [rc, msg] = system(['xattr -d com.apple.quarantine "' p filesep 'PsychBasic/Octave8OSXFiles64/*.mex" 2>&1']);
         end
     else
         % Fix the Matlab mex files:
-        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/*.' mexext]);
+        [rc, msg] = system(['xattr -d com.apple.quarantine "' p filesep 'PsychBasic/*.' mexext '"']);
     end
 
     % Fix the DrawText plugin and other plugins:
     if rc == 0 || ~isempty(strfind(msg, 'xattr: com.apple.quarantine')) %#ok<STREMP>
         if IsOctave
-            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/PsychPlugins/*.dylib 2>&1']);
+            [rc, msg] = system(['xattr -d com.apple.quarantine "' p filesep 'PsychBasic/PsychPlugins/*.dylib" 2>&1']);
         else
-            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/PsychPlugins/*.dylib']);
+            [rc, msg] = system(['xattr -d com.apple.quarantine "' p filesep 'PsychBasic/PsychPlugins/*.dylib"']);
         end
     end
 
