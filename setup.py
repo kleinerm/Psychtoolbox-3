@@ -309,6 +309,7 @@ ext_modules.append(IOPort)
 setup (name = 'psychtoolbox',
        version = version,
        description = 'Pieces of Psychtoolbox-3 ported to CPython.',
+       long_description = 'Pieces of Psychtoolbox-3 ported to CPython.',
        author = 'Mario Kleiner',
        author_email = 'mario.kleiner.de@gmail.com',
        url = 'http://psychtoolbox.org',
