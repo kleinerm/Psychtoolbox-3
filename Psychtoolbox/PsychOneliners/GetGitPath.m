@@ -65,7 +65,7 @@ else
     elseif IsWin
         [returnCode,gitpath] = system('where git');
         if returnCode==0
-            gitpath = strtrim(gitpath);
+            gitpath = [fileparts(strtrim(gitpath)) filesep];
         else
             % failed, clear whatever the command returned
             gitpath = '';
