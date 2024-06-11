@@ -91,6 +91,7 @@ char PointSmoothVertexShaderSrc[] =
 "/* delivers individual point size (diameter) information for each point.            */ \n"
 "\n"
 "uniform int useUnclampedFragColor;\n"
+"uniform int drawRoundDots;\n"
 "varying float pointSize;\n"
 "varying vec4 unclampedFragColor;\n"
 "\n"
@@ -111,7 +112,9 @@ char PointSmoothVertexShaderSrc[] =
 "    /* Point size comes via texture coordinate set 2: Make diameter 2 pixels bigger    */\n"
 "    /* than requested, to have some 1 pixel security margin around the dot, to avoid   */\n"
 "    /* cutoff artifacts for the rendered point-sprite quad. Compensate in frag-shader. */\n"
-"    pointSize = gl_MultiTexCoord2[0] + 2.0;\n"
+"    /* Only apply the margin to round dots. */\n"
+"    float margin = drawRoundDots > 0 ? 2.0 : 0.0;\n"
+"    pointSize = gl_MultiTexCoord2[0] + margin;\n"
 "    gl_PointSize = pointSize;\n"
 "}\n\0";
 
