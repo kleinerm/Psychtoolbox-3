@@ -88,7 +88,7 @@
 /* Begin PBXFileReference section */
 		089C1667FE841158C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		32BAE0B70371A74B00C91783 /* HID Utilities_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "HID Utilities_Prefix.pch"; sourceTree = "<group>"; };
-		83571B171551F7FD00EE961F /* libstatic library.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = "libstatic library.dylib"; sourceTree = BUILT_PRODUCTS_DIR; };
+		83571B171551F7FD00EE961F /* libHIDUtilities.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libHIDUtilities.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D07F2C70486CC7A007CD1D0 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8D07F2C80486CC7A007CD1D0 /* HID Utilities.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "HID Utilities.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
 		97876DB31033682400AD1095 /* HID_Utilities_External.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HID_Utilities_External.h; sourceTree = "<group>"; };
@@ -152,7 +152,7 @@
 			children = (
 				8D07F2C80486CC7A007CD1D0 /* HID Utilities.framework */,
 				97F808C710347C9A00D58924 /* libHID_Utilities.dylib */,
-				83571B171551F7FD00EE961F /* libstatic library.dylib */,
+				83571B171551F7FD00EE961F /* libHIDUtilities.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -267,7 +267,7 @@
 			);
 			name = "static library";
 			productName = "HID Utilities dylib";
-			productReference = 83571B171551F7FD00EE961F /* libstatic library.dylib */;
+			productReference = 83571B171551F7FD00EE961F /* libHIDUtilities.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
 		8D07F2BC0486CC7A007CD1D0 /* Framework */ = {
@@ -319,6 +319,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 1;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 0867D691FE84028FC02AAC07 /* HID Utilities */;
@@ -480,7 +481,7 @@
 		4FADC24708B4156D00ABE55E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEPLOYMENT_LOCATION = YES;
@@ -494,6 +495,7 @@
 					"DEBUG=1",
 					"_NDEBUG=1",
 					"NDEBUG=1",
+					"__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1",
 				);
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
@@ -512,8 +514,13 @@
 				GCC_WARN_UNUSED_PARAMETER = YES;
 				GCC_WARN_UNUSED_VALUE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				LD_DYLIB_INSTALL_NAME = /usr/local/lib/libHID_Utilities64.a;
-				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				INSTALL_PATH = "";
+				"INSTALL_PATH[sdk=*]" = /usr/local/lib/;
+				LD_DYLIB_INSTALL_NAME = libHID_Utilities64.a;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				NEW_SETTING = "";
+				NEW_SETTING1 = "";
+				"NEW_SETTING[arch=*]" = " __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
 					"$(value)",
@@ -541,7 +548,7 @@
 		4FADC24808B4156D00ABE55E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_LOCATION = YES;
@@ -550,10 +557,17 @@
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_OPTIMIZATION_LEVEL = s;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				"GCC_PREPROCESSOR_DEFINITIONS[arch=*]" = " __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1";
 				GCC_WARN_FOUR_CHARACTER_CONSTANTS = NO;
-				LD_DYLIB_INSTALL_NAME = /usr/local/lib/libHID_Utilities64.a;
-				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				ONLY_ACTIVE_ARCH = NO;
+				INSTALL_PATH = "";
+				"INSTALL_PATH[sdk=*]" = /usr/local/lib/;
+				LD_DYLIB_INSTALL_NAME = libHID_Utilities64.a;
+				"LD_DYLIB_INSTALL_NAME[sdk=macosx*]" = libHID_Utilities64.a;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				NEW_SETTING = "";
+				NEW_SETTING1 = "";
+				"NEW_SETTING[arch=*]" = " __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES";
+				ONLY_ACTIVE_ARCH = YES;
 				ZERO_LINK = NO;
 			};
 			name = Release;
@@ -565,6 +579,7 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				INSTALL_PATH = /usr/local/lib;
 				MACH_O_TYPE = staticlib;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRODUCT_NAME = HIDUtilities;
 			};
 			name = Debug;
@@ -575,6 +590,7 @@
 				EXECUTABLE_PREFIX = lib;
 				INSTALL_PATH = /usr/local/lib;
 				MACH_O_TYPE = staticlib;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRODUCT_NAME = HIDUtilities;
 			};
 			name = Release;
@@ -582,6 +598,7 @@
 		97F808C810347C9C00D58924 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
 				EXECUTABLE_PREFIX = lib;
 				GCC_DYNAMIC_NO_PIC = NO;
 				INSTALL_PATH = /usr/local/lib;
@@ -592,6 +609,7 @@
 		97F808C910347C9C00D58924 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
 				EXECUTABLE_PREFIX = lib;
 				INSTALL_PATH = /usr/local/lib;
 				PRODUCT_NAME = HID_Utilities;
