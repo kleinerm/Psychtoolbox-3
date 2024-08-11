@@ -21,7 +21,7 @@ function SetupPsychtoolbox(tryNonInteractiveSetup)
 % folder. Obviously you need to somehow get a copy, either via conventional
 % download from a computer with network connection, visit this URL for that
 % download: http://psychtoolbox.org/download.html
-% Or from a helpful colleague or copied from some other machine.
+% Or from a helpful colleague, or copied from some other machine.
 %
 % 2. Change your Matlab/Octave working directory to the Psychtoolbox installation
 % folder, e.g., 'cd /Applications/Psychtoolbox'.
@@ -55,6 +55,8 @@ function SetupPsychtoolbox(tryNonInteractiveSetup)
 % 04/01/16 mk  64-Bit Octave-4 support for MS-Windows established.
 % 06/01/16 mk  32-Bit Octave-4 support for MS-Windows removed.
 % 01/25/24 mk  Cleanup, dead code removal.
+% 06/12/24 mk  Fixup for spaces in install path on macOS for use of xattr,
+%              and skip xattr if installed as .mltbx file via Add-On explorer.
 
 % Flush all MEX files: This is needed at least on M$-Windows if Screen et al. are still loaded.
 clear mex; %#ok<CLMEX>
@@ -75,7 +77,7 @@ IsLinux = isunix && ~ismac;
 
 if ~IsWin && ~IsOSX && ~IsLinux
     fprintf('Sorry, this updater doesn''t support your operating system: %s.\n', computer);
-    fprintf([mfilename ' can only install the Linux, Windows and macOS versions of the Psychtoolbox-3.\n']);
+    fprintf([mfilename ' can only set up the Linux, Windows and macOS versions of the Psychtoolbox-3.\n']);
     error(['Your operating system is not supported by ' mfilename '.']);
 end
 
@@ -106,7 +108,7 @@ if err
 
     fprintf(['Once "savepath" works (no error message), run ' mfilename ' again.\n']);
     fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
-    fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n\n');
+    fprintf('to resolve this permission issue later and add the path to the Psychtoolbox manually.\n\n');
     if ~tryNonInteractiveSetup
         answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
     else
@@ -196,7 +198,8 @@ else
     fprintf('Success.\n\n');
 end
 
-if IsOSX
+% macOS and not a Matlab add-on? Add-on toolboxes don't need quarantine removal.
+if IsOSX && isempty(strfind(targetdirectory, 'MATLAB Add-Ons')) %#ok<STREMP>
     % Apples trainwreck needs special treatment. If Psychtoolbox has been
     % downloaded via a webbrowser as a zip file or tgz file and then
     % extracted, then all binary executable files like .dylib's and
@@ -204,6 +207,10 @@ if IsOSX
     % prevent them from working in any meaningfully user fixable way -
     % Thanks Apple! Use the xattr command to remove the quarantine flag.
     fprintf('Trying to fixup Apple macOS broken security workflow by removing the quarantine flag from our mex files...\n\n');
+
+    % Escape all spaces in the path p with a backslash, so shell utilities
+    % like xattr can work and don't choke on pathes with blanks:
+    p = strrep(p, ' ', '\ ');
 
     if IsOctave
         % Fix the Octave mex files:
@@ -231,7 +238,7 @@ if IsOSX
         if isempty(strfind(msg, 'xattr: com.apple.quarantine')) %#ok<STREMP>
             fprintf('FAILED! Psychtoolbox will likely not work correctly!\n');
             PsychPaidSupportAndServices(2);
-            error(['Removing the quarantine flag from our mex files to workaround macOS brokeness failed! Error was: ' msg]);
+            warning(['Removing the quarantine flag from our mex files to workaround macOS brokeness failed! Error was: ' msg]);
         end
     end
 end

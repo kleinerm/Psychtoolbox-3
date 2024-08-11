@@ -17,8 +17,8 @@ function osxsetoctaverpath(mexfname, mexpath)
 % runtime libraries into the mex file folder of PTB, so the mex
 % files should always find a dylib for the currently running Octave.
 
-    if ~IsOSX(1) || ~IsOctave || ~compare_versions(version, '9.1.0', '==')
-        error('osxsetoctaverpath only works with a 64-Bit version of HomeBrew Octave-9.1.0 for macOS!');
+    if ~IsOSX(1) || ~IsOctave || ~compare_versions(version, '9.2.0', '==')
+        error('osxsetoctaverpath only works with a 64-Bit version of HomeBrew Octave-9.2.0 for macOS!');
     end
 
     % If no mex filename given, iterate over 'mexpath' - or the default install
@@ -59,9 +59,9 @@ function osxsetoctaverpath(mexfname, mexpath)
     % the latest macOS linker crap - Hardcoding the path for a Octave install
     % from HomeBrew. Yes, this is sad...
     if IsARM
-        libdir = '/opt/homebrew/opt/octave/lib/octave/9.1.0';
+        libdir = '/opt/homebrew/opt/octave/lib/octave/9.2.0';
     else
-        libdir = '/usr/local/opt/octave/lib/octave/9.1.0';
+        libdir = '/usr/local/opt/octave/lib/octave/9.2.0';
     end
 
     % Replace absolute path to liboctinterp.12.dylib with @rpath:
