@@ -1226,10 +1226,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     devices = (PsychVideosourceRecordType*) PsychCallocTemp(PSYCH_MAX_VIDSRC, sizeof(PsychVideosourceRecordType));
     ntotal  = 0;
 
-    // First use GstDeviceMonitor enumeration as a catch-all for all video sources we don't know
-    // how to specifically handle:
-    PsychGSEnumerateVideoSourcesViaDeviceMonitor();
-
     // Linux specific setup path:
     if (PSYCH_SYSTEM == PSYCH_LINUX) {
         // Try standard Video4Linux-II source:
@@ -1266,6 +1262,10 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", "", 0);
 
     // ClassIndex 9 is blocked out for videotestsrc and other weirdo sources.
+
+    // Last and final: Use GstDeviceMonitor enumeration as a catch-all for all video sources we don't know
+    // how to specifically handle:
+    PsychGSEnumerateVideoSourcesViaDeviceMonitor();
 
     // Nothing enumerated?
     if (ntotal <= 0) {
