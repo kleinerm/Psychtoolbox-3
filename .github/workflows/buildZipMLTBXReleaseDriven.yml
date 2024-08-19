@@ -21,21 +21,21 @@ jobs:
       - name: Zip the toolbox
         run: zip -r '${{  github.ref_name }}.zip' Psychtoolbox
 
-      - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v1
+      #- name: Set up MATLAB
+      #  uses: matlab-actions/setup-matlab@v1
 
-      - name: Create MLTBX
-        uses: matlab-actions/run-command@v1
-        continue-on-error: false
-        if: always()
-        with:
-          command: addpath([pwd filesep 'managementtools']); createPsychtoolboxMLTBX("Psychtoolbox.prj",  "${{  github.ref_name }}")
+      #- name: Create MLTBX
+      #  uses: matlab-actions/run-command@v1
+      #  continue-on-error: false
+      #  if: always()
+      #  with:
+      #    command: addpath([pwd filesep 'managementtools']); createPsychtoolboxMLTBX("Psychtoolbox.prj",  "${{  github.ref_name }}")
 
       - name: Upload artifacts to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{  github.ref_name }}" "./${{  github.ref_name }}.mltbx"
+          #gh release upload "${{  github.ref_name }}" "./${{  github.ref_name }}.mltbx"
           gh release upload "${{  github.ref_name }}" "./${{  github.ref_name }}.zip"
     
 
