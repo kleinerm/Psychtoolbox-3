@@ -1233,14 +1233,11 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     }
 
     if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-        // Try Windows kernel streaming source: The most well working default as of end of 2020.
-        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "ksdeviceprovider", 0);
-
-        // Use DirectShow to probe: Note that this one is on the way out - ie. towards removal...
-        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "dshowdeviceprovider", 0);
-
-        // Try Windows Mediafoundation source: The upcoming new star, but not yet a full replacement for ksvideosrc in all cases.
+        // Try Windows Mediafoundation source: The recommended plugin by current GStreamer versions.
         PsychGSEnumerateVideoSourceType("mfvideosrc", 3, "Windows Mediafoundation", "device-index", "mfdeviceprovider", 0);
+
+        // Try Windows kernel streaming source: Works still ok, but is deprecated and not recommended anymore by GStreamer as of 2022 onwards.
+        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "ksdeviceprovider", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_OSX) {
