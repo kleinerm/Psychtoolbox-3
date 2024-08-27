@@ -54,25 +54,35 @@
 #endif
 #endif
 
-#if defined(__LP64__) || defined(_WIN64)
-#define PTB_ARCHITECTURE " 64-Bit"
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+  #define PTB_ISA "Intel"
 #else
-#define PTB_ARCHITECTURE " 32-Bit"
+  #if defined(__arm__) || defined(_M_ARM) || defined(__aarch64__) || defined(_M_ARM64)
+    #define PTB_ISA "ARM"
+  #else
+    #define PTB_ISA "unknown arch"
+  #endif
+#endif
+
+#if defined(__LP64__) || defined(_WIN64)
+#define PTB_ARCHITECTURE "64-Bit"
+#else
+#define PTB_ARCHITECTURE "32-Bit"
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 #ifndef PTBOCTAVE3MEX
 // Binary plugin for MATLAB:
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME                "Matlab" PTB_ARCHITECTURE
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME                "Matlab"
 #else
 // Binary plugin for Octave-3 or later via the MEX interface:
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME                "GNU/Octave" PTB_ARCHITECTURE
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME                "GNU/Octave"
 #endif
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
 // Binary plugin for Python:
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME                "Python" PTB_ARCHITECTURE
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME                "Python"
 #endif
 
 char *PsychGetBuildDate(void);

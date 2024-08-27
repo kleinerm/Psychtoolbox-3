@@ -367,7 +367,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Also init the thread handle to our main thread here:
     if ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW) {
         if(PsychPrefStateGet_Verbosity()>2) {
-            printf("\n\nPTB-INFO: This is Psychtoolbox-3 for %s, under %s (Version %i.%i.%i - Build date: %s).\n", PSYCHTOOLBOX_OS_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
+            printf("\n\nPTB-INFO: This is Psychtoolbox-3 for %s, under %s %s %s (Version %i.%i.%i - Build date: %s).\n", PSYCHTOOLBOX_OS_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PTB_ARCHITECTURE, PTB_ISA, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
             printf("PTB-INFO: OS support status: %s\n", PsychSupportStatus());
             printf("PTB-INFO: Type 'PsychtoolboxVersion' for more detailed version information.\n");
             printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT License, with\n");
