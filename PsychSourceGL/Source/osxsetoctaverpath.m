@@ -1,8 +1,8 @@
 function osxsetoctaverpath(mexfname, mexpath)
 % osxsetoctaverpath(mexfname [, mexpath])
 %
-% Change the @rpath library search path for the octave
-% runtime libraries inside the given mex file.
+% Change the @rpath library search path for the octave runtime libraries
+% and other helper libraries inside the given mex file.
 %
 % We change from absolute path to @rpath.
 %
@@ -16,6 +16,7 @@ function osxsetoctaverpath(mexfname, mexpath)
 % PsychtoolboxPostInstallRoutine copies or symlinks the Octave
 % runtime libraries into the mex file folder of PTB, so the mex
 % files should always find a dylib for the currently running Octave.
+% We also add Psychtoolbox/PsychBasic/PsychPlugins to the dylib search path.
 
     if ~IsOSX(1) || ~IsOctave || ~compare_versions(version, '9.2.0', '==')
         error('osxsetoctaverpath only works with a 64-Bit version of HomeBrew Octave-9.2.0 for macOS!');
@@ -70,11 +71,13 @@ function osxsetoctaverpath(mexfname, mexpath)
     % Replace absolute path to liboctave.11.dylib with @rpath:
     system(['install_name_tool -change ' libdir '/liboctave.11.dylib @rpath/liboctave.dylib ' mexfname]);
 
-    % Add one single rpath: @loader_path. This is the path to our folder where our
+    % Add @loader_path to the @rpath. This is the path to our folder where our
     % mex file is stored. If we place symlinks to liboctave.dylib and liboctinterp.dylib
     % there, then the linker will find them. In absence, the linker will also search the
-    % users $HOME/lib/ directory as a possible fallback:
-    lpaths = { '@loader_path' };
+    % users $HOME/lib/ directory as a possible fallback. Additionally we add the path to
+    % our Psychtoolbox/PsychBasic/PsychPlugins folder, so our mex files can find additional
+    % helper dylibs there which are needed by some of them:
+    lpaths = { '@loader_path', '@loader_path/../PsychPlugins' };
 
     % Add all paths in lpaths as potential search paths for the octave
     % library directories, ie., as settings for @rpath:
