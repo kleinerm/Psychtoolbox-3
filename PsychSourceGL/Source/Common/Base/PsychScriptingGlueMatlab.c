@@ -236,9 +236,10 @@ PTB_EXPORT void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *p
         // then unloads the module from memory...
         mexAtExit(&PsychExitGlue);
 
-        // Register hidden helper function: This one dumps all registered subfunctions of
-        // a module into a struct array of text strings. Needed by our automatic documentation
-        // generator script to find out about subfunctions of a module:
+        // Register hidden helper functions:
+
+        // This one dumps all registered subfunctions of a module into a struct array of text strings.
+        // Needed by our automatic documentation generator script to find out about subfunctions of a module:
         PsychRegister((char*) "DescribeModuleFunctionsHelper",  &PsychDescribeModuleFunctions);
 
         firstTime = FALSE;
