@@ -66,41 +66,48 @@ if mode==0
         -ICommon/Base -ICommon/Screen -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/EthernetAddress ...
          "OSX/Screen/*.c" "Common/Screen/*.c" "OSX/Base/*.c" "OSX/Fonts/*FontGlue*.c" "OSX/Fonts/FontInfo.c" "OSX/EthernetAddress/*.c" "Common/Base/*.c" ...
          tinyexr.o ...
-        -L/usr/local/lib
+        -L/usr/local/lib -L../../Psychtoolbox/PsychBasic/PsychPlugins/
 
     delete tinyexr.o;
+
+    macossetmatlabrpath('Screen');
     movefile(['../Projects/MacOSX/build/Screen.' mexext], [PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==1
     % Build GetSecs:
-    mex -outdir ../Projects/MacOSX/build -output GetSecs -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_GetSecs CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/GetSecs  "OSX/Base/*.c" "Common/Base/*.c" "Common/GetSecs/*.c"
+    mex -outdir ../Projects/MacOSX/build -output GetSecs -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_GetSecs -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/GetSecs  "OSX/Base/*.c" "Common/Base/*.c" "Common/GetSecs/*.c"
+    macossetmatlabrpath('GetSecs');
     unix(['mv ../Projects/MacOSX/build/GetSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==2
     % Build WaitSecs:
-    mex -outdir ../Projects/MacOSX/build -output WaitSecs -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_WaitSecs CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/WaitSecs  "OSX/Base/*.c" "Common/Base/*.c" "Common/WaitSecs/*.c"
+    mex -outdir ../Projects/MacOSX/build -output WaitSecs -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_WaitSecs -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/WaitSecs  "OSX/Base/*.c" "Common/Base/*.c" "Common/WaitSecs/*.c"
+    macossetmatlabrpath('WaitSecs');
     unix(['mv ../Projects/MacOSX/build/WaitSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==3
     % Depends: PortAudio
     % Build PsychPortAudio:
-    mex -outdir ../Projects/MacOSX/build -output PsychPortAudio -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychPortAudio CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit" -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a
+    mex -outdir ../Projects/MacOSX/build -output PsychPortAudio -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychPortAudio -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit" -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a
+    macossetmatlabrpath('PsychPortAudio');
     unix(['mv ../Projects/MacOSX/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==4
     % Depends: eyelink-SDK: eyelink_core.framework installed under default location /Library/Frameworks/
     % Build Eyelink:
-    mex -outdir ../Projects/MacOSX/build -output Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Eyelink CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core -rpath /Library/Frameworks/" -I/Library/Frameworks/eyelink_core.framework/Headers -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
+    mex -outdir ../Projects/MacOSX/build -output Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Eyelink -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core -rpath /Library/Frameworks/" -I/Library/Frameworks/eyelink_core.framework/Headers -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
+    macossetmatlabrpath('Eyelink');
     unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==5
     % Build IOPort:
-    mex -outdir ../Projects/MacOSX/build -output IOPort -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_IOPort CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio"  -ICommon/Base -IOSX/Base -ICommon/IOPort  "OSX/Base/*.c" "Common/Base/*.c" "Common/IOPort/*.c"
+    mex -outdir ../Projects/MacOSX/build -output IOPort -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_IOPort -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio"  -ICommon/Base -IOSX/Base -ICommon/IOPort  "OSX/Base/*.c" "Common/Base/*.c" "Common/IOPort/*.c"
+    macossetmatlabrpath('IOPort');
     unix(['mv ../Projects/MacOSX/build/IOPort.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -120,14 +127,16 @@ end
 if mode==7
     % Depends: libfreenect, libusb-1.0
     % Build PsychKinectCore:
-    mex -outdir ../Projects/MacOSX/build -output PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychKinectCore CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -lfreenect -lusb-1.0
+    mex -outdir ../Projects/MacOSX/build -output PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychKinectCore -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -lfreenect -lusb-1.0
+    macossetmatlabrpath('PsychKinectCore');
     unix(['mv ../Projects/MacOSX/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==8
     % Build PsychHID:
-    % Dynamic link:   mex -outdir ../Projects/MacOSX/build -output PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychHID CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework ApplicationServices -framework Carbon -framework CoreAudio -framework IOKit" -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" -L../Cohorts/HID_Utilities_64Bit/build/Release -lHID_Utilities
-    mex -outdir ../Projects/MacOSX/build -output PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychHID CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit -weak_library /usr/local/lib/libusb-1.0.dylib" -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager -I/usr/local/include/libusb-1.0 "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
+    % Dynamic link:   mex -outdir ../Projects/MacOSX/build -output PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychHID -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework ApplicationServices -framework Carbon -framework CoreAudio -framework IOKit" -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" -L../Cohorts/HID_Utilities_64Bit/build/Release -lHID_Utilities
+    mex -outdir ../Projects/MacOSX/build -output PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychHID -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit -weak_library /usr/local/lib/libusb-1.0.dylib" -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager -I/usr/local/include/libusb-1.0 "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
+    macossetmatlabrpath('PsychHID');
     movefile(['../Projects/MacOSX/build/PsychHID.' mexext], [PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -147,7 +156,8 @@ end
 
 if mode==10
     % Build FontInfo:
-    mex -outdir ../Projects/MacOSX/build -output FontInfo -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_FontInfo CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework ApplicationServices -framework CoreAudio" -ICommon/Base -ICommon/Fonts -IOSX/Base -IOSX/Fonts  "Common/Base/*.c" "OSX/Base/*.c" "OSX/Fonts/*.c"
+    mex -outdir ../Projects/MacOSX/build -output FontInfo -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_FontInfo -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework ApplicationServices -framework CoreAudio" -ICommon/Base -ICommon/Fonts -IOSX/Base -IOSX/Fonts  "Common/Base/*.c" "OSX/Base/*.c" "OSX/Fonts/*.c"
+    macossetmatlabrpath('FontInfo');
     unix(['mv ../Projects/MacOSX/build/FontInfo.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -157,21 +167,25 @@ if mode==11
     % OSX:
 
     % MachAbsoluteTimeClockFrequency
-    mex -outdir ../Projects/MacOSX/build -output MachAbsoluteTimeClockFrequency -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_MachAbsoluteTimeClockFrequency CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/MachAbsoluteTimeClockFrequency  "OSX/Base/*.c" "Common/Base/*.c" "Common/MachAbsoluteTimeClockFrequency/*.c"
+    mex -outdir ../Projects/MacOSX/build -output MachAbsoluteTimeClockFrequency -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_MachAbsoluteTimeClockFrequency -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/MachAbsoluteTimeClockFrequency  "OSX/Base/*.c" "Common/Base/*.c" "Common/MachAbsoluteTimeClockFrequency/*.c"
+    macossetmatlabrpath('MachAbsoluteTimeClockFrequency');
     unix(['mv ../Projects/MacOSX/build/MachAbsoluteTimeClockFrequency.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 
     % MachGetPriorityMex
-    mex -outdir ../Projects/MacOSX/build -output MachGetPriorityMex -largeArrayDims -DMEX_DOUBLE_HANDLE CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachGetPriorityMex.c"
+    mex -outdir ../Projects/MacOSX/build -output MachGetPriorityMex -largeArrayDims -DMEX_DOUBLE_HANDLE -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachGetPriorityMex.c"
+    macossetmatlabrpath('MachGetPriorityMex');
     unix(['mv ../Projects/MacOSX/build/MachGetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 
     % MachSetPriorityMex
-    mex -outdir ../Projects/MacOSX/build -output MachSetPriorityMex -largeArrayDims -DMEX_DOUBLE_HANDLE CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachSetPriorityMex.c"
+    mex -outdir ../Projects/MacOSX/build -output MachSetPriorityMex -largeArrayDims -DMEX_DOUBLE_HANDLE -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachSetPriorityMex.c"
+    macossetmatlabrpath('MachSetPriorityMex');
     unix(['mv ../Projects/MacOSX/build/MachSetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==12
     % Build Gestalt:
-    mex -outdir ../Projects/MacOSX/build -output Gestalt -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Gestalt CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -IOSX/Gestalt -IOSX/OS9ToolboxFragments  "OSX/Base/*.c" "Common/Base/*.c" "OSX/Gestalt/*.c"
+    mex -outdir ../Projects/MacOSX/build -output Gestalt -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Gestalt -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -IOSX/Gestalt -IOSX/OS9ToolboxFragments  "OSX/Base/*.c" "Common/Base/*.c" "OSX/Gestalt/*.c"
+    macossetmatlabrpath('Gestalt');
     unix(['mv ../Projects/MacOSX/build/Gestalt.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -191,7 +205,8 @@ if mode==14 && false
     % Build PsychOculusVRCore:
     % Depends on Oculus VR SDK v0.5 - Does not work on macOS 10.15 or later
     % due to the VR runtime being unsupported 32-Bit Intel only.
-    mex -outdir ../Projects/MacOSX/build -output PsychOculusVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychOculusVRCore CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework LibOVR" -ICommon/Base -IOSX/Base -ICommon/PsychOculusVRCore -I/Library/Frameworks/LibOVR.framework/Versions/Current/Headers/ "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychOculusVRCore/*.c"
+    mex -outdir ../Projects/MacOSX/build -output PsychOculusVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychOculusVRCore -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework LibOVR" -ICommon/Base -IOSX/Base -ICommon/PsychOculusVRCore -I/Library/Frameworks/LibOVR.framework/Versions/Current/Headers/ "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychOculusVRCore/*.c"
+    macossetmatlabrpath('PsychOculusVRCore');
     unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -208,10 +223,11 @@ if mode==15
     %
     % We link to OpenGL to implement OpenGL-Vulkan interop.
     try
-        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" -lvulkan -lMoltenVK
+        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" -lvulkan -lMoltenVK
     catch
         disp(psychlasterror);
     end
+    macossetmatlabrpath('PsychVulkanCore');
     movefile(['../Projects/MacOSX/build/PsychVulkanCore.' mexext], [PsychtoolboxRoot 'PsychBasic/']);
 end
 
