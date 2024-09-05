@@ -145,7 +145,7 @@ if mode==9
     curdir = pwd;
     cd('../../Psychtoolbox/PsychSound/MOAL/source/')
     try
-        mex -outdir ./ -output moalcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DMACOSX CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework OpenAL -framework ApplicationServices -framework Carbon" moalcore.c al_auto.c al_manual.c alm.c
+        mex -outdir ./ -output moalcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DMACOSX CFLAGS="\$CFLAGS -Wno-tautological-pointer-compare -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework OpenAL -framework ApplicationServices -framework Carbon" moalcore.c al_auto.c al_manual.c alm.c
     catch
         ple;
     end
