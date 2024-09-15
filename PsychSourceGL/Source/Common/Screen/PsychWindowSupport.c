@@ -1595,8 +1595,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
 
             #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
-            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && PsychOSX11ClientCompositorSyncEnabled(*windowRecord))
+            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && PsychOSX11ClientCompositorSyncEnabled(*windowRecord)) {
                 printf("PTB-INFO: Will try to use OS-Builtin experimental NetWM compositor timing for accurate Flip timestamping.\n");
+            }
             else
             #endif
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
@@ -1622,8 +1623,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
         else {
             #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
-            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && PsychOSX11ClientCompositorSyncEnabled(*windowRecord))
+            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && PsychOSX11ClientCompositorSyncEnabled(*windowRecord)) {
                 printf("PTB-INFO: Will try to use OS-Builtin experimental NetWM compositor timing for accurate Flip timestamping.\n");
+            }
             else
             #endif
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) &&
