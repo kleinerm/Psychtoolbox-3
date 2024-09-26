@@ -32,6 +32,8 @@ function XOrgConfCreator(expertmode)
 %                  depth framebuffers.
 % 11-Jun-2022  mk  Only handle systems with XOrg X-Server 21 or later, bail to
 %                  LegacyXOrgConfCreator for older systems.
+% 26-Sep-2024  mk  Adapt to changes in /dev/dri/cardX enumeration on Ubuntu 24.04-LTS
+%                  to avoid false positive detection of hybrid graphics laptops.
 
 clc;
 
@@ -851,25 +853,30 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
   % Be pessimistic to start with:
   suitable = 0;
   fullysupported = 0;
+  matchedgpuvendors = 0;
   multigpu = 0;
 
   % Does this machine have multiple gpu's, e.g., hybrid graphics laptop?
-  if IsOctave && ~exist('/dev/dri/card1','file')
+  if numel(dir('/dev/dri/card*')) < 2
     % Nope:
     return;
   end
 
-  % Multi-gpu check for Matlab, because Matlab exist() can not check device files:
-  if ~IsOctave
-    [rc, ~] = system('stat /dev/dri/card1');
-    if rc == 1
-      % Nope:
-      return;
-    end
-  end
-
   % Yes, likely a hybrid graphics laptop:
   multigpu = 1;
+
+  % Both gpu's from same vendor?
+  vendorfiles = dir('/sys/class/drm/card*/device/vendor');
+  if numel(vendorfiles) > 1
+    % At least two gpus with vendor info: Same vendors?
+    vf1 = [vendorfiles(1).folder filesep vendorfiles(1).name];
+    vf2 = [vendorfiles(2).folder filesep vendorfiles(2).name];
+    [status, out] = system(['diff ' vf1 ' ' vf2]);
+    if (status == 0) && isempty(out)
+      % Same gpu vendor for iGPU and dGPU:
+      matchedgpuvendors = 1;
+    end
+  end
 
   % Display gpu not Intel or AMD?
   if ~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'amdgpu') && ~strcmp(xdriver, 'amdgpu-pro') && ~strcmp(xdriver, 'ati')
@@ -877,12 +884,7 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
     % Confirm that primary and secondary gpu are from the same vendor to match that
     % pattern, otherwise we might be dealing with a mux'ed laptop currently switched
     % to the discrete NVidia or unknown gpu:
-    if ~exist('/sys/class/drm/card0/device/vendor','file') || ~exist('/sys/class/drm/card1/device/vendor','file')
-      return;
-    end
-
-    [status, out] = system ('diff /sys/class/drm/card0/device/vendor /sys/class/drm/card1/device/vendor');
-    if status ~= 0 || ~isempty(out)
+    if ~matchedgpuvendors
       % Mismatched gpu vendors. Play it safe and assume this is not muxless Optimus or Enduro:
       return;
     end
@@ -927,12 +929,9 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
       return;
     else
       suitable = 1;
-      if exist('/sys/class/drm/card0/device/vendor','file') && exist('/sys/class/drm/card1/device/vendor','file')
-        [status, out] = system ('diff /sys/class/drm/card0/device/vendor /sys/class/drm/card1/device/vendor');
-        if status == 0 && isempty(out)
-          % Same gpu vendor for iGPU and dGPU, both AMD. Pageflipping for PRIME should work.
-          fullysupported = 1;
-        end
+      if matchedgpuvendors
+        % Same gpu vendor for iGPU and dGPU, both AMD. Pageflipping for PRIME should work.
+        fullysupported = 1;
       end
     end
   end
@@ -948,12 +947,12 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
       fprintf('relating to use of NETWM timing mode under GNOME or Ubuntu desktop for possible workarounds.\n');
     end
     fprintf('You will also need to setup your system to use the powerful gpu with Matlab or Octave.\n');
-    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, how to do that.\n');
-    fprintf('While with most modern hybrid graphics laptops it should then just work, some more exotic\n');
+    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions.\n');
+    fprintf('While with most modern hybrid graphics laptops it then should just work, some more exotic\n');
     fprintf('models may still not be able to output anything with good timing to external video outputs.\n');
     fprintf('I can not detect myself if your laptop is such an exotic machine or not, so you will have to try.\n');
-    fprintf('Such models can then be set up in a dual-X-Screen configuration to make them work with\n');
-    fprintf('research grade timing, but this assistant can not set them up automatically, so you would\n');
+    fprintf('Such models can still be set up in a dual-X-Screen configuration to make them work with\n');
+    fprintf('research grade timing, but this assistant can not do this for you, so you would\n');
     fprintf('have to do it manually. See ''help HybridGraphics'' and the Psychtoolbox website for instructions.\n\n');
     return;
   end
