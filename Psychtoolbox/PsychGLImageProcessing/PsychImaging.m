@@ -852,28 +852,28 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'EnableNative16BitFramebuffer' Enable 16 bpc, 64 bpp framebuffer on some supported setups.
 %
 %   This asks to enable a framebuffer with a color depth of 16 bpc for up to 65535 levels of intensity
-%   per red, green and blue channel, ie. 48 bits = 2^48 different colors. Currently, as of November 2021,
+%   per red, green and blue channel, ie. 48 bits = 2^48 different colors. Currently, as of November 2024,
 %   this mode of operation is only supported on Linux/X11 when using the open-source amdgpu-kms driver
 %   on modern AMD GCN 1.1+ graphics cards [3]. On suitable setups, this will establish a 16 bpc framebuffer
 %   which packs 3 * 16 bpc = 48 bit color info into 64 bpp pixels and the gpu's display engine will scan
 %   out that framebuffer at 16 bpc. However, effective output precision is further limited to < 16 bpc by
-%   your display, video cable and specific model of graphics card. As of November 2021, the maximum effective
+%   your display, video cable and specific model of graphics card. As of November 2024, the maximum effective
 %   output precision is limited to at most 12 bpc (= 4096 levels of red, green and blue) by the graphics card,
 %   and this precision is only attainable on AMD graphics cards of the so called "Sea Islands" (cik) family
-%   (aka GraphicsCore Next GCN 1.1 or later) or any later models when used with the amdgpu-kms display driver.
+%   (aka GraphicsCore Next GCN 1.1 or later), or any later models when used with the amdgpu-kms display driver.
 %
 %   Older AMD cards of type GCN 1.0 "Southern Islands" or earlier won't work, as they only support at most 10
 %   bpc overall output precision.
 %
 %   Please note that actual 12 bpc output precision can only be attained on certain display devices and
-%   software configurations. As of November 2021, the following hardware + software combos have been
+%   software configurations. As of November 2024, the following hardware + software combos have been
 %   verified with a CRS ColorCal2 colorimeter to provide 12 bpc per color channel precision:
 %
 %   - The Apple MacBookPro 2017 15 inch with its built-in 10 bit Retina display, running under Ubuntu Linux
-%     20.04 with Linux 5.14, as well as with a HDR-10 monitor via DisplayPort and also via HDMI. As those
-%     displays are 10 bit only, the 12 bit precision was attained via spatial dithering by the gpu.
+%     20.04 with Linux 5.14 or later kernels, as well as with a HDR-10 monitor via DisplayPort and also via
+%     HDMI. As those displays are 10 bit only, the 12 bit precision was attained via spatial dithering by the gpu.
 %
-%   - AMD Ryzen 2400G with AMD RavenRidge integrated graphics chip with a HDR-10 monitor via DisplayPort and
+%   - AMD Ryzen 5 2400G with AMD RavenRidge integrated graphics chip with a HDR-10 monitor via DisplayPort and
 %     also via HDMI. As that display is 10 bit only, the 12 bit precision was attained via spatial dithering
 %     by the gpu.
 %
@@ -894,33 +894,46 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %      gpu's like Polaris and Vega. Later versions only support AMD Navi and later with RDNA
 %      graphics architecture.
 %
-%   2. You will need to install Linux kernel 5.14, which is currently not shipping in any Ubuntu release,
-%      as of November 2021. A way to manually install it on Ubuntu 20.04-LTS is described on the following
-%      web page via the "mainline" helper software:
+%   2. You will need at least Linux kernel 5.14 or later versions. A way to manually install it on
+%      Ubuntu 20.04-LTS is described on the following web page via the "mainline" helper software:
 %
 %      https://ubuntuhandbook.org/index.php/2020/08/mainline-install-latest-kernel-ubuntu-linux-mint
 %
-%      Ubuntu 22.04-LTS should ship with a suitable kernel by default in April 2022.
+%      Ubuntu 22.04-LTS and later versions already have a suitable Linux 5.15 or later kernel by default
+%      since April 2022.
 %
-%   3. If you are using an AMD Polaris gpu or later then you are done.
+%   3. If you are using an AMD Polaris gpu (aka Radeon 400 series) or later, then you are done.
+%      Polaris was introduced in summer 2016. 
 %
 %      If you are using an old "Sea Islands" / "GraphicsCore Next 1.1" / "GCN 1.1" gpu, you must reboot
 %      your machine with Linux kernel boot settings that select the new amdgpu kms driver and AMD DisplayCore,
 %      instead of the old radeon kms driver that would be used by default. This requires adding the following
 %      parameters to the kernel boot command line: "radeon.cik_support=0 amdgpu.cik_support=1 amdgpu.dc=1"
 %
-%      Additionally you would need a custom amdvlk driver, as AMD's current official AMDVLK driver does
+%      Additionally you would need a custom AMDVLK driver, as AMD's current official AMDVLK driver does
 %      no longer support pre-Polaris gpu's. We won't provide this driver for free at the moment, so please
 %      enquire for potential paid support options on the Psychtoolbox user forum.
 %
 %   On AMD you can verify actual output bit depth for an output XXX by typing this command into a terminal
-%   window, assuming your AMD graphics card is the first or only gpu in the system, ie. has index 0:
+%   window, assuming your AMD graphics card is the first or only gpu in the system, ie. has index 0. If your
+%   card has a different index, then replace the 0 below with that index:
 %
 %   sudo cat /sys/kernel/debug/dri/0/XXX/output_bpc
 %
 %   E.g., for the internal laptop eDP flat panel of the MacBookPro 2017:
 %
 %   sudo cat /sys/kernel/debug/dri/0/eDP-1/output_bpc
+%
+%   Note also that currently Psychtoolbox by itself will usually limit video output precision to 10 bpc,
+%   even if a display is connected that claims to support 12 bpc or more, so 12 bpc content is actually
+%   displayed by the graphics card using spatial dithering down to 10 bpc. Why? Because at least all 10
+%   bpc capable HDMI displays are required by the HDMI standard to also "support" 12 bpc output precision.
+%   However, most displays do not actually support 12 bpc, but just fake 12 bpc support. By forcing actual
+%   output precision down to 10 bpc on such "pretend 12 bpc" displays, we can still achieve a good approximation
+%   of 12 bpc output via gpu hardware dithering. If by chance you are the lucky owner of a true 12 bpc capable
+%   display device, you can override Psychtoolbox 10 bpc choice by executing the xrandr command in a terminal,
+%   or via a system('xrandr ...'); call from Octave/Matlab. E.g., the following xrandr command would enable
+%   true 12 bpc output without dithering on HDMI output 0: xrandr --output HDMI-0 --set 'max bpc' 12
 %
 %   Once the above one-time setup is done, adding the following command to your script will enable the
 %   16 bpc framebuffer with up to 12 bpc effective output precision:
