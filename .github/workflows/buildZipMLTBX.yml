@@ -20,7 +20,7 @@ jobs:
     steps:
       # Runs commands using the runners shell
       - name: checkout the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Zip the toolbox
         run: zip -r '${{  github.ref_name }}.zip' Psychtoolbox
