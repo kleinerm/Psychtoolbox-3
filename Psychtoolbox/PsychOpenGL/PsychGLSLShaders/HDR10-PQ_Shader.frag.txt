@@ -7,7 +7,7 @@
  * The input color values are either encoded in units of nits or in units of
  * 80 nits, ie. 1.0 == 1.0 nits or 1.0 == 80 nits.
  *
- * Copyright (c) 2020 Mario Kleiner - Licensed to you under MIT license.
+ * Copyright (c) 2020-2024 Mario Kleiner - Licensed to you under MIT license.
  *
  */
 
@@ -32,14 +32,13 @@ void main()
     /* Get RGB color input values: */
     vec4 incolor = texture2DRect(Image, readpos);
 
+    /* Apply some external color transformation (clamping, range check, color space conversion...): */
+    incolor = icmTransformColor(incolor);
+
     /* Use our builtin 3x3 matrix CSC? */
     if (doCSC > 0) {
         /* Apply simple 3x3 matrix vector multiply for gamut conversion: */
         incolor.rgb = MCSC * incolor.rgb;
-    }
-    else {
-        /* Apply some external color transformation (clamping, range check, color space conversion...): */
-        incolor = icmTransformColor(incolor);
     }
 
     /* PQ encoding for HDR-10 BT-2020, or linear encoding for scRGB? */

@@ -146,6 +146,10 @@ try
         driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep 'x64' filesep];
         newpath = [driverloadpath ';' newpath];
 
+        % Always prepend the path to the PsychPlugins folder for runtime loadable plugins:
+        driverloadpath = [PsychtoolboxRoot 'PsychBasic' filesep 'PsychPlugins' filesep];
+        newpath = [driverloadpath ';' newpath];
+
         setenv('PATH', newpath);
     end
 catch %#ok<*CTCH>

@@ -280,6 +280,9 @@ function mex(varargin)
     end
   end
 
+  % Link all mex files against the libTurboActivate.dylib in PsychPlugins:
+  outargs = {outargs{:}, sprintf('-L%sPsychBasic/PsychPlugins', PsychtoolboxRoot) };
+
   args = cellstr(char(outargs));
   mkoctfile (args{:});
 end

@@ -1,5 +1,5 @@
-function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
-% VideoRecordingDemo(moviename [, codec=0] [, withsound=1] [, showit=1] [, windowed=1])
+function VideoRecordingDemo(moviename, codec, withsound, showit, windowed, deviceId)
+% VideoRecordingDemo(moviename [, codec=0][, withsound=1][, showit=1][, windowed=1][, deviceId=0])
 %
 % Demonstrates simple video capture and recording to a movie file.
 %
@@ -58,6 +58,8 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % the top-left corner of the screen, instead of fullscreen. Windowed
 % display is the default.
 %
+% 'deviceId' Optional deviceIndex of the video capture device. Defaults to
+% 0 for the default video capture device.
 %
 % Tip on Linux: If you have an exotic camera which only delivers video in non-standard
 % video formats, and Psychtoolbox does not handle this automatically, but aborts with
@@ -83,6 +85,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % 29.12.2013  Make less broken on OSX and Windows (MK).
 % 26.08.2014  Adapt to new GStreamer-1 based engine (MK).
 % 02.12.2021  Change codec for macOS 10.15 to avenc_h263p, default H264 hangs (MK).
+% 22.08.2024  Remove Windows special path. Cleanups (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -203,6 +206,10 @@ if isempty(windowed)
     windowed = 1;
 end
 
+if nargin < 6
+    deviceId = [];
+end
+
 try
     if windowed > 0
         % Open window in top left corner of screen. We ask PTB to continue
@@ -226,18 +233,10 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    % Capture and record video + audio to disk:
+    % Capture and record video + audio to disk: 'deviceId' is capture device.
     % Specify the special flags in 'withsound', the codec settings for
     % recording in 'codec'. Leave everything else at auto-detected defaults:
-    if IsWin
-        % Windows often has unreliable camera video resolution detection.
-        % Therefore we hard-code the resolution to 640x480, the most common
-        % case, to make it work "most of the time(tm)":
-        grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480], [], [], [], codec, withsound);
-    else
-        % No need for Windows-style workarounds:
-        grabber = Screen('OpenVideoCapture', win, [], [], [], [], [], codec, withsound, [], 8);
-    end
+    grabber = Screen('OpenVideoCapture', win, deviceId, [], [], [], [], codec, withsound);
 
     % Wait a bit between 'OpenVideoCapture' and start of capture below.
     % This gives the engine a bit time to spin up and helps avoid jerky
@@ -263,9 +262,7 @@ try
         Screen('StartVideoCapture', grabber, realmax, 1)
         
         oldtex = 0;
-        tex = 0;
         oldpts = 0;
-        pts = 0;
         count = 0;
         t=GetSecs;
         
@@ -278,7 +275,7 @@ try
             if waitforimage~=4
                 % Live preview: Wait blocking for new frame, return texture
                 % handle and capture timestamp:
-                [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex);
+                [tex, pts, nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex); %#ok<ASGLU>
                 
                 % Some output to the console:
                 % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
@@ -319,7 +316,7 @@ try
         end
         
         % Done. Shut us down.
-        telapsed = GetSecs - t
+        telapsed = GetSecs - t;
         
         % Stop capture engine and recording:
         Screen('StopVideoCapture', grabber);
@@ -331,13 +328,13 @@ try
     % Close display, release all remaining ressources:
     sca;
     
-    avgfps = count / telapsed
+    avgfps = count / telapsed; %#ok<NASGU>
 catch
     % In case of error, the 'CloseAll' call will perform proper shutdown
     % and cleanup:
     RestrictKeysForKbCheck([]);
     sca;
-end;
+end
 
 % Allow KbCheck et al. to query all keys:
 RestrictKeysForKbCheck([]);

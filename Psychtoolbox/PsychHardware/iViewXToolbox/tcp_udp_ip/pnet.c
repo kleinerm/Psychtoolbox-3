@@ -878,69 +878,71 @@ int read2buff(const int len,int newline,int noblock)
 
     if(len<con[con_index].read.pos)              /* If enouth in buffer then return */
         return len;
-    if(0==IS_STATUS_IO_OK(con[con_index].status))/* If not read/write fid (broken pipe) then exit.*/
+
+    if(0==IS_STATUS_IO_OK(con[con_index].status)) { /* If not read/write fid (broken pipe) then exit.*/
         if(len<con[con_index].read.pos)
             return len;
         else
             return con[con_index].read.pos;
+    }
 
-        /* Resize readbuffer to needed size */
-        if(con[con_index].read.len<len)
-            newbuffsize(&con[con_index].read,len);
+    /* Resize readbuffer to needed size */
+    if(con[con_index].read.len<len)
+        newbuffsize(&con[con_index].read,len);
 
-        while(1){
-            int readlen=len-con[con_index].read.pos;
-            //    mexPrintf("DEBUG: READLINE: readlen:%d\n",readlen);
-            if(readlen>0){
-                if(IS_STATUS_CONNECTED(con[con_index].status))
-                    retval=recv(con[con_index].fid,&con[con_index].read.ptr[con[con_index].read.pos],readlen ,MSG_NOSIGNAL);
-                else{
-                    struct sockaddr_in my_addr;
-                    int fromlen=sizeof(my_addr);
+    while(1){
+        int readlen=len-con[con_index].read.pos;
+        //    mexPrintf("DEBUG: READLINE: readlen:%d\n",readlen);
+        if(readlen>0){
+            if(IS_STATUS_CONNECTED(con[con_index].status))
+                retval=recv(con[con_index].fid,&con[con_index].read.ptr[con[con_index].read.pos],readlen ,MSG_NOSIGNAL);
+            else{
+                struct sockaddr_in my_addr;
+                unsigned int fromlen=sizeof(my_addr);
 
-                    // Copy 0.0.0.0 adress and 0 port to remote_addr as init-value.
-                    memset(&my_addr,0,sizeof(my_addr));
+                // Copy 0.0.0.0 adress and 0 port to remote_addr as init-value.
+                memset(&my_addr,0,sizeof(my_addr));
+                con[con_index].remote_addr.sin_addr = my_addr.sin_addr;
+                con[con_index].remote_addr.sin_port = my_addr.sin_port;
+                retval=recvfrom(con[con_index].fid,&con[con_index].read.ptr[con[con_index].read.pos],
+                                readlen,MSG_NOSIGNAL,(struct sockaddr *)&my_addr, &fromlen);
+                if (retval>0){
                     con[con_index].remote_addr.sin_addr = my_addr.sin_addr;
-                    con[con_index].remote_addr.sin_port = my_addr.sin_port;
-                    retval=recvfrom(con[con_index].fid,&con[con_index].read.ptr[con[con_index].read.pos],
-                                    readlen,MSG_NOSIGNAL,(struct sockaddr *)&my_addr, &fromlen);
-                    if (retval>0){
-                        con[con_index].remote_addr.sin_addr = my_addr.sin_addr;
-                        con[con_index].remote_addr.sin_port = htons((unsigned short int)ntohs(my_addr.sin_port));
-                    }
-                }
-                if( retval==0){
-                    mexPrintf("\nREMOTE HOST DISCONNECTED\n");
-                    con[con_index].status=STATUS_NOCONNECT;
-                    break;
-                }
-                if(retval<0 && s_errno!=EWOULDBLOCK
-                    //           IFWINDOWS( && s_errno!=WSAECONNRESET )// DEBUG: REMOVE THIS LINE?
-                ) {
-                    con[con_index].status=STATUS_NOCONNECT;
-                    perror( "recvfrom() or recv()" );
-                    break;
+                    con[con_index].remote_addr.sin_port = htons((unsigned short int)ntohs(my_addr.sin_port));
                 }
             }
-            //    fprintf(stderr,"RET:%d/%d ",retval,s_errno);
-            readlen=retval>0?retval:0;
-            con[con_index].read.pos+=readlen;
-            if( !IS_STATUS_TCP_CONNECTED(con[con_index].status) && con[con_index].read.pos>0 )
+            if( retval==0){
+                mexPrintf("\nREMOTE HOST DISCONNECTED\n");
+                con[con_index].status=STATUS_NOCONNECT;
                 break;
-            if( con[con_index].read.pos>=len )
-                break;
-            if(noblock || timeoutat<=my_now())
-                break;
-            if(newline){
-                int n;
-                for(n=0;n<con[con_index].read.pos;n++)
-                    if(con[con_index].read.ptr[n]=='\n')
-                        return con[con_index].read.pos;
             }
-            if(readlen<1000)
-                usleep(DEFAULT_USLEEP);
+            if(retval<0 && s_errno!=EWOULDBLOCK
+                //           IFWINDOWS( && s_errno!=WSAECONNRESET )// DEBUG: REMOVE THIS LINE?
+            ) {
+                con[con_index].status=STATUS_NOCONNECT;
+                perror( "recvfrom() or recv()" );
+                break;
+            }
         }
-        return con[con_index].read.pos;
+        //    fprintf(stderr,"RET:%d/%d ",retval,s_errno);
+        readlen=retval>0?retval:0;
+        con[con_index].read.pos+=readlen;
+        if( !IS_STATUS_TCP_CONNECTED(con[con_index].status) && con[con_index].read.pos>0 )
+            break;
+        if( con[con_index].read.pos>=len )
+            break;
+        if(noblock || timeoutat<=my_now())
+            break;
+        if(newline){
+            int n;
+            for(n=0;n<con[con_index].read.pos;n++)
+                if(con[con_index].read.ptr[n]=='\n')
+                    return con[con_index].read.pos;
+        }
+        if(readlen<1000)
+            usleep(DEFAULT_USLEEP);
+    }
+    return con[con_index].read.pos;
 }
 
 /***************************************************************************/   // BORT???
@@ -1027,7 +1029,7 @@ int tcpiplisten(int noblock)
     const double timeoutat=my_now()+con[con_index].readtimeout;
     int new_fd;
     const int sock_fd= con[con_index].fid;
-    int sin_size = sizeof(struct sockaddr_in);
+    unsigned int sin_size = sizeof(struct sockaddr_in);
     move_con(CON_FREE);        /* Find a new free con struct for the new connection.... */
     while(1){
         if ((new_fd = accept(sock_fd, (struct sockaddr *)&con[con_index].remote_addr,&sin_size)) > -1)

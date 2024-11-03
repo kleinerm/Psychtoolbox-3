@@ -288,6 +288,7 @@ end
 function mex(varargin)
   inargs = {varargin{:}};
   outargs = {"--mex"};
+  outargs = {outargs{:}, sprintf("-L%sPsychBasic/PsychPlugins", PsychtoolboxRoot)};
   outargs = {outargs{:}, "-fexceptions"}; % Explicit exception handling for Octave on RaspberryPi OS.
   outargs = {outargs{:}, "-s"};
 
@@ -300,5 +301,21 @@ function mex(varargin)
   end
 
   args = cellstr(char(outargs));
-  mkoctfile (args{:});
+
+  % Try-Catch protect actual mkoctfile build, using customized LDFLAGS setting,
+  % restoring original setting after (failed) build:
+  oldldflags = getenv('LDFLAGS');
+  try
+    % Set LDFLAGS to add an rpath to the Psychtoolbox/PsychBasic/PsychPlugins folder,
+    % so our custom runtime plugins can be found and load-time linked into our mex files:
+    setenv('LDFLAGS', [oldldflags " -Wl,-rpath='$ORIGIN/../PsychPlugins' -Wl,-rpath='$ORIGIN/../../PsychPlugins'"])
+
+    % Build it, with customized LDFLAGS:
+    mkoctfile (args{:});
+
+    setenv('LDFLAGS', oldldflags);
+  catch
+    setenv('LDFLAGS', oldldflags);
+    rethrow(lasterror);
+  end
 end

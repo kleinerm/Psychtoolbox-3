@@ -1753,7 +1753,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
             printf("PsychVulkanCore-INFO: gpu [%s] display %p switched to direct display mode. Setting up for direct display surface.\n", vulkan->deviceProps.deviceName, window->display);
 
         // We have exclusive direct display mode access now. Probe all properties needed to create a fullscreen display surface.
-        // Get the video modes supported by the display
+        // Get the video modes supported by the display:
+        modeCount = 0;
         result = vkGetDisplayModePropertiesKHR(vulkan->physicalDevice, window->display, &modeCount, NULL);
         if (result != VK_SUCCESS || modeCount == 0) {
             if (verbosity > 0)
@@ -1762,9 +1763,29 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
             goto createsurface_out;
         }
 
+        if (verbosity > 3)
+            printf("PsychVulkanCore-INFO: Vulkan driver reports %i available video modes on target display output.\n", modeCount);
+
+        // Check if we are running under the AMDVLK open-source or AMDVLK-PRO proprietary driver. TODO: Only apply for driver versions earlier than a certain bug-fixed one?
+        // (vulkan->deviceProps.driverVersion < VK_MAKE_VERSION(19, 3, 0))
+        if ((modeCount > 64) && ((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR))) {
+            // This is an amdvlk driver with a known bug in video mode enumeration. It crashes due to memory heap/stack corruption if one tries to
+            // query video modes via vkGetDisplayModePropertiesKHR() if the display output has more than 64 video modes! True as of at least amdvlk v-2024.Q3.3.
+
+            if (verbosity > 1) {
+                printf("PsychVulkanCore-WARNING: Vulkan driver reports %i available video modes on target display output, but this deficient version of\n", modeCount);
+                printf("PsychVulkanCore-WARNING: the AMDVLK AMD Vulkan driver can only handle at most 64 video modes per display, otherwise it will crash!\n");
+                printf("PsychVulkanCore-WARNING: I am trying to work around this problem by limiting the enumerated modes to only the first 64 modes.\n");
+                printf("PsychVulkanCore-WARNING: This may still crash, especially if you have more than one display connected to any of your AMD graphics cards!\n");
+            }
+
+            // Limit the number of queried video modes to at most 64 modes, the maximum those buggy drivers can handle.
+            modeCount = 64;
+        }
+
         modes = (VkDisplayModePropertiesKHR*) malloc(modeCount * sizeof(VkDisplayModePropertiesKHR));
         result = vkGetDisplayModePropertiesKHR(vulkan->physicalDevice, window->display, &modeCount, modes);
-        if (result != VK_SUCCESS) {
+        if ((result != VK_SUCCESS) && (result != VK_INCOMPLETE)) {
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: For gpu [%s] could not find any valid display modes! count = %i, result = %i\n", vulkan->deviceProps.deviceName, modeCount, result);
 

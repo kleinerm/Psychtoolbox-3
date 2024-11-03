@@ -1874,18 +1874,17 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     PsychSetGLContext(windowRecord);
     PsychTestForGLErrors();
 
-    // Are all required OpenGL extensions supported?
-    if (!glewIsSupported("GL_EXT_memory_object") || !glewIsSupported("GL_EXT_direct_state_access") ||
+    // Are all required OpenGL extensions supported? Note that somewhere around Mesa 23.3 and later, something is slightly
+    // broken in Mesa's GL_EXT_direct_state_access implementation, in that some required function entry points are missing.
+    // This is not a problem for our use case, but causes glewIsSupported("GL_EXT_direct_state_access") to fail. Work around
+    // this by instead using the more lenient check for GL_EXT_direct_state_access being part of the GL_EXTENSIONS string:
+    if (!glewIsSupported("GL_EXT_memory_object") || !strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_direct_state_access") ||
         (!glewIsSupported("GL_EXT_memory_object_fd") && !glewIsSupported("GL_EXT_memory_object_win32"))) {
         if (PsychPrefStateGet_Verbosity() > 0)
             printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL memory object extensions [%i %i %i].\n",
-                   glewIsSupported("GL_EXT_memory_object"), glewIsSupported("GL_EXT_memory_object_fd"), glewIsSupported("GL_EXT_direct_state_access"));
+                   glewIsSupported("GL_EXT_memory_object"), glewIsSupported("GL_EXT_memory_object_fd"), strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_direct_state_access") ? 1 : 0);
 
-        // Skip abort and continue on Broadcom VideoCore 6 under zink driver.
-        // Its GL_EXT_direct_state_access lacks some functions, so above check
-        // fails, but the stuff we need here actually works at least as of Mesa 23:
-        if (!strstr((char*) glGetString(GL_RENDERER), "zink (V3D 4.2)"))
-            return(FALSE);
+        return(FALSE);
     }
 
     // Backup current fbo assignments before we mess with them:
