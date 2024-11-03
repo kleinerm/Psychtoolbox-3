@@ -197,3 +197,29 @@ psych_bool PsychIsMasterThread(void)
 {
     return(PsychIsCurrentThreadEqualToId(masterthread));
 }
+
+#ifdef PSYCH_NOLM
+
+// Stub functions for mex files without license management:
+// License checking and management disabled in this build. Just return "Success":
+psych_bool PsychIsLicensed(const char* featureName) {
+    // Specific feature enabled request? The answer is always "No":
+    if (featureName)
+        return(FALSE);
+
+    // Licensed as a whole? A resounding "Yes":
+    return(TRUE);
+}
+
+void PsychFeatureUsed(const char* featureName)
+{
+    (void) featureName;
+}
+
+PsychError PsychManageLicense(void)
+{
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
+    return(PsychError_none);
+}
+
+#endif

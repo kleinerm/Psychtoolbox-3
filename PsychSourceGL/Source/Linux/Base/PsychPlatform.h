@@ -35,6 +35,7 @@
 */
 
 #include "PsychPlatformConstants.h"
+#include <sys/user.h>
 
 //these control build switches
 #define PSYCH_SYSTEM            PSYCH_LINUX
@@ -45,3 +46,15 @@
 #endif
 
 #define PSYCH_DEBUG             PSYCH_ON
+
+#ifndef PSYCH_NOLM
+
+#if !defined(__aarch64__) && !defined(__x86_64__)
+#define PSYCH_NOLM
+#else
+#if !defined(PTB_USE_WAYLAND) && !defined(PTB_USE_WAYLAND_PRESENT) && defined(PAGE_SIZE) && (PAGE_SIZE == 4096)
+#define PSYCH_NOLM
+#endif
+#endif
+
+#endif

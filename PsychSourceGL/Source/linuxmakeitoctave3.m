@@ -142,7 +142,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-       mex --output moglcore.mex -Wno-incompatible-pointer-types -Wno-discarded-qualifiers -Wno-int-conversion -DPTB_USE_WAYLAND -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+       mex --output moglcore.mex -Wno-incompatible-pointer-types -Wno-discarded-qualifiers -Wno-int-conversion -DPTB_USE_WAFFLE -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
@@ -287,17 +287,47 @@ end
 % as a C++ piece of art, which can't expand wildcards anymore.
 function mex(varargin)
   inargs = {varargin{:}};
+
+  if IsARM
+      pluginsuffix = 'ARM';
+  else
+      pluginsuffix = 'Intel';
+  end
+
+  if Is64Bit
+      pluginsuffix = [pluginsuffix '64'];
+  else
+      pluginsuffix = [pluginsuffix '32'];
+  end
+
   outargs = {"--mex"};
   outargs = {outargs{:}, sprintf("-L%sPsychBasic/PsychPlugins", PsychtoolboxRoot)};
+  outargs = {outargs{:}, sprintf("-L%sPsychBasic/PsychPlugins/%s", PsychtoolboxRoot, pluginsuffix)};
   outargs = {outargs{:}, "-fexceptions"}; % Explicit exception handling for Octave on RaspberryPi OS.
   outargs = {outargs{:}, "-s"};
 
+  usewayland = 0;
   for i = 1:length(inargs)
+    if ~isempty(strfind(inargs{i}, '-DPTB_USE_WAYLAND'))
+      usewayland = 1;
+    end
+
     if ~isempty(strfind(inargs{i}, '*'))
       outargs = {outargs{:}, glob(inargs{i})};
     else
       outargs = {outargs{:}, inargs{i}};
     end
+  end
+
+  [rc, pagesize] = system('getconf PAGESIZE');
+  if rc == 0
+      pagesize = str2num(pagesize);
+  else
+      pagesize = NaN;
+  end
+
+  if Is64Bit && (usewayland || (pagesize ~= 4096))
+    outargs = {outargs{:}, "-lLexActivator"};
   end
 
   args = cellstr(char(outargs));
@@ -307,8 +337,11 @@ function mex(varargin)
   oldldflags = getenv('LDFLAGS');
   try
     % Set LDFLAGS to add an rpath to the Psychtoolbox/PsychBasic/PsychPlugins folder,
-    % so our custom runtime plugins can be found and load-time linked into our mex files:
-    setenv('LDFLAGS', [oldldflags " -Wl,-rpath='$ORIGIN/../PsychPlugins' -Wl,-rpath='$ORIGIN/../../PsychPlugins'"])
+    % and its arch specific subfolders 'pluginsuffix', so our custom runtime plugins
+    % can be found and load-time linked into our mex files:
+    setenv('LDFLAGS', [oldldflags " -Wl,-rpath='$ORIGIN/../PsychPlugins' -Wl,-rpath='$ORIGIN/../../PsychPlugins'" ...
+            sprintf(" -Wl,-rpath='$ORIGIN/../PsychPlugins/%s' -Wl,-rpath='$ORIGIN/../../PsychPlugins/%s'", ...
+            pluginsuffix, pluginsuffix)]);
 
     % Build it, with customized LDFLAGS:
     mkoctfile (args{:});

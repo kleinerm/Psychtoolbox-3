@@ -240,10 +240,17 @@ PTB_EXPORT void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *p
 
         // This one dumps all registered subfunctions of a module into a struct array of text strings.
         // Needed by our automatic documentation generator script to find out about subfunctions of a module:
-        PsychRegister((char*) "DescribeModuleFunctionsHelper",  &PsychDescribeModuleFunctions);
+        PsychRegister((char*) "DescribeModuleFunctionsHelper", &PsychDescribeModuleFunctions);
+
+        // License management support for users to (de-)activate machine licenses and query their status:
+        PsychRegister((char*) "ManageLicense", &PsychManageLicense);
 
         firstTime = FALSE;
     }
+
+    // Abort here if machine is not actively licensed, except for use of WaitSecs():
+    if (strcmp(PsychGetModuleName(), "WaitSecs") && !PsychIsLicensed(NULL))
+        mexErrMsgTxt("This Psychtoolbox function is currently not licensed for use on this machine.");
 
     // Increment call recursion level for this invocation of the module:
     recLevel++;
