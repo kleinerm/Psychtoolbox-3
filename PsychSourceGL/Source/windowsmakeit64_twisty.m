@@ -496,7 +496,9 @@ myvararg = cell();
 myvararg(end+1) = '-DPTBOCTAVE3MEX';
 myvararg(end+1) = '-Wno-multichar';
 myvararg(end+1) = '-Wno-unknown-pragmas';
+myvararg(end+1) = '-L../../../';
 myvararg(end+1) = '-s'; % Strip mex/oct files to get them down to a reasonable size.
+myvararg(end+1) = '-lLexActivator';
 
 outarg = '';
 quoted = 0;
