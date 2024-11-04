@@ -80,6 +80,9 @@
 #define close(s) closesocket(s)
 #define nonblockingsocket(s) {unsigned long ctl = 1;ioctlsocket( s, FIONBIO, &ctl );}
 #define s_errno WSAGetLastError()
+#ifdef EWOULDBLOCK /* MK: Undefine if defined, to avoid compiler warning on Octave + Windows MinGW compile */
+#undef EWOULDBLOCK
+#endif
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define usleep(a) Sleep((a)/1000)
 #define MSG_NOSIGNAL 0
