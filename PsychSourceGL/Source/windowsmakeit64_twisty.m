@@ -3,6 +3,7 @@ function windowsmakeit64_twisty(what, onoctave)
 % This script is customized for MK's build machines "darlene" and "touchy",
 % building against the Windows-10 SDK on Windows-10 64-Bit.
 %
+global mode;
 
 if ~IsWin(1)
     error('%s must be run on MS-Windows within 64 Bit Octave 7 or within 64-Bit Matlab!', mfilename);
@@ -32,6 +33,7 @@ end
 try
 
 fprintf('Building plugin type %i ...\n', what);
+mode = what;
 
 % Matlab or Octave build?
 if onoctave == 0
@@ -328,7 +330,7 @@ else
         cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
         clear moglcore
         try
-            mexoctave --output moglcore.mex -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c gl_auto.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
+            mexoctave --output moglcore.mex -Wno-discarded-qualifiers -Wno-incompatible-pointer-types -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c gl_auto.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
             movefile(['moglcore.' mexext], target);
         catch
             lasterr
@@ -424,7 +426,7 @@ else
             % works with MSVC, but not with Octave's gcc based build system. The shim
             % will locate and runtime-link against the libOVRRT_64_1.dll of the installed
             % Oculus VR runtime during initialization:
-            mexoctave --output ..\Projects\Windows\build\PsychOculusVRCore1.mex -DPTBMODULE_PsychOculusVRCore1 -DPTBOCTAVE3MEX -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c ..\..\..\OculusSDK1Win\LibOVR\Src\*.c* kernel32.lib user32.lib winmm.lib
+            mexoctave --output ..\Projects\Windows\build\PsychOculusVRCore1.mex -DPTBMODULE_PsychOculusVRCore1 -DPTBOCTAVE3MEX -Wno-attributes -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c ..\..\..\OculusSDK1Win\LibOVR\Src\*.c* kernel32.lib user32.lib winmm.lib
             movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], target);
         catch %#ok<*CTCH>
             % Empty. We just want to make sure the delete() call below is executed
@@ -488,6 +490,7 @@ return;
 
 % Special mex wrapper for Octave compile on Windows:
 function mexoctave(varargin)
+global mode;
 debugme = 0;
 callmex = 1;
 
@@ -498,7 +501,11 @@ myvararg(end+1) = '-Wno-multichar';
 myvararg(end+1) = '-Wno-unknown-pragmas';
 myvararg(end+1) = '-L../../../';
 myvararg(end+1) = '-s'; % Strip mex/oct files to get them down to a reasonable size.
-myvararg(end+1) = '-lLexActivator';
+
+% LexActivator for all proper PTB style mex files, exclude non-standard mex files:
+if ~ismember(mode, [5, 6, 10, 11])
+    myvararg(end+1) = '-lLexActivator';
+end
 
 outarg = '';
 quoted = 0;
