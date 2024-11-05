@@ -89,7 +89,12 @@ try
     % Wayland desktop on 64-Bit Linux with Octave?
     if IsLinux(1) && IsOctave && IsWayland && ~isempty(getenv('PSYCH_ALLOW_WAYLAND'))
         % Add path, so our Wayland build of Screen.mex overrides the standard one:
-        rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
+        if IsARM
+            rdir = [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFilesARM64/Wayland'];
+        else
+            rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
+        end
+
         if exist(rdir, 'dir')
             setenv('PSYCH_DISABLE_COLORD', '1');
             addpath(rdir);
