@@ -506,7 +506,7 @@ try
         nrchannels = size(wavedata,1); % Number of rows == number of channels.
 
         % Override freq to the most commonly supported one, doesn't matter if sound sounds a bit off:
-        freq = 44100;
+        freq = [];
 
         % Perform basic initialization of the sound driver:
         InitializePsychSound;
