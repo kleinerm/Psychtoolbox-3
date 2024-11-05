@@ -1766,17 +1766,20 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         if (verbosity > 3)
             printf("PsychVulkanCore-INFO: Vulkan driver reports %i available video modes on target display output.\n", modeCount);
 
-        // Check if we are running under the AMDVLK open-source or AMDVLK-PRO proprietary driver. TODO: Only apply for driver versions earlier than a certain bug-fixed one?
-        // (vulkan->deviceProps.driverVersion < VK_MAKE_VERSION(19, 3, 0))
-        if ((modeCount > 64) && ((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR))) {
+        // Check if we are running under the buggy AMDVLK open-source or AMDVLK-PRO proprietary driver of driverVersion 2.0.325 or earlier:
+        if ((modeCount > 64) && ((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) &&
+            (vulkan->deviceProps.driverVersion <= VK_MAKE_VERSION(2, 0, 325))) {
             // This is an amdvlk driver with a known bug in video mode enumeration. It crashes due to memory heap/stack corruption if one tries to
-            // query video modes via vkGetDisplayModePropertiesKHR() if the display output has more than 64 video modes! True as of at least amdvlk v-2024.Q3.3.
-
+            // query video modes via vkGetDisplayModePropertiesKHR() if the display output has more than 64 video modes! This bug was present from
+            // initial release. The bug will be fixed in driver versions > 2.0.325, ie. amdvlk v-2024.Q4.2 and later with ETA after 5th November 2024.
+            // Reference: Bug https://github.com/GPUOpen-Drivers/xgl/issues/179 and bugfix https://github.com/GPUOpen-Drivers/xgl/pull/180 at 5.11.2024.
             if (verbosity > 1) {
                 printf("PsychVulkanCore-WARNING: Vulkan driver reports %i available video modes on target display output, but this deficient version of\n", modeCount);
                 printf("PsychVulkanCore-WARNING: the AMDVLK AMD Vulkan driver can only handle at most 64 video modes per display, otherwise it will crash!\n");
                 printf("PsychVulkanCore-WARNING: I am trying to work around this problem by limiting the enumerated modes to only the first 64 modes.\n");
                 printf("PsychVulkanCore-WARNING: This may still crash, especially if you have more than one display connected to any of your AMD graphics cards!\n");
+                printf("PsychVulkanCore-WARNING: Owners of a modern AMD 'Navi gpu family' gpu with RDNA graphics, e.g., AMD RX 5000 series and later, can\n");
+                printf("PsychVulkanCore-WARNING: to AMDVLK release v-2024.Q4.2 or later for a properly bug fixed driver.\n");
             }
 
             // Limit the number of queried video modes to at most 64 modes, the maximum those buggy drivers can handle.
