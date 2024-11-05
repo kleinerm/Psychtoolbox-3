@@ -85,7 +85,7 @@ end
 
 if mode==7
     % Build PsychKinectCore.mexa64:
-    mex 'LDFLAGS=$LDFLAGS -Wl,-rpath,\$ORIGIN/PsychPlugins' -L../../Psychtoolbox/PsychBasic/PsychPlugins CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -lc -lrt -ldl -lfreenect -lusb-1.0
+    mex 'LDFLAGS=$LDFLAGS -Wl,-rpath,\$ORIGIN/PsychPlugins' -L../../Psychtoolbox/PsychBasic/PsychPlugins CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -lc -lrt -ldl -lfreenect -lusb-1.0
     unix(['mv ../Projects/Linux/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 

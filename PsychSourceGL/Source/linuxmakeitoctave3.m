@@ -175,9 +175,7 @@ end
 
 if mode==7
     % Build PsychKinectCore.mex:
-    % Official build method: mex --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
-    % Test build against libfreenect-0.5 from GitHub repo:
-    mex --output ../Projects/Linux/build/PsychKinectCore.mex -Wno-date-time -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib/ -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -ldl -lfreenect -lusb-1.0
+    mex --output ../Projects/Linux/build/PsychKinectCore.mex -Wno-date-time -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -ldl -lfreenect -lusb-1.0
     unix(['cp ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target]);
 end
 
