@@ -48,9 +48,9 @@
 % 7/25/97  dhb  Better initialization.
 % 3/12/98  dgp  Use Ask.
 % 3/14/02  dhb  Update for OpenWindow.
-% 4/03/02  awi  Merged in Windows changes.  On Windows we do not copy the result to the clipboard. 
-% 4/13/02  awi	Changed "SetColorSpace" to new name "SetSensorColorSpace".
-%				Changed "LinearToSettings" to new name "SensorToSettings".
+% 4/03/02  awi  Merged in Windows changes.  On Windows we do not copy the result to the clipboard.
+% 4/13/02  awi  Changed "SetColorSpace" to new name "SetSensorColorSpace".
+%               Changed "LinearToSettings" to new name "SensorToSettings".
 % 12/21/02 dhb  Remove reliance on now obsolete OpenWindow/CloseWindow.
 % 11/16/06 dhb  Start getting this to work with PTB-3.
 % 11/22/06 dhb  Fixed except that Ask() needs to be fixed.
@@ -108,22 +108,22 @@ drawnow;
 try
     % Open window in GUI mode, top-left, 300 x 300 pixels:
     AssertOpenGL;
-    
+
     % Define our desired background color in RGB primary space:
     % RGB = [0.01, 0.01, 0.01] for almost black.
     bgcolor = [0.01; 0.01; 0.01];
 
     % Declutter our output for this demo:
     Screen('Preference', 'SuppressAllWarnings', 1);
-    
+
     % Skip display sync tests:
     oldsync = Screen('Preference', 'SkipSyncTests', 2);
 
     % Select display screen to show windows:
     screenId = max(Screen('Screens'));
-    
+
     [win0, winRect0] = Screen('OpenWindow', screenId, bgcolor * 255, [0 0 300 300], [], [], [], [], [], kPsychGUIWindow);
-    
+
     % Load the gamma table which was used during calibration measurements:
     % If this is a 1024 slot table we downsample to 256 slots, so it works
     % with MS-Windows, otherwise we hope it is a compatible table.
@@ -133,50 +133,53 @@ try
     else
         gammaInput = cal.gammaInput;
     end
-    
+
     % Replicate to 3 columns for the three primary colors:
     gammaInput = repmat(gammaInput, 1, 3);
-    
+
     % Before table upload, we store a backup copy of the original table, so
     % it can get restored at end of session:
     BackupCluts(screenId);
     Screen('LoadNormalizedGammaTable', screenId, gammaInput);
-    
+
     % Convert new theRGBImage to texture and draw it into win1:
     tex = Screen('MakeTexture', win0, round(theRGBImage * 255));
     Screen('DrawTexture', win0, tex);
     Screen('Close', tex);
-    
+
     % Show it:
     Screen('Flip', win0);
     dstRect0 = CenterRect([0 0 nX nY], winRect0);
     readBack0 = Screen('GetImage', win0, dstRect0);
-    
+
     fprintf('\n\nPress any key to continue. This will demonstrate another way, using SensorToPrimary() + \n');
     fprintf('a proper inverse gamma table, to linearize your display, instead of SensorToSettings().\n\n');
     KbStrokeWait(-1);
-    
+
     % Close old window, as its content is not compatible with the gamma
     % table we're gonna set now:
     sca;
-    
+
+    % Backup cluts again, as they've been restored by sca;
+    BackupCluts(screenId);
+
     % Show same thing in a GUI window of 300 x 300 pixels.
     fprintf('Now we do exactly the same thing, just displaying in a onscreen window.\n');
     fprintf('However, we use gamma correction via the graphics hardware, so we have a linearized\n');
     fprintf('display. This allows to use the simpler SensorToPrimary() instead of SensorToSettings().\n\n');
-    
+
     % Open a standard window:
     [win1, winRect1] = Screen('OpenWindow', screenId, bgcolor * 255, [0 0 300 300], [], [], [], [], [], kPsychGUIWindow);
-    
+
     % Load a gamma correction table into the graphics card, as defined as
     % the inverse gamma table for given measured display gamma table
     % 'cal.gammaTable'. However, we sub-sample the table to 256 slots to
     % make sure it works on MS-Windows, not only on OSX or Linux:
     iGammaTable = InvertGammaTable(cal.gammaInput, cal.gammaTable, 256);
-    
+
     % Load inverse gamma table into GPU:
     Screen('LoadNormalizedGammaTable', screenId, iGammaTable);
-    
+
     % Ok, now we have a linearized display due to gamma correction. This means
     % we can define our stimulus in tristimulus XYZ space. This allows us to
     % use the simpler SensorToPrimary() function instead of the more complex
@@ -189,87 +192,87 @@ try
     if any(RGB < 0 | RGB > 1)
         fprintf('WARNING: Out of range RGB values -- not displayable!\n');
     end
-    
+
     % Make it an image. Now need to scale by 255, as onscreen windows want
     % color values in range 0 - 255 instead of 0 - 1 by default:
     nX = 256; nY = 128;
     theRGBCalFormat = RGB * 255 * ones(1,nX*nY);
     theRGBImage = CalFormatToImage(theRGBCalFormat,nX,nY);
-    
+
     % Convert new theRGBImage to texture and draw it into win1:
     tex = Screen('MakeTexture', win1, round(theRGBImage));
     Screen('DrawTexture', win1, tex);
     Screen('Close', tex);
-    
+
     % Show it:
     Screen('Flip', win1);
     dstRect1 = CenterRect([0 0 nX nY], winRect1);
     readBack1 = Screen('GetImage', win1, dstRect1);
-    
+
     fprintf('\n\nPress any key to continue. This will demonstrate a simpler way to do it via the imaging pipeline.\n');
     fprintf('Screen() will automatically convert XYZ tristimulus color values to calibrated RGB values before display.\n\n');
     KbStrokeWait(-1);
-    
+
     % Make sure this will actually work:
     AssertGLSL;
-    
+
     % Open a 2nd window, now using the imaging pipeline:
     PsychImaging('PrepareConfiguration');
-    
+
     % Enable 32 bpc floating point framebuffer, so fractional color values
     % can be represented accurately. We will store XYZ tristimulus color
     % values in the frambuffer, not RGB values:
     PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
-    
+
     % Also use unrestricted color range for writing arbitrary color values
     % to the framebuffer:
     PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
-    
+
     % It shall use builtin fast SensorToPrimary() plugin:
     PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'SensorToPrimary');
-    
+
     % Check for valid (displayable) final color values in 0.0 - 1.0 range.
     % Mark out-of-range pixels visually:
     PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'CheckOnly');
-    
+
     % Open it: Our window operates in XYZ color space, so we need to define
     % a XYZ background input color that leads to our desired background
     % color 'bgcolor':
     background = PrimaryToSensor(cal, bgcolor);
     [win2, winRect2] = PsychImaging('OpenWindow', screenId, background, [310 0 610 300], [], [], [], [], [], kPsychGUIWindow);
-    
+
     % Assign 'cal' struct for XYZ -> RGB conversion:
     PsychColorCorrection('SetSensorToPrimary', win2, cal);
-    
+
     % Compared to above, we can skip the SensorToPrimary step:
     XYZ = xyYToXYZ(xyY);
-    
+
     % Simply draw to the framebuffer, directly in XYZ format instead of RGB:
     % We can use fillrect to draw the patch, without intermediate need for
     % textures:
     dstRect2 = CenterRect([0 0 nX nY], winRect2);
     Screen('FillRect', win2, XYZ, dstRect2);
-    
-    % Readback image in XYZ format from framebuffer:    
+
+    % Readback image in XYZ format from framebuffer:
     readBack2In = Screen('GetImage', win2, [], 'drawBuffer', 1);
-    
+
     % Show it:
     Screen('Flip', win2);
-    
-    % Read back final image from framebuffer, for correctness check:    
+
+    % Read back final image from framebuffer, for correctness check:
     readBack2 = Screen('GetImage', win2, dstRect2);
-    
+
     % Plot manual and automatic result for comparison:
     close all;
     imshow(readBack1);
     figure;
     imshow(readBack2);
-    
+
     fprintf('\n\nPress any key to continue. This will demonstrate the most simple way to do it via the imaging pipeline.\n');
     fprintf('This method allows to draw and define your stimulus completely in the xyY chromacity+luminance color space.\n');
     fprintf('Screen() will automatically convert your xyY color values to proper RGB framebuffer values before display.\n\n');
     KbStrokeWait(-1);
-    
+
     % Now the same thing, but we draw colors directly in (x,y) chromacity and Y
     % luminance format [x,y,Y] into the framebuffer. The imaging pipeline
     % will do the complete conversion from xyY space to XYZ space and then
@@ -277,49 +280,49 @@ try
     % card for display linearization:
     % Open a 2nd window, now using the imaging pipeline:
     PsychImaging('PrepareConfiguration');
-    
+
     % Enable 32 bpc floating point framebuffer, so fractional color values
     % can be represented accurately. We will store xyY chromacity +
     % luminance color values in the frambuffer, not RGB values:
     PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
-    
+
     % Also use unrestricted color range for writing arbitrary color values
     % to the framebuffer:
     PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
 
     % It shall use builtin fast xyYToXYZ() plugin for xyY -> XYZ conversion:
     PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'xyYToXYZ');
-    
+
     % It shall use builtin fast SensorToPrimary() plugin:
     PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'SensorToPrimary');
 
     % Check for valid (displayable) final color values in 0.0 - 1.0 range.
     % Mark out-of-range pixels visually:
     PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'CheckOnly');
-    
+
     % Open it: Our window operates in xyY color space, so we need to define
     % a xyY background input color that leads to our desired background
     % color 'bgcolor':
     background = XYZToxyY(PrimaryToSensor(cal, bgcolor));
     [win3, winRect3] = PsychImaging('OpenWindow', screenId, background, [0 330 300 630], [], [], [], [], [], kPsychGUIWindow);
-    
+
     % Assign 'cal' struct for XYZ -> RGB conversion:
     PsychColorCorrection('SetSensorToPrimary', win3, cal);
-    
+
     % Simply draw to the framebuffer, directly in xyY format:
     dstRect3 = CenterRect([0 0 nX nY], winRect3);
     Screen('FillRect', win3, xyY, dstRect3);
-    
+
     % Readback image in xyY format from framebuffer:
     readBack3In = Screen('GetImage', win3, dstRect3, 'drawBuffer', 1);
-    
+
     % Show it:
     Screen('Flip', win3);
-    
+
     % Read back final image from framebuffer, for correctness check:
     readBack3 = Screen('GetImage', win3, dstRect3);
 
-    % Plot manual and automatic result for comparison:    
+    % Plot manual and automatic result for comparison:
     close all;
     imshow(readBack1);
     figure;
@@ -327,10 +330,10 @@ try
 
     fprintf('Press any key to end the demo.\n');
     KbStrokeWait(-1);
-    
+
     % sca closes all onscreen windows and restores the original gamma tables:
     sca;
-    
+
     Screen('Preference', 'SuppressAllWarnings', 0);
     Screen('Preference', 'SkipSyncTests', oldsync);
 
