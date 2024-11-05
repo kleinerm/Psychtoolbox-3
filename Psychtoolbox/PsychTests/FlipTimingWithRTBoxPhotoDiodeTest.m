@@ -277,7 +277,7 @@ end
 Screen('Preference', 'VBLTimestampingMode', conf.VBLTimestampingMode);
 fprintf('Enabling VBLTimestampingMode %i.\n', conf.VBLTimestampingMode);
 
-if useRTbox == 2 && ~useXR
+if useRTbox == 2 && ~useXR && ~(Is64Bit && IsARM && IsWayland)
     % Switch Videoswitcher into high precision luminance + trigger mode:
     PsychVideoSwitcher('SwitchMode', res.screenId, 1);
 end
@@ -798,7 +798,7 @@ try
             % Close connection to box:
             PsychRTBox('CloseAll');
 
-            if useRTbox == 2 && ~useXR
+            if useRTbox == 2 && ~useXR && ~(Is64Bit && IsARM && IsWayland)
                 % Switch Videoswitcher into standard passthrough mode:
                 PsychVideoSwitcher('SwitchMode', res.screenId, 1);
             end
