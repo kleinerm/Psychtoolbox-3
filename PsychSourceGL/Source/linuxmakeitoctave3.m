@@ -36,9 +36,17 @@ if mode == -1
     modes = 0:16;
 
     if IsARM
-        % Do not build plugin 16 == PsychOpenXRCore, 12 == PsychOculusVRCore,
-        % 10 == PsychCV, 4 == Eyelink on ARM / RaspberryPi:
-        modes = setdiff (modes, [4, 10, 12, 16]);
+        % Do not build plugin 4 == Eyelink, 12 == PsychOculusVRCore, due to lack
+        % of ARM proprietary libraries for Eyelink, and lack of ARM ovrd executable
+        % for Rift DK-1/DK-2 HMD tracking.
+        modes = setdiff (modes, [4, 12]);
+
+        if ~Is64Bit
+          % Building plugin 16 PsychOpenXRCore is possible on ARM, but does not
+          % really make much sense on 32-Bit ARM like RaspberryPi atm., due to
+          % too limited resources/performance etc., so exclude on 32-Bit ARM:
+          modes = setdiff (modes, [16]);
+        end
     end
 
     for mode = modes
@@ -152,7 +160,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-       mex --output moglcore.mex -Wno-incompatible-pointer-types -Wno-discarded-qualifiers -Wno-int-conversion -DPTB_USE_WAFFLE -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+       mex --output moglcore.mex -Wno-address -Wno-incompatible-pointer-types -Wno-discarded-qualifiers -Wno-int-conversion -DPTB_USE_WAFFLE -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
@@ -190,7 +198,7 @@ if mode==9
     curdir = pwd;
     cd('../../Psychtoolbox/PsychSound/MOAL/source/')
     try
-       mex --output moalcore.mex -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
+       mex --output moalcore.mex -Wno-address -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c
     catch
     end
     unix(['cp moalcore.mex ' PsychtoolboxRoot target]);
@@ -198,7 +206,7 @@ if mode==9
     cd(curdir);
 end
 
-if mode == 10
+if mode == 10 && exist('/usr/include/apriltag', 'dir')
     % Build PsychCV
     mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils
     %mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -DPSYCHCV_USE_ARTOOLKIT -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a
@@ -267,7 +275,7 @@ if mode==15
     unix(['cp ../Projects/Linux/build/PsychVulkanCore.mex ' PsychtoolboxRoot target]);
 end
 
-if mode==16
+if mode==16 && exist('/usr/include/openxr', 'dir')
     % Build PsychOpenXRCore.mex:
     try
         mex --output ../Projects/Linux/build/PsychOpenXRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore -ICommon/PsychOpenXRCore/nanopb Linux/Base/*.c Common/Base/*.c Common/PsychOpenXRCore/*.c Common/PsychOpenXRCore/nanopb/*.c -lc -lrt -ldl -lopenxr_loader
@@ -309,6 +317,7 @@ function mex(varargin)
   end
 
   outargs = {"--mex"};
+  outargs = {outargs{:}, "-Wno-unknown-pragmas"};
   outargs = {outargs{:}, sprintf("-L%sPsychBasic/PsychPlugins", PsychtoolboxRoot)};
   outargs = {outargs{:}, sprintf("-L%sPsychBasic/PsychPlugins/%s", PsychtoolboxRoot, pluginsuffix)};
   outargs = {outargs{:}, "-fexceptions"}; % Explicit exception handling for Octave on RaspberryPi OS.
