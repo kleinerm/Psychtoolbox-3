@@ -76,7 +76,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ./ -output moglcore -DLINUX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE -I./ -I/usr/include -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread -Wno-discarded-qualifiers -Wno-incompatible-pointer-types' -outdir ./ -output moglcore -DLINUX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE -I./ -I/usr/include -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
