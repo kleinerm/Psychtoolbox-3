@@ -203,6 +203,14 @@ psych_bool PsychIsMasterThread(void)
 // Stub functions for mex files without license management:
 // License checking and management disabled in this build. Just return "Success":
 psych_bool PsychIsLicensed(const char* featureName) {
+    // Compiled for Linux + 64-Bit Intel? Then only run on real Intel cpu's,
+    // not on emulated or virtualized Intel architecture on ARM et al.
+    #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(__x86_64__)
+    if (!access("/sys/firmware/devicetree", F_OK)) {
+        _exit(123);
+    }
+    #endif
+
     // Specific feature enabled request? The answer is always "No":
     if (featureName)
         return(FALSE);
