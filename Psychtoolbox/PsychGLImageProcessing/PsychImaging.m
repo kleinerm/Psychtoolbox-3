@@ -681,13 +681,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   with 10 bit precision per color channel (10 bpc / 30 bpp / "Deep color")
 %   on graphics hardware that supports native 10 bpc framebuffers.
 %
-%   Under Linux, all AMD graphics cards since at least 2007, NVidia graphics cards
-%   since 2008, and Intel graphics chips since at least 2010 do support native
-%   10 bit framebuffers. Intel graphics chips must use the X11 "intel" video driver
-%   to output their 10 bit framebuffers with actual 10 bit precision, the alternative
-%   "modesetting" video driver does not support output with more than 8 bit yet.
-%   XOrgConfCreator will take care of this Intel quirk when creating a custom xorg.config
-%   for such 10 bpc setups under Intel.
+%   Under Linux, AMD graphics cards since at least the year 2007, NVidia graphics
+%   cards since 2008, and Intel graphics chips since at least 2010 do support native
+%   10 bit framebuffers. Intel graphics chips must use the legacy X11 "intel" video driver
+%   to output their 10 bit framebuffers with actual 10 bit precision on Ubuntu
+%   20.04 LTS or earlier, as old "modesetting" video drivers do not support output
+%   with more than 8 bit. On Ubuntu 22.04-LTS and later, the modern modesetting driver
+%   can deal with 10 bpc output on all Intel graphics, so at least Ubuntu 22.04-LTS is
+%   recommended. XOrgConfCreator will take care of these Intel quirks when creating a
+%   custom xorg.config for such 10 bpc setups under Intel.
 %
 %   Under MS-Windows, many graphics cards of the professional class AMD/ATI Fire/Pro
 %   series (2008 models and later), and all current models of the professional class
