@@ -231,20 +231,10 @@ try
         moviefiles(end).url = 'http://archive.org/details/LastLecturebyRandyPausch';
         moviefiles(end).credits = 'Randy Pausch''s Last Lecture "Achieving Your Childhood Dreams"';
 
-        % Richard Stallman talks about the dangers of software patents:
-        moviefiles(end+1).name = 'http://archive.org/download/ifso-stallman/ifso-stallman-mpeg1_512kb.mp4';
-        moviefiles(end).url = 'http://archive.org/details/ifso-stallman';
-        moviefiles(end).credits = 'Richard Stallman talks about the dangers of software patents';
-
         % Linus Torvalds talks at Aalto University Finnland:
         moviefiles(end+1).name = 'http://archive.org/download/AaltoTalkWithLinusTorvalds/AaltoTalkWithLinusTorvalds.ogv';
         moviefiles(end).url = 'http://archive.org/details/AaltoTalkWithLinusTorvalds';
         moviefiles(end).credits = 'Linux creator and Millenium prize 2012 winner Linus Torvalds talks at Aalto University Finnland';
-
-        % Elon Musk talks about electrical cars, space-flight and solar power:
-        moviefiles(end+1).name = 'http://video.ted.com/talk/podcast/2013/None/ElonMusk_2013.mp4';
-        moviefiles(end).url = 'http://www.ted.com/talks/elon_musk_the_mind_behind_tesla_spacex_solarcity.html';
-        moviefiles(end).credits = 'At TED Elon Musk talks with Chris Anderson about electrical cars, space-flight and solar power';
 
         % Count all movies in our playlist:
         moviecount = size(moviefiles,2);
