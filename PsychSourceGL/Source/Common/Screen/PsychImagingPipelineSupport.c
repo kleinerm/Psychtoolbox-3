@@ -3196,10 +3196,14 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
     // step to transform the texture into normalized orientation. Non-planar textures would also
     // wreak havoc if not converted into standard pixel-interleaved format:
     if (sourceRecord->textureOrientation != 2 || isplanar) {
-        if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap or format conversion for source gl-texture %i --> ", sourceRecord->textureNumber);
+        if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap or format conversion for source gl-texture %i ...\n", sourceRecord->textureNumber);
 
         // Soft-reset drawing engine in a safe way:
         PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
+
+        // The soft reset will have potentially switched to the wrong OpenGL context if multiple
+        // onscreen windows are in use, which ends badly. Manually switch to the proper context:
+        PsychSetGLContext(sourceRecord);
 
         // Normalization needed. Create a suitable FBO as rendertarget:
         needzbuffer = FALSE;
@@ -3417,7 +3421,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
         sourceRecord->textureOrientation = 2;
 
         // GPU renderswap finished.
-        if (PsychPrefStateGet_Verbosity()>5) printf("%i.\n", sourceRecord->textureNumber);
+        if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): New coltex %i.\n", sourceRecord->textureNumber);
     }
 
     return;
