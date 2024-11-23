@@ -201,7 +201,53 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
 
     // Check if kernel driver is enabled, otherwise this won't work:
     if (!PsychOSIsKernelDriverAvailable(screenId)) {
-        if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported without kernel driver.\n");
+        // No kernel driver? Special handling for macOS:
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            psych_bool isARM;
+            int osVersion = PsychGetOSXMinorVersion(&isARM) - 5;
+
+            // If this is macOS on Apple Silicon, we have some special tricks up our
+            // sleeve for Apples proprietary DCP display engine, otherwise we fall
+            // through to the "unsupported" case:
+            if (isARM) {
+                rcret = 0; // Start with assumption "failure".
+
+                // Step 1: Try to enable or disable dithering on the DCP display engine:
+                if (changeDithering) {
+                    PsychSetOutputDithering(windowRecord, screenId, (passthroughEnable) ? 0 : 1);
+
+                    // Assume success on macOS 13 Ventura or later:
+                    if (osVersion >= 13)
+                        rcret++;
+                }
+
+                // We're done if this an actual passthrough disable, as a full disable isn't yet implemented:
+                if (!passthroughEnable) return(0);
+
+                // Step 2: Load an identity gamma table, found via painful trial and error
+                // of various plausible but ultimately flawed methods. The assumption here is
+                // that of an actual 1024 slot hardware gamma table. This has been tested
+                // and shown to work on a MacBookPro 16 inch mid 2023 with "M2 Pro" SoC:
+                float minGamma = 0;
+                float maxGamma = 1023.0 / 1024.0;
+                float gammaVal = 1;
+                if (!PsychLoadNormalizedGammaTable(screenId, 0, 1, &minGamma, &maxGamma, &gammaVal)) {
+                    if(PsychPrefStateGet_Verbosity() > 3) {
+                        printf("PTB-INFO: GPU framebuffer passthrough setup failed on screenid %i. Failed to establish identity passthrough!\n", screenId);
+                        printf("PTB-INFO: Could not upload an identity LUT on macOS for Apple Silicon. May still work due to hopefully disabled dithering, who knows?\n");
+                    }
+                }
+                else {
+                    rcret++;
+                }
+
+                return(rcret);
+            }
+        #endif
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported without kernel driver.\n");
+
         return(0xffffffff);
     }
 

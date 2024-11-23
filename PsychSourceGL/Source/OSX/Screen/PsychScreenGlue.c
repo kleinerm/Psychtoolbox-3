@@ -1829,6 +1829,70 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
     return(TRUE);
 }
 
+/*
+ * Try to en/disable display dithering on screenId via macOS registry modifications.
+ * This is needed on Apple Silicon proprietary DCP display engines, as old methods
+ * based on the PsychtoolboxKernelDriver do no longer work. Neither does loading a
+ * clever identity gamma table by itself.
+ *
+ * The success of the registry update can be tested from a terminal via:
+ * ioreg -lw0 | grep -i enableDither
+ *
+ * The current implementation only works on macOS 13 Ventura and later.
+ *
+ * This code was highly inspired by the approach of the MIT licensed "StillColor" app
+ * (https://github.com/aiaf/Stillcolor). Thanks!
+ *
+ * TODO FIXME:
+ *
+ * Note that the current implementation en-/disables dithering on *all* displays,
+ * not just the one requested via 'screenId'. This is a limitation, but it is what
+ * it is.
+ */
+void PsychRegistrySetDitherMode(int screenId, unsigned int ditherOn)
+{
+    kern_return_t kr;
+    io_service_t service;
+    io_iterator_t iterator = IO_OBJECT_NULL;
+    psych_bool failed = FALSE;
+
+    (void) screenId;
+
+    // So far this method does not work on macOS older than Ventura aka macOS 13:
+    if (PsychGetOSXMinorVersion(NULL) - 5 < 13) {
+        failed = TRUE;
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: Display dithering control via macOS registry only works on macOS 13 Ventura or later. Can't control dithering.\n");
+    }
+
+    // kIOMainPortDefault is synomymous to kIOMasterPortDefault and 0. We use 0 to avoid deprecation warnings:
+    kr = IOServiceGetMatchingServices(0, IOServiceMatching("IOMobileFramebufferAP"), &iterator);
+    if (kr != KERN_SUCCESS || iterator == IO_OBJECT_NULL) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: Failed to get IOMobileFramebufferAP iterator for dithering control! Can't control dithering.\n");
+
+        return;
+    }
+
+    while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
+        kr = IORegistryEntrySetCFProperty(service, CFSTR("enableDither"), ditherOn ? kCFBooleanTrue : kCFBooleanFalse);
+        if (kr != KERN_SUCCESS) {
+            failed = TRUE;
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR: For display service index %i, failed to %s dithering via macOS registry property update!\n",
+                       (unsigned int) service, ditherOn ? "enable" : "disable");
+        }
+
+        IOObjectRelease(service);
+    }
+
+    IOObjectRelease(iterator);
+
+    if (PsychPrefStateGet_Verbosity() > (failed ? 0 : 4))
+        printf("PTB-DEBUG: On all screens, dithering %s requested via macOS registry. %s\n",
+               ditherOn ? "enable" : "disable", failed ? "This seems to have failed on at least one display!" : "");
+}
+
 // Try to detach to kernel level ptb support driver and tear down everything:
 void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 {
@@ -2099,6 +2163,15 @@ int PsychOSKDGetBeamposition(int screenId)
 // Try to change hardware dither mode on GPU:
 void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 {
+    psych_bool isARM;
+    PsychGetOSXMinorVersion(&isARM);
+
+    // Special handling for Apple Silicon DCP display engine:
+    if (isARM) {
+        PsychRegistrySetDitherMode(screenId, ditherOn);
+        return;
+    }
+
     // Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
     PsychKDCommandStruct syncCommand;
 
