@@ -20,7 +20,10 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %    This enables the Java-based GetChar support on Matlab.
 % 3. Add the PsychStartup.m routine to Matlab's and Octave's startup.m file on Windows.
 % 4. Set the proper pathes to Psychtoolbox and its mex files.
-% 4. Perform post-installation checks, configuration and basic troubleshooting.
+% 5. Perform post-installation checks, configuration and basic troubleshooting.
+% 6. Perform first time software license activation management for user accounts
+%    on operating system and machine setups for which this is needed to use
+%    the software.
 
 %
 % History:
@@ -79,6 +82,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 02/05/2023 64-Bit Octave 7.3.0 support for Windows and OSX. (MK)
 % 03/12/2023 64-Bit Octave 8.1.0 support for OSX. (MK)
 % 12/16/2023 Guard against running on macOS with Matlab/Octave for native Apple Silicon. (MK)
+% 11/24/2024 Call the 1st time setup routine PsychLicenseHandling() as
+%            needed to enable license management on Apple macOS and
+%            Microsoft Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -295,33 +301,24 @@ if IsOSX
     end
 end
 
-% Matlab specific setup:
-if ~IsOctave
-    % Check if this is Matlab of version prior to V 7.4:
-    v = ver('matlab');
-    if ~isempty(v)
-        v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-        if (v(1) < 7) || ((v(1) == 7) && (v(2) < 4))
-            % Matlab version < 7.4 detected. This is no longer
-            % supported.
-            fprintf('\n\nYou are using a Matlab version older than Version 7.4.\n');
-            fprintf('The current "beta" flavor is no longer compatible with your version of Matlab.\n');
-            fprintf('Current "beta" only works on Matlab Version 7.4 (R2007a) or later.\n\n');
-            fprintf('I will try to finish setup, but most functions will not work for you.\n');
-            fprintf('Please run the legacy DownloadLegacyPsychtoolbox() downloader to download an outdated,\n');
-            fprintf('but functional older version of Psychtoolbox (e.g., V3.0.9) for your Matlab setup or to\n');
-            fprintf('receive further instructions.\n');
-            fprintf('\n\nPress any key to continue after you have read and understood above message completely.\n\n');
-            pause;
-        end
-    end
+% Check if this is Matlab of a version prior to V7.4: verLessThan was introduced in v7.4 / R2007a:
+if ~IsOctave && ~exist('verLessThan') %#ok<EXIST>
+    % Matlab version < 7.4 detected. This is no longer supported.
+    fprintf('\n\nYou are using a Matlab version older than Version 7.4.\n');
+    fprintf('The current Psychtoolbox is no longer compatible with your version of Matlab.\n');
+    fprintf('It only works on Matlab Version 7.4 (R2007a) or later.\n\n');
+    fprintf('Please run the legacy DownloadLegacyPsychtoolbox() downloader to download an outdated,\n');
+    fprintf('but functional older version of Psychtoolbox (e.g., V3.0.9) for your Matlab setup or to\n');
+    fprintf('receive further instructions.\n');
+    fprintf('Matlab versions older than v7.4 aka R2007a are no longer supported. Setup aborted.\n');
+    return;
 end
 
 % Special case handling for Octave:
 if IsOctave
     % GNU/Octave. Need to prepend the proper folder with
     % the pseudo-MEX files to path:
-    rc = 0; %#ok<NASGU>
+    rc = 0;
     rdir = '';
 
     try
@@ -485,13 +482,13 @@ if IsOctave
     end
 
     if  (IsOSX && (~ismember(octavemajorv, [6,7,8,9]))) || ...
-        (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, [3]))) || ...
+        (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, 3))) || ...
         (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 8)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything from 4.4 to at least 7.x and presumably 8.x is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x, 7.x or maybe 8.x series.\n');
+            % On Linux everything from 4.4 to at least 8.x and presumably 9.x is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x, 7.x, 8.x or maybe 9.x series.\n');
             fprintf('WARNING: You can get Psychtoolbox for other, or more recent, versions of Octave from NeuroDebian.\n');
         elseif IsOSX
             fprintf('WARNING: only using Octave 6 or Octave 7 or Octave 8 or Octave 9 with this version of Psychtoolbox.\n');
@@ -511,7 +508,7 @@ if IsOctave
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
         % Preferred location is the folder with our mex files - found by the @rpath = @loader_path encoded in our mex files.
         tdir = PsychHomeDir('lib');
-        dummy = unlink([tdir 'liboctinterp.dylib']);
+        dummy = unlink([tdir 'liboctinterp.dylib']); %#ok<*NASGU>
         dummy = unlink([tdir 'liboctave.dylib']);
         dummy = unlink([rdir filesep 'liboctinterp.dylib']);
         dummy = unlink([rdir filesep 'liboctave.dylib']);
@@ -563,9 +560,9 @@ end
 
 % Special case handling for different Matlab releases on MS-Windoze:
 if IsWin && ~IsOctave
-    rc = 0; %#ok<NASGU>
+    rc = 0;
 
-    if strfind(cd,'system32')
+    if strfind(cd, 'system32') %#ok<STRIFCND>
         % the below code fails if the current directory is system32 (e.g.
         % C:\Windows\system32), as it contains dlls like version.dll, which
         % get called instead of the built-in functions....
@@ -577,7 +574,7 @@ if IsWin && ~IsOctave
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
 
         % Is this a Release2014b (Version 8.4.0) or later Matlab?
-        if ~exist('verLessThan') || verLessThan('matlab', '8.4.0') %#ok<EXIST>
+        if verLessThan('matlab', '8.4.0')
             % This is a pre-R2014b Matlab: No longer supported by V 3.0.18+
             fprintf('Matlab release prior to R2014b detected. This version is no longer\n');
             fprintf('supported by Psychtoolbox 3.0.18 and later. Aborted.');
@@ -585,8 +582,7 @@ if IsWin && ~IsOctave
             return;
         else
             % This is a R2014b or later Matlab:
-            % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab
-            % path:
+            % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab path:
             rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\'];
             fprintf('Matlab release 2014b or later detected. Will prepend the following\n');
             fprintf('folder to your Matlab path: %s ...\n', rdir);
@@ -627,7 +623,6 @@ if IsWin && ~IsOctave
         % Failed! Either screwed setup of path or missing VC++ 2019 runtime libraries.
         fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2019 runtime libraries\n');
         fprintf('ERROR: are missing on your system.\n\n');
-        % Need 64-Bit runtime:
         fprintf('ERROR: Execute the installer file vcredist_x64_2015-2019.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
@@ -644,6 +639,21 @@ end
 if ~IsOctave
     % Try to setup Matlab static Java class path:
     PsychJavaTrouble(1);
+end
+
+try
+    % Time for one-time license setup for this user account on this operating system
+    % and machine combination, if this is required for the given Psychtoolbox
+    % variant. Otherwise it is a no-op:
+    if ~PsychLicenseHandling('Setup')
+        % A required software licensing setup procedure failed, or there isn't
+        % any valid and active license for this machine. The mex files will not
+        % work, so there is no point in continuing with setup:
+        fprintf('Psychtoolbox setup aborted due to failed software licensing setup or machine not licensed.\n');
+        return;
+    end
+catch
+    warning('Software licensing setup failed for some reason. This may end badly soon...');
 end
 
 % Check if Screen is functional:
@@ -766,7 +776,7 @@ catch
     fprintf('Screen() failed to work for some reason:\n\n');
     if IsWin
       fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.20.5\n');
-      fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
+      fprintf('or a later version. Screen() will not work with earlier versions, or without GStreamer,\n');
       fprintf('or with the MinGW variants of the GStreamer runtime!\n');
       fprintf('Read ''help GStreamer'' for more info.\n\n');
     end
@@ -808,16 +818,23 @@ fprintf('accompanied by their respective licenses.\n\n');
 
 fprintf('A few components are licensed under the GNU GPL v2 license with a special linking\n');
 fprintf('exception for use with Mathworks proprietary Matlab application. A very few components,\n');
-fprintf('e.g., the PsychCV() function are currently covered by the standard GPL v2 license and\n');
+fprintf('could be covered in non-standard build configurations by the standard GPL v2 license and\n');
 fprintf('cannot be used with Matlab. These are only available for use with GNU/Octave.\n\n');
 
 fprintf('Please read the license text and copyright info in the Psychtoolbox file\n');
 fprintf('License.txt carefully before you use or redistribute Psychtoolbox-3.\n');
 fprintf('Use of Psychtoolbox-3 components implies that you have read, understood and accepted\n');
 fprintf('the licensing conditions.\n\n');
+
+fprintf('Psychtoolbox and its prebuilt mex files are distributed in the hope that they will be useful, but\n');
+fprintf('WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n');
+
+fprintf('If you have any questions with respect to data protection and the privacy policy related to use of\n');
+fprintf('the prebuilt mex files bundled with Psychtoolbox, as far as network licensing is used on your\n');
+fprintf('operating system and configuration, please type "help PsychLicenseHandling".\n\n');
 fprintf('However, in a nutshell, if you just use Psychtoolbox for your research, our licenses\n');
 fprintf('don''t restrict you in any practically relevant way. Commercial users, developers or\n');
-fprintf('redistributors should make sure they understood the licenses for the components they use.\n');
+fprintf('redistributors should make sure they understand the licenses for the components they use.\n');
 fprintf('If in doubt, contact one of the Psychtoolbox developers, or the original authors of the\n');
 fprintf('components you want to use, modify, merge or redistribute with other software.\n\n');
 fprintf('Your standard Psychtoolbox distribution comes without the source code for\n');
@@ -853,7 +870,7 @@ fprintf('\n\n');
 
 % Clear out everything:
 if IsWin
-    clear all;
+    clear all; %#ok<CLALL>
 end
 
 if IsOSX
