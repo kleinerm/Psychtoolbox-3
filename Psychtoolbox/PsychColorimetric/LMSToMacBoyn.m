@@ -86,6 +86,26 @@ function ls = LMSToMacBoyn(LMS,T_cones,T_lum)
     title('CIE 170-2:2015 Figure 8.2');
 %}
 %{
+    % Recreate the diagram with respect to the Smith-Pokorny fundamentals.
+    clear; close all;
+    load T_cones_sp
+    load T_xyzJuddVos
+    T_xyzJuddVos = SplineCmf(S_xyzJuddVos,T_xyzJuddVos,S_cones_sp);
+    lsSpectrumLocus = LMSToMacBoyn(T_cones_sp,T_cones_sp,T_xyzJuddVos);
+
+    % Compute ls for equal energy white
+    LMSEEWhite = sum(T_cones_sp,2);
+    lsEEWhite = LMSToMacBoyn(LMSEEWhite,T_cones_sp,T_xyzJuddVos); 
+
+    % Plot
+    figure; hold on;
+    plot(lsSpectrumLocus(1,:)',lsSpectrumLocus(2,:)','r','LineWidth',3);
+    plot(lsEEWhite(1),lsEEWhite(2),'bs','MarkerFaceColor','b','MarkerSize',12);
+    xlim([0.4 1]); ylim([0,1]);
+    xlabel('l chromaticity'); ylabel('s chromaticity');
+    title('MacBoyn wrt Smith-Pokorny/JuddVos');
+%}
+%{
     % Demonstrate invariance of ls after scaling of cones and luminance, as
     % long as LMS valued are computed with respect to passed cones and
     % luminance.
