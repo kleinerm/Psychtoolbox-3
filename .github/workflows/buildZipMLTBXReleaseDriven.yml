@@ -18,6 +18,12 @@ jobs:
       - name: checkout the repo
         uses: actions/checkout@v4
 
+      - name: Setup octave
+        run:  sudo apt update ; sudo apt install -y octave
+
+      - name: Integrate Cryptlex LexActivator runtime libraries into Psychtoolbox folder
+        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../managementtools'); downloadlexactivator;"
+
       - name: Zip the toolbox
         run: zip -r '${{  github.ref_name }}.zip' Psychtoolbox
 
