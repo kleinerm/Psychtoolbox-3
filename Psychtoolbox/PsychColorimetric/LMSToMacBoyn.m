@@ -91,11 +91,11 @@ function ls = LMSToMacBoyn(LMS,T_cones,T_lum)
     load T_cones_sp
     load T_xyzJuddVos
     T_xyzJuddVos = SplineCmf(S_xyzJuddVos,T_xyzJuddVos,S_cones_sp);
-    lsSpectrumLocus = LMSToMacBoyn(T_cones_sp,T_cones_sp,T_xyzJuddVos);
+    lsSpectrumLocus = LMSToMacBoyn(T_cones_sp,T_cones_sp,T_xyzJuddVos(2,:));
 
     % Compute ls for equal energy white
     LMSEEWhite = sum(T_cones_sp,2);
-    lsEEWhite = LMSToMacBoyn(LMSEEWhite,T_cones_sp,T_xyzJuddVos); 
+    lsEEWhite = LMSToMacBoyn(LMSEEWhite,T_cones_sp,T_xyzJuddVos(2,:)); 
 
     % Plot
     figure; hold on;
