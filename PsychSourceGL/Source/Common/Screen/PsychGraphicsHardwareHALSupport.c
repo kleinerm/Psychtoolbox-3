@@ -737,10 +737,12 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
             // Intel IGP:
 
             // No secondary surface atm., but (ab)use to store the latched next requested surface address for reg doublebuffering:
-            *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, 0x7019C + (headid * 0x1000), NULL);;
+            // We mask out the lowest 12 bits, as they may store unrelated scanout surface information, as of macOS 13 Ventura,
+            // which would taint comparisons below.
+            *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, 0x7019C + (headid * 0x1000), NULL) & 0xFFFFF000;
 
             // Get primarySurface address from plane base address live register, ie. the true current value from last completed flip:
-            *primarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, 0x701AC + (headid * 0x1000), NULL);
+            *primarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, 0x701AC + (headid * 0x1000), NULL) & 0xFFFFF000;
 
             // primarySurface encodes current scanout buffer address - live, whereas secondarySurface encodes pre-doublebuffered
             // address for a flip. If both are identical then no flip is pending. If they differ then obviously the wanted
@@ -756,8 +758,10 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
 
             if (gpuMaintype == kPsychIntelIGP) {
                 // Intel:
-                printf("PTB-DEBUG: %6lf : Screen %i: Head %i: currentSurface=%p <-- requestedSurface=%p : updatePending=%i\n",
-                       tNow, screenId, headid, *primarySurface, *secondarySurface, (int) *updatePending);
+                printf("PTB-DEBUG: %6lf : Screen %i: Head %i: currentSurface=%p <-- requestedSurface=%p : updatePending=%i : tilingOffset=%p : linearOffset=%p\n",
+                       tNow, screenId, headid, *primarySurface, *secondarySurface, (int) *updatePending, (psych_uint64) PsychOSKDReadRegister(screenId, 0x701A4 + (headid * 0x1000), NULL),
+                       (psych_uint64) PsychOSKDReadRegister(screenId, 0x70184 + (headid * 0x1000), NULL));
+
             } else {
                 // AMD:
                 printf("PTB-DEBUG: %6lf : Screen %i: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i",

@@ -120,7 +120,7 @@ typedef struct {
 } display_mode_t;
 
 // Apple macOS CGS private api. Subject to backwards incompatible and breaking change without any notice or warning!
-// Work as of macOS 10.11, 10.12, 10.13, 10.14, 10.15 and hopefully later versions.
+// Work as of macOS 10.11, 10.12, 10.13, 10.14, 10.15, 11, 12, 13 and hopefully later versions.
 #define MODE_SIZE (sizeof(display_mode_t) - sizeof(char) * 32 - sizeof(int))
 void CGSGetCurrentDisplayMode(CGDirectDisplayID display, int *mode);
 void CGSConfigureDisplayMode(CGDisplayConfigRef config, CGDirectDisplayID display, int mode);
