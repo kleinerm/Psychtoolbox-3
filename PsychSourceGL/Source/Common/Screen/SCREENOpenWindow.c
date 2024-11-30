@@ -326,30 +326,54 @@ PsychError SCREENOpenWindow(void)
         psych_bool isARM;
 
         PsychGetOSXMinorVersion(&isARM);
-        if (isARM && !(specialflags & kPsychExternalDisplayMethod) && !dontCaptureScreen) {
+        if (isARM && !(specialflags & kPsychExternalDisplayMethod) && !(specialflags & kPsychBackendDecisionMade) && !dontCaptureScreen) {
             // M1 SoC or later, Apple proprietary gpu with OpenGL emulated on top of Metal + CoreAnimation.
             // This does not work at all with OpenGL CGL low-level fullscreen display mode, only through
             // Cocoa+NSOpenGL+NSWindow on top of CoreAnimation. Not using Cocoa will simply error abort with
-            // a "CGLSetFullScreenOnDisplay failed: invalid fullscreen drawable" error. So we switch to Cocoa
-            // voluntarily. Ofc. with this, OpenGL display timing/timestamping is utterly broken, but it may
-            // allow users to limp along on their new shiny expensive M1 iToy. We take specialflags setting
-            // kPsychExternalDisplayMethod as a sign that the user requested Vulkan backend display or similar
-            // to try to workaround this issue, so we spare them extra warnings and actions, etc.:
+            // a "CGLSetFullScreenOnDisplay failed: invalid fullscreen drawable" error. So we have to switch
+            // to Cocoa voluntarily. Proper visual stimulus presentation timing and timestamping also requires
+            // use of our Vulkan display backend, which itself requires complex setup by PsychImaging.m and
+            // PsychVulkan.m. If Screen('Openwindow', ...) is called directly, instead of high-level wrapped
+            // via PsychImaging('OpenWindow', ...), this crucial setup can't happen. Therefore we detect this
+            // direct call by the absence of the specialflags flag kPsychBackendDecisionMade, and call
+            // PsychImaging('OpenWindow', ...) on behalf of the users script, essentially rewriting the call to
+            // Screen('OpenWindow', ...) into an equivalent PsychImaging('OpenWindow', ...), so PsychImaging
+            // can make the Vulkan vs. OpenGL decision and possibly perform needed Vulkan setup, then recursively
+            // call back into us. This allows legacy user scripts which don't use PsychImaging to continue to work
+            // unmodified on macOS for Apple Silicon Macs.
+            if (PsychPrefStateGet_Verbosity() > 2)
+                printf("PTB-INFO: Running on a macOS Apple Silicon system: Checking if Vulkan display backend should be used.\n");
 
-            // Need to take action. Request Quartz composition / Cocoa / NSOpenGL backend:
-            PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychUseAGLCompositorForFullscreenWindows);
+            // Array with PsychImaging return arguments [win, winRect]:
+            PsychGenericScriptType *outputs[2];
 
-            if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: This is a Apple silicon based ARM M1 SoC or later with Apple proprietary gpu.\n");
-                printf("PTB-WARNING: All of Psychtoolbox own timing and timestamping mechanisms will not work on\n");
-                printf("PTB-WARNING: such a machine, leading to disastrously bad visual stimulus presentation timing\n");
-                printf("PTB-WARNING: and timestamping. Do not trust or use this machine if timing is of any concern!\n");
-                printf("PTB-WARNING: You may want to try enabling Psychtoolbox Vulkan display backend, after proper\n");
-                printf("PTB-WARNING: configuration. See 'help PsychImaging' the section about the 'UseVulkanDisplay'\n");
-                printf("PTB-WARNING: task, and 'help PsychHDR' for some more setup instructions for MoltenVK on macOS.\n");
-                printf("PTB-WARNING: Note that this approach is completely unsupported by us in case of any problems, and\n");
-                printf("PTB-WARNING: may just be as bad performance and timing-wise. It is completely untested on M1.\n");
+            // Prepare/Assing PsychImaging('OpenWindow', ...); call arguments:
+            int nrInputs = PsychGetNumInputArgs() + 1;
+            PsychGenericScriptType *inputs[nrInputs];
+            for (int i = 0; i < nrInputs; i++) {
+                inputs[i] = (PsychGenericScriptType*) PsychGetInArgPtr(i);
             }
+
+            // Call [win, winRect] = PsychImaging('OpenWindow', ...); and error out on error:
+            // PsychImaging('OpenWindow', ...); itself will decide on a display backend, OpenGL or Vulkan,
+            // set things up in case of Vulkan, and then recursively call us, ie. Screen('OpenWindow', ...);
+            // with potentially tweaked parameters and the specialflags setting kPsychBackendDecisionMade
+            // again, so this code branch gets skipped and the regular Screen('OpenWindow', ...) will run.
+            // Its return arguments will be post-processed by PsychImaging and then PsychImaging returns
+            // final [win, winRect] = PsychImaging('OpenWindow', ...); [win, winRect] arguments to us
+            // when returning from this call, and we will return those return args to our caller.
+            if (Psych_mexCallMATLAB(2, outputs, nrInputs, inputs, "PsychImaging"))
+                PsychErrorExitMsg(PsychError_user, "Error in PsychImaging('OpenWindow', ...) redirected call on Apple Silicon system!");
+
+            // Worked! Return the window index and the rect argument from [win, winRect] = PsychImaging('OpenWindow', ...):
+            for (int i = 0; i < PsychGetNumOutputArgs(); i++) {
+                if (PsychIsArgPresent(PsychArgOut, i + 1)) {
+                    *PsychGetOutArgMxPtr(i + 1) = outputs[i];
+                }
+            }
+
+            // Back to caller of [win, winRect] = Screen('OpenWindow', ...);
+            return(PsychError_none);
         }
     }
     #endif

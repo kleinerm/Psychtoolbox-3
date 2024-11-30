@@ -1755,7 +1755,7 @@ persistent reqs;
 
 % This global variable signals if a GPGPU compute api is enabled, and which
 % one. 0 = None, 1 = GPUmat.
-global psych_gpgpuapi;
+global psych_gpgpuapi; %#ok<*GVMIS>
 
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
@@ -1946,6 +1946,26 @@ if strcmpi(cmd, 'OpenWindow')
 
         % Compute special OpenWindow overrides for winRect, framebuffer rect, specialflags and MSAA, as needed:
         [winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample, screenid] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample);
+    else
+        % No VR/AR/XR operation, but displaying on a more conventional display.
+
+        % Force the UseVulkanDisplay task if it doesn't exist already if running
+        % on macOS for Apple Silicon, as that is the only display backend which
+        % can ensure proper visual stimulus presentation timing and timestamping:
+        % TODO ASE: Add conditions like "windowed" or some ConserveVRAM flags
+        % etc. to prevent forced use of Vulkan...
+        if IsOSX && IsARM && isempty(find(mystrcmp(reqs, 'UseVulkanDisplay')))
+            % Request Vulkan display backend:
+            reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
+
+            % Set ovrSpecialFlags to signal that the backend decision has been
+            % made intentionally and explicitely for Screen() by PsychImaging():
+            if isempty(ovrSpecialFlags)
+                ovrSpecialFlags = 0;
+            end
+
+            ovrSpecialFlags = mor(ovrSpecialFlags, kPsychBackendDecisionMade);
+        end
     end
 
     % If multiSample is still "use default" choice, then override it to our default of 0 for "no MSAA":
