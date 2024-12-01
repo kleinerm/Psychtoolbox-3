@@ -419,8 +419,13 @@ PTB_EXPORT void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *p
  */
 void PsychExitGlue(void)
 {
+    if (psych_recursion_debug) printf("PTB-DEBUG: Module %s final recursive call level %i.\n", PsychGetModuleName(), recLevel);
+
     // Perform platform independent shutdown:
     PsychErrorExitMsg(PsychExit(),NULL);
+
+    // Reset our firstTime flag:
+    firstTime = TRUE;
 
     // And we are dead. Now the runtime will flush us from process memory,
     // at least on Matlab and Octave 3.7+. In any case no further invocation will happen
