@@ -552,6 +552,19 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     if (initialized)
         return;
 
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    if (PSYCH_SYSTEM == PSYCH_OSX) {
+        // Lock ourselves into host process memory on macOS, to prevent us, and thereby
+        // the statically linked into us MoltenVK library, from being cleared out of memory
+        // on a clear call. Doing so end very badly only a driver reload, crashing inside the
+        // Obj-C part of MoltenVK, specifically in mvkGetEnvVar -> [NSProcessInfo environment].
+        mexLock();
+
+        if (verbosity >= 5)
+            printf("PsychVulkanCore-INFO: Locked ourselves into memory to prevent reload crashes on macOS with MoltenVK.\n");
+    }
+    #endif
+
     memset(isSuitableDriver, 0, sizeof(isSuitableDriver));
 
     // Establish a connection to the host windowing system and get a connection handle:
