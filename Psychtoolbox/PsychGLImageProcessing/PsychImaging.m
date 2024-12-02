@@ -1952,19 +1952,21 @@ if strcmpi(cmd, 'OpenWindow')
         % Force the UseVulkanDisplay task if it doesn't exist already if running
         % on macOS for Apple Silicon, as that is the only display backend which
         % can ensure proper visual stimulus presentation timing and timestamping:
-        % TODO ASE: Add conditions like "windowed" or some ConserveVRAM flags
-        % etc. to prevent forced use of Vulkan...
         if IsOSX && IsARM && isempty(find(mystrcmp(reqs, 'UseVulkanDisplay')))
-            % Request Vulkan display backend:
-            reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
+            % Only auto-enable Vulkan backend for opaque top-level fullscreen windows:
+            if ((isempty(winRect) || isequal(winRect, Screen('Rect', screenid)) || isequal(winRect, Screen('GlobalRect', screenid))) && ...
+               (Screen('Preference', 'WindowShieldingLevel') >= 2000))
+                % Request Vulkan display backend:
+                reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
 
-            % Set ovrSpecialFlags to signal that the backend decision has been
-            % made intentionally and explicitely for Screen() by PsychImaging():
-            if isempty(ovrSpecialFlags)
-                ovrSpecialFlags = 0;
+                % Set ovrSpecialFlags to signal that the backend decision has been
+                % made intentionally and explicitely for Screen() by PsychImaging():
+                if isempty(ovrSpecialFlags)
+                    ovrSpecialFlags = 0;
+                end
+
+                ovrSpecialFlags = mor(ovrSpecialFlags, kPsychBackendDecisionMade);
             end
-
-            ovrSpecialFlags = mor(ovrSpecialFlags, kPsychBackendDecisionMade);
         end
     end
 

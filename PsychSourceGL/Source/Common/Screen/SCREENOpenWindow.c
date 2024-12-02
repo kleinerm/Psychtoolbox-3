@@ -317,7 +317,8 @@ PsychError SCREENOpenWindow(void)
     specialflags = 0;
     PsychCopyInIntegerArg64(9,FALSE, &specialflags);
     if (specialflags < 0 || (specialflags > 0 &&
-        !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychExternalDisplayMethod | kPsychDontUseFlipperThread | kPsychSkipSecondaryVsyncForFlip))))
+        !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychBackendDecisionMade | kPsychExternalDisplayMethod | kPsychDontUseFlipperThread |
+          kPsychSkipSecondaryVsyncForFlip))))
         PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
     // Check if this is macOS on a Apple Silicon ARM M1+ SoC with Apple proprietary gpu:
@@ -342,7 +343,7 @@ PsychError SCREENOpenWindow(void)
             // call back into us. This allows legacy user scripts which don't use PsychImaging to continue to work
             // unmodified on macOS for Apple Silicon Macs.
             if (PsychPrefStateGet_Verbosity() > 2)
-                printf("PTB-INFO: Running on a macOS Apple Silicon system: Checking if Vulkan display backend should be used.\n");
+                printf("PTB-INFO: Running on a macOS Apple Silicon system: Checking if Vulkan display backend should be used on this legacy script.\n");
 
             // Array with PsychImaging return arguments [win, winRect]:
             PsychGenericScriptType *outputs[2];
