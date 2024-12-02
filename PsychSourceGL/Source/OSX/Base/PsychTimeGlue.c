@@ -106,11 +106,11 @@ double PsychYieldIntervalSeconds(double delaySecs)
 
 double PsychGetKernelTimebaseFrequencyHz(void)
 {
-    long double                 clockPeriodNSecs;
-    mach_timebase_info_data_t   tbinfo;
+    if (!isKernelTimebaseFrequencyHzInitialized) {
+        long double                 clockPeriodNSecs;
+        mach_timebase_info_data_t   tbinfo;
 
-    if(!isKernelTimebaseFrequencyHzInitialized){
-        // Retrieve the mach absolute time timebase.  The kernel expresses the period in two integers, the ratio of which is the clock period.
+        // Retrieve the mach absolute time timebase. The kernel expresses the period in two integers, the ratio of which is the clock period.
         mach_timebase_info(&tbinfo);
 
         // Calculate the mach timebase period from values reported from the mach kernel.
@@ -120,10 +120,10 @@ double PsychGetKernelTimebaseFrequencyHz(void)
         // Frequency in Hz is a convenient form because it makes converting from a period in seconds into a period in mach timebase units easy:
         //  time_interval_in_mach_units= time_interval_in_seconds * clockFrequencyHz;
         kernelTimebaseFrequencyHz = 1000000000.0 / clockPeriodNSecs;
-        isKernelTimebaseFrequencyHzInitialized=TRUE;
+        isKernelTimebaseFrequencyHzInitialized = TRUE;
     }
 
-    return((double)kernelTimebaseFrequencyHz);
+    return((double) kernelTimebaseFrequencyHz);
 }
 
 /* Called at Module init time: */
