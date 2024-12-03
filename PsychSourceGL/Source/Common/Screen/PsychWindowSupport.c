@@ -953,11 +953,15 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // and trouble, so only run time-reduced synctests, and skip various warnings if they should
     // fail, as this is strictly non of our business:
     if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) {
-        if (PsychPrefStateGet_Verbosity() > 2)
-            printf("PTB-INFO: External display method is in use for this window. Running short and lenient timing tests only.\n");
-
         if (skip_synctests < 1)
             skip_synctests = 1;
+
+        // macOS on Apple Silicon proprietary AGFX gpu and display engine? Skip sync tests completely, they are pointless:
+        if ((PSYCH_SYSTEM == PSYCH_OSX) && strstr((*windowRecord)->gpuCoreId, "AGFX"))
+            skip_synctests = 2;
+
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: External display method is in use for this window. %s\n", (skip_synctests < 2) ? "Running short and lenient timing tests only." : "");
     }
 
     // If this is a windowed onscreen window, be lenient with synctests. Make sure they never fail,
