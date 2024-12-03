@@ -606,7 +606,7 @@ const char* PsychSupportStatus(void)
 {
     // Operating system minor version:
     int osMinor;
-    psych_bool isARM;
+    psych_bool isARM, isTested;
 
     // Init flag to -1 aka unknown:
     static int isSupported = -1;
@@ -618,19 +618,20 @@ const char* PsychSupportStatus(void)
         // Query macOS version and machine processor architecture:
         osMinor = PsychGetOSXMinorVersion(&isARM);
 
-        // Only macOS 13 Intel is officially supported:
-        isSupported = (!isARM && (osMinor - 5 == 13)) ? 1 : 0;
+        // Only macOS 13 and 14 are officially tested and supported:
+        isSupported = ((osMinor - 5 >= 13) && (osMinor - 5 <= 14)) ? 1 : 0;
+        isTested = (isARM && (osMinor - 5 == 14)) || (!isARM && (osMinor - 5 == 13));
 
         if (osMinor <= 15) {
             // macOS 10 family is done, although there's some chance it still works back to 10.11, but who knows?
-            sprintf(statusString, "macOS version 10.%i is no longer tested or officially supported for this Psychtoolbox release.", osMinor);
+            sprintf(statusString, "macOS 10.%i is no longer tested or officially supported for this Psychtoolbox release.", osMinor);
         } else if (osMinor - 5 <= 12) {
-            // Now unsupported macOS 11+
-            sprintf(statusString, "macOS version %i is no longer tested or officially supported for this Psychtoolbox release.", osMinor - 5);
+            // Now unsupported macOS 11 and 12:
+            sprintf(statusString, "macOS %i is no longer tested or officially supported for this Psychtoolbox release.", osMinor - 5);
         } else {
             // Currently supported or too new (== not yet supported) macOS version:
-            sprintf(statusString, "macOS version %i %s is %s.", osMinor - 5, isARM ? "ARM M1+ SoC" : "Intel",
-                    isSupported ? "minimally tested and supported" : "not yet tested or supported at all for this Psychtoolbox release.");
+            sprintf(statusString, "macOS %i %s is %s.", osMinor - 5, isARM ? "Apple Silicon" : "Intel",
+                    isSupported ? (isTested ? "somewhat tested and supported" : "somewhat supported") : "not yet tested or supported at all for this release.");
         }
     }
 
