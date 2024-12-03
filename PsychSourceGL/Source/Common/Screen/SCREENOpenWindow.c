@@ -342,8 +342,8 @@ PsychError SCREENOpenWindow(void)
             // can make the Vulkan vs. OpenGL decision and possibly perform needed Vulkan setup, then recursively
             // call back into us. This allows legacy user scripts which don't use PsychImaging to continue to work
             // unmodified on macOS for Apple Silicon Macs.
-            if (PsychPrefStateGet_Verbosity() > 2)
-                printf("PTB-INFO: Running on a macOS Apple Silicon system: Checking if Vulkan display backend should be used on this legacy script.\n");
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-INFO: Running on a macOS Apple Silicon system: Checking if Vulkan display backend should be used with this legacy script.\n");
 
             // Array with PsychImaging return arguments [win, winRect]:
             PsychGenericScriptType *outputs[2];

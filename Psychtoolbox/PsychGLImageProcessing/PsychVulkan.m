@@ -435,11 +435,9 @@ if strcmpi(cmd, 'OpenWindowSetup')
             end
         end
 
-        if ~isempty(outputName)
-            if verbosity >= 3
-                fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
-                        winRect(1), winRect(2), winRect(3), winRect(4), screenId);
-            end
+        if ~isempty(outputName) && ((verbosity >= 4) || (~(IsOSX && IsARM) && (verbosity == 3)))
+            fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
+                    winRect(1), winRect(2), winRect(3), winRect(4), screenId);
         end
     end
 
@@ -812,7 +810,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % No interop, or semaphores unsupported?
         if noInterop || isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_semaphore')) %#ok<STREMP>
             if ~noInterop
-                fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop semaphores. Enabling operation without semaphores on gpu %i.\n', gpuIndex);
+                if verbosity >= 4
+                   fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop semaphores. Enabling operation without semaphores on gpu %i.\n', gpuIndex);
+                end
             else
                 fprintf('PsychVulkan-INFO: Interop disabled! Enabling operation without semaphores on gpu %i.\n', gpuIndex);
             end
@@ -843,7 +843,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         case 0
             internalFormat = GL.RGBA8;
             bpc = 8;
-            if verbosity >= 3
+            if verbosity >= 4
                 fprintf('PsychVulkan-INFO: 8 bpc linear precision framebuffer will be used.\n');
             end
 

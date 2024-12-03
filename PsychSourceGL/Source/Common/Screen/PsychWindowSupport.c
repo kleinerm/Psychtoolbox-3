@@ -369,11 +369,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if(PsychPrefStateGet_Verbosity()>2) {
             printf("\n\nPTB-INFO: This is Psychtoolbox-3 for %s, under %s %s %s (Version %i.%i.%i - Build date: %s).\n", PSYCHTOOLBOX_OS_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PTB_ARCHITECTURE, PTB_ISA, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
             printf("PTB-INFO: OS support status: %s\n", PsychSupportStatus());
-            printf("PTB-INFO: Type 'PsychtoolboxVersion' for more detailed version information.\n");
-            printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT License, with\n");
-            printf("PTB-INFO: some restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n\n");
-            printf("PTB-INFO: For information about paid support, support memberships and other commercial services, please type\n");
-            printf("PTB-INFO: 'PsychPaidSupportAndServices'.\n\n");
+            printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT license, with some\n");
+            printf("PTB-INFO: restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
+            printf("PTB-INFO: Psychtoolbox and its prebuilt mex files are distributed in the hope that they will be useful, but WITHOUT\n");
+            printf("PTB-INFO: ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
+            printf("\n");
+            printf("PTB-INFO: For information about paid support and other commercial services, please type 'PsychPaidSupportAndServices'.\n");
         }
 
         if (PsychPrefStateGet_EmulateOldPTB() && PsychPrefStateGet_Verbosity()>1) {
@@ -960,8 +961,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if ((PSYCH_SYSTEM == PSYCH_OSX) && strstr((*windowRecord)->gpuCoreId, "AGFX"))
             skip_synctests = 2;
 
-        if (PsychPrefStateGet_Verbosity() > 2)
-            printf("PTB-INFO: External display method is in use for this window. %s\n", (skip_synctests < 2) ? "Running short and lenient timing tests only." : "");
+        if ((PsychPrefStateGet_Verbosity() > 2) && (skip_synctests < 2))
+            printf("PTB-INFO: External display method is in use for this window. Running short and lenient timing tests only.\n");
     }
 
     // If this is a windowed onscreen window, be lenient with synctests. Make sure they never fail,
@@ -1593,7 +1594,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if (PsychPrefStateGet_Verbosity() > 2) {
         printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
         if (VRAMTotal > 0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal, TexmemTotal);
-        printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
+        printf("PTB-INFO: Screen %i : Window %i : VBL startline = %i : VBL Endline = %i\n", (*windowRecord)->screenNumber, (*windowRecord)->windowIndex,
+               (int) vbl_startline, VBL_Endline);
 
         if (ifi_beamestimate > 0) {
             printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
@@ -1650,8 +1652,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 }
             }
             else if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) {
-                printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Screen('Flip') timestamping will\n");
-                printf("PTB-INFO: fully rely on mechanisms in the external display backend, with unknown precision and reliability.\n");
+                if (PSYCH_SYSTEM == PSYCH_OSX) {
+                    printf("PTB-INFO: Will try to use mechanisms in the external display backend for accurate Flip timestamping.\n");
+                }
+                else {
+                    printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Screen('Flip') timestamping will\n");
+                    printf("PTB-INFO: fully rely on mechanisms in the external display backend, with unknown precision and reliability.\n");
+                }
             }
             else {
                 printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback.\n");
@@ -1659,11 +1666,15 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             }
         }
 
-        printf("PTB-INFO: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
-               ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
+        if (ifi_estimate > 0)
+            printf("PTB-INFO: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
+                   ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
 
-        if (ifi_nominal > 0) printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
-        printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
+        if (ifi_nominal > 0)
+            printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
+
+        // printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
+
         if (PsychVRRActive(*windowRecord)) {
             printf("PTB-INFO: Enabling Variable Refresh Rate VRR mode, using method %i and timing style %i.\n", (*windowRecord)->vrrMode, (*windowRecord)->vrrStyleHint);
             printf("PTB-INFO: Assuming minimum VRR refresh duration %f msecs, maximum duration %f msecs.\n", 1000 * (*windowRecord)->vrrMinDuration, 1000 * (*windowRecord)->vrrMaxDuration);
@@ -1850,7 +1861,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 printf("\nPTB-WARNING: Unable to measure monitor refresh interval! Using a fake value of %f milliseconds.\n", ifi_estimate*1000);
             }
             else {
-                printf("PTB-INFO: All display tests and calibrations disabled. Assuming a refresh interval of %f Hz. Timing will be inaccurate!\n", 1.0/ifi_estimate);
+                printf("PTB-INFO: All startup display tests and calibrations disabled. Assuming a refresh interval of %f Hz. %s\n",
+                       1.0 / ifi_estimate, ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) ? "" : "Timing will be inaccurate!");
             }
         }
     }

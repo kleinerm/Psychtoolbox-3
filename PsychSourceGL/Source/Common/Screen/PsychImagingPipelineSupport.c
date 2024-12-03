@@ -628,7 +628,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             case GL_RGBA_FLOAT16_APPLE:
                 printf("PTB-INFO: Will use 16 bits per color component floating point framebuffer for stimulus drawing. ");
                 if (windowRecord->gfxcaps & kPsychGfxCapFPBlend16) {
-                    printf("Alpha blending should work correctly.\n");
                     if (imagingmode & kPsychUse32BPCFloatAsap) {
                         printf("PTB-INFO: Can't use 32 bit precision for drawing because hardware doesn't support alpha-blending in 32 bpc.\n");
                     }
@@ -640,10 +639,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
             case GL_RGBA_FLOAT32_APPLE:
                 printf("PTB-INFO: Will use 32 bits per color component floating point framebuffer for stimulus drawing. ");
-                if (windowRecord->gfxcaps & kPsychGfxCapFPBlend32) {
-                    printf("Alpha blending should work correctly.\n");
-                }
-                else {
+                if (!(windowRecord->gfxcaps & kPsychGfxCapFPBlend32)) {
                     printf("Alpha blending may not work on your system with this setup, but only for lower precision modes.\n");
                 }
             break;
@@ -882,23 +878,23 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     if (PsychPrefStateGet_Verbosity()>2) {
         switch (fboInternalFormat) {
             case GL_RGBA8:
-                printf("PTB-INFO: Will use 8 bits per color component framebuffer for stimulus post-processing (if any).\n");
+                printf("PTB-INFO: Will use 8 bits per color component framebuffer for any stimulus post-processing.\n");
             break;
 
             case GL_RGBA16:
-                printf("PTB-INFO: Will use 16 bits per color component unsigned integer framebuffer for stimulus post-processing (if any).\n");
+                printf("PTB-INFO: Will use 16 bits per color component unsigned integer framebuffer for any stimulus post-processing.\n");
             break;
 
             case GL_RGBA16_SNORM:
-                printf("PTB-INFO: Will use 15 bits per color component signed integer framebuffer for stimulus post-processing (if any).\n");
+                printf("PTB-INFO: Will use 15 bits per color component signed integer framebuffer for any stimulus post-processing.\n");
             break;
 
             case GL_RGBA_FLOAT16_APPLE:
-                printf("PTB-INFO: Will use 16 bits per color component floating point framebuffer for stimulus post-processing (if any).\n");
+                printf("PTB-INFO: Will use 16 bits per color component floating point framebuffer for any stimulus post-processing.\n");
             break;
 
             case GL_RGBA_FLOAT32_APPLE:
-                printf("PTB-INFO: Will use 32 bits per color component floating point framebuffer for stimulus post-processing (if any).\n");
+                printf("PTB-INFO: Will use 32 bits per color component floating point framebuffer for any stimulus post-processing.\n");
             break;
         }
     }
@@ -1244,7 +1240,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
                 // Are we supposed to use externally injected colorbuffer textures?
                 if (imagingmode & kPsychUseExternalSinkTextures) {
-                    if (PsychPrefStateGet_Verbosity() > 2)
+                    if (PsychPrefStateGet_Verbosity() > 3)
                         printf("PTB-INFO: Using external textures as sinks for redirected output mode.\n");
                 }
 
@@ -1279,7 +1275,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
             // Are we supposed to use externally injected colorbuffer textures?
             if (imagingmode & kPsychUseExternalSinkTextures) {
-                if (PsychPrefStateGet_Verbosity() > 2)
+                if (PsychPrefStateGet_Verbosity() > 3)
                     printf("PTB-INFO: Using external textures as sinks for redirected output mode.\n");
             }
 
