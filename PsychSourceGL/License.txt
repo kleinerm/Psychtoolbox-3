@@ -125,6 +125,21 @@
 %
 % The Daq toolbox         - MIT : Denis Pelli, Mickey P. Rowe, Mario Kleiner.
 %
+% The PsychVulkanCore driver mex file for our Vulkan display backend, which is
+% itself licensed under the MIT license, builds against the Khronos Vulkan SDK C
+% header files, which are licensed under MIT and Apache 2.0 license. See
+% https://github.com/KhronosGroup/Vulkan-Headers
+% It dynamically links against the Khronos Vulkan loader libraries on Linux and
+% MS-Windows, which are licensed under the Apache 2.0 license. The loader libraries
+% are part of the operating system on Linux, and part of / bundled with the
+% graphics drivers on MS-Windows. The Vulkan loader then runtime loads and links
+% and interfaces with graphics hardware specific system installed Vulkan ICDs.
+% See https://github.com/KhronosGroup/Vulkan-Loader
+% On macOS our driver is statically linked against the Khronos MoltenVK Vulkan
+% ICD libMoltenVK.a, which implements Vulkan on top of macOS Metal frameworks.
+% MoltenVK is also licensed under the Apache 2.0 license. See
+% https://github.com/KhronosGroup/MoltenVK
+%
 % The PsychVRToolbox   - MIT : Mario Kleiner. The following terms and licenses
 % apply for the Oculus VR platform drivers contained in the PsychVRToolbox:
 % [Note: Oculus VR's trademarks, e.g., Oculus, Oculus Rift, etc. are registered trademarks
