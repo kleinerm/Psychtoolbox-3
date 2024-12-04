@@ -676,7 +676,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
             goto instance_init_out;
         }
 
-        if (verbosity >= 3)
+        if ((verbosity >= 4) || ((verbosity >= 3) && (PSYCH_SYSTEM != PSYCH_OSX)))
             printf("PsychVulkanCore-INFO: Vulkan instance (version %i.%i.%i) created.\n", VK_VERSION_MAJOR(instanceVersion),
                     VK_VERSION_MINOR(instanceVersion), VK_VERSION_PATCH(instanceVersion));
     }
