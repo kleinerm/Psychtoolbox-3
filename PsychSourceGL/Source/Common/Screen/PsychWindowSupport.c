@@ -369,12 +369,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if(PsychPrefStateGet_Verbosity()>2) {
             printf("\n\nPTB-INFO: This is Psychtoolbox-3 for %s, under %s %s %s (Version %i.%i.%i - Build date: %s).\n", PSYCHTOOLBOX_OS_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PTB_ARCHITECTURE, PTB_ISA, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
             printf("PTB-INFO: OS support status: %s\n", PsychSupportStatus());
+            printf("PTB-INFO: For information about paid support and other commercial services, please type 'PsychPaidSupportAndServices'.\n");
             printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT license, with some\n");
             printf("PTB-INFO: restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
             printf("PTB-INFO: Psychtoolbox and its prebuilt mex files are distributed in the hope that they will be useful, but WITHOUT\n");
-            printf("PTB-INFO: ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
-            printf("\n");
-            printf("PTB-INFO: For information about paid support and other commercial services, please type 'PsychPaidSupportAndServices'.\n");
+            printf("PTB-INFO: ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n");
         }
 
         if (PsychPrefStateGet_EmulateOldPTB() && PsychPrefStateGet_Verbosity()>1) {
