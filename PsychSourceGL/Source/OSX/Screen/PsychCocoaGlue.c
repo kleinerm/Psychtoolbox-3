@@ -269,7 +269,7 @@ pid_t GetHostingWindowsPID(void)
     CFNumberRef numRef;
     char winName[256];
     psych_bool found = FALSE;
-    psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
+    psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? PsychIsMasterThread() : FALSE;
 
     // Allocate auto release pool:
     //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
