@@ -1958,15 +1958,15 @@ if strcmpi(cmd, 'OpenWindow')
                (Screen('Preference', 'WindowShieldingLevel') >= 2000))
                 % Request Vulkan display backend:
                 reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
-
-                % Set ovrSpecialFlags to signal that the backend decision has been
-                % made intentionally and explicitely for Screen() by PsychImaging():
-                if isempty(ovrSpecialFlags)
-                    ovrSpecialFlags = 0;
-                end
-
-                ovrSpecialFlags = mor(ovrSpecialFlags, kPsychBackendDecisionMade);
             end
+
+            % Set ovrSpecialFlags to signal that the backend decision has been
+            % made intentionally and explicitely for Screen() by PsychImaging():
+            if isempty(ovrSpecialFlags)
+                ovrSpecialFlags = 0;
+            end
+
+            ovrSpecialFlags = mor(ovrSpecialFlags, kPsychBackendDecisionMade);
         end
     end
 
