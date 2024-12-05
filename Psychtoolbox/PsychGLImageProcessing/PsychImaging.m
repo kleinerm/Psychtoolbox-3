@@ -3750,8 +3750,16 @@ if ~isempty(floc)
     % overriden to something higher precision:
     vulkanColorPrecision = 0;
 
-    % Default color space: Overriden in vulkanHDRMode > 0.
-    vulkanColorSpace = 0;
+    % Apple macOS needs special treatment:
+    if IsOSX && IsARM
+        % VK_COLOR_SPACE_PASS_THROUGH_EXT for pixel identity passthrough, or this
+        % will mess with our own color correction routines and with display on
+        % devices from VPixx and CRS and similar:
+        vulkanColorSpace = 1000104013;
+    else
+        % Default color space: Overriden in vulkanHDRMode > 0.
+        vulkanColorSpace = 0;
+    end
 
     % Default color pixel format: Overriden in vulkanHDRMode > 0 as part of
     % override of vulkanColorPrecision, or explicit override:
