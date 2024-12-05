@@ -626,21 +626,21 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             break;
 
             case GL_RGBA_FLOAT16_APPLE:
-                printf("PTB-INFO: Will use 16 bits per color component floating point framebuffer for stimulus drawing. ");
+                printf("PTB-INFO: Will use 16 bits per color component floating point framebuffer for stimulus drawing.\n");
                 if (windowRecord->gfxcaps & kPsychGfxCapFPBlend16) {
                     if (imagingmode & kPsychUse32BPCFloatAsap) {
                         printf("PTB-INFO: Can't use 32 bit precision for drawing because hardware doesn't support alpha-blending in 32 bpc.\n");
                     }
                 }
                 else {
-                    printf("Alpha blending may not work on your system with this setup, but only for 8 bits per color component mode.\n");
+                    printf("PTB-WARNING: Alpha blending may not work on your system with this setup, but only for 8 bits per color component mode.\n");
                 }
             break;
 
             case GL_RGBA_FLOAT32_APPLE:
-                printf("PTB-INFO: Will use 32 bits per color component floating point framebuffer for stimulus drawing. ");
+                printf("PTB-INFO: Will use 32 bits per color component floating point framebuffer for stimulus drawing.\n");
                 if (!(windowRecord->gfxcaps & kPsychGfxCapFPBlend32)) {
-                    printf("Alpha blending may not work on your system with this setup, but only for lower precision modes.\n");
+                    printf("PTB-WARNING: Alpha blending may not work on your system with this setup, but only for lower precision modes.\n");
                 }
             break;
         }
