@@ -252,7 +252,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     long                            nativeSize[2];
     void*                           cocoaWindow = NULL;
     psych_bool                      useCGL = FALSE;
+    psych_bool                      isARM;
     GLint                           bpc;
+
+    // Find out if running on ARM Apple Silicon SoC, which does not support the PsychtoolboxKernelDriver at all:
+    PsychGetOSXMinorVersion(&isARM);
 
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
@@ -392,7 +396,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attribs[attribcount++]=displayMask;
 
     // 10 or 11 bit per component integer framebuffer requested (10-10-10-2/11-11-10-0)?
-    if ((windowRecord->depth == 30) || (windowRecord->depth == 33)) {
+    if ((!isARM && (windowRecord->depth == 30)) || (windowRecord->depth == 33)) {
         // Request a 16 bit per color component half-float framebuffer:
         // Apple does not support > 8 bpc on anything but floating point framebuffers,
         // and there a half-float format seems to be what one needs to request. Cfe.
@@ -426,6 +430,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         attribs[attribcount++]=kCGLPFAColorFloat;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=64;
+    }
+
+    // 10 bit per component integer framebuffer requested (10-10-10-2) on ARM AGFX?
+    if (isARM && (windowRecord->depth == 30)) {
+        // Request a 10 bit per color component framebuffer:
+        printf("PTB-INFO: Trying to enable 10 bpc, 30 bit integer framebuffer on ARM AGFX...\n");
+        attribs[attribcount++]=kCGLPFANoRecovery;
+        attribs[attribcount++]=kCGLPFAMinimumPolicy;
+        attribs[attribcount++]=kCGLPFAColorSize;
+        attribs[attribcount++]=10*3;
+        attribs[attribcount++]=kCGLPFAAlphaSize;
+        attribs[attribcount++]=2;
     }
 
     // 16 bit per component integer framebuffer requested (16-16-16-16)?
@@ -759,10 +775,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // First reference to this screen by a window?
     if (screenRefCount[screenSettings->screenNumber] == 0) {
-        // Find out if running on ARM Apple Silicon SoC, which does not support the PsychtoolboxKernelDriver at all:
-        psych_bool isARM;
-        PsychGetOSXMinorVersion(&isARM);
-
         // High precision timestamping enabled? If so, we need to setup the fallback
         // timestamping methods in case beamposition timestamping doesn't work:
         if (PsychPrefStateGet_VBLTimestampingMode() > 0) {
