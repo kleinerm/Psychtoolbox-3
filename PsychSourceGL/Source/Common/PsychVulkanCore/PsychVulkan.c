@@ -1446,31 +1446,52 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         for (i = 0; i < window->surfaceFormatCount; i++) {
             if (verbosity > 3) {
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DOLBYVISION_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_DOLBYVISION_EXT          - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DOLBYVISION_EXT              - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT             - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_HLG_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_HLG_EXT            - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_HLG_EXT                - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_BT2020_LINEAR_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT        - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT            - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_NATIVE_AMD)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD       - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD           - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_PASS_THROUGH_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT             - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT     - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_BT709_NONLINEAR_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT          - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR           - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT     - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT        - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT         - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_BT709_LINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_BT709_LINEAR_EXT             -", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT          - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT       - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT  - ", i);
 
                 switch (window->surfaceFormats[i].surfaceFormat.format) {
                     case VK_FORMAT_R16G16B16A16_SFLOAT:
