@@ -1955,7 +1955,7 @@ if strcmpi(cmd, 'OpenWindow')
         if IsOSX && IsARM && isempty(find(mystrcmp(reqs, 'UseVulkanDisplay')))
             % Only auto-enable Vulkan backend for opaque top-level fullscreen windows:
             if ((isempty(winRect) || isequal(winRect, Screen('Rect', screenid)) || isequal(winRect, Screen('GlobalRect', screenid))) && ...
-               (Screen('Preference', 'WindowShieldingLevel') >= 2000))
+               (Screen('Preference', 'WindowShieldingLevel') >= 2000) && (bitand(Screen('Preference', 'ConserveVRAM'), 8192) == 0))
                 % Request Vulkan display backend:
                 reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
             end
