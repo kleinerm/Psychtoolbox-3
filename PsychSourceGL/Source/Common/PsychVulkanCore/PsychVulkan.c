@@ -3496,9 +3496,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Select number of image buffers:
     uint32_t numBuffers = window->surfaceCapabilities.minImageCount;
+    uint32_t optBuffers = (PSYCH_SYSTEM == PSYCH_OSX) ? 3 : 2;
 
-    if (numBuffers != 2 && window->surfaceCapabilities.minImageCount <= 2)
-        numBuffers = 2;
+    if (numBuffers != optBuffers && window->surfaceCapabilities.minImageCount <= optBuffers)
+        numBuffers = optBuffers;
 
     if ((numBuffers > window->surfaceCapabilities.maxImageCount) && (window->surfaceCapabilities.maxImageCount != 0))
         numBuffers = window->surfaceCapabilities.maxImageCount;
@@ -3509,7 +3510,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         numBuffers = MAX_BUFFERS;
     }
 
-    if ((numBuffers != 2) && (verbosity > 1))
+    if ((optBuffers == 2) && (numBuffers != 2) && (verbosity > 1))
         printf("PsychVulkanCore-WARNING: Window %i does not support strict double-buffering (numBuffers=%i). Expect timing trouble!\n", window->index, numBuffers);
 
     window->numBuffers = 0;
