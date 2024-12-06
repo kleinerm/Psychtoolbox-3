@@ -198,12 +198,19 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
                 fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed. Falling back to reference timestamp %f secs. Timing or visual stimulation might be broken.\n', vblTime);
             end
         else
-            % Error code timestamp -1 returned. We can't recover in a
-            % meaningful way from that, just pass it through...
-            vblTime = -1;
+            % Error code timestamp -1 returned.
+            if doTimestamp
+                % We can't recover in a meaningful way from that, just pass it through...
+                vblTime = -1;
 
-            if verbosity > 1
-                fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed completely. Returning invalid timestamp -1.\n');
+                if verbosity > 1
+                    fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed completely. Returning invalid timestamp -1.\n');
+                end
+            else
+                % No timestamp requested, so return the "no timestamp"
+                % timestamps == zero:
+                predictedOnset = 0;
+                vblTime = 0;
             end
         end
 
