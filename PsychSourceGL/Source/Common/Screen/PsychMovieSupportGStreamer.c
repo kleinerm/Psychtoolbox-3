@@ -1958,19 +1958,17 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     }
     else if (((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) && win && (win->gfxcaps & kPsychGfxCapFBO) && PsychAssignPlanarI800TextureShader(NULL, win)) {
         // Usercode wants Y8/Y800 planar encoded format and GPU suppports needed fragment shaders and FBO's.
-        // Ask for I420 or Y800 decoded video. I420 is the native output format of HuffYUV and H264 codecs, so using it
+        // Ask for I420 decoded video. I420 is the native output format of HuffYUV and H264 codecs, so using it
         // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
         // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
-        // Note: The FOURCC 'Y800' is equivalent to 'Y8  ' and 'GREY' as far as we know. As of June 2012, using the
-        // Y800 decoding doesn't have any performance benefits compared to I420 decoding, actually performance is a
-        // little bit lower. Apparently the video codecs don't take the Y800 format into account, ie., they don't skip
-        // decoding of the chroma components, instead they probably decode as usual and the colorspace conversion then
-        // throws away the unwanted chroma planes, causing possible extra overhead for discarding this data. We leave
-        // the option in anyway, because there may be codecs (possibly in future GStreamer versions) that can take
-        // advantage of Y800 format for higher performance.
+        // Note: pixelFormat 8 used the FOURCC 'Y800' until December 2024, but it turns out that Y800 is no longer
+        // supported as a FOURCC, GStreamer 1.0 (removed end of May 2012), but at least not since GStreamer 1.16, so
+        // format 8 in the old days didn't yield any performance benefits - in fact it caused a slight degradation,
+        // and selecting it in recent years just caused playback failure. Going forward, we will treat pixelFormat 8
+        // as an alias for pixelFormat 7, for working playback with full compatibility and no known downsides.
         colorcaps = gst_caps_new_simple ("video/x-raw",
                                          "format", G_TYPE_STRING,
-                                         (movieRecordBANK[slotid].pixelFormat == 8) ? "Y800" : "I420",
+                                         "I420",
                                          NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use Y8-I800 planar textures for optimized decode and rendering.\n", slotid);
     }
