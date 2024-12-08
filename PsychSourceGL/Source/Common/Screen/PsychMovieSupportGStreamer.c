@@ -3112,9 +3112,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // And 24 bpp depth:
             out_texture->depth = 24;
         }
-
-        // HDR/WCG YUV planar pixel upload requested?
-        if (movieRecordBANK[moviehandle].pixelFormat == 11) {
+        else if (movieRecordBANK[moviehandle].pixelFormat == 11) {
+            // HDR/WCG YUV planar pixel upload requested.
             float overSize;
             int bpc = GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].sinkVideoInfo.finfo, 0);
 
