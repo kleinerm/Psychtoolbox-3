@@ -2959,6 +2959,24 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
         #endif
 
+        // Movie frames width or height still undefined, because could not determine size in open movie?
+        if (!movieRecordBANK[moviehandle].width || !movieRecordBANK[moviehandle].height) {
+            // Yes. Parse and assign it from this individual frame:
+            int width, height;
+
+            GstCaps *caps = gst_sample_get_caps(videoSample);
+            if (caps) {
+                GstStructure *str = gst_caps_get_structure(caps, 0);
+                gst_structure_get_int(str,"width", &width);
+                gst_structure_get_int(str,"height", &height);
+                movieRecordBANK[moviehandle].width = width;
+                movieRecordBANK[moviehandle].height = height;
+
+                if (PsychPrefStateGet_Verbosity() > 5)
+                    printf("PTB-DEBUG: This video frame width x height = %i x %i  => Assigning as movies frame size.\n", width, height);
+            }
+        }
+
         // Build a standard PTB texture record:
         PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);
 
