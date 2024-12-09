@@ -2681,6 +2681,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          targetdelta, realdelta, frames;
     GstBuffer       *videoBuffer = NULL;
     GstSample       *videoSample = NULL;
+    GstVideoMeta    *videoMetaData = NULL;
     gint64          bufferIndex;
     double          deltaT = 0;
     GstEvent        *event;
@@ -2688,6 +2689,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          tNow;
     double          preT, postT;
     unsigned char*  releaseMemPtr = NULL;
+    unsigned int    strideBytes = 0;
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     #pragma warning( disable : 4068 )
 #endif
@@ -2977,6 +2979,16 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             }
         }
 
+        // Get video metadata for this frame and parse it, if any:
+        videoMetaData = (GstVideoMeta *) gst_buffer_get_meta(videoBuffer, GST_VIDEO_META_API_TYPE);
+        if (videoMetaData) {
+            if (PsychPrefStateGet_Verbosity() > 6)
+                printf("PTB-DEBUG: Frame reported n_planes %i stride %i\n", videoMetaData->n_planes, videoMetaData->stride[0]);
+        }
+
+        // Assign pixel row stride of 1st plane if valid, zero for "invalid" otherwise:
+        strideBytes = (videoMetaData && videoMetaData->stride[0]) ? videoMetaData->stride[0] : 0;
+
         // Build a standard PTB texture record:
         PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);
 
@@ -3114,7 +3126,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
             // Define a rect of 1.5 times the video frame height, so PsychCreateTexture() will source
             // the whole input data buffer:
-            PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
+            PsychMakeRect(out_texture->rect, 0, 0, (strideBytes) ? strideBytes : movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
             if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize)
@@ -3242,7 +3254,13 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                     PsychErrorExitMsg(PsychError_user, "Failed videoframe conversion into texture! Unrecognized sink format for pixelFormat 11 code.\n");
             }
 
-            PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * overSize);
+            if (PsychPrefStateGet_Verbosity() > 6)
+                printf("PTB-DEBUG: Frame bpc %i : GStreamer format = %i\n", bpc, GST_VIDEO_FORMAT_INFO_FORMAT(movieRecordBANK[moviehandle].sinkVideoInfo.finfo));
+
+            // Build texture rect to enforce allocating a bigger texture for all the Luma + Chroma planes by extending height, and taking row-stride into
+            // account, in case it doesn't match width in texels, by deriving width of texture during creation from stride in bytes. 1 Byte = 1 texel
+            // for 8 bpc content, 2 Bytes = 1 texel for 9 - 16 bpc content:
+            PsychMakeRect(out_texture->rect, 0, 0, ((strideBytes) ? ((bpc > 8) ? strideBytes / 2 : strideBytes) : movieRecordBANK[moviehandle].width), movieRecordBANK[moviehandle].height * overSize);
 
             // Check if overSize x height texture fits within hardware limits of this GPU:
             if (movieRecordBANK[moviehandle].height * overSize > win->maxTextureSize)
