@@ -332,6 +332,7 @@ static char movieTexturePlanarVertexShaderSrc[] =
 "/* PTBs color handling is expected to pass the vertex color in modulateColor    */\n"
 "/* for unclamped drawing for this reason. */\n"
 "\n"
+"/* (c) 2020 - 2024 Mario Kleiner - Licensed under the MIT license.              */\n"
 "varying vec4 unclampedFragColor;\n"
 "varying vec2 texNominalSize;\n"
 "attribute vec4 modulateColor;\n"
@@ -358,6 +359,8 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "/* EOTF mapping to linear RGB, and LDR/HDR range remapping, and     */\n"
 "/* color space conversion, as needed. Finally GL_MODULATE texture   */\n"
 "/* function emulation is applied before fragment output.            */\n"
+"\n"
+"/* (c) 2020 - 2024 Mario Kleiner - Licensed under the MIT license.  */\n"
 "\n"
 "/* switch() statement in shader needs GLSL 1.30+: */\n"
 "#version 130\n"
@@ -577,6 +580,8 @@ static char movieTexturePlanarFragmentShaderOSXSrc[] =
 "/* EOTF mapping to linear RGB, and LDR/HDR range remapping, and     */\n"
 "/* color space conversion, as needed. Finally GL_MODULATE texture   */\n"
 "/* function emulation is applied before fragment output.            */\n"
+"\n"
+"/* (c) 2024 Mario Kleiner - Licensed under the MIT license.         */\n"
 "\n"
 "#version 120\n"
 "#extension GL_ARB_texture_rectangle : enable\n"
@@ -1754,7 +1759,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     strncpy(movieRecordBANK[slotid].movieName, moviename, FILENAME_MAX);
 
     // Try to disable hardware accelerated movie playback if requested by specialFlags1 flag 4:
-    if (specialFlags1 & 4) {
+    // Also disable unconditionally on macOS when pixelFormat 11 for HDR/WCG/deep color playback is requested,
+    // as Apples macOS vtdec/vtdec_hw hardware video decoders are incompatible with the formats we can currently
+    // handle in format 11, so we would get degraded 8 bpc only YUV I420 content only - Bad for HDR/WCG/deep color!
+    // TODO: Maybe enhance format 11 with a suitable shader for AYUV64 which could decode hw accelerated in HDR/WCG on macOS?
+    if ((specialFlags1 & 4) || ((PSYCH_SYSTEM == PSYCH_OSX) && (pixelFormat == 11))) {
         guint major, minor;
         gst_plugins_base_version(&major, &minor, NULL, NULL);
 
@@ -1772,7 +1781,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             // All good: This statement applies to case-by-case on GStreamer 1.18+ on Ubuntu 22.04-LTS+, and Debian 11+,
             // and RaspberryPi OS 11+. It applies for the remainder of a Octave/Matlab session on GStreamer < 1.18, e.g.,
             // Ubuntu 20.04-LTS and earlier:
-            printf("PTB-INFO: GStreamer hardware accelerated video decoding disabled on user request (specialFlags1 +4).\n");
+            printf("PTB-INFO: GStreamer hardware accelerated video decoding disabled on macOS, or due to user request (specialFlags1 +4).\n");
         }
     }
 
@@ -2106,7 +2115,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             movieRecordBANK[slotid].bitdepth = 16;
             movieRecordBANK[slotid].pixelFormat = 1;
 
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc LUMINANCE 16 float textures.\n", slotid);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc content in LUMINANCE 32 bpc float textures.\n", slotid);
         }
 
         if (movieRecordBANK[slotid].pixelFormat == 10) {
@@ -2119,7 +2128,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             movieRecordBANK[slotid].bitdepth = 16;
             movieRecordBANK[slotid].pixelFormat = 4;
 
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc RGBA 16 bpc float textures.\n", slotid);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc content in RGBA 32 bpc float textures.\n", slotid);
         }
     }
 
@@ -2188,7 +2197,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                     (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) ||
                     (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv")) ||
                     (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame"))) {
-                    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
                     done = TRUE;
                 } else {
                     videocodec = NULL;
@@ -3090,7 +3099,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
-            if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
+            if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize)
+                PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
 
             // Byte alignment: Assume no alignment for now:
             out_texture->textureByteAligned = 1;
@@ -3109,7 +3119,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
             // Assign special filter shader for sampling and color-space conversion of the
             // planar texture during drawing or PsychNormalizeTextureOrientation():
-            if (!PsychAssignPlanarI420TextureShader(out_texture, win)) PsychErrorExitMsg(PsychError_user, "Assignment of I420 video decoding shader failed during movie texture creation!");
+            if (!PsychAssignPlanarI420TextureShader(out_texture, win))
+                PsychErrorExitMsg(PsychError_user, "Assignment of I420 video decoding shader failed during movie texture creation!");
 
             // Number of effective channels is 3 for RGB8:
             out_texture->nrchannels = 3;

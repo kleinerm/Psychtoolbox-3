@@ -108,6 +108,7 @@ try
     % Open onscreen window with gray background:
     screen = max(Screen('Screens'));
     PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
 
     % No special movieOptions by default:
     movieOptions = [];
