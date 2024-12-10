@@ -1,11 +1,11 @@
 function VideoRecordingDemo(moviename, codec, withsound, showit, windowed, deviceId)
-% VideoRecordingDemo(moviename [, codec=0][, withsound=1][, showit=1][, windowed=1][, deviceId=0])
+% VideoRecordingDemo(moviename [, codec=0][, withsound=0][, showit=1][, windowed=1][, deviceId=0])
 %
 % Demonstrates simple video capture and recording to a movie file.
 %
 % Supports GStreamer on all systems, and DC1394 engine on Linux and OSX.
 %
-% Please look at the source code of the demo carefully! Both MacOSX and
+% Please look at the source code of the demo carefully! Both macOS and
 % MS-Windows often need special treatment in terms of codec and parameter
 % selection to work reliably (or to be honest: To work at all).
 %
@@ -46,8 +46,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed, devic
 % cpu load, but they also produce huge files, e.g., all the DVxxx codecs
 % for PAL and NTSC video capture, as well as the component video codecs.
 %
-% 'withsound' If set to non-zero, sound will be recorded as well. This is
-% the default.
+% 'withsound' If set to non-zero, sound will be recorded as well.
 %
 % 'showit' If non-zero, video will be shown onscreen during recording
 % (default: Show it). Not showing the video during recording will
@@ -86,6 +85,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed, devic
 % 26.08.2014  Adapt to new GStreamer-1 based engine (MK).
 % 02.12.2021  Change codec for macOS 10.15 to avenc_h263p, default H264 hangs (MK).
 % 22.08.2024  Remove Windows special path. Cleanups (MK).
+% 10.12.2024  Refinement for macOS Apple Silicon (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -113,7 +113,7 @@ if nargin < 2
 end
 
 if nargin < 3 || isempty(withsound)
-    withsound = 2;
+    withsound = 0;
 end
 
 if withsound > 0
@@ -146,13 +146,13 @@ if isempty(codec)
         % Linux, where stuff "just works(tm)": Assign default auto-selected codec:
         codec = ':CodecType=DEFAULTencoder';
     end
-    
+
     if IsOSX
-        % macOS 10.15.7 + GStreamer 1.18. The default H264 codec causes
-        % hangs and recording failure. H263p works though, also with audio:
-        codec = ':CodecType=avenc_h263p';
+        % Default codec works, but sound recording is broken at least on
+        % GStreamer 1.24.10 on Apple Silicon, possibly on others as well.
+        codec = ':CodecType=DEFAULTencoder';
     end
-    
+
     if IsWin
         % Windows: H264 encoder often doesn't work out of the box without
         % overloading the machine. Choose theora encoder instead, which
