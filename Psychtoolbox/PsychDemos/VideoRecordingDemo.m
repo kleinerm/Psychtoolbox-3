@@ -173,7 +173,7 @@ end
 
 fprintf('Using codec: %s\n', codec);
 
-if nargin < 4
+if nargin < 4 || isempty(showit)
     showit = 1;
 end
 
