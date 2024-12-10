@@ -13,7 +13,7 @@
 % for video recording, not for live capture).
 %
 % You will need at least version 1.8 of GStreamer on Linux, and at least
-% version 1.22.0 on MS-Windows and at least version 1.18.5 on macOS, but
+% version 1.22.0 on MS-Windows and at least version 1.20.0 on macOS, but
 % we recommend to use the latest stable release of the version 1 series
 % tested by us (see links below).
 %
@@ -87,7 +87,7 @@
 % <http://gstreamer.freedesktop.org/download/>
 %
 % The following GStreamer runtime packages have been lightly tested for compatibility
-% with Psychtoolbox 3.0.19.4, as of September 2023:
+% with Psychtoolbox 3.0.20.0, as of December 2024:
 %
 % For MS-Windows: 64-Bit Intel MSVC runtime v1.22.5 for use with 64-Bit Matlab/Octave.
 %
@@ -96,14 +96,14 @@
 % You *must* install the MSVC variants of GStreamer, not the MinGW64 variants!
 %
 %
-% For Apple macOS: Oldest runtime v1.18.5:
+% For Apple macOS: Oldest runtime for Intel Macs v1.18.6:
 %
-% <https://gstreamer.freedesktop.org/data/pkg/osx/1.18.5/gstreamer-1.0-1.18.5-x86_64.pkg>
+% <https://gstreamer.freedesktop.org/data/pkg/osx/1.18.6/gstreamer-1.0-1.18.6-x86_64.pkg>
 %
-% also tested, probably higher performance and more modern, but known to crash with
-% VideoRecordingDemo.m at least with the MacBookPro 2017 builtin camera, is v1.22.1.
+% Recommended and tested for both Intel and Apple Silicon as of December
+% 2024 is version 1.24.10:
 %
-% <https://gstreamer.freedesktop.org/data/pkg/osx/1.22.1/gstreamer-1.0-1.22.1-universal.pkg>
+% <https://gstreamer.freedesktop.org/data/pkg/osx/1.24.10/gstreamer-1.0-1.24.10-universal.pkg>
 %
 % When the installer asks you to select the components it should install,
 % select a "Full installation" or "Complete installation", or if those
