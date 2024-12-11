@@ -569,13 +569,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % kleinerm with version 21.11.2 from one year later - November
         % 2021! This on the Windows 10 21H1 edition. So we fall back to
         % non-fs-exclusive mode and accept broken timing and potentially
-        % impaired HDR - what choice do we have?! The bug seems to be gone
-        % as of version 23.11.1, aka raw 8388887, so we can enable
-        % fs-exclusive again for these recent driver from November 2023.
+        % impaired HDR - what choice do we have?! The bug still exists
+        % as of version 23.11.1, aka raw 8388887, from November 2023.
         badFSEIds = hex2dec({'67EF'});
         for i=1:length(devs)
             if (devs(i).VendorId == 4098) && strcmp(winfo.GLRenderer, devs(i).GpuName) && ...
-               (ismember(devs(i).DeviceId, badFSEIds) || (devs(i).DriverVersionRaw >= 8388767 && devs(i).DriverVersionRaw < 8388887))
+               (ismember(devs(i).DeviceId, badFSEIds) || (devs(i).DriverVersionRaw >= 8388767 && devs(i).DriverVersionRaw <= 8388887))
                 % Got a bad one! Disable fullscreen-exclusive mode for fullscreen windows:
                 flags = mor(flags, 2);
                 fprintf('PsychVulkan-INFO: AMD gpu [%s] with buggy Vulkan driver for fullscreen mode detected! Enabling workaround, timing reliability may suffer.\n', devs(i).GpuName);
