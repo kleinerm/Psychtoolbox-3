@@ -105,6 +105,16 @@
 %
 % <https://gstreamer.freedesktop.org/data/pkg/osx/1.24.10/gstreamer-1.0-1.24.10-universal.pkg>
 %
+% However, the following limitations were observed on v1.24.10:
+% On Apple Silicon video recording only works without sound, otherwise
+% hangs will occur. On Intel Macs, video recording does not work at all.
+%
+% With GStreamer 1.22.0 on Intel Macs, video and audio recording works
+% fine, but playback of some movies fails. Untested on Apple Silicon.
+%
+% These limitations are likely due to some bugs or shortcomings in
+% GStreamer for macOS.
+%
 % When the installer asks you to select the components it should install,
 % select a "Full installation" or "Complete installation", or if those
 % options do not exist then select a "Custom installation" (instead of a
