@@ -4,19 +4,19 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % This function facilitates the setup and administration of license
 % management for Psychtoolbox on operating systems and platforms that
 % require either a paid license or a time-limited free trial.
-% 
+%
 % Once license management is configured for your operating system and
 % hardware, you can manage your license, including activation and
 % deactivation on a machine, checking licensing status, and generating a
 % support authentication token.
-% 
+%
 % For information on purchasing license keys for Psychtoolbox, visit:
 %
 % https://www.psychtoolbox.net
 %
 % The prebuilt, tested, and supported mex files included in Psychtoolbox
-% are provided by our commercial host company, Medical Innovations
-% Incubator GmbH, as of November 2024. Contact details are as follows:
+% are provided by our commercial host company, the Medical Innovations
+% Incubator GmbH, as of December 2024. Contact details are as follows:
 %
 % Medical Innovations Incubator GmbH
 % Eisenbahnstr. 63
@@ -200,7 +200,7 @@ if strcmpi(cmd, 'Setup')
     end
 
     % Assign activation and trial metadata for upload to license servers and
-    % use for aggregate statistical purposes: 
+    % use for aggregate statistical purposes:
     UpdateMetadata;
 
     % At this point, rc == 0 means license key enrolled, other rc means no
@@ -286,7 +286,7 @@ if strcmpi(cmd, 'Setup')
                     while length(answer) < 1 || ~ismember(answer(1), 'yn')
                         answer = input('Want to retry activating after fixing the above mentioned problem? [yes or no]: ', 's');
                     end
-        
+
                     if answer(1) ~= 'y'
                         % User gives up. Break out of while retry loop:
                         rc = 1;
@@ -321,7 +321,7 @@ end
 
 if strcmpi(cmd, 'Activate')
     % Assign activation and trial metadata for upload to license servers and
-    % use for aggregate statistical purposes: 
+    % use for aggregate statistical purposes:
     UpdateMetadata;
 
     % Activate, either with a new license product key, or using an already
@@ -362,7 +362,7 @@ end
 
 if strcmpi(cmd, 'AuthenticationToken')
     % Assign activation and trial metadata for upload to license servers and
-    % use for aggregate statistical purposes: 
+    % use for aggregate statistical purposes:
     UpdateMetadata;
 
     % Print authentication token, and also sync to server first, to token
@@ -382,7 +382,7 @@ function UpdateMetadata
         % Matlab release name, e.g., R2024b:
         WaitSecs('ManageLicense', 5, 'hostappversion', version('-release'));
     end
-    
+
     % Assign machine model code name to activation data on macOS:
     if IsOSX
         [rc, model] = system('sysctl -n hw.model');
