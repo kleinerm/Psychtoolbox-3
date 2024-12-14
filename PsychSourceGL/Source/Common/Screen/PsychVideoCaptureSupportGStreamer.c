@@ -1215,9 +1215,10 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
 PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin, GstElement **videocapturebin)
 {
     PsychGenericScriptType 	*devs;
-    const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
+    const char *FieldNames[]={ "DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device",
+                               "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
 
-    int                 i;
+    int i;
     PsychVideosourceRecordType *mydevice = NULL;
 
     // Make sure GStreamer is ready:
@@ -1310,6 +1311,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     // Add fake entry for deviceIndex zero, as a copy of the first real entry:
     memcpy(&devices[ntotal], &devices[0], sizeof(PsychVideosourceRecordType));
     devices[ntotal].deviceIndex = 0;
+
     // For deviceIndex 0: Bump refcount on GstDevice* of associated capture device, if any:
     if (devices[ntotal].gstdevice) gst_object_ref((GstDevice*) devices[ntotal].gstdevice);
     ntotal++;
@@ -1345,12 +1347,26 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                         // If so then we need to create a special bin which encapsulates the videocaptureplugin and a
                         // linked converter plugin to convert from the special format to a video/x-raw format that the
                         // rest of our pipeline understands:
-                        if (capsstr && !strstr(capsstr, "video/x-raw")) {
+                        if ((capsstr && !strstr(capsstr, "video/x-raw")) || !strcmp(mydevice->deviceVideoPlugin, "avfvideosrc")) {
                             GstPad *pad, *ghost_pad;
                             GstElement *converter = NULL;
 
+                            // macOS avfvideosrc needs a special capsfilter attached directly behind it, to only provide video/x-raw
+                            // without GLMemory support, as caps with GLMemory support would trigger bugs inside avfvideosrc since
+                            // at least GStreamer 1.20.0 through at least GStreamer 1.24.
+                            if (!strcmp(mydevice->deviceVideoPlugin, "avfvideosrc")) {
+                                // Attach a capsfilter with suitable caps:
+                                converter = gst_element_factory_make("capsfilter", "ptb_videosourceconverter");
+                                GstCaps *filtercaps = gst_caps_new_empty_simple("video/x-raw");
+                                g_object_set(converter, "caps", filtercaps, NULL);
+                                gst_caps_unref(filtercaps);
+
+                                if (PsychPrefStateGet_Verbosity() > 4)
+                                    printf("PTB-DEBUG: avfvideosrc needs special caps without GLMemory support. Created bin with suitable capsfilter.\n");
+                            }
+
                             // MJPEG? Use jpegdec as converter:
-                            if (strstr(capsstr, "image/jpeg")) {
+                            if (capsstr && strstr(capsstr, "image/jpeg")) {
                                 converter = gst_element_factory_make("jpegdec", "ptb_videosourceconverter");
                                 if (PsychPrefStateGet_Verbosity() > 4)
                                     printf("PTB-DEBUG: Special capture device with MJPEG output needs jpegdec conversion. Created converter.\n");
@@ -3155,7 +3171,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 if (videosource) {
                     // Attach correct video input device to it:avfvideosrc
                     if ((!strcmp(plugin_name, "dc1394src") || !strcmp(plugin_name, "avfvideosrc")) && (prop_name[0] != 0)) {
-                        // DC1394 source or QTKITVideosource or AVFoundation based videosource:
+                        // DC1394 source or AVFoundation based videosource:
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
                         g_object_set(G_OBJECT(videosource), prop_name, (int) theDevice->deviceURI, NULL);
                     } else {
@@ -4441,14 +4457,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Recording started...\n");
         }
 
-        // Should we dump the whole encoding pipeline graph to a file for visualization
-        // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
-        if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
-            // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
-            printf("PTB-DEBUG: Dumping actual video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
-            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraphActual");
-        }
-
         // Wait for real start of capture, i.e., arrival of 1st captured
         // video buffer:
         PsychLockMutex(&capdev->mutex);
@@ -4481,6 +4489,14 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         PsychGSProcessVideoContext(capdev, FALSE);
 
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Capture engine fully running...\n");
+
+        // Should we dump the whole encoding pipeline graph to a file for visualization
+        // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+        if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+            // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
+            printf("PTB-DEBUG: Dumping actual video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
+            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraphActual");
+        }
 
         if(PsychPrefStateGet_Verbosity() > 3) {
             printf("PTB-INFO: Capture started on device %i - Input video resolution %i x %i - Framerate: %f fps.\n",

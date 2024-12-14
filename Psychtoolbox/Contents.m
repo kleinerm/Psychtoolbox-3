@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.19      17 February 2023
+% Version 3.0.20      13 December 2024
 %
 % The Psychophysics Toolbox is a collection of Octave and Matlab functions
 % that extend the language to give you exquisite control of your computer
@@ -103,6 +103,14 @@
 % useful commercial services.
 %
 % Please type 'PsychPaidSupportAndServices' to learn more.
+%
+% Psychtoolbox for Apple macOS and Microsoft Windows will require a paid software
+% license key to work very soon, likely starting sometime in January 2025. Until
+% then you can use it with a free time-limited trial license. Psychtoolbox will
+% connect to our network licensing servers after installation and after you have
+% given consent, to enable you to use it. For more information about this, type
+% 'help PsychLicenseHandling'. Stay tuned for our announcement of start of sales
+% for these software license keys in early 2025.
 %
 
 % The OS 9 version was this:

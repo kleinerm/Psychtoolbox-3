@@ -82,7 +82,7 @@ PsychError SCREENFlip(void)
 
     static char useString1[] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('AsyncFlipBegin', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
     static char synopsisString1[] =
-    "Schedule an asynchronous flip of front and back display surfaces for given onscreen window. "
+    "Schedule an asynchronous flip of front and back display surfaces for given onscreen window.\n"
     "\"windowPtr\" is the id of the onscreen window whose content should be shown at flip time. "
     "\"when\" is the requested stimulus onset time, a value of zero or no argument asks for flip "
     "at next possible vertical retrace.\n"
@@ -215,7 +215,7 @@ PsychError SCREENFlip(void)
     };
 
     // Give online help, if requested:
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     PsychErrorExit(PsychCapNumInputArgs((opmode < 2)  ? 5 : 1));        // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(1));                        // The required number of inputs
@@ -224,8 +224,23 @@ PsychError SCREENFlip(void)
     // Get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 
-    if (!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "Flip called on something else than an onscreen window. You can only flip onscreen windows.");
-    if(windowRecord->windowType!=kPsychDoubleBufferOnscreen) PsychErrorExitMsg(PsychError_user, "Flip called on window without backbuffers. Specify numberOfBuffers=2 in Screen('OpenWindow') if you want to use Flip.");
+    if (!PsychIsOnscreenWindow(windowRecord))
+        PsychErrorExitMsg(PsychError_user, "Flip called on something else than an onscreen window. You can only flip onscreen windows.");
+
+    if (windowRecord->windowType!=kPsychDoubleBufferOnscreen)
+        PsychErrorExitMsg(PsychError_user, "Flip called on window without backbuffers. Specify numberOfBuffers=2 in Screen('OpenWindow') if you want to use Flip.");
+
+    // No async flips yet with Vulkan, or VR/AR/MR/XR display backends:
+    if ((opmode == 1) && (windowRecord->specialflags & kPsychExternalDisplayMethod)) {
+        static unsigned int noasyncflipcnt = 0;
+
+        // Fall back to synchronous flip, with a warning:
+        opmode = 0;
+
+        // Give some throttled warning, once every 500 attempted async flips:
+        if ((PsychPrefStateGet_Verbosity() > 1) && !(noasyncflipcnt++ % 500))
+            printf("PTB-WARNING: Screen('AsyncFlipBegin') is not yet supported on Vulkan backend and on Apple Silicon Macs. Falling back to standard Flip.\n");
+    }
 
     // Only retrieve additional arguments if this isn't a finish on an async flip:
     if ((opmode != 2) && (opmode != 3)) {

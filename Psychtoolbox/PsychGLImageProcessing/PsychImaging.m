@@ -681,13 +681,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   with 10 bit precision per color channel (10 bpc / 30 bpp / "Deep color")
 %   on graphics hardware that supports native 10 bpc framebuffers.
 %
-%   Under Linux, all AMD graphics cards since at least 2007, NVidia graphics cards
-%   since 2008, and Intel graphics chips since at least 2010 do support native
-%   10 bit framebuffers. Intel graphics chips must use the X11 "intel" video driver
-%   to output their 10 bit framebuffers with actual 10 bit precision, the alternative
-%   "modesetting" video driver does not support output with more than 8 bit yet.
-%   XOrgConfCreator will take care of this Intel quirk when creating a custom xorg.config
-%   for such 10 bpc setups under Intel.
+%   Under Linux, AMD graphics cards since at least the year 2007, NVidia graphics
+%   cards since 2008, and Intel graphics chips since at least 2010 do support native
+%   10 bit framebuffers. Intel graphics chips must use the legacy X11 "intel" video driver
+%   to output their 10 bit framebuffers with actual 10 bit precision on Ubuntu
+%   20.04 LTS or earlier, as old "modesetting" video drivers do not support output
+%   with more than 8 bit. On Ubuntu 22.04-LTS and later, the modern modesetting driver
+%   can deal with 10 bpc output on all Intel graphics, so at least Ubuntu 22.04-LTS is
+%   recommended. XOrgConfCreator will take care of these Intel quirks when creating a
+%   custom xorg.config for such 10 bpc setups under Intel.
 %
 %   Under MS-Windows, many graphics cards of the professional class AMD/ATI Fire/Pro
 %   series (2008 models and later), and all current models of the professional class
@@ -1753,7 +1755,7 @@ persistent reqs;
 
 % This global variable signals if a GPGPU compute api is enabled, and which
 % one. 0 = None, 1 = GPUmat.
-global psych_gpgpuapi;
+global psych_gpgpuapi; %#ok<*GVMIS>
 
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
@@ -1944,6 +1946,28 @@ if strcmpi(cmd, 'OpenWindow')
 
         % Compute special OpenWindow overrides for winRect, framebuffer rect, specialflags and MSAA, as needed:
         [winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample, screenid] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample);
+    else
+        % No VR/AR/XR operation, but displaying on a more conventional display.
+
+        % Force the UseVulkanDisplay task if it doesn't exist already if running
+        % on macOS for Apple Silicon, as that is the only display backend which
+        % can ensure proper visual stimulus presentation timing and timestamping:
+        if IsOSX && IsARM && isempty(find(mystrcmp(reqs, 'UseVulkanDisplay')))
+            % Only auto-enable Vulkan backend for opaque top-level fullscreen windows:
+            if ((isempty(winRect) || isequal(winRect, Screen('Rect', screenid)) || isequal(winRect, Screen('GlobalRect', screenid))) && ...
+               (Screen('Preference', 'WindowShieldingLevel') >= 2000) && (bitand(Screen('Preference', 'ConserveVRAM'), 8192) == 0))
+                % Request Vulkan display backend:
+                reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
+            end
+
+            % Set ovrSpecialFlags to signal that the backend decision has been
+            % made intentionally and explicitely for Screen() by PsychImaging():
+            if isempty(ovrSpecialFlags)
+                ovrSpecialFlags = 0;
+            end
+
+            ovrSpecialFlags = mor(ovrSpecialFlags, kPsychBackendDecisionMade);
+        end
     end
 
     % If multiSample is still "use default" choice, then override it to our default of 0 for "no MSAA":
@@ -3726,8 +3750,16 @@ if ~isempty(floc)
     % overriden to something higher precision:
     vulkanColorPrecision = 0;
 
-    % Default color space: Overriden in vulkanHDRMode > 0.
-    vulkanColorSpace = 0;
+    % Apple macOS needs special treatment:
+    if IsOSX && IsARM
+        % VK_COLOR_SPACE_PASS_THROUGH_EXT for pixel identity passthrough, or this
+        % will mess with our own color correction routines and with display on
+        % devices from VPixx and CRS and similar:
+        vulkanColorSpace = 1000104013;
+    else
+        % Default color space: Overriden in vulkanHDRMode > 0.
+        vulkanColorSpace = 0;
+    end
 
     % Default color pixel format: Overriden in vulkanHDRMode > 0 as part of
     % override of vulkanColorPrecision, or explicit override:

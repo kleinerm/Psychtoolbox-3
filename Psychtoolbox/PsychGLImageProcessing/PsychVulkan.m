@@ -184,7 +184,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         % If predictedOnset is valid, use it. Otherwise fall back to vblTime:
         if predictedOnset > 0
             % Valid timestamp from Vulkan? Validate a bit and warn if not:
-            if (verbosity > 4) || ((verbosity > 1) && (abs(predictedOnset - vblTime) > 0.001))
+            if (verbosity > 4) || ((verbosity > 1) && (winfo.VBLEndline > 0) && (abs(predictedOnset - vblTime) > 0.001))
                 fprintf('PsychVulkan-DEBUG: Delta between Vulkan and reference timestamps is %f usecs.\n', 1e6 * (predictedOnset - vblTime));
             end
 
@@ -195,15 +195,22 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
             predictedOnset = vblTime;
 
             if verbosity > 1
-                fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed. Falling back to reference timestamp %f secs. Timing or visual stimulation might be broken.\n', vblTime);
+                fprintf('PsychVulkan-WARNING: Vulkan timestamping failed. Falling back to reference timestamp %f secs. Timing or visual stimulation might be broken.\n', vblTime);
             end
         else
-            % Error code timestamp -1 returned. We can't recover in a
-            % meaningful way from that, just pass it through...
-            vblTime = -1;
+            % Error code timestamp -1 returned.
+            if doTimestamp
+                % We can't recover in a meaningful way from that, just pass it through...
+                vblTime = -1;
 
-            if verbosity > 1
-                fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed completely. Returning invalid timestamp -1.\n');
+                if verbosity > 1
+                    fprintf('PsychVulkan-WARNING: Vulkan timestamping failed completely. Returning invalid timestamp -1.\n');
+                end
+            else
+                % No timestamp requested, so return the "no timestamp"
+                % timestamps == zero:
+                predictedOnset = 0;
+                vblTime = 0;
             end
         end
 
@@ -435,11 +442,9 @@ if strcmpi(cmd, 'OpenWindowSetup')
             end
         end
 
-        if ~isempty(outputName)
-            if verbosity >= 3
-                fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
-                        winRect(1), winRect(2), winRect(3), winRect(4), screenId);
-            end
+        if ~isempty(outputName) && ((verbosity >= 4) || (~(IsOSX && IsARM) && (verbosity == 3)))
+            fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
+                    winRect(1), winRect(2), winRect(3), winRect(4), screenId);
         end
     end
 
@@ -564,13 +569,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % kleinerm with version 21.11.2 from one year later - November
         % 2021! This on the Windows 10 21H1 edition. So we fall back to
         % non-fs-exclusive mode and accept broken timing and potentially
-        % impaired HDR - what choice do we have?! The bug seems to be gone
-        % as of version 23.11.1, aka raw 8388887, so we can enable
-        % fs-exclusive again for these recent driver from November 2023.
+        % impaired HDR - what choice do we have?! The bug still exists
+        % as of version 23.11.1, aka raw 8388887, from November 2023.
         badFSEIds = hex2dec({'67EF'});
         for i=1:length(devs)
             if (devs(i).VendorId == 4098) && strcmp(winfo.GLRenderer, devs(i).GpuName) && ...
-               (ismember(devs(i).DeviceId, badFSEIds) || (devs(i).DriverVersionRaw >= 8388767 && devs(i).DriverVersionRaw < 8388887))
+               (ismember(devs(i).DeviceId, badFSEIds) || (devs(i).DriverVersionRaw >= 8388767 && devs(i).DriverVersionRaw <= 8388887))
                 % Got a bad one! Disable fullscreen-exclusive mode for fullscreen windows:
                 flags = mor(flags, 2);
                 fprintf('PsychVulkan-INFO: AMD gpu [%s] with buggy Vulkan driver for fullscreen mode detected! Enabling workaround, timing reliability may suffer.\n', devs(i).GpuName);
@@ -617,8 +621,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % frame latency is gone, but now stimulus onset scheduling is
             % broken whenever a flip is more than 2 frames in the future!
             %
+            % On macOS 14.4 on Apple M1, it seems to work reasonably well,
+            % apart from the sporadic failure during the first few
+            % presents, so there's some hope. Not yet tested thoroughly
+            % yet, but lets activate this mode on Apple Silicon for now.
             % Broken stuff all around on the iToys operating system:
-            flags = mor(flags, 2);
+            if ~IsARM
+                flags = mor(flags, 2);
+            end
         else
             flags = mor(flags, 1);
             noInterop = 1;
@@ -806,7 +816,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % No interop, or semaphores unsupported?
         if noInterop || isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_semaphore')) %#ok<STREMP>
             if ~noInterop
-                fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop semaphores. Enabling operation without semaphores on gpu %i.\n', gpuIndex);
+                if verbosity >= 4
+                   fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop semaphores. Enabling operation without semaphores on gpu %i.\n', gpuIndex);
+                end
             else
                 fprintf('PsychVulkan-INFO: Interop disabled! Enabling operation without semaphores on gpu %i.\n', gpuIndex);
             end
@@ -837,7 +849,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         case 0
             internalFormat = GL.RGBA8;
             bpc = 8;
-            if verbosity >= 3
+            if verbosity >= 4
                 fprintf('PsychVulkan-INFO: 8 bpc linear precision framebuffer will be used.\n');
             end
 

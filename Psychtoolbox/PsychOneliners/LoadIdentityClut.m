@@ -108,6 +108,13 @@ if nargin < 4 || isempty(disableDithering)
     disableDithering = 1;
 end
 
+if IsWayland
+    % So far, this is a no-go on Wayland due to lack of standardized protocols
+    % for gamma / color management setup:
+    fprintf('LoadIdentityClut: Skipped on Wayland display backend for now.\n');
+    return;
+end
+
 % Get screen id for this window:
 screenid = Screen('WindowScreenNumber', windowPtr);
 

@@ -457,20 +457,15 @@ while (count < nmax) && ~any(buttons)
         end
     end
     
-    % Add a screenshot of the center 512 x 512 pixels as a new video frame to the movie file, if any:
-    if writeMovie
-        % It would be better to capture the image from the 'backBuffer', but
-        % we capture the 'frontBuffer' to work around a bug in the VirtualBox
-        % Virtual Machine software when running a Windows-7 VM. This exotic
-        % setup is used for testing of PTB, you should not need this
-        % workaround on your system.
-        Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', windowPtr)), 'frontBuffer');
-    end
-    
     % Flip stim to display and take timestamp of stimulus-onset after
     % displaying the new stimulus and record it in vector t:
     onset = Screen('Flip', windowPtr);
-    
+
+    % Add a screenshot of the center 512 x 512 pixels as a new video frame to the movie file, if any:
+    if writeMovie
+        Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', windowPtr)), 'backBuffer');
+    end
+
     % Log timestamp:
     count = count + 1;
     t(count) = onset;

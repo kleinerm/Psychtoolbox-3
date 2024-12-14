@@ -96,7 +96,7 @@ if nargin < 2
 end
 
 if isempty(stereomode)
-   % Use non-stereo display by default. 
+   % Use non-stereo display by default.
    stereomode=0;
 end;
 
@@ -160,13 +160,13 @@ try
             rect2=InsetRect(Screen('GlobalRect', screen(2)), 1, 0);
         end
     end;
-   
+
    help PerceptualVBLSyncTest;
    fprintf('Press ENTER key to start the test. The test will stop after 10 seconds\n');
    fprintf('or any keypress...\n');
 
    %KbStrokeWait;
-   
+
    if stereomode~=10
        % Standard case:
        [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
@@ -179,20 +179,27 @@ try
        % Setup master window:
        [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
        % Setup slave window:
-       Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);       
+       Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);
    end
-   
+
+   % The display engines of some 64-Bit ARM platforms do not yet have hardware cursor
+   % support, so hide the cursor on those, to avoid software cursor rendering from
+   % messing up the display timing for this test script:
+   if IsARM && Is64Bit
+       HideCursor(win);
+   end
+
    Screen('GetFlipInfo', win, 1);
-   
+
    flickerRect = InsetRect(winRect, 100, 0);
    color = 0;
    deadline = GetSecs + maxduration;
    beampos=0;
-   
+
    ifi = Screen('GetFlipInterval', win);
-   
+
    VBLTimestamp = Screen('Flip', win, 0, 2);
-   
+
    while (~KbCheck) && (GetSecs < deadline)
       % Draw left eye view (if stereo enabled):
       Screen('SelectStereoDrawBuffer', win, 0);
@@ -204,7 +211,7 @@ try
       Screen('SelectStereoDrawBuffer', win, 1);
       Screen('FillRect', win, color, flickerRect);
       if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
-      
+
       if stereomode == 0 && length(screen)>1
           Screen('FillRect', win2, color, flickerRect);
           Screen('DrawingFinished', win2, 0, 2);
@@ -213,10 +220,10 @@ try
       else
           multiflip = 0;
       end
-      
+
       % Alternate drawing color from white -> black, or black -> white
       color=255 - color;
-      
+
       if doublebuffer>1
           if vblSync
               % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
@@ -236,7 +243,7 @@ try
               % Above flip won't return a 'beampos' in non-VSYNC'ed mode,
               % so we query it manually:
               beampos = Screen('GetWindowInfo', win, 1);
-              
+
               % Throttle a little bit for visualization purpose:
               WaitSecs('YieldSecs', 0.005);
           end
@@ -244,11 +251,11 @@ try
       else
           % Just wait a bit in non-buffered case:
           pause(0.001);
-      end;
-   end;
-   
+      end
+   end
+
    Screen('CloseAll');
-   return;   
+   return;
 catch
-   Screen('CloseAll');   
-end;
+   Screen('CloseAll');
+end

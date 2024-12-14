@@ -582,6 +582,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         PsychCopyRect(windowRecord->globalrect, windowRecord->rect);
     }
 
+    // TODO XXX the whole bscale buffer scaling for getting native Retina resolution does not work
+    // at all. Don't know what's wrong, ...
+    int bscale = 1;
+    width *= bscale;
+    height *= bscale;
+    printf("Wayland window width x height is %i x %i\n", width, height);
+
     // Select OpenGL context API for use with this window:
     attrib[attribcount++] = WAFFLE_CONTEXT_API;
     attrib[attribcount++] = opengl_api;
@@ -925,6 +932,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
         // Done with defining input and display regions, so destroy our region:
         wl_region_destroy(region);
+
+        if (wl_proxy_get_version((struct wl_proxy *) wayland_window->wl_surface) >= 3)
+            wl_surface_set_buffer_scale(wayland_window->wl_surface, bscale);
+        else
+            printf("PTB-INFO: wl_surface version %i < 3! HiDPI/Retina window scaling unsupported.\n",
+                   wl_proxy_get_version((struct wl_proxy *) wayland_window->wl_surface));
 
         if (PsychPrefStateGet_Verbosity() > 3)
             printf("PTB-INFO: Onscreen window uses: wl_shell_surface %p, xdg_toplevel %p\n", wayland_window->wl_shell_surface, wayland_window->xdg_toplevel);

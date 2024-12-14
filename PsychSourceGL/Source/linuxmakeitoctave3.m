@@ -36,9 +36,17 @@ if mode == -1
     modes = 0:16;
 
     if IsARM
-        % Do not build plugin 16 == PsychOpenXRCore, 12 == PsychOculusVRCore,
-        % 10 == PsychCV, 4 == Eyelink on ARM / RaspberryPi:
-        modes = setdiff (modes, [4, 10, 12, 16]);
+        % Do not build plugin 4 == Eyelink, 12 == PsychOculusVRCore, due to lack
+        % of ARM proprietary libraries for Eyelink, and lack of ARM ovrd executable
+        % for Rift DK-1/DK-2 HMD tracking.
+        modes = setdiff (modes, [4, 12]);
+
+        if ~Is64Bit
+          % Building plugin 16 PsychOpenXRCore is possible on ARM, but does not
+          % really make much sense on 32-Bit ARM like RaspberryPi atm., due to
+          % too limited resources/performance etc., so exclude on 32-Bit ARM:
+          modes = setdiff (modes, [16]);
+        end
     end
 
     for mode = modes
@@ -68,15 +76,19 @@ else
 end
 
 % Special folder for ARM binaries:
-if ~isempty(strfind(computer, 'arm'))
-    target = 'PsychBasic/Octave3LinuxFilesARM/';
+if IsARM
+    if Is64Bit
+      target = 'PsychBasic/Octave3LinuxFilesARM64/';
+    else
+      target = 'PsychBasic/Octave3LinuxFilesARM/';
+    end
 end
 
 if mode==0
     % Build Screen.mex:
 
     % Build against system installed GStreamer-1.8+, ideally 1.18+.
-    mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lXcomposite
+    mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/lib64/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lXcomposite
 
     unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
 end
@@ -84,7 +96,7 @@ end
 if mode==100 && ~neurodebianbuild
     % Build Screen.mex with Wayland display backend, for desktop Linux:
     fprintf('Building Screen() for native Wayland.\n');
-    mex "-W -std=gnu99 -Wno-deprecated-declarations" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_WAYLAND -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -I/usr/include/colord-1 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1 -lwayland-cursor -lxkbcommon -lcolord
+    mex "-W -std=gnu99 -Wno-deprecated-declarations" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_WAYLAND -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/lib64/glib-2.0/include -I/usr/include/libxml2 -I/usr/include/colord-1 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lxcb-present -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1 -lwayland-cursor -lxkbcommon -lcolord
 
     % Store in special Wayland subfolder for now:
     unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target 'Wayland/']);
@@ -114,7 +126,13 @@ end
 
 if mode==2
     % Build WaitSecs.mex:
-    mex --output ../Projects/Linux/build/WaitSecs.mex -Wno-date-time -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt -ldl
+    if IsWayland
+      % On Wayland, -DPTB_USE_WAYLAND, so the WaitSecs Version identifies as Wayland system:
+      mex --output ../Projects/Linux/build/WaitSecs.mex -Wno-date-time -DPTBMODULE_WaitSecs -DPTB_USE_WAYLAND -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt -ldl
+    else
+      mex --output ../Projects/Linux/build/WaitSecs.mex -Wno-date-time -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt -ldl
+    end
+
     unix(['cp ../Projects/Linux/build/WaitSecs.mex ' PsychtoolboxRoot target]);
 end
 
@@ -142,7 +160,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-       mex --output moglcore.mex -Wno-incompatible-pointer-types -Wno-discarded-qualifiers -Wno-int-conversion -DPTB_USE_WAYLAND -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+       mex --output moglcore.mex -Wno-address -Wno-incompatible-pointer-types -Wno-discarded-qualifiers -Wno-int-conversion -DPTB_USE_WAFFLE -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
@@ -165,9 +183,7 @@ end
 
 if mode==7
     % Build PsychKinectCore.mex:
-    % Official build method: mex --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
-    % Test build against libfreenect-0.5 from GitHub repo:
-    mex --output ../Projects/Linux/build/PsychKinectCore.mex -Wno-date-time -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib/ -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -ldl -lfreenect -lusb-1.0
+    mex --output ../Projects/Linux/build/PsychKinectCore.mex -Wno-date-time -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -ldl -lfreenect -lusb-1.0
     unix(['cp ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target]);
 end
 
@@ -182,7 +198,7 @@ if mode==9
     curdir = pwd;
     cd('../../Psychtoolbox/PsychSound/MOAL/source/')
     try
-       mex --output moalcore.mex -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
+       mex --output moalcore.mex -Wno-address -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c
     catch
     end
     unix(['cp moalcore.mex ' PsychtoolboxRoot target]);
@@ -190,7 +206,7 @@ if mode==9
     cd(curdir);
 end
 
-if mode == 10
+if mode == 10 && exist('/usr/include/apriltag', 'dir')
     % Build PsychCV
     mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils
     %mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -DPSYCHCV_USE_ARTOOLKIT -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a
@@ -259,7 +275,7 @@ if mode==15
     unix(['cp ../Projects/Linux/build/PsychVulkanCore.mex ' PsychtoolboxRoot target]);
 end
 
-if mode==16
+if mode==16 && exist('/usr/include/openxr', 'dir')
     % Build PsychOpenXRCore.mex:
     try
         mex --output ../Projects/Linux/build/PsychOpenXRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenXRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore -ICommon/PsychOpenXRCore/nanopb Linux/Base/*.c Common/Base/*.c Common/PsychOpenXRCore/*.c Common/PsychOpenXRCore/nanopb/*.c -lc -lrt -ldl -lopenxr_loader
@@ -287,17 +303,48 @@ end
 % as a C++ piece of art, which can't expand wildcards anymore.
 function mex(varargin)
   inargs = {varargin{:}};
+
+  if IsARM
+      pluginsuffix = 'ARM';
+  else
+      pluginsuffix = 'Intel';
+  end
+
+  if Is64Bit
+      pluginsuffix = [pluginsuffix '64'];
+  else
+      pluginsuffix = [pluginsuffix '32'];
+  end
+
   outargs = {"--mex"};
+  outargs = {outargs{:}, "-Wno-unknown-pragmas"};
   outargs = {outargs{:}, sprintf("-L%sPsychBasic/PsychPlugins", PsychtoolboxRoot)};
+  outargs = {outargs{:}, sprintf("-L%sPsychBasic/PsychPlugins/%s", PsychtoolboxRoot, pluginsuffix)};
   outargs = {outargs{:}, "-fexceptions"}; % Explicit exception handling for Octave on RaspberryPi OS.
   outargs = {outargs{:}, "-s"};
 
+  usewayland = 0;
   for i = 1:length(inargs)
+    if ~isempty(strfind(inargs{i}, '-DPTB_USE_WAYLAND'))
+      usewayland = 1;
+    end
+
     if ~isempty(strfind(inargs{i}, '*'))
       outargs = {outargs{:}, glob(inargs{i})};
     else
       outargs = {outargs{:}, inargs{i}};
     end
+  end
+
+  [rc, pagesize] = system('getconf PAGESIZE');
+  if rc == 0
+      pagesize = str2num(pagesize);
+  else
+      pagesize = NaN;
+  end
+
+  if Is64Bit && (usewayland || (pagesize ~= 4096))
+    outargs = {outargs{:}, "-lLexActivator"};
   end
 
   args = cellstr(char(outargs));
@@ -307,8 +354,11 @@ function mex(varargin)
   oldldflags = getenv('LDFLAGS');
   try
     % Set LDFLAGS to add an rpath to the Psychtoolbox/PsychBasic/PsychPlugins folder,
-    % so our custom runtime plugins can be found and load-time linked into our mex files:
-    setenv('LDFLAGS', [oldldflags " -Wl,-rpath='$ORIGIN/../PsychPlugins' -Wl,-rpath='$ORIGIN/../../PsychPlugins'"])
+    % and its arch specific subfolders 'pluginsuffix', so our custom runtime plugins
+    % can be found and load-time linked into our mex files:
+    setenv('LDFLAGS', [oldldflags " -Wl,-rpath='$ORIGIN/../PsychPlugins' -Wl,-rpath='$ORIGIN/../../PsychPlugins'" ...
+            sprintf(" -Wl,-rpath='$ORIGIN/../PsychPlugins/%s' -Wl,-rpath='$ORIGIN/../../PsychPlugins/%s'", ...
+            pluginsuffix, pluginsuffix)]);
 
     % Build it, with customized LDFLAGS:
     mkoctfile (args{:});

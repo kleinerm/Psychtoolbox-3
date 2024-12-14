@@ -369,11 +369,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if(PsychPrefStateGet_Verbosity()>2) {
             printf("\n\nPTB-INFO: This is Psychtoolbox-3 for %s, under %s %s %s (Version %i.%i.%i - Build date: %s).\n", PSYCHTOOLBOX_OS_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PTB_ARCHITECTURE, PTB_ISA, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
             printf("PTB-INFO: OS support status: %s\n", PsychSupportStatus());
-            printf("PTB-INFO: Type 'PsychtoolboxVersion' for more detailed version information.\n");
-            printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT License, with\n");
-            printf("PTB-INFO: some restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n\n");
-            printf("PTB-INFO: For information about paid support, support memberships and other commercial services, please type\n");
-            printf("PTB-INFO: 'PsychPaidSupportAndServices'.\n\n");
+            printf("PTB-INFO: For information about paid support and other commercial services, please type 'PsychPaidSupportAndServices'.\n");
+            printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT license, with some\n");
+            printf("PTB-INFO: restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
+            printf("PTB-INFO: Psychtoolbox and its prebuilt mex files are distributed in the hope that they will be useful, but WITHOUT\n");
+            printf("PTB-INFO: ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n");
         }
 
         if (PsychPrefStateGet_EmulateOldPTB() && PsychPrefStateGet_Verbosity()>1) {
@@ -953,11 +953,15 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // and trouble, so only run time-reduced synctests, and skip various warnings if they should
     // fail, as this is strictly non of our business:
     if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) {
-        if (PsychPrefStateGet_Verbosity() > 2)
-            printf("PTB-INFO: External display method is in use for this window. Running short and lenient timing tests only.\n");
-
         if (skip_synctests < 1)
             skip_synctests = 1;
+
+        // macOS on Apple Silicon proprietary AGFX gpu and display engine? Skip sync tests completely, they are pointless:
+        if ((PSYCH_SYSTEM == PSYCH_OSX) && strstr((*windowRecord)->gpuCoreId, "AGFX"))
+            skip_synctests = 2;
+
+        if ((PsychPrefStateGet_Verbosity() > 2) && (skip_synctests < 2))
+            printf("PTB-INFO: External display method is in use for this window. Running short and lenient timing tests only.\n");
     }
 
     // If this is a windowed onscreen window, be lenient with synctests. Make sure they never fail,
@@ -1589,7 +1593,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if (PsychPrefStateGet_Verbosity() > 2) {
         printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
         if (VRAMTotal > 0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal, TexmemTotal);
-        printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
+        printf("PTB-INFO: Screen %i : Window %i : VBL startline = %i : VBL Endline = %i\n", (*windowRecord)->screenNumber, (*windowRecord)->windowIndex,
+               (int) vbl_startline, VBL_Endline);
 
         if (ifi_beamestimate > 0) {
             printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
@@ -1646,8 +1651,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 }
             }
             else if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) {
-                printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Screen('Flip') timestamping will\n");
-                printf("PTB-INFO: fully rely on mechanisms in the external display backend, with unknown precision and reliability.\n");
+                if (PSYCH_SYSTEM == PSYCH_OSX) {
+                    printf("PTB-INFO: Will try to use mechanisms in the external display backend for accurate Flip timestamping.\n");
+                }
+                else {
+                    printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Screen('Flip') timestamping will\n");
+                    printf("PTB-INFO: fully rely on mechanisms in the external display backend, with unknown precision and reliability.\n");
+                }
             }
             else {
                 printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback.\n");
@@ -1655,11 +1665,15 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             }
         }
 
-        printf("PTB-INFO: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
-               ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
+        if (ifi_estimate > 0)
+            printf("PTB-INFO: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
+                   ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
 
-        if (ifi_nominal > 0) printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
-        printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
+        if (ifi_nominal > 0)
+            printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
+
+        // printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
+
         if (PsychVRRActive(*windowRecord)) {
             printf("PTB-INFO: Enabling Variable Refresh Rate VRR mode, using method %i and timing style %i.\n", (*windowRecord)->vrrMode, (*windowRecord)->vrrStyleHint);
             printf("PTB-INFO: Assuming minimum VRR refresh duration %f msecs, maximum duration %f msecs.\n", 1000 * (*windowRecord)->vrrMinDuration, 1000 * (*windowRecord)->vrrMaxDuration);
@@ -1846,7 +1860,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 printf("\nPTB-WARNING: Unable to measure monitor refresh interval! Using a fake value of %f milliseconds.\n", ifi_estimate*1000);
             }
             else {
-                printf("PTB-INFO: All display tests and calibrations disabled. Assuming a refresh interval of %f Hz. Timing will be inaccurate!\n", 1.0/ifi_estimate);
+                printf("PTB-INFO: All startup display tests and calibrations disabled. Assuming a refresh interval of %f Hz. %s\n",
+                       1.0 / ifi_estimate, ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) ? "" : "Timing will be inaccurate!");
             }
         }
     }
@@ -7100,6 +7115,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     psych_bool intel = FALSE;
     psych_bool llvmpipe = FALSE;
     psych_bool vc4 = FALSE;
+    psych_bool apple = FALSE;
     GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
     GLboolean nativeStereo = FALSE;
     int mesaversion[3];
@@ -7164,6 +7180,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
     if (strstr((char*) glGetString(GL_VENDOR), "Broadcom") || strstr((char*) glGetString(GL_RENDERER), "VC4")) {
         vc4 = TRUE; sprintf(windowRecord->gpuCoreId, "VC4");
+    }
+
+    if (strstr((char*) glGetString(GL_VENDOR), "Apple") || strstr((char*) glGetString(GL_RENDERER), "Apple") || strstr((const char*) glGetString(GL_VERSION), "Metal")) {
+        apple = TRUE; sprintf(windowRecord->gpuCoreId, "AGFX");
     }
 
     // Is this a hybrid graphics dual-gpu laptop which uses DRI PRIME for muxless render offload?
@@ -7645,7 +7665,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         }
 
         // FBO + float textures support on Intel gfx, Broadcom VideoCore 5/6, software renderers?
-        if ((vc4 || intel || llvmpipe) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
+        if ((vc4 || intel || llvmpipe || apple) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
             // Intel GPUs with FBO and ARB_texture_float support: These are usually of the HD graphics series and
             // recent enough to support floating point textures and rendertargets with 16 bpc and 32 bpc float, including
             // texture filtering and frame buffer blending, and as a bonus FP32 shading. Iow. they support the whole
@@ -7665,14 +7685,16 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             // and avoid 32 bpc framebuffers for blending, or avoid blending on 32 bpc framebuffers:
             if (verbose && vc4) printf("Assuming VideoCore-6: Renderer supports full 16/32 bit floating point textures and frame buffers, but only 16 bit float filtering and blending, as well as some 32 bit float shading.\n");
 
+            if (verbose && apple) printf("Assuming Apple Silicon AGFX gpu: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+
             windowRecord->gfxcaps |= kPsychGfxCapFP32Shading;
             windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
             windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
             windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
             windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;
 
-            if (intel || llvmpipe) {
-                // 32 bpc float filtering and blending only on Intel and software, not on v3d / VideoCore-6:
+            if (intel || llvmpipe || apple) {
+                // 32 bpc float filtering and blending only on Intel, Apple, and software, not on v3d / VideoCore-6:
                 windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
                 windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
             }

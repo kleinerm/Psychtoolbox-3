@@ -89,7 +89,12 @@ try
     % Wayland desktop on 64-Bit Linux with Octave?
     if IsLinux(1) && IsOctave && IsWayland && ~isempty(getenv('PSYCH_ALLOW_WAYLAND'))
         % Add path, so our Wayland build of Screen.mex overrides the standard one:
-        rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
+        if IsARM
+            rdir = [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFilesARM64/Wayland'];
+        else
+            rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
+        end
+
         if exist(rdir, 'dir')
             setenv('PSYCH_DISABLE_COLORD', '1');
             addpath(rdir);
@@ -102,8 +107,17 @@ try
     value=Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
     return;
 catch %#ok<*CTCH>
-    fprintf('\n\n\nA very simple test call to the Screen() MEX file failed in AssertOpenGL, indicating\n');
-    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
+    fprintf('\n\n\nA very simple test call to the Screen() MEX file failed in AssertOpenGL.\n');
+    s = psychlasterror;
+    if ~isempty(s.message) && ~isempty(strfind(s.message, 'not licensed'))
+        fprintf('Seems you currently do not have a valid license for running Psychtoolbox on this\n');
+        fprintf('machine. Read the troubleshooting instructions above, on how to fix that.\n');
+        fprintf('The returned error message by Matlab/Octave was:\n');
+        ple;
+        error('Problems detected in call to AssertOpenGL;');
+    end
+
+    fprintf('Either Screen is totally dysfunctional, or you are trying to run your script on\n');
     fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
 
     %   if IsWin

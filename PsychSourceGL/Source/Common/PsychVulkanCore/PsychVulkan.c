@@ -56,7 +56,20 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
+// For building against an up to date LunarG Vulkan SDK, we'd only need to
+// #include <MoltenVK/vk_mvk_moltenvk.h>
+// but using the following trickery of define and includes in exactly the
+// given order will allow to compile against the subset of Vulkan SDK headers
+// shipping with GStreamer 1.24 development framework, which can save us installing
+// the full SDK on a build machine. Not sure if we'll keep it this way, lets see...
+#define __mvk_vulkan_h_ 1
+#define VK_USE_PLATFORM_METAL_EXT 1
+#include <Availability.h>
+#include <vulkan/vulkan.h>
 #include <MoltenVK/vk_mvk_moltenvk.h>
+#ifndef VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
+#define VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME "VK_KHR_portability_subset"
+#endif
 #endif
 
 #include <vulkan/vulkan.h>
@@ -539,6 +552,19 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     if (initialized)
         return;
 
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    if (PSYCH_SYSTEM == PSYCH_OSX) {
+        // Lock ourselves into host process memory on macOS, to prevent us, and thereby
+        // the statically linked into us MoltenVK library, from being cleared out of memory
+        // on a clear call. Doing so end very badly only a driver reload, crashing inside the
+        // Obj-C part of MoltenVK, specifically in mvkGetEnvVar -> [NSProcessInfo environment].
+        mexLock();
+
+        if (verbosity >= 5)
+            printf("PsychVulkanCore-INFO: Locked ourselves into memory to prevent reload crashes on macOS with MoltenVK.\n");
+    }
+    #endif
+
     memset(isSuitableDriver, 0, sizeof(isSuitableDriver));
 
     // Establish a connection to the host windowing system and get a connection handle:
@@ -650,7 +676,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
             goto instance_init_out;
         }
 
-        if (verbosity >= 3)
+        if ((verbosity >= 4) || ((verbosity >= 3) && (PSYCH_SYSTEM != PSYCH_OSX)))
             printf("PsychVulkanCore-INFO: Vulkan instance (version %i.%i.%i) created.\n", VK_VERSION_MAJOR(instanceVersion),
                     VK_VERSION_MINOR(instanceVersion), VK_VERSION_PATCH(instanceVersion));
     }
@@ -1420,31 +1446,52 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         for (i = 0; i < window->surfaceFormatCount; i++) {
             if (verbosity > 3) {
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DOLBYVISION_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_DOLBYVISION_EXT          - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DOLBYVISION_EXT              - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT             - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_HLG_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_HLG_EXT            - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_HDR10_HLG_EXT                - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_BT2020_LINEAR_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT        - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT            - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_NATIVE_AMD)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD       - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD           - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_PASS_THROUGH_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT             - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT     - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_BT709_NONLINEAR_EXT)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT          - ", i);
 
                 if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-                    printf("[%i] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - ", i);
+                    printf("[%i] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR           - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT     - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT        - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT         - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_BT709_LINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_BT709_LINEAR_EXT             -", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT          - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT       - ", i);
+
+                if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT)
+                    printf("[%i] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT  - ", i);
 
                 switch (window->surfaceFormats[i].surfaceFormat.format) {
                     case VK_FORMAT_R16G16B16A16_SFLOAT:
@@ -1766,17 +1813,20 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         if (verbosity > 3)
             printf("PsychVulkanCore-INFO: Vulkan driver reports %i available video modes on target display output.\n", modeCount);
 
-        // Check if we are running under the AMDVLK open-source or AMDVLK-PRO proprietary driver. TODO: Only apply for driver versions earlier than a certain bug-fixed one?
-        // (vulkan->deviceProps.driverVersion < VK_MAKE_VERSION(19, 3, 0))
-        if ((modeCount > 64) && ((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR))) {
+        // Check if we are running under the buggy AMDVLK open-source or AMDVLK-PRO proprietary driver of driverVersion 2.0.325 or earlier:
+        if ((modeCount > 64) && ((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) &&
+            (vulkan->deviceProps.driverVersion <= VK_MAKE_VERSION(2, 0, 325))) {
             // This is an amdvlk driver with a known bug in video mode enumeration. It crashes due to memory heap/stack corruption if one tries to
-            // query video modes via vkGetDisplayModePropertiesKHR() if the display output has more than 64 video modes! True as of at least amdvlk v-2024.Q3.3.
-
+            // query video modes via vkGetDisplayModePropertiesKHR() if the display output has more than 64 video modes! This bug was present from
+            // initial release. The bug will be fixed in driver versions > 2.0.325, ie. amdvlk v-2024.Q4.2 and later with ETA after 5th November 2024.
+            // Reference: Bug https://github.com/GPUOpen-Drivers/xgl/issues/179 and bugfix https://github.com/GPUOpen-Drivers/xgl/pull/180 at 5.11.2024.
             if (verbosity > 1) {
                 printf("PsychVulkanCore-WARNING: Vulkan driver reports %i available video modes on target display output, but this deficient version of\n", modeCount);
                 printf("PsychVulkanCore-WARNING: the AMDVLK AMD Vulkan driver can only handle at most 64 video modes per display, otherwise it will crash!\n");
                 printf("PsychVulkanCore-WARNING: I am trying to work around this problem by limiting the enumerated modes to only the first 64 modes.\n");
                 printf("PsychVulkanCore-WARNING: This may still crash, especially if you have more than one display connected to any of your AMD graphics cards!\n");
+                printf("PsychVulkanCore-WARNING: Owners of a modern AMD 'Navi gpu family' gpu with RDNA graphics, e.g., AMD RX 5000 series and later, can\n");
+                printf("PsychVulkanCore-WARNING: to AMDVLK release v-2024.Q4.2 or later for a properly bug fixed driver.\n");
             }
 
             // Limit the number of queried video modes to at most 64 modes, the maximum those buggy drivers can handle.
@@ -2786,14 +2836,16 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if (window->frameIndex - 1 > 0) {
                     // No, bad:
                     if (verbosity > 0)
-                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE failed to retrieve timestamp! Timed out.\n", window->index);
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed to retrieve visual stimulus onset timestamp! Timed out.\n", window->index);
 
-                    return(FALSE);
+                    // Only count this as fatal on non macOS for the time being:
+                    if (PSYCH_SYSTEM != PSYCH_OSX)
+                        return(FALSE);
                 }
                 else {
                     // Yes, be lenient, as at least on Linux + Mesa this seems to be expected:
                     if (verbosity > 5)
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE failed to retrieve timestamp for frameIndex 0. Timed out. Carrying on with fallback.\n", window->index);
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Failed to retrieve visual stimulus onset timestamp for frameIndex 0. Timed out. Carrying on with fallback.\n", window->index);
                 }
             }
             else {
@@ -3446,9 +3498,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Select number of image buffers:
     uint32_t numBuffers = window->surfaceCapabilities.minImageCount;
+    uint32_t optBuffers = (PSYCH_SYSTEM == PSYCH_OSX) ? 3 : 2;
 
-    if (numBuffers != 2 && window->surfaceCapabilities.minImageCount <= 2)
-        numBuffers = 2;
+    if (numBuffers != optBuffers && window->surfaceCapabilities.minImageCount <= optBuffers)
+        numBuffers = optBuffers;
 
     if ((numBuffers > window->surfaceCapabilities.maxImageCount) && (window->surfaceCapabilities.maxImageCount != 0))
         numBuffers = window->surfaceCapabilities.maxImageCount;
@@ -3459,7 +3512,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         numBuffers = MAX_BUFFERS;
     }
 
-    if ((numBuffers != 2) && (verbosity > 1))
+    if ((optBuffers == 2) && (numBuffers != 2) && (verbosity > 1))
         printf("PsychVulkanCore-WARNING: Window %i does not support strict double-buffering (numBuffers=%i). Expect timing trouble!\n", window->index, numBuffers);
 
     window->numBuffers = 0;

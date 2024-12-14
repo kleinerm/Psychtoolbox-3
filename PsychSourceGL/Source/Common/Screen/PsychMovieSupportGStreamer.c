@@ -332,6 +332,7 @@ static char movieTexturePlanarVertexShaderSrc[] =
 "/* PTBs color handling is expected to pass the vertex color in modulateColor    */\n"
 "/* for unclamped drawing for this reason. */\n"
 "\n"
+"/* (c) 2020 - 2024 Mario Kleiner - Licensed under the MIT license.              */\n"
 "varying vec4 unclampedFragColor;\n"
 "varying vec2 texNominalSize;\n"
 "attribute vec4 modulateColor;\n"
@@ -349,6 +350,7 @@ static char movieTexturePlanarVertexShaderSrc[] =
 "    gl_Position    = ftransform();\n"
 "}\n\0";
 
+// Shader variant for modern OpenGL 3.1+ on Linux and Windows with GLSL 1.30+
 static char movieTexturePlanarFragmentShaderSrc[] =
 "/* YUV-I420/422/444 planar texture sampling fragment shader.        */\n"
 "/* Retrieves YUV samples from proper locations in planes.           */\n"
@@ -357,6 +359,8 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "/* EOTF mapping to linear RGB, and LDR/HDR range remapping, and     */\n"
 "/* color space conversion, as needed. Finally GL_MODULATE texture   */\n"
 "/* function emulation is applied before fragment output.            */\n"
+"\n"
+"/* (c) 2020 - 2024 Mario Kleiner - Licensed under the MIT license.  */\n"
 "\n"
 "/* switch() statement in shader needs GLSL 1.30+: */\n"
 "#version 130\n"
@@ -565,6 +569,204 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "    /* Set alpha to 1.0 and multiply the final vec4 texcolor with incoming fragment color (GL_MODULATE emulation), and assign result as output fragment color. */\n"
 "    gl_FragColor = vec4(L.r * outUnitMultiplier, L.g * outUnitMultiplier, L.b * outUnitMultiplier, 1.0) * unclampedFragColor;\n"
 "}\n";
+// End of variant for modern OpenGL on Linux and Windows.
+
+// Shader variant for macOS with its primitive OpenGL 2.1 implementation, with only GLSL 1.20, lacking support for the  switch-case and isnan() statements:
+static char movieTexturePlanarFragmentShaderOSXSrc[] =
+"/* YUV-I420/422/444 planar texture sampling fragment shader.        */\n"
+"/* Retrieves YUV samples from proper locations in planes.           */\n"
+"/* Handles 8/10/12/.../16 bpc signal value, and full/limited range. */\n"
+"/* Converts YUV samples to non-linear RGB color triplets, applies   */\n"
+"/* EOTF mapping to linear RGB, and LDR/HDR range remapping, and     */\n"
+"/* color space conversion, as needed. Finally GL_MODULATE texture   */\n"
+"/* function emulation is applied before fragment output.            */\n"
+"\n"
+"/* (c) 2024 Mario Kleiner - Licensed under the MIT license.         */\n"
+"\n"
+"#version 120\n"
+"#extension GL_ARB_texture_rectangle : enable\n"
+"\n"
+"uniform sampler2DRect Image;\n"
+"uniform float isSemiPlanar;\n"
+"uniform float yChromaScale;\n"
+"uniform int eotfType;\n"
+"uniform float unormInputScaling;\n"
+"uniform vec3 rangeScale;\n"
+"uniform vec3 rangeOffset;\n"
+"uniform float Kr;\n"
+"uniform float Kb;\n"
+"uniform mat3x3 M_CSC;\n"
+"uniform float outUnitMultiplier;\n"
+"varying vec4 unclampedFragColor;\n"
+"varying vec2 texNominalSize;\n"
+"\n"
+"bool isnan(float val)\n"
+"{\n"
+"    return (val < 0.0 || 0.0 < val || val == 0.0) ? false : true;\n"
+"}\n"
+"\n"
+"void main()\n"
+"{\n"
+"    float y, u, v;\n"
+"    float nx, ny;\n"
+"    vec3 s, L, rgb;\n"
+"\n"
+"    /* Nominal video texel position: */\n"
+"    nx = gl_TexCoord[0].x;\n"
+"    ny = gl_TexCoord[0].y;\n"
+"\n"
+"    /* Get luma Y, scaled to the full digital signal content range, e.g., 0-255 for 8bpc, 0-1023 for 10 bpc, 0-4095 for 12bpc, 0-65535 for 16bpc: */\n"
+"    y = texture2DRect(Image, vec2(nx, ny)).r * unormInputScaling;\n"
+"\n"
+"    /* yChromaScale != 2 signals a sampling layout other than I444, so chroma planes need different (nx,ny) sampling than luma plane: */\n"
+"    if (yChromaScale != 2.0) {\n"
+"        /* Compute lookup positions in U, V planes for chroma samples, for I420, I422 planar layout, and P semi-planar */\n"
+"        /* layout, depending on (quasi constant for all invocations of this shader) yChromaScale value: */\n"
+"        ny = floor(ny * yChromaScale);\n"
+"        nx = floor(nx * 0.5);\n"
+"\n"
+"        if (isSemiPlanar > 0.5) {\n"
+"            nx = nx * 2.0;\n"
+"        }\n"
+"        else {\n"
+"            if (mod(ny, 2.0) >= 0.5) {\n"
+"                nx += texNominalSize.x * 0.5;\n"
+"            }\n"
+"\n"
+"            ny = (ny - mod(ny, 2.0)) * 0.5;\n"
+"        }\n"
+"    }\n"
+"\n"
+"    /* Get U, V chroma samples, scaled to the full digital signal content range: */\n"
+"    u = texture2DRect(Image, vec2(nx, ny + texNominalSize.y)).r * unormInputScaling;\n"
+"    v = texture2DRect(Image, vec2(nx + isSemiPlanar, ny + texNominalSize.y + ((1 - isSemiPlanar) * 0.5 * yChromaScale * texNominalSize.y))).r * unormInputScaling;\n"
+"\n"
+"    /* Undo potential limited video range, scale to normalized range to get back to [0 ; 1] range for luma,\n"
+"     * [-0.5 ; 0.5] range for chroma: */\n"
+"    y = (y - rangeOffset[0]) * rangeScale[0];\n"
+"    u = (u - rangeOffset[1]) * rangeScale[1];\n"
+"    v = (v - rangeOffset[2]) * rangeScale[2];\n"
+"\n"
+"    /* Clamp to valid range: */\n"
+"    y = clamp(y,  0.0, 1.0);\n"
+"    u = clamp(u, -0.5, 0.5);\n"
+"    v = clamp(v, -0.5, 0.5);\n"
+"\n"
+"    /* Convert from yuv to r'g'b' by multiplication with suitable color matrix: */\n"
+"    rgb.r = y + 2.0 * (1.0 - Kr) * v;\n"
+"    rgb.g = y - 2.0 * (1.0 - Kb) * Kb / (1.0 - Kr - Kb) * u - 2.0 * (1.0 - Kr) * Kr / (1.0 - Kr - Kb) * v;\n"
+"    rgb.b = y + 2.0 * (1.0 - Kb) * u;\n"
+"\n"
+"    /* Clamp to valid range: This is important, as some movies can contain out-of-gamut y,u,v values which    */\n"
+"    /* cause the converted r'g'b' value to become out of allowed [0; 1] range, especially a bit < 0.0. This   */\n"
+"    /* would cause the math below to fail, creating and propagating NaN's into very visible visual artifacts! */\n"
+"    rgb = clamp(rgb, 0.0, 1.0);\n"
+"\n"
+"    /* Convert from r'g'b' non-linear encoding to rgb linear encoding by applying suitable EOTF: */\n"
+"    if (eotfType == 1) { /* GST_VIDEO_TRANSFER_GAMMA10: LDR */\n"
+"        /* Gamma 1.0 == linear - EOTF == Already linear rgb encoding in r,g,b so nothing to do: */\n"
+"        L = rgb;\n"
+"    } else\n"
+"    if (eotfType == 2) {\n"
+"        /* 2 = GST_VIDEO_TRANSFER_GAMMA18: LDR */\n"
+"        L = pow(rgb, vec3(1.8));\n"
+"    } else\n"
+"    if (eotfType == 3) {\n"
+"        /* 3 = GST_VIDEO_TRANSFER_GAMMA20: LDR */\n"
+"        L = pow(rgb, vec3(2.0));\n"
+"    } else\n"
+"    if (eotfType == 4) {\n"
+"        /* 4 = GST_VIDEO_TRANSFER_GAMMA22: LDR */\n"
+"        L = pow(rgb, vec3(2.2));\n"
+"    } else\n"
+"    if (eotfType == 5 || eotfType == 16 || eotfType == 13) {\n"
+"        /* GST_VIDEO_TRANSFER_BT709: LDR */\n"
+"        /* GST_VIDEO_TRANSFER_BT601: LDR */\n"
+"        /* GST_VIDEO_TRANSFER_BT2020_10: LDR */\n"
+"        /* 5/16/13 = All the same: */\n"
+"        /* rgb < 0.081 --> rgb / 4.5 */\n"
+"        s = step(vec3(0.081), rgb);\n"
+"        L = mix(rgb / 4.5, pow((rgb + 0.099) / 1.099, vec3(1.0 / 0.45)), s);\n"
+"    } else\n"
+"    if (eotfType == 6) { /* GST_VIDEO_TRANSFER_SMPTE240M: LDR */\n"
+"        /* rgb < 0.0913 --> rgb / 4 */\n"
+"        s = step(vec3(0.0913), rgb);\n"
+"        L = mix(rgb / 4.0, pow((rgb + 0.1115) / 1.1115, vec3(1.0 / 0.45)), s);\n"
+"    } else\n"
+"    if (eotfType == 7) { /* GST_VIDEO_TRANSFER_SRGB: LDR */\n"
+"        /* rgb <= 0.4045 --> rgb / 12.92 */\n"
+"        s = step(rgb, vec3(0.04045));\n"
+"        L = mix(pow((rgb + 0.055) / 1.055, vec3(2.4)), rgb / 12.92, s);\n"
+"    } else\n"
+"    if (eotfType == 8) {\n"
+"        /* 8 = GST_VIDEO_TRANSFER_GAMMA28: LDR */\n"
+"        L = pow(rgb, vec3(2.8));\n"
+"    } else\n"
+"    if (eotfType == 9) { /* GST_VIDEO_TRANSFER_LOG100: LDR */\n"
+"        /* rgb > 0 --> pow */\n"
+"        s = step(rgb, vec3(0.0));\n"
+"        L = mix(pow(vec3(10.0), 2.0 * (rgb - 1.0)), vec3(0.0), s);\n"
+"    } else\n"
+"    if (eotfType == 10) { /* GST_VIDEO_TRANSFER_LOG316: LDR */\n"
+"        /* rgb > 0 --> pow */\n"
+"        s = step(rgb, vec3(0.0));\n"
+"        L = mix(pow(vec3(10.0), 2.5 * (rgb - 1.0)), vec3(0.0), s);\n"
+"    } else\n"
+"    if (eotfType == 11) {\n"
+"        /* 11 = GST_VIDEO_TRANSFER_BT2020_12: LDR */\n"
+"        /* rgb < 0.08145 --> rgb / 4.5 */\n"
+"        s = step(vec3(0.08145), rgb);\n"
+"        L = mix(rgb / 4.5, pow((rgb + 0.0993) / 1.0993, vec3(1.0 / 0.45)), s);\n"
+"    } else\n"
+"    if (eotfType == 12) {\n"
+"        /* 12 = GST_VIDEO_TRANSFER_ADOBERGB: LDR */\n"
+"        L = pow(rgb, vec3(2.19921875));\n"
+"    } else\n"
+"    if (eotfType == 14) {\n"
+"        /* 14 = GST_VIDEO_TRANSFER_SMPTE2084: SMPTE ST-2084 PQ EOTF: HDR */\n"
+"        const float c1 = 0.8359375;\n"
+"        const float c2 = 18.8515625;\n"
+"        const float c3 = 18.6875;\n"
+"        const float mi = 1.0 / 78.84375;\n"
+"        const float ni = 1.0 / 0.1593017578125;\n"
+"\n"
+"        L = pow(rgb, vec3(mi));\n"
+"        L = pow(max(L - vec3(c1), vec3(0.0)) / (vec3(c2) - vec3(c3) * L), vec3(ni));\n"
+"\n"
+"        /* L is now linear r,g,b in normalized [0; 1] linear range, where 0.0 = 0 nits and 1.0 = 10000 nits: */\n"
+"    } else\n"
+"    if (eotfType == 15) {\n"
+"        /* 15 = GST_VIDEO_TRANSFER_ARIB_STD_B67: HLG: HDR */\n"
+"        const float c1 = 0.17883277;\n"
+"        const float c2 = 0.28466892;\n"
+"        const float c3 = 0.55991073;\n"
+"\n"
+"        s = step(rgb, vec3(0.5));\n"
+"        L = mix((exp((rgb - c3) / c1) + c2) / 12.0, pow(rgb, vec3(2.0)) / 3.0, s);\n"
+"\n"
+"        /* L is now linear r,g,b in normalized [0; 1] linear range, where 0.0 = 0 nits and 1.0 = 1000 nits. */\n"
+"        /* Map it down to [0; 0.1] range, as in our HDR system 0.1 should mean 1000 nits: */\n"
+"        L = L * 0.1;\n"
+"    } else {\n"
+"        /* Fallback for unknown eotfType */"
+"        /* GST_VIDEO_TRANSFER_UNKNOWN: Do not know what this is! */\n"
+"        /* Unknown EOTF! Send out a visual indicator to user that something is amiss here: */\n"
+"        rgb.r = step(10.0, mod(ny, 20.0));\n"
+"        L = mix(rgb, vec3(0.5), rgb.r);\n"
+"    }\n"
+"\n"
+"    /* Perform colorspace conversion movie->window via multiplication with 3x3 M_CSC matrix: */\n"
+"    L = M_CSC * L;\n"
+"\n"
+"    /* Mark any invalid NaN component values which may have made it to here in a very clear and alarming red to prevent trouble from going unnoticed: */\n"
+"    if (isnan(L.r) || isnan(L.g) || isnan(L.b))\n"
+"        L = vec3(1.0, 0.0, 0.0);\n"
+"\n"
+"    /* Multiply linear normalized [0 ; 1] range of r,g,b to target framebuffer range, e.g., [0 ; 10000.0] for absolute nits, [0 ; 125.0] for SDR 80-nit-units. */\n"
+"    /* Set alpha to 1.0 and multiply the final vec4 texcolor with incoming fragment color (GL_MODULATE emulation), and assign result as output fragment color. */\n"
+"    gl_FragColor = vec4(L.r * outUnitMultiplier, L.g * outUnitMultiplier, L.b * outUnitMultiplier, 1.0) * unclampedFragColor;\n"
+"}\n";
+// End of macOS version for OpenGL 2.1
 
 // Stage 1: Sample [I420] / 422 / 444, [multiply by 65535 or 255 (> 8 bpc or not?)][, range convert (limited vs. full?)][, normalize.]
 //          [Y'U'V' -> R'G'B' (color matrix as input...)]
@@ -588,7 +790,8 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
         int eotfType = movie->codecVideoInfo.colorimetry.transfer;
 
         // Nope. Need to create one:
-        movie->texturePlanarHDRDecodeShader = PsychCreateGLSLProgram(movieTexturePlanarFragmentShaderSrc, movieTexturePlanarVertexShaderSrc, NULL);
+        movie->texturePlanarHDRDecodeShader = PsychCreateGLSLProgram((PSYCH_SYSTEM == PSYCH_OSX) ? movieTexturePlanarFragmentShaderOSXSrc : movieTexturePlanarFragmentShaderSrc,
+                                                                     movieTexturePlanarVertexShaderSrc, NULL);
 
         if (movie->texturePlanarHDRDecodeShader == 0) {
             if (PsychPrefStateGet_Verbosity() > 0)
@@ -1556,7 +1759,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     strncpy(movieRecordBANK[slotid].movieName, moviename, FILENAME_MAX);
 
     // Try to disable hardware accelerated movie playback if requested by specialFlags1 flag 4:
-    if (specialFlags1 & 4) {
+    // Also disable unconditionally on macOS when pixelFormat 11 for HDR/WCG/deep color playback is requested,
+    // as Apples macOS vtdec/vtdec_hw hardware video decoders are incompatible with the formats we can currently
+    // handle in format 11, so we would get degraded 8 bpc only YUV I420 content only - Bad for HDR/WCG/deep color!
+    // TODO: Maybe enhance format 11 with a suitable shader for AYUV64 which could decode hw accelerated in HDR/WCG on macOS?
+    if ((specialFlags1 & 4) || ((PSYCH_SYSTEM == PSYCH_OSX) && (pixelFormat == 11))) {
         guint major, minor;
         gst_plugins_base_version(&major, &minor, NULL, NULL);
 
@@ -1574,7 +1781,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             // All good: This statement applies to case-by-case on GStreamer 1.18+ on Ubuntu 22.04-LTS+, and Debian 11+,
             // and RaspberryPi OS 11+. It applies for the remainder of a Octave/Matlab session on GStreamer < 1.18, e.g.,
             // Ubuntu 20.04-LTS and earlier:
-            printf("PTB-INFO: GStreamer hardware accelerated video decoding disabled on user request (specialFlags1 +4).\n");
+            printf("PTB-INFO: GStreamer hardware accelerated video decoding disabled on macOS, or due to user request (specialFlags1 +4).\n");
         }
     }
 
@@ -1765,19 +1972,17 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     }
     else if (((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) && win && (win->gfxcaps & kPsychGfxCapFBO) && PsychAssignPlanarI800TextureShader(NULL, win)) {
         // Usercode wants Y8/Y800 planar encoded format and GPU suppports needed fragment shaders and FBO's.
-        // Ask for I420 or Y800 decoded video. I420 is the native output format of HuffYUV and H264 codecs, so using it
+        // Ask for I420 decoded video. I420 is the native output format of HuffYUV and H264 codecs, so using it
         // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
         // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
-        // Note: The FOURCC 'Y800' is equivalent to 'Y8  ' and 'GREY' as far as we know. As of June 2012, using the
-        // Y800 decoding doesn't have any performance benefits compared to I420 decoding, actually performance is a
-        // little bit lower. Apparently the video codecs don't take the Y800 format into account, ie., they don't skip
-        // decoding of the chroma components, instead they probably decode as usual and the colorspace conversion then
-        // throws away the unwanted chroma planes, causing possible extra overhead for discarding this data. We leave
-        // the option in anyway, because there may be codecs (possibly in future GStreamer versions) that can take
-        // advantage of Y800 format for higher performance.
+        // Note: pixelFormat 8 used the FOURCC 'Y800' until December 2024, but it turns out that Y800 is no longer
+        // supported as a FOURCC, GStreamer 1.0 (removed end of May 2012), but at least not since GStreamer 1.16, so
+        // format 8 in the old days didn't yield any performance benefits - in fact it caused a slight degradation,
+        // and selecting it in recent years just caused playback failure. Going forward, we will treat pixelFormat 8
+        // as an alias for pixelFormat 7, for working playback with full compatibility and no known downsides.
         colorcaps = gst_caps_new_simple ("video/x-raw",
                                          "format", G_TYPE_STRING,
-                                         (movieRecordBANK[slotid].pixelFormat == 8) ? "Y800" : "I420",
+                                         "I420",
                                          NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use Y8-I800 planar textures for optimized decode and rendering.\n", slotid);
     }
@@ -1910,7 +2115,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             movieRecordBANK[slotid].bitdepth = 16;
             movieRecordBANK[slotid].pixelFormat = 1;
 
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc LUMINANCE 16 float textures.\n", slotid);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc content in LUMINANCE 32 bpc float textures.\n", slotid);
         }
 
         if (movieRecordBANK[slotid].pixelFormat == 10) {
@@ -1923,7 +2128,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             movieRecordBANK[slotid].bitdepth = 16;
             movieRecordBANK[slotid].pixelFormat = 4;
 
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc RGBA 16 bpc float textures.\n", slotid);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc content in RGBA 32 bpc float textures.\n", slotid);
         }
     }
 
@@ -1992,7 +2197,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                     (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) ||
                     (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv")) ||
                     (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame"))) {
-                    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
                     done = TRUE;
                 } else {
                     videocodec = NULL;
@@ -2476,6 +2681,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          targetdelta, realdelta, frames;
     GstBuffer       *videoBuffer = NULL;
     GstSample       *videoSample = NULL;
+    GstVideoMeta    *videoMetaData = NULL;
     gint64          bufferIndex;
     double          deltaT = 0;
     GstEvent        *event;
@@ -2483,6 +2689,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          tNow;
     double          preT, postT;
     unsigned char*  releaseMemPtr = NULL;
+    unsigned int    strideBytes = 0;
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     #pragma warning( disable : 4068 )
 #endif
@@ -2754,8 +2961,39 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
         #endif
 
+        // Movie frames width or height still undefined, because could not determine size in open movie?
+        if (!movieRecordBANK[moviehandle].width || !movieRecordBANK[moviehandle].height) {
+            // Yes. Parse and assign it from this individual frame:
+            int width, height;
+
+            GstCaps *caps = gst_sample_get_caps(videoSample);
+            if (caps) {
+                GstStructure *str = gst_caps_get_structure(caps, 0);
+                gst_structure_get_int(str,"width", &width);
+                gst_structure_get_int(str,"height", &height);
+                movieRecordBANK[moviehandle].width = width;
+                movieRecordBANK[moviehandle].height = height;
+
+                if (PsychPrefStateGet_Verbosity() > 5)
+                    printf("PTB-DEBUG: This video frame width x height = %i x %i  => Assigning as movies frame size.\n", width, height);
+            }
+        }
+
+        // Get video metadata for this frame and parse it, if any:
+        videoMetaData = (GstVideoMeta *) gst_buffer_get_meta(videoBuffer, GST_VIDEO_META_API_TYPE);
+        if (videoMetaData) {
+            if (PsychPrefStateGet_Verbosity() > 6)
+                printf("PTB-DEBUG: Frame reported n_planes %i stride %i\n", videoMetaData->n_planes, videoMetaData->stride[0]);
+        }
+
+        // Assign pixel row stride of 1st plane if valid, zero for "invalid" otherwise:
+        strideBytes = (videoMetaData && videoMetaData->stride[0]) ? videoMetaData->stride[0] : 0;
+
         // Build a standard PTB texture record:
         PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);
+
+        // No explicit stride by default:
+        out_texture->textureStridePixels = 0;
 
         // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
         out_texture->textureOrientation = 3;
@@ -2891,10 +3129,12 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
             // Define a rect of 1.5 times the video frame height, so PsychCreateTexture() will source
             // the whole input data buffer:
+            out_texture->textureStridePixels = strideBytes;
             PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
-            if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
+            if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize)
+                PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
 
             // Byte alignment: Assume no alignment for now:
             out_texture->textureByteAligned = 1;
@@ -2913,7 +3153,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
             // Assign special filter shader for sampling and color-space conversion of the
             // planar texture during drawing or PsychNormalizeTextureOrientation():
-            if (!PsychAssignPlanarI420TextureShader(out_texture, win)) PsychErrorExitMsg(PsychError_user, "Assignment of I420 video decoding shader failed during movie texture creation!");
+            if (!PsychAssignPlanarI420TextureShader(out_texture, win))
+                PsychErrorExitMsg(PsychError_user, "Assignment of I420 video decoding shader failed during movie texture creation!");
 
             // Number of effective channels is 3 for RGB8:
             out_texture->nrchannels = 3;
@@ -2921,9 +3162,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // And 24 bpp depth:
             out_texture->depth = 24;
         }
-
-        // HDR/WCG YUV planar pixel upload requested?
-        if (movieRecordBANK[moviehandle].pixelFormat == 11) {
+        else if (movieRecordBANK[moviehandle].pixelFormat == 11) {
+            // HDR/WCG YUV planar pixel upload requested.
             float overSize;
             int bpc = GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].sinkVideoInfo.finfo, 0);
 
@@ -3018,6 +3258,13 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                     PsychErrorExitMsg(PsychError_user, "Failed videoframe conversion into texture! Unrecognized sink format for pixelFormat 11 code.\n");
             }
 
+            if (PsychPrefStateGet_Verbosity() > 6)
+                printf("PTB-DEBUG: Frame bpc %i : GStreamer format = %i\n", bpc, GST_VIDEO_FORMAT_INFO_FORMAT(movieRecordBANK[moviehandle].sinkVideoInfo.finfo));
+
+            // Build texture rect to enforce allocating a bigger texture for all the Luma + Chroma planes by extending height, and taking row-stride into
+            // account, in case it doesn't match width in texels, by deriving width of texture during creation from stride in bytes. 1 Byte = 1 texel
+            // for 8 bpc content, 2 Bytes = 1 texel for 9 - 16 bpc content:
+            out_texture->textureStridePixels = (bpc > 8) ? strideBytes / 2 : strideBytes;
             PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * overSize);
 
             // Check if overSize x height texture fits within hardware limits of this GPU:

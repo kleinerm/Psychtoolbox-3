@@ -216,7 +216,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
     }
 
     // Desktop-GL only:
-    if (!PsychIsGLES(win)) glPixelStorei(GL_UNPACK_ROW_LENGTH, (int) sourceWidth);
+    if (!PsychIsGLES(win)) glPixelStorei(GL_UNPACK_ROW_LENGTH, (win->textureStridePixels > 0) ? win->textureStridePixels : (int) sourceWidth);
 
     // We used to have different cases for Luminance, Luminance+Alpha, RGB, RGBA.
     // This way we saved texture memory for the source->textureMemory -- Arrays, as well as copy-time

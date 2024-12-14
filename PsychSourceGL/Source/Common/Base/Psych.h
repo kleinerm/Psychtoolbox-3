@@ -42,6 +42,11 @@ extern "C" {
 #include "PsychTimeGlue.h"
 #include "PsychInstrument.h"	
 
+// Define prototypes needed for license management, regardless if used or not:
+psych_bool PsychIsLicensed(const char* featureName);
+void PsychFeatureUsed(const char* featureName);
+PsychError PsychManageLicense(void);
+
 #ifndef PTBINSCRIPTINGGLUE
 // This is provided by the project. We do not
 // include it when building PsychScriptingGlue.cc

@@ -729,7 +729,7 @@ enum { kHID2VKCSize = sizeof kHID2VKC / sizeof kHID2VKC[0] };
 // Convert uint64 time in nanoseconds to double value in GetSecs() seconds:
 static double convertTime(uint64_t timeUInt64) {
     double timeDouble = (double) timeUInt64;
-    return timeDouble / 1000000000;
+    return timeDouble / PsychGetKernelTimebaseFrequencyHz();
 }
 
 static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void *sender)

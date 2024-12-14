@@ -52,14 +52,22 @@ if IsWin
 end
 
 if IsOSX
-    cmd = 'g++ -g -DHAVE_OPENGL_DIR -I.  -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/ -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/freetype2/ -L/Library/Frameworks/GStreamer.framework/Versions/Current/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp';
+    cmd = 'g++ -g -arch x86_64 -mmacosx-version-min=10.11 -DHAVE_OPENGL_DIR -DGL_SILENCE_DEPRECATION -I. -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/ -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/freetype2/ -L/Library/Frameworks/GStreamer.framework/Versions/Current/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o intellibptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp ; ';
+    cmd = [cmd 'g++ -g -arch arm64 -mmacosx-version-min=10.11 -DHAVE_OPENGL_DIR -DGL_SILENCE_DEPRECATION -I. -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/ -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/freetype2/ -L/Library/Frameworks/GStreamer.framework/Versions/Current/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o armlibptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp ; '];
+    cmd = [cmd 'lipo -create intellibptbdrawtext_ftgl64.dylib armlibptbdrawtext_ftgl64.dylib -output libptbdrawtext_ftgl64.dylib ; '];
+    cmd = [cmd 'rm -rf intellibptbdrawtext_ftgl64* armlibptbdrawtext_ftgl64*'];
     name = 'libptbdrawtext_ftgl64.dylib';
 end
 
 if IsLinux
     if Is64Bit
-        cmd='g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o libptbdrawtext_ftgl64.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lGL -lGLU -lfontconfig -lfreetype';
-        name = 'libptbdrawtext_ftgl64.so.1';
+        if IsARM
+            cmd='g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o libptbdrawtext_ftgl_arm64.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lGL -lGLU -lfontconfig -lfreetype';
+            name = 'libptbdrawtext_ftgl_arm64.so.1';
+        else
+            cmd='g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o libptbdrawtext_ftgl64.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lGL -lGLU -lfontconfig -lfreetype';
+            name = 'libptbdrawtext_ftgl64.so.1';
+        end
     else
         if IsARM
             cmd='g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o libptbdrawtext_ftgl_arm.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lGL -lGLU -lfontconfig -lfreetype';

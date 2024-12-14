@@ -529,7 +529,19 @@ output_handle_mode(void *data, struct wl_output *wl_output,
 
 static void output_handle_done(void *data, struct wl_output *wl_output)
 {
+    struct output_mode *mode;
     struct output_info *output = data;
+
+    // TODO FIXME HACK: This is not the appropriate place for taking output HiDPI scaling
+    // into account! But as a hack it will do to get reasonably ok windows on a compositor
+    // with a integer scaled output.
+    wl_list_for_each(mode, &output->modes, link) {
+        printf("%i x %i DS: %i => ", mode->width, mode->height, output->geometry.scale);
+        mode->width /= output->geometry.scale;
+        mode->height /= output->geometry.scale;
+        printf("%i x %i\n", mode->width, mode->height);
+    }
+
     return;
 }
 

@@ -168,15 +168,17 @@
 #define kPsychSkipWaitForFlipOnce           (1 << 30) // 'specialflags': Perform next flip on this window without waiting until the 'when' target time for the flip.
 #define kPsychNeedVBODouble12Workaround     (1ULL << 31) // 'specialflags': Gfx driver bug makes < 2 component vertex attribute buffers problematic if GL_DOUBLE is used for submission.
 #define kPsychExternalDisplayMethod         (1ULL << 32) // 'specialflags': This window is not used for actual visual stimulation, as some external display mechanism is used, e.g., Vulkan or VR compositor.
-#define kPsychDontAutoResetOneshotFlags     (1ULL << 33) // 'specialFlags': Do not auto-reset the "one-shot" flip flags after a flip, ie. don't clear kPsych*ForFlipOnce flags.
-#define kPsychDontUseFlipperThread          (1ULL << 34) // 'specialFlags': Do not allow use of the background flipper thread, because it conflicts with some external display method.
+#define kPsychDontAutoResetOneshotFlags     (1ULL << 33) // 'specialflags': Do not auto-reset the "one-shot" flip flags after a flip, ie. don't clear kPsych*ForFlipOnce flags.
+#define kPsychDontUseFlipperThread          (1ULL << 34) // 'specialflags': Do not allow use of the background flipper thread, because it conflicts with some external display method.
 #define kPsychSkipSecondaryVsyncForFlip     (1ULL << 35) // 'specialflags': Perform flips on this windows associated secondary/slavewindow without VSYNC, e.g., for mirror mode.
+#define kPsychBackendDecisionMade           (1ULL << 36) // 'specialflags': Decision wrt. use of display backend has been intentionally made by high-level 'OpenWindow' caller.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31,2^32,2^33,2^34,2^35. --> Flags of 2^36 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,
+// 2^31,2^32,2^33,2^34,2^35,2^36. --> Flags of 2^37 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -378,6 +380,7 @@ typedef struct _PsychWindowRecordType_{
     GLint                       textureFilterShader;    // Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
     GLint                       textureLookupShader;    // Optional GLSL handle for nearest neighbour texture drawing shader.
     GLint                       textureByteAligned;     // 0 = No knowledge about byte alignment of texture data. > 1, texture rows are x byte aligned.
+    GLint                       textureStridePixels;    // 0 = No explicit knowledge about texel row stride for texture creation. > 0 is stride in pixels.
     GLint                       texturePlanarShader[4]; // Optional GLSL program handles for shaders to apply to planar storage textures - 4 handles for 4 possible channel counts.
     GLint                       textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
     GLint                       textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.

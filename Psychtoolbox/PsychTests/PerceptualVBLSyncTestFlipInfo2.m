@@ -182,6 +182,13 @@ try
        Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);
    end
 
+   % The display engines of some 64-Bit ARM platforms do not yet have hardware cursor
+   % support, so hide the cursor on those, to avoid software cursor rendering from
+   % messing up the display timing for this test script:
+   if IsARM && Is64Bit
+       HideCursor(win);
+   end
+
    Screen('GetFlipInfo', win, 1);
 
    flickerRect = InsetRect(winRect, 100, 0);

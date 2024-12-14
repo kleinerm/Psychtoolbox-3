@@ -76,7 +76,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ./ -output moglcore -DLINUX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE -I./ -I/usr/include -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread -Wno-discarded-qualifiers -Wno-incompatible-pointer-types' -outdir ./ -output moglcore -DLINUX -DGLEW_STATIC -largeArrayDims -DMEX_DOUBLE_HANDLE -I./ -I/usr/include -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
@@ -85,7 +85,7 @@ end
 
 if mode==7
     % Build PsychKinectCore.mexa64:
-    mex 'LDFLAGS=$LDFLAGS -Wl,-rpath,\$ORIGIN/PsychPlugins' -L../../Psychtoolbox/PsychBasic/PsychPlugins CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -lc -lrt -ldl -lfreenect -lusb-1.0
+    mex 'LDFLAGS=$LDFLAGS -Wl,-rpath,\$ORIGIN/PsychPlugins' -L../../Psychtoolbox/PsychBasic/PsychPlugins CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -lc -lrt -ldl -lfreenect -lusb-1.0
     unix(['mv ../Projects/Linux/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -107,7 +107,7 @@ if mode==9
     cd(curdir);
 end
 
-if mode == 10
+if mode == 10 && exist('/usr/include/apriltag', 'dir')
     % Build PsychCV.mexa64:
     mex 'LDFLAGS=$LDFLAGS -Wl,-rpath,\$ORIGIN/PsychPlugins' -L../../Psychtoolbox/PsychBasic/PsychPlugins CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychCV -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychCV -DPSYCHCV_USE_APRILTAGS -I/usr/include/apriltag -ICommon/Base -ILinux/Base -ICommon/PsychCV "Common/Base/*.c" "Linux/Base/*.c" "Common/PsychCV/*.c" -lc -lrt -ldl -lapriltag -lapriltag-utils
     unix(['mv ../Projects/Linux/build/PsychCV.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);

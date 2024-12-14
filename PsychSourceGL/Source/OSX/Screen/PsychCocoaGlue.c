@@ -54,7 +54,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     windowRecord->targetSpecific.nsuserContext = NULL;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Initialize the Cocoa application object, connect to CoreGraphics-Server:
     // Can be called many times, as redundant calls are ignored.
@@ -181,7 +181,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 
     // Return window pointer, packed into an old-school Carbon window ref:
     *outWindow = (void*) cocoaWindow;
@@ -195,7 +195,7 @@ psych_bool PsychCocoaMetalWorkaround(PsychWindowRecordType *windowRecord)
     __block NSWindow *cocoaWindow;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Define size of client area - the actual stimulus display area:
     NSRect windowRect = NSMakeRect(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
@@ -225,7 +225,7 @@ psych_bool PsychCocoaMetalWorkaround(PsychWindowRecordType *windowRecord)
     });
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 
     return(TRUE);
 }
@@ -242,7 +242,7 @@ void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRe
     NSWindow* cocoaWindow = (NSWindow*) window;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     DISPATCH_SYNC_ON_MAIN({
         // Query and translate content rect of final window to a PTB rect:
@@ -259,7 +259,7 @@ void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRe
     });
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 pid_t GetHostingWindowsPID(void)
@@ -269,10 +269,10 @@ pid_t GetHostingWindowsPID(void)
     CFNumberRef numRef;
     char winName[256];
     psych_bool found = FALSE;
-    psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
+    psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? PsychIsMasterThread() : FALSE;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
     if (!windowList) goto hwinpidout;	
@@ -338,7 +338,7 @@ pid_t GetHostingWindowsPID(void)
 hwinpidout:
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 
     if (found) {
         if (verbose) printf("TARGETWINDOWNAME: '%s' with pid %i.\n", winName, pid);
@@ -352,7 +352,7 @@ hwinpidout:
 void PsychCocoaSetUserFocusWindow(void* window)
 {
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
     DISPATCH_SYNC_ON_MAIN({
         NSWindow* focusWindow = (NSWindow*) window;
 
@@ -390,7 +390,7 @@ void PsychCocoaSetUserFocusWindow(void* window)
     });
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 // PsychCocoaGetUserFocusWindow is a replacement for Carbon's GetUserFocusWindow() function.
@@ -399,7 +399,7 @@ void* PsychCocoaGetUserFocusWindow(void)
     __block NSWindow* focusWindow = NULL;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Retrieve pointer to current keyWindow - the window that receives
     // key events aka the window with keyboard input focus. Or 'nil' if
@@ -407,7 +407,7 @@ void* PsychCocoaGetUserFocusWindow(void)
     DISPATCH_SYNC_ON_MAIN({focusWindow = [[NSApplication sharedApplication] keyWindow];});
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 
     return((void*) focusWindow);
 }
@@ -417,7 +417,7 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
     NSWindow *cocoaWindow = (NSWindow*) windowRecord->targetSpecific.windowHandle;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     DISPATCH_SYNC_ON_MAIN({
         if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
@@ -451,7 +451,7 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
     });
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 void PsychCocoaShowWindow(void* window)
@@ -459,7 +459,7 @@ void PsychCocoaShowWindow(void* window)
     NSWindow* cocoaWindow = (NSWindow*) window;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Bring to front:
     DISPATCH_SYNC_ON_MAIN({[cocoaWindow orderFrontRegardless];});
@@ -468,7 +468,7 @@ void PsychCocoaShowWindow(void* window)
     DISPATCH_SYNC_ON_MAIN({[cocoaWindow display];});
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, PsychWindowRecordType *windowRecord)
@@ -478,7 +478,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
     GLint opaque = 0;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Enable opacity for OpenGL contexts if underlying window is opaque:
     if ([cocoaWindow isOpaque] == true) opaque = 1;
@@ -522,7 +522,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
     });
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 
     // Assign final window globalRect (in units of points in gobal display space)
     // and final true backbuffer size 'rect' (in units of pixels):
@@ -537,13 +537,13 @@ void PsychCocoaSendBehind(void* window)
     NSWindow* cocoaWindow = (NSWindow*) window;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Move window behind all others:
     DISPATCH_SYNC_ON_MAIN({[cocoaWindow orderBack:nil];});
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 void PsychCocoaSetWindowLevel(void* window, int inLevel)
@@ -551,13 +551,13 @@ void PsychCocoaSetWindowLevel(void* window, int inLevel)
     NSWindow* cocoaWindow = (NSWindow*) window;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Set level of window:
     DISPATCH_SYNC_ON_MAIN({[cocoaWindow setLevel:inLevel];});
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 void PsychCocoaSetWindowAlpha(void* window, float inAlpha)
@@ -565,19 +565,19 @@ void PsychCocoaSetWindowAlpha(void* window, float inAlpha)
     NSWindow* cocoaWindow = (NSWindow*) window;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Set Window transparency:
     DISPATCH_SYNC_ON_MAIN({[cocoaWindow setAlphaValue: inAlpha];});
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 void PsychCocoaSetThemeCursor(int inCursor)
 {
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     DISPATCH_SYNC_ON_MAIN({
         switch(inCursor) {
@@ -600,7 +600,7 @@ void PsychCocoaSetThemeCursor(int inCursor)
     });
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 // Variable to hold current reference for App-Nap activities:
@@ -659,7 +659,7 @@ outappnapstuff:
 void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
 {
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Initialize the Cocoa application object, connect to CoreGraphics-Server:
     // Can be called many times, as redundant calls are ignored.
@@ -674,7 +674,7 @@ void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
     if (patchlevel) *patchlevel = version.patchVersion;
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 /* Return a pointer to a static string containing the full name of the logged in user */
@@ -683,14 +683,14 @@ char* PsychCocoaGetFullUsername(void)
     static char fullUserName[256] = { 0 };
     
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
     
     NSString* nsname = NSFullUserName();
     const char *srcname = [nsname UTF8String];
     strncpy(fullUserName, srcname, sizeof(fullUserName) - 1);
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
     
     return(fullUserName);
 }
@@ -703,20 +703,20 @@ double PsychCocoaGetBackingStoreScaleFactor(void* window)
     NSWindow* cocoaWindow = (NSWindow*) window;
 
     // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Set Window transparency:
     sf = (double) [cocoaWindow backingScaleFactor];
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 
     return (sf);
 }
 
 void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
     // Second time CAMetalLayer reattach: Called from SCREENOpenWindow() after initial
     // OpenGL setup, display of the welcome splash screen, startup tests and timing
@@ -740,7 +740,7 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
     }
 
     // Drain the pool:
-    [pool drain];
+    //[pool drain];
 }
 
 #pragma clang diagnostic pop

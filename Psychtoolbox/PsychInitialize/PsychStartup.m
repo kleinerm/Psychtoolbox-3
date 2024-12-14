@@ -27,6 +27,7 @@ function PsychStartup
 % 21.11.2020  mk  Reenable GStreamer on octave-cli for Windows. Workaround no longer needed.
 % 11.10.2021  mk  Fix wrong drive letters in Win fallback GStreamer detection, introduced in 3.0.17.0.
 % 20.09.2023  mk  Remove all 32-Bit support on MS-Windows.
+% 04.11.2024  mk  Add support for PsychPlugins subfolder as runtime dll search path.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -148,6 +149,15 @@ try
 
         % Always prepend the path to the PsychPlugins folder for runtime loadable plugins:
         driverloadpath = [PsychtoolboxRoot 'PsychBasic' filesep 'PsychPlugins' filesep];
+        newpath = [driverloadpath ';' newpath];
+
+        % Also add 64-Bit machine cpu architecture specific PsychPlugins subfolders:
+        if IsARM
+            driverloadpath = [PsychtoolboxRoot 'PsychBasic' filesep 'PsychPlugins' filesep 'ARM64' filesep];
+        else
+            driverloadpath = [PsychtoolboxRoot 'PsychBasic' filesep 'PsychPlugins' filesep 'Intel64' filesep];
+        end
+
         newpath = [driverloadpath ';' newpath];
 
         setenv('PATH', newpath);
