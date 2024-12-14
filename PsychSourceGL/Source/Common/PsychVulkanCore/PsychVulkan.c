@@ -2836,14 +2836,16 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if (window->frameIndex - 1 > 0) {
                     // No, bad:
                     if (verbosity > 0)
-                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE failed to retrieve timestamp! Timed out.\n", window->index);
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed to retrieve visual stimulus onset timestamp! Timed out.\n", window->index);
 
-                    return(FALSE);
+                    // Only count this as fatal on non macOS for the time being:
+                    if (PSYCH_SYSTEM != PSYCH_OSX)
+                        return(FALSE);
                 }
                 else {
                     // Yes, be lenient, as at least on Linux + Mesa this seems to be expected:
                     if (verbosity > 5)
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE failed to retrieve timestamp for frameIndex 0. Timed out. Carrying on with fallback.\n", window->index);
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Failed to retrieve visual stimulus onset timestamp for frameIndex 0. Timed out. Carrying on with fallback.\n", window->index);
                 }
             }
             else {
