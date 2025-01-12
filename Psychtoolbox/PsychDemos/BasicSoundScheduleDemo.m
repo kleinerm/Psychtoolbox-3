@@ -86,7 +86,7 @@ nrchannels = 2;
 InitializePsychSound;
 
 suggestedLatencySecs = [];
-if IsARM
+if IsARM && IsLinux
     % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
     % low latency settings of a Intel PC, so be more lenient:
     suggestedLatencySecs = 0.025;
