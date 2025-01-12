@@ -442,7 +442,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
             end
         end
 
-        if ~isempty(outputName) && ((verbosity >= 4) || (~(IsOSX && IsARM) && (verbosity == 3)))
+        if ~isempty(outputName) && ((verbosity >= 4) || (~(IsOSX && IsARM(1)) && (verbosity == 3)))
             fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
                     winRect(1), winRect(2), winRect(3), winRect(4), screenId);
         end
@@ -621,12 +621,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % frame latency is gone, but now stimulus onset scheduling is
             % broken whenever a flip is more than 2 frames in the future!
             %
-            % On macOS 14.4 on Apple M1, it seems to work reasonably well,
+            % On macOS 14.4+ on Apple M1, it seems to work reasonably well,
             % apart from the sporadic failure during the first few
             % presents, so there's some hope. Not yet tested thoroughly
             % yet, but lets activate this mode on Apple Silicon for now.
             % Broken stuff all around on the iToys operating system:
-            if ~IsARM
+            if ~IsARM(1)
                 flags = mor(flags, 2);
             end
         else

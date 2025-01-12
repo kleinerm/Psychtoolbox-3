@@ -135,7 +135,7 @@ try
         PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
     else
         % Will Vulkan auto-enable on macOS for Apple Silicon machines?
-        if IsOSX && IsARM && (Screen('Preference', 'WindowShieldingLevel') == 2000)
+        if IsOSX && IsARM(1) && (Screen('Preference', 'WindowShieldingLevel') == 2000)
             % Yes:
             useVulkan = 1;
             winrect = [];
