@@ -1952,7 +1952,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Force the UseVulkanDisplay task if it doesn't exist already if running
         % on macOS for Apple Silicon, as that is the only display backend which
         % can ensure proper visual stimulus presentation timing and timestamping:
-        if IsOSX && IsARM && isempty(find(mystrcmp(reqs, 'UseVulkanDisplay')))
+        if IsOSX && IsARM(1) && isempty(find(mystrcmp(reqs, 'UseVulkanDisplay')))
             % Only auto-enable Vulkan backend for opaque top-level fullscreen windows:
             if ((isempty(winRect) || isequal(winRect, Screen('Rect', screenid)) || isequal(winRect, Screen('GlobalRect', screenid))) && ...
                (Screen('Preference', 'WindowShieldingLevel') >= 2000) && (bitand(Screen('Preference', 'ConserveVRAM'), 8192) == 0))
@@ -3750,8 +3750,8 @@ if ~isempty(floc)
     % overriden to something higher precision:
     vulkanColorPrecision = 0;
 
-    % Apple macOS needs special treatment:
-    if IsOSX && IsARM
+    % Apple macOS for Apple Silicon needs special treatment:
+    if IsOSX && IsARM(1)
         % VK_COLOR_SPACE_PASS_THROUGH_EXT for pixel identity passthrough, or this
         % will mess with our own color correction routines and with display on
         % devices from VPixx and CRS and similar:

@@ -126,7 +126,7 @@ freq = 44100;       % Must set this. 44.1 khz most likely to work, as shown by e
 buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
-if IsARM
+if IsARM && IsLinux
     % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
     % low latency settings of a Intel PC, so be more lenient:
     suggestedLatencySecs = 0.025;

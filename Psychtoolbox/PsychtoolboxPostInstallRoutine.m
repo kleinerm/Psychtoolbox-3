@@ -167,27 +167,18 @@ catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
 end
 
-% No Apple Silicon Matlab/Octave support yet. Only Rosetta 2 emulated Intel.
-if IsOSX && IsARM && ~exist('WaitSecs.mexmaca64', 'file')
-    fprintf('Psychtoolbox does not yet work on native Matlab or Octave for Apple Silicon Macs with 64-Bit ARM architecture.\n');
-    fprintf('You may get a minimally functional Psychtoolbox by installing and running Matlab or Octave for 64-Bit Intel\n');
-    fprintf('under Rosetta 2 emulation.\n');
-    error('Tried to setup on native Matlab or Octave for Apple Silicon 64-Bit ARM. This is not supported.');
-end
-
 % 32-Bit Octave or 32-Bit Matlab on OSX? This is unsupported as of Version 3.0.11.
-if (IsOSX || IsWin) && ~Is64Bit
-    fprintf('Psychtoolbox 3.0.13 and later versions do no longer work with 32-Bit versions of Octave or Matlab on OSX or Windows.\n');
+if ~IsLinux && ~Is64Bit
+    fprintf('Psychtoolbox no longer works with 32-Bit versions of Octave or Matlab on macOS or Windows.\n');
     fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on these systems, which is fully supported.\n');
-    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
-    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
-    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
-    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
-    error('Tried to setup on 32-Bit Octave or Matlab, which is no longer supported on OSX or Windows.');
+    fprintf('Psychtoolbox-3.0.9 was the last to support 32-Bit Octave 3.2 on macOS.\n');
+    fprintf('Psychtoolbox-3.0.10 was the last to support 32-Bit Matlab on macOS.\n');
+    fprintf('Psychtoolbox-3.0.12 was the last to support 32-Bit Octave-4 on Windows.\n');
+    error('Tried to setup on 32-Bit Octave or Matlab, which is no longer supported on macOS or Windows.');
 end
 
 if IsLinux && ~Is64Bit && IsOctave && ~IsARM
-    fprintf('Psychtoolbox 3.0.15 and later no longer provide mex files for 32-Bit Octave for Intel on Linux.\n');
+    fprintf('Psychtoolbox no longer works with 32-Bit Octave for Intel on Linux.\n');
     fprintf('The only exception is 32-Bit Octave for Linux on ARM processors like the RaspberryPi.\n');
     fprintf('Not to worry though, you can get a supported Psychtoolbox 3.0.15+ for 32-Bit Octave\n');
     fprintf('on Linux from the NeuroDebian project if you run Debian GNU/Linux or a Ubuntu flavor.\n');
@@ -198,11 +189,11 @@ if IsLinux && ~Is64Bit && IsOctave && ~IsARM
 end
 
 if ~Is64Bit && ~IsOctave
-    fprintf('Psychtoolbox 3.0.12 and later do no longer work with 32-Bit versions of Matlab.\n');
+    fprintf('Psychtoolbox no longer works with 32-Bit versions of Matlab.\n');
     fprintf('You need to upgrade to a supported 64-Bit version of Octave or Matlab. 32-Bit Octave is still\n');
     fprintf('supported on GNU/Linux.\n');
-    fprintf('If you must use a legacy 32-Bit Matlab environment, you can call the function\n');
-    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.11'', which does support 32-Bit Matlab on Linux and Windows.\n');
+    fprintf('If you must use a legacy 32-Bit Matlab environment, then legacy\n');
+    fprintf('Psychtoolbox-3.0.11 does support 32-Bit Matlab on Linux and Windows.\n');
     error('Tried to setup on 32-Bit Matlab, which is no longer supported.');
 end
 

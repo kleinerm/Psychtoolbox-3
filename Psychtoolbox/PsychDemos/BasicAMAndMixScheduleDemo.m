@@ -42,7 +42,7 @@ InitializePsychSound;
 nrchannels = 2;
 sugLat = [];
 
-if IsARM
+if IsARM && IsLinux
     % ARM processor, probably the RaspberryPi SoC. The Pi can not quite handle the
     % low latency settings of a desktop PC, so be more lenient:
     sugLat = 0.025;
