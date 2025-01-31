@@ -1387,7 +1387,7 @@ else
     if isempty(opt.win)
         error('DrawFormattedText2: Windowhandle missing!');
     end
-    
+
     % layout of individual lines within the bounding box
     % default is aligned to left of box
     if ~ischar(opt.xlayout)
@@ -1400,7 +1400,7 @@ else
                 opt.xlayout = 2;
             case 'right'
                 opt.xlayout = 3;
-                
+
                 % not implemented: 4, 6, 7, 9
             case 'ljustifylongest'
                 % justify to width of longest sentence. if line is too short (see ptb_drawformattedtext2_padthresh), left align
@@ -1419,24 +1419,24 @@ else
                 opt.xlayout = 1;
         end
     end
-    
+
     % Keep current text color if none provided:
     if isempty(opt.baseColor)
         opt.baseColor = Screen('TextColor', opt.win);
     else
         opt.baseColor = opt.baseColor(:).'; % ensure row vector
     end
-    
+
     % No text wrapping by default:
     if isinf(opt.wrapat)
         opt.wrapat = 0;
     end
-    
+
     % option to only generate cache but not draw
     if ~isempty(opt.cacheOnly)
         opt.cacheOnly = logical(opt.cacheOnly);
     end
-    
+
     % check cache mode
     if ischar(opt.cacheMode)
         switch opt.cacheMode
@@ -1450,7 +1450,7 @@ else
     else
         assert(ismember(opt.cacheMode,[1 2]),'cacheMode must be 1 or 2')
     end
-    
+
     if opt.cacheOnly && nOutArg < 4
         error('cacheOnly requested but fourth output (cache) is not requested')
     end
