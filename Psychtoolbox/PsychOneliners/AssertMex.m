@@ -156,36 +156,15 @@ if isempty(inputNames) || ismember(computer, inputNames)
     fprintf(['  ' mexFilename '\n\n']);
 
     if isempty(which(mexFilename))
-        if strcmp(computer, 'MAC')
-            % Mac PowerPC:
-            fprintf('Matlab running on MacOSX on a PowerPC based Apple Macintosh computer is no longer supported.\n');
-            fprintf('You would need to get a version 3.0.9 or earlier Psychtoolbox for this to work on your computer.\n');
-            fprintf('Or upgrade your computer to run a modern version of GNU/Linux and use the Psychtoolbox for Linux on PowerPC.\n\n');
-        elseif (IsWin && exist('mexext') && strcmp(mexext, 'dll')) %#ok<EXIST>
-            % Windows with Matlab pre-R2007a:
-            fprintf('Matlab versions older than V7.4 aka R2007a running on MS-Windows are no longer supported by this release.\n');
-            fprintf('Install GNU/Octave or a more modern Matlab version instead. Or downgrade to Psychtoolbox version 3.0.9 or earlier.\n\n');
-        else
-            fprintf('Hmm. I cannot find the file on your Matlab path?!?\n\n');
-            fprintf('One reason could be that your Matlab path is wrong or not up to date\n');
-            fprintf('for the current Psychtoolbox. You may want to run SetupPsychtoolbox to \n');
-            fprintf('fix possible path problems.\n\n');
-        end
+        fprintf('Hmm. I cannot find the file on your Matlab path?!?\n\n');
+        fprintf('One reason could be that your Matlab path is wrong or not up to date\n');
+        fprintf('for the current Psychtoolbox. You may want to run SetupPsychtoolbox to \n');
+        fprintf('fix possible path problems.\n\n');
     else
-        if IsWin
-            fprintf('It is important that the folder which contains the Screen mex file is located *before*\n');
-            fprintf('the PsychBasic folder on your Matlab path.\n');
-            fprintf('On Matlab V7.4 (R2007a) or later versions, the folder\n');
-            fprintf('%sPsychBasic\\MatlabWindowsFilesR2007a\\ must be before the folder\n%sPsychBasic\\ \n\n', PsychtoolboxRoot, PsychtoolboxRoot);
-            fprintf('type path to display the current path and check for this condition.\nIf the order is wrong, ');
-            fprintf('simply cd into your Psychtoolbox root folder\n%s and then run SetupPsychtoolbox again.\n', PsychtoolboxRoot);
-            fprintf('That is the simplest way of fixing such path problems - Or to get more diagnostic output.\n\n');
-        end
-
         if ~isequal(which(mexFilename), which(callerName))
             fprintf('Seems %s.m is in the Matlab path before/above %s instead of after/below it!\n', callerName, mexFilename);
             fprintf('This will cause the mex file to be ignored, leading to this error.\n');
-            fprintf('Please run SetupPsychtoolbox again, to rectify this problem, or use Matlabs pathtool\n');
+            fprintf('Please run SetupPsychtoolbox again to rectify this problem, or use Matlabs pathtool\n');
             fprintf('to shuffle things into the right order. This folder:\n\n');
             fprintf('%s\n', fileparts(which(mexFilename)));
             fprintf('\nneeds to go above/before this folder:\n\n');
@@ -196,12 +175,12 @@ if isempty(inputNames) || ismember(computer, inputNames)
         end
 
         if IsWin
-            fprintf('On Microsoft Windows with supported Matlab versions (>= V7.4) it could also be that\n');
-            fprintf('the required Visual C++ 2015-2019 runtime libraries are missing on your system.\n');
+            fprintf('On Microsoft Windows with supported Matlab versions R2014b or later, it could also mean\n');
+            fprintf('that the required Visual C++ 2015-2019 runtime libraries are missing on your system.\n');
             fprintf('The Psychtoolbox/PsychContributed/ subfolder contains installer files for them, which\n');
             fprintf('you can execute after quitting Matlab. The name of the file is:\n');
             if IsWin(1)
-                fprintf('vcredist_x64_2015-2019.exe and maybe also vcredist_x64_2010.exe.\n');
+                fprintf('vcredist_x64_2015-2019.exe - you maybe also additionally need vcredist_x64_2010.exe.\n');
             else
                 fprintf('unknown - no longer ships with this version of Psychtoolbox.\n');
             end

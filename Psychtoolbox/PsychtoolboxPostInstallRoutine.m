@@ -85,6 +85,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 11/24/2024 Call the 1st time setup routine PsychLicenseHandling() as
 %            needed to enable license management on Apple macOS and
 %            Microsoft Windows. (MK)
+% 01/31/2025 Remove subfolder MatlabWindowsFilesR2007a for Matlab on Windows, and associated
+%            special path setup on Matlab for Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -551,8 +553,6 @@ end
 
 % Special case handling for different Matlab releases on MS-Windoze:
 if IsWin && ~IsOctave
-    rc = 0;
-
     if strfind(cd, 'system32') %#ok<STRIFCND>
         % the below code fails if the current directory is system32 (e.g.
         % C:\Windows\system32), as it contains dlls like version.dll, which
@@ -560,40 +560,13 @@ if IsWin && ~IsOctave
         cd(PsychtoolboxRoot);
     end
 
-    try
-        % Remove DLL folders from path:
-        rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
-
-        % Is this a Release2014b (Version 8.4.0) or later Matlab?
-        if verLessThan('matlab', '8.4.0')
-            % This is a pre-R2014b Matlab: No longer supported by V 3.0.18+
-            fprintf('Matlab release prior to R2014b detected. This version is no longer\n');
-            fprintf('supported by Psychtoolbox 3.0.18 and later. Aborted.');
-            fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
-            return;
-        else
-            % This is a R2014b or later Matlab:
-            % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab path:
-            rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\'];
-            fprintf('Matlab release 2014b or later detected. Will prepend the following\n');
-            fprintf('folder to your Matlab path: %s ...\n', rdir);
-            addpath(rdir);
-        end
-
-        rc = savepath;
-    catch
-        rc = 2;
-    end
-
-    if rc > 0
-        fprintf('=====================================================================\n');
-        fprintf('ERROR: Failed to prepend folder %s to Matlab path!\n', rdir);
-        fprintf('ERROR: This will likely cause complete failure of PTB to work.\n');
-        fprintf('ERROR: Please fix the problem (maybe insufficient permissions?)\n');
-        fprintf('ERROR: If everything else fails, add this folder manually to the\n');
-        fprintf('ERROR: top of your Matlab path.\n');
-        fprintf('ERROR: Trying to continue but will likely fail soon.\n');
-        fprintf('=====================================================================\n\n');
+    % Is this a R2014b (Version 8.4.0) or later Matlab?
+    if verLessThan('matlab', '8.4.0')
+        % This is a pre-R2014b Matlab: No longer supported by V 3.0.18+
+        fprintf('Matlab release prior to R2014b detected. This version is no longer\n');
+        fprintf('supported by Psychtoolbox 3.0.18 and later. Aborted.');
+        fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
+        return;
     end
 
     try
