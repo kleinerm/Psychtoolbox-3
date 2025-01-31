@@ -324,6 +324,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64' filesep 'Wayland'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64' filesep 'Wayland']);
+        end
+
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64']);
         end
