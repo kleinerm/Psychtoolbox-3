@@ -316,14 +316,6 @@ if IsOctave
 
     try
         % Remove binary MEX folders from path:
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64']);
-        end
-
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM']);
         end
@@ -332,60 +324,16 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64']);
         end
 
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64']);
         end
 
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7OSXFiles64']);
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFilesARM64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFilesARM64']);
         end
 
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64']);
         end
 
         % Encode prefix and Octave major version of proper folder:
