@@ -259,19 +259,19 @@ if IsOSX
         minorver = inf;
     end
 
-    % Is the operating system version < 10.11?
-    if minorver < 11
-        % Yes. This is MacOSX 10.10 or earlier, i.e., older than 10.11
-        % El Capitan. PTB will not work on such an old system:
+    % Is the operating system version < 10.13?
+    if minorver < 13
+        % Yes. This is macOS 10.12 or earlier, i.e., older than 10.13
+        % High Sierra. PTB will not work on such an old system:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
         fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
         fprintf('This release of Psychtoolbox-3 is not compatible\n');
-        fprintf('to OSX versions older than 10.11 "El Capitan".\n');
+        fprintf('to macOS versions older than 10.13 "High Sierra".\n');
         fprintf('That means that almost all functionality will not work!\n\n');
         fprintf('You could download an older version of Psychtoolbox\n');
         fprintf('onto your system to get better results. See our Wiki for help.\n');
         fprintf('Better though, update your operating system to at least version\n');
-        fprintf('10.11.5 or later.\n');
+        fprintf('10.13, better macOS 13 or later.\n');
         fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
         fprintf('Press any key on keyboard to try to continue with setup, although\n');
         fprintf('this will likely fail soon and leave you with a dysfunctional toolbox.\n\n');
