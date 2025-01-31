@@ -37,7 +37,7 @@ function [versionString, versionStructure] = PsychtoolboxVersion
 % the most stable and trustworthy releases.
 %
 % * trunk: Development prototypes, for testing and debugging by developers
-% and really adventureous users, not for production use!
+% and really adventurous users, not for production use!
 %
 % * Psychtoolbox-x.y.z: Old, no longer supported Psychtoolbox versions.
 %
@@ -104,7 +104,7 @@ if ~isfield(Psychtoolbox,'version')
     Psychtoolbox.version.major=cvv(1);
     Psychtoolbox.version.minor=cvv(2);
     Psychtoolbox.version.point=cvv(3);
-    
+
     gitfolder = PsychtoolboxRoot();
     i=find(filesep==gitfolder);
     gitfolder = [gitfolder(1:i(end-1)) '.git'];
@@ -113,7 +113,7 @@ if ~isfield(Psychtoolbox,'version')
     else
         isGIT = false;
     end
-    
+
     if exist([PsychtoolboxRoot '.svn'],'dir')
         isSVN = true;
     else
@@ -155,7 +155,7 @@ if ~isfield(Psychtoolbox,'version')
             [r1,r2] = regexp(gitstatus.RemoteRepository{1},'http[^\s]+');
             if ~isempty(r1)
                 remoteURL = gitstatus.RemoteRepository{1}(r1:r2);
-            else 
+            else
                 remoteURL = '';
             end
             % Build final version string:
