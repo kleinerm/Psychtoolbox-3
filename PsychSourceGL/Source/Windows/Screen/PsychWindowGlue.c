@@ -599,7 +599,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     DWORD flags;
     BOOL compositorEnabled, compositorPostEnabled;
     const char* hidpitrouble;
-
+    MARGINS dwmMargins = { -1 };
     psych_bool fullscreen = FALSE;
     DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
 
@@ -951,6 +951,10 @@ dwmdontcare:
         // would be visible, wherever nothing is drawn, i.e., where alpha channel is zero.
         // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
         SetLayeredWindowAttributes(hWnd, 0, (BYTE) ((((float) (windowLevel % 500)) / 499.0) * 255 + 0.5), LWA_ALPHA);
+
+        // Need extra DWM setup for enabling per-pixel alpha for onscreen window transparency:
+        if ((S_OK != DwmExtendFrameIntoClientArea(hWnd, &dwmMargins)) && (PsychPrefStateGet_Verbosity() > 3))
+            printf("PTB-DEBUG: DwmExtendFrameIntoClientArea() failed. Per pixel window transparency will not work.\n");
     }
 
     // Retrieve device context for the window:
@@ -1216,6 +1220,10 @@ dwmdontcare:
             // would be visible, wherever nothing is drawn, i.e., where alpha channel is zero.
             // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
             SetLayeredWindowAttributes(hWnd, 0, (BYTE) ((((float) (windowLevel % 500)) / 499.0) * 255 + 0.5), LWA_ALPHA);
+
+            // Need extra DWM setup for enabling per-pixel alpha for onscreen window transparency:
+            if ((S_OK != DwmExtendFrameIntoClientArea(hWnd, &dwmMargins)) && (PsychPrefStateGet_Verbosity() > 3))
+                printf("PTB-DEBUG: DwmExtendFrameIntoClientArea() failed. Per pixel window transparency will not work.\n");
         }
 
         // Retrieve device context for the window:
