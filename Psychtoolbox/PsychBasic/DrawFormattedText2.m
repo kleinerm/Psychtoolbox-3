@@ -405,7 +405,7 @@ if dowordbounds
     % counts as a "carriage return" to force the code to split strings into
     % subStrings at word boundaries as well, not only carriage returns or
     % style changes:
-    qCRet = tstring==returnChar | isspace(tstring);
+    qCRet = tstring==returnChar | isspace(char(tstring));
 else
     % No per word bounding boxes needed:
     qCRet = tstring==returnChar;
