@@ -79,6 +79,11 @@ function downloadlexactivator(alsosdk, cleanupafter)
         rmdir('./lextmp', 's');
     end
 
+    if IsOctave
+        % Rehash the Octave toolbox cache:
+        rehash;
+    end
+
     fprintf('LexActivator installation completed successfully.\n');
 end
 
