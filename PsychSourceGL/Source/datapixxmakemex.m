@@ -236,10 +236,7 @@ function datapixxmakemex()
         elseif (IsLinux)        % 32-bit MATLAB on Linux
             system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/matlab/linux/Datapixx.' mexext ' ' PTBDIR 'Psychtoolbox/PsychBasic'], '/', filesep));
         elseif (IsWin(1))       % 64-bit MATLAB on Windows
-            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/matlab/win64/Datapixx.mexw64 ' PTBDIR 'Psychtoolbox/PsychBasic/MatlabWindowsFilesR2007a'], '/', filesep));
-        elseif (IsWin)          % 32-bit MATLAB on Windows
-            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/matlab/win32/Datapixx.mexw32 ' PTBDIR 'Psychtoolbox/PsychBasic/MatlabWindowsFilesR2007a'], '/', filesep));
-            system(strrep([CPYCMD VPIXXDIR 'svn_Software/DatapixxToolbox_trunk/mexdev/build/matlab/win32/Datapixx.mexw32 ' VPIXXDIR 'git_Psychtoolbox-3/Psychtoolbox/PsychBasic/MatlabWindowsFilesR2007a'], '/', filesep));
+            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/matlab/win64/Datapixx.mexw64 ' PTBDIR 'Psychtoolbox/PsychBasic'], '/', filesep));
         end
     end
 

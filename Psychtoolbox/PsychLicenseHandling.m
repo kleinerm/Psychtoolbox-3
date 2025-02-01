@@ -104,6 +104,8 @@ function rc = PsychLicenseHandling(cmd, varargin)
 %
 % 23-Nov-2024   mk  Written as part of Mario Kleiners employment at the
 %                   Medical Innovations Incubator GmbH in Tuebingen, Germany.
+% 13-Jan-2025   mk  Add auto download and install for LM libraries if they
+%                   are missing.
 %
 
 persistent forceReenterKey;
@@ -116,6 +118,24 @@ rc = 0;
 
 % Check if initial setup of license management is needed, and if so then do it:
 if strcmpi(cmd, 'Setup')
+    % LexActivator client library installed?
+    if ~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))
+        % Nope. Try to download and install them. This will happen for a
+        % PTB checked out from our git repository or extracted from the
+        % full source code zip files, or from Matlab Add-On manager,
+        % instead of standard "Psychtoolbox folder only" zip file install.
+        fprintf('License management support libraries are missing for some reason. Trying to download and install them now...\n');
+        addpath([PsychtoolboxRoot '../managementtools']);
+        downloadlexactivator(0, 1);
+
+        % Doublecheck:
+        if (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))
+            warning('Library installation FAILED! This will go badly soon...\n');
+        else
+            fprintf('Library installation success. Onwards!\n');
+        end
+    end
+
     % Check if this Psychtoolbox variant is requires license management at all:
     if ~WaitSecs('ManageLicense', 6)
         % Nope. Must be one of the free Linux variants, nothing to do:

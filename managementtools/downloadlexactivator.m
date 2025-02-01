@@ -14,8 +14,10 @@ function downloadlexactivator(alsosdk, cleanupafter)
 
 % History:
 %
-% 25-Nov-2025   mk  Written. Starting off for v3.30.3 SDK and runtimes.
-%
+% 25-Nov-2024   mk  Written. Starting off for v3.30.3 SDK and runtimes.
+% 31-Jan-2025   mk  Upgrade to v3.31.2 SDK and runtimes for macOS system-wide activations.
+%                   Switch from Windows/vc16 to vc14, ie. from MSVC 2019 to MSVC 2015, as
+%                   Cryptlex dropped support for MSVC2019 for some reason.
 
     if nargin < 1 || isempty(alsosdk)
         alsosdk = 0;
@@ -49,7 +51,7 @@ function downloadlexactivator(alsosdk, cleanupafter)
         s1 = copyfile('./lextmp/linux/headers/*.h', [PsychtoolboxRoot '../../'], 'f');
 
         % Move Windows import lib into place, next to the Psychtoolbox-3 main folder:
-        s2 = copyfile('./lextmp/windows/libs/vc16/x64/LexActivator.lib', [PsychtoolboxRoot '../../'], 'f');
+        s2 = copyfile('./lextmp/windows/libs/vc14/x64/LexActivator.lib', [PsychtoolboxRoot '../../'], 'f');
 
         if ~s1 || ~s2
             error('Copy of LexActivator SDK files failed!');
@@ -57,7 +59,7 @@ function downloadlexactivator(alsosdk, cleanupafter)
     end
 
     % Move Windows DLL into PsychPlugins/Intel64/ folder:
-    s1 = copyfile('./lextmp/windows/libs/vc16/x64/LexActivator.dll', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/'], 'f');
+    s1 = copyfile('./lextmp/windows/libs/vc14/x64/LexActivator.dll', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/'], 'f');
 
     % Move Linux 64-Bit Intel shared library into PsychPlugins/Intel64/ folder:
     s2 = copyfile('./lextmp/linux/libs/gcc/amd64/libLexActivator.so', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/'], 'f');
@@ -77,6 +79,11 @@ function downloadlexactivator(alsosdk, cleanupafter)
         rmdir('./lextmp', 's');
     end
 
+    if IsOctave
+        % Rehash the Octave toolbox cache:
+        rehash;
+    end
+
     fprintf('LexActivator installation completed successfully.\n');
 end
 
@@ -85,7 +92,7 @@ function dogetit(lextype, target)
     url = 'https://dl.cryptlex.com/downloads';
 
     % Version of the SDK and runtime to fetch:
-    lexversion = 'v3.30.3';
+    lexversion = 'v3.31.2';
 
     % Assemble zip file name:
     lexzipname = ['LexActivator-' lextype '.zip']

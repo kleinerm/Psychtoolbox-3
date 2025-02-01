@@ -85,6 +85,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 11/24/2024 Call the 1st time setup routine PsychLicenseHandling() as
 %            needed to enable license management on Apple macOS and
 %            Microsoft Windows. (MK)
+% 01/31/2025 Remove subfolder MatlabWindowsFilesR2007a for Matlab on Windows, and associated
+%            special path setup on Matlab for Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -257,19 +259,19 @@ if IsOSX
         minorver = inf;
     end
 
-    % Is the operating system version < 10.11?
-    if minorver < 11
-        % Yes. This is MacOSX 10.10 or earlier, i.e., older than 10.11
-        % El Capitan. PTB will not work on such an old system:
+    % Is the operating system version < 10.13?
+    if minorver < 13
+        % Yes. This is macOS 10.12 or earlier, i.e., older than 10.13
+        % High Sierra. PTB will not work on such an old system:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
         fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
         fprintf('This release of Psychtoolbox-3 is not compatible\n');
-        fprintf('to OSX versions older than 10.11 "El Capitan".\n');
+        fprintf('to macOS versions older than 10.13 "High Sierra".\n');
         fprintf('That means that almost all functionality will not work!\n\n');
         fprintf('You could download an older version of Psychtoolbox\n');
         fprintf('onto your system to get better results. See our Wiki for help.\n');
         fprintf('Better though, update your operating system to at least version\n');
-        fprintf('10.11.5 or later.\n');
+        fprintf('10.13, better macOS 13 or later.\n');
         fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
         fprintf('Press any key on keyboard to try to continue with setup, although\n');
         fprintf('this will likely fail soon and leave you with a dysfunctional toolbox.\n\n');
@@ -314,14 +316,6 @@ if IsOctave
 
     try
         % Remove binary MEX folders from path:
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64']);
-        end
-
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM']);
         end
@@ -330,60 +324,20 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64']);
         end
 
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7WindowsFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7OSXFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7OSXFiles64']);
-        end
-
-        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64'], 'dir')
-            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64']);
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64' filesep 'Wayland'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64' filesep 'Wayland']);
         end
 
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFilesARM64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8OSXFilesARM64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64']);
         end
 
         % Encode prefix and Octave major version of proper folder:
@@ -551,8 +505,6 @@ end
 
 % Special case handling for different Matlab releases on MS-Windoze:
 if IsWin && ~IsOctave
-    rc = 0;
-
     if strfind(cd, 'system32') %#ok<STRIFCND>
         % the below code fails if the current directory is system32 (e.g.
         % C:\Windows\system32), as it contains dlls like version.dll, which
@@ -560,40 +512,13 @@ if IsWin && ~IsOctave
         cd(PsychtoolboxRoot);
     end
 
-    try
-        % Remove DLL folders from path:
-        rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
-
-        % Is this a Release2014b (Version 8.4.0) or later Matlab?
-        if verLessThan('matlab', '8.4.0')
-            % This is a pre-R2014b Matlab: No longer supported by V 3.0.18+
-            fprintf('Matlab release prior to R2014b detected. This version is no longer\n');
-            fprintf('supported by Psychtoolbox 3.0.18 and later. Aborted.');
-            fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
-            return;
-        else
-            % This is a R2014b or later Matlab:
-            % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab path:
-            rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\'];
-            fprintf('Matlab release 2014b or later detected. Will prepend the following\n');
-            fprintf('folder to your Matlab path: %s ...\n', rdir);
-            addpath(rdir);
-        end
-
-        rc = savepath;
-    catch
-        rc = 2;
-    end
-
-    if rc > 0
-        fprintf('=====================================================================\n');
-        fprintf('ERROR: Failed to prepend folder %s to Matlab path!\n', rdir);
-        fprintf('ERROR: This will likely cause complete failure of PTB to work.\n');
-        fprintf('ERROR: Please fix the problem (maybe insufficient permissions?)\n');
-        fprintf('ERROR: If everything else fails, add this folder manually to the\n');
-        fprintf('ERROR: top of your Matlab path.\n');
-        fprintf('ERROR: Trying to continue but will likely fail soon.\n');
-        fprintf('=====================================================================\n\n');
+    % Is this a R2014b (Version 8.4.0) or later Matlab?
+    if verLessThan('matlab', '8.4.0')
+        % This is a pre-R2014b Matlab: No longer supported by V 3.0.18+
+        fprintf('Matlab release prior to R2014b detected. This version is no longer\n');
+        fprintf('supported by Psychtoolbox 3.0.18 and later. Aborted.');
+        fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
+        return;
     end
 
     try

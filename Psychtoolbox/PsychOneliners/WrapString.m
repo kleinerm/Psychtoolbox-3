@@ -35,7 +35,7 @@ if isempty(maxLineLength) || isnan(maxLineLength)
 end
 
 eol=sprintf('\n');
-wrapped='';
+wrapped=[];
 while length(string)>maxLineLength
   l=min([strfind(char(string),eol) length(string)+1]);
   if l<maxLineLength
@@ -59,7 +59,7 @@ return
 function [wrapped,string]=onewrap(wrapped,string,n)
 if n>length(string)
   wrapped=[wrapped string];
-  string='';
+  string=[];
   return
 end
 wrapped=[wrapped string(1:n-1) cast(10,class(string))];

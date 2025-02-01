@@ -517,8 +517,8 @@ while ~isempty(tstring)
             % Block justification (align to left border and a right border at 'wrapat' columns)?
             if ismember(bjustify, [1,2])
                 % Calculate required amount of padding in pixels:
-                strwidth = padwidth - RectWidth(Screen('TextBounds', win, curstring(~isspace(curstring)), [], [], yPosIsBaseline, righttoleft));
-                padpergapneeded = length(find(isspace(curstring)));
+                strwidth = padwidth - RectWidth(Screen('TextBounds', win, curstring(~isspace(char(curstring))), [], [], yPosIsBaseline, righttoleft));
+                padpergapneeded = length(find(isspace(char(curstring))));
                 % Padding needed and possible?
                 if (padpergapneeded > 0) && (strwidth > 0)
                     % Required padding less than padthresh fraction of total
@@ -545,7 +545,7 @@ while ~isempty(tstring)
                 % between consecutive words:
                 nx = xp;
                 ny = yp;
-                [wordup, remstring] = strtok(curstring);
+                [wordup, remstring] = unistrtok(curstring);
                 cxp = xp;
                 while ~isempty(wordup)
                     if nargout >= 4
@@ -555,7 +555,7 @@ while ~isempty(tstring)
                     end
 
                     if (padpergapneeded == 0) && ~isempty(remstring)
-                        wordup = [wordup ' '];
+                        wordup = [wordup cast(' ', stringclass)];
                     end
 
                     [nx ny] = Screen('DrawText', win, wordup, cxp, yp, color, [], yPosIsBaseline, righttoleft);
@@ -563,7 +563,7 @@ while ~isempty(tstring)
                         nx = nx + padpergapneeded;
                         cxp = nx;
                     end
-                    [wordup, remstring] = strtok(remstring);
+                    [wordup, remstring] = unistrtok(remstring);
                 end
             else
                 % Fast path: Draw one full line of text.
@@ -652,4 +652,56 @@ end
 % Restore warning() settings to initial at onCleanup():
 function restorewarningstate(warningstate)
     warning(warningstate);
+end
+
+function [tokstring, remstring] = unistrtok(instring)
+    % Use Matlabs strtok() in all cases, Octaves strtok() for regular char()'s,
+    % as these can handle those efficiently:
+    if ischar(instring) || ~IsOctave
+        [tokstring, remstring] = strtok(instring);
+        return;
+    end
+
+    % Octave with unicode double() instring, strtok() can't do it - roll our own.
+
+    % Init tokstring, remstring to empty strings of same class as instring:
+    tokstring = cast('', class(instring));
+    remstring = tokstring;
+
+    if isempty(instring)
+        return;
+    end
+
+    % Skip all leading space delimiters:
+    l = length(instring);
+    for sstart=1:l
+        if ~isspace(char(instring(sstart)))
+            break;
+        end
+    end
+
+    if isspace(char(instring(sstart)))
+        % All is delimiters!
+        return;
+    end
+
+    for send=sstart:l
+        if isspace(char(instring(send)))
+            break;
+        end
+    end
+
+    if ~isspace(char(instring(send)))
+        % End of string, return without remainder:
+        tokstring = instring(sstart:send);
+        return;
+    end
+
+    % tokstring goes until before delimiter:
+    tokstring = instring(sstart:send-1);
+
+    % remstring is from delimiter to end:
+    remstring = instring(send:l);
+
+    return;
 end
