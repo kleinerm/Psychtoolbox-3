@@ -408,6 +408,14 @@ function UpdateMetadata
         [rc, model] = system('sysctl -n hw.model');
         if rc == 0
             model = strtrim(model);
+
+            % Also encode true machine architecture - ARM or Intel:
+            if IsARM(1)
+                model = [model ' ARM64'];
+            else
+                model = [model ' INTEL64'];
+            end
+
             WaitSecs('ManageLicense', 5, 'machinemodel', model);
         end
     end
