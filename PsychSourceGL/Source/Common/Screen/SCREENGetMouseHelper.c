@@ -672,6 +672,11 @@ PsychError SCREENGetMouseHelper(void)
                             // on Vista and Windows-7 and later, however with a scheduler safety net applied.
                             PsychSetThreadPriority((psych_thread*) 0x1, 10, 0);
                         }
+                        else {
+                            // Success for putting the process to RT class. Additionally try to schedule our master thread at
+                            // very high priority:
+                            PsychSetThreadPriority((psych_thread*) 0x1, 2, 0);
+                        }
                     break;
                 }
             }
