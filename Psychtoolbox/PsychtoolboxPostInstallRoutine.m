@@ -87,6 +87,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            Microsoft Windows. (MK)
 % 01/31/2025 Remove subfolder MatlabWindowsFilesR2007a for Matlab on Windows, and associated
 %            special path setup on Matlab for Windows. (MK)
+% 02/28/2025 Call PsychLicenseHandling() for license manager client libs setup before 1st
+%            call to WaitSecs, so those get installed early enough if they are missing. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -306,6 +308,9 @@ if ~IsOctave && ~exist('verLessThan') %#ok<EXIST>
     fprintf('Matlab versions older than v7.4 aka R2007a are no longer supported. Setup aborted.\n');
     return;
 end
+
+% LexActivator client library installed? Install if needed.
+PsychLicenseHandling('CheckInstallLMLibs');
 
 % Special case handling for Octave:
 if IsOctave
@@ -537,6 +542,7 @@ if IsWin && ~IsOctave
         WaitSecs('YieldSecs', 0.1);
     catch
         % Failed! Either screwed setup of path or missing VC++ 2019 runtime libraries.
+        fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
         fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2019 runtime libraries\n');
         fprintf('ERROR: are missing on your system.\n\n');
         fprintf('ERROR: Execute the installer file vcredist_x64_2015-2019.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');

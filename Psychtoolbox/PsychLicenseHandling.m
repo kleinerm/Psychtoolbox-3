@@ -20,7 +20,7 @@ function rc = PsychLicenseHandling(cmd, varargin)
 %
 % Medical Innovations Incubator GmbH
 % Eisenbahnstr. 63
-% 72070 Tübingen
+% 72072 Tübingen
 % Germany
 %
 % Commercial register: HRB 751684
@@ -107,6 +107,8 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % 13-Jan-2025   mk  Add auto download and install for LM libraries if they
 %                   are missing.
 %
+% 28-Feb-2025   mk  Improve auto download, make callable from external code,
+%                   e.g., PsychtoolboxPostInstallRoutine().
 
 persistent forceReenterKey;
 
@@ -116,8 +118,8 @@ end
 
 rc = 0;
 
-% Check if initial setup of license management is needed, and if so then do it:
-if strcmpi(cmd, 'Setup')
+% Check if LexActivator client library installed? Install if needed.
+if strcmpi(cmd, 'CheckInstallLMLibs')
     % LexActivator client library installed?
     if ~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))
         % Nope. Try to download and install them. This will happen for a
@@ -136,6 +138,14 @@ if strcmpi(cmd, 'Setup')
         end
     end
 
+    return;
+end
+
+% LexActivator client library installed? Install if needed.
+PsychLicenseHandling('CheckInstallLMLibs');
+
+% Check if initial setup of license management is needed, and if so then do it:
+if strcmpi(cmd, 'Setup')
     % Check if this Psychtoolbox variant is requires license management at all:
     if ~WaitSecs('ManageLicense', 6)
         % Nope. Must be one of the free Linux variants, nothing to do:
