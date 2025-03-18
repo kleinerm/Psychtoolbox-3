@@ -891,6 +891,8 @@ static int enumerateXRDevices(XrInstance instance) {
         return(0);
     }
 
+    availableSystems[numAvailableDevices].next = NULL;
+
     if (has_XR_EXT_eye_gaze_interaction)
         availableSystems[numAvailableDevices].next = &eyeGazeAvailable[numAvailableDevices];
 
