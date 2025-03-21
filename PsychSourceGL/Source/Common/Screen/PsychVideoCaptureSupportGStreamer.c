@@ -262,6 +262,34 @@ void PsychGSCheckInit(const char* engineName)
         }
         #endif
 
+        // On MS-Windows, we must permanently disable use of MMCSS scheduling for the
+        // Psychtoolbox master thread before gst_init_check() and for the remainder of
+        // a whole work session. Why? Changes to GLib for Windows thread setup code will
+        // cause GLib to try to make each new GStreamer-Thread inherit the scheduling
+        // priority from its calling parent/creator thread. This goes badly wrong if the
+        // parent thread is MMCSS scheduled and ends in malfunctions/hangs/crashes/abort()
+        // if our master thread is MMCSS scheduled due to Priority(1) or greater and causes
+        // indirect GStreamer/GLib thread creation, e.g., during gst_init_check()!
+        //
+        // Behaviour observed on Windows 10 22H2 with Octave and Matlab 2024a on AMD cpu + iGPU
+        // and also on Windows 10 Server 2022 Octave, Matlab R2022a, R2023b on NVidia gpu and
+        // Intel cpu, all with GStreamer 1.22.5, 1.24.10, 1.24.12. See bug report:
+        // https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues/857
+        //
+        // The failing code in GLib is here in gthread-win32.c:g_system_thread_new():
+        // https://github.com/GNOME/glib/blob/97bd09a04f582a4c87568b3826e39c265efba31b/glib/gthread-win32.c#L479
+        //
+        // No known problems with regular thread scheduling and priorities, seems to be
+        // triggered specifically by use of MMCSS scheduling. Testing shows that threads
+        // under MMCSS can have a priority level of, e.g., 11, which is an illegal level
+        // to assign via SetThreadPriority() without MMCSS scheduling, so priority inheritance
+        // of GStreamer/GLib created threads from such a level 11 PTB thread is doomed to fail,
+        // which is exactly what happens and causes GStreamer crash/hang/malfunctions.
+        //
+        // This is not a great solution, but better than crashing/hanging:
+        if (PSYCH_SYSTEM == PSYCH_WINDOWS)
+            PsychSetThreadPriority((psych_thread*) 0x1, -10, 0);
+
         // Initialize GStreamer:
         if(!gst_init_check(NULL, NULL, &error)) {
             if (error) {

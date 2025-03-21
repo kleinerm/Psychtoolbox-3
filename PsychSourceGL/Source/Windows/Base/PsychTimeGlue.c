@@ -33,6 +33,7 @@
 static psych_threadstruct masterPsychtoolboxThread;
 static psych_thread       masterPsychtoolboxThreadhandle = NULL;
 static psych_threadid     masterThreadId;
+static psych_bool         masterThreadAllowMMCSS = TRUE;
 
 // Module handle for the MMCSS interface API library 'avrt.dll': Or 0 if unsupported.
 HMODULE Avrtlibrary = 0;
@@ -409,6 +410,9 @@ void PsychInitTimeGlue(void)
 
     // Retrieve id of current thread, which is by definition the master thread:
     masterThreadId = PsychGetThreadId();
+
+    // Allow MMCSS scheduling of master thread by default:
+    masterThreadAllowMMCSS = TRUE;
 
     // That is why we use the less capable critical section init call:
     // Has less capable error handling etc., but what can one do...
@@ -1399,6 +1403,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
     int rc;
     DWORD foo;
     HANDLE thread;
+    psych_bool allowMMCSS;
 
     if ((NULL != threadhandle) && ((psych_thread*) 0x1 != threadhandle)) {
         // Retrieve thread HANDLE of thread to change:
@@ -1425,6 +1430,9 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
         PsychAvRevertMmThreadCharacteristics((*threadhandle)->taskHandleMMCS);
         (*threadhandle)->taskHandleMMCS = NULL;
     }
+
+    // Master thread has its own allow flag to decide if MMCSS can be used:
+    allowMMCSS = (threadhandle == &masterPsychtoolboxThreadhandle) ? masterThreadAllowMMCSS : TRUE;
 
     switch(basePriority) {
         case 0:    // Normal priority.
@@ -1454,7 +1462,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
                 // Try to get as close as possible to TIME_CRITICAL. On Vista and later,
                 // we can try to abuse MMCSS scheduling to get to a pretty high priority,
                 // certainly higher than HIGHEST, close to TIME_CRITICAL:
-                if (AvrtSupported && (NULL != threadhandle)) {
+                if (AvrtSupported && (NULL != threadhandle) && allowMMCSS) {
                     foo = 0;
                     (*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Capture", &foo);
                     if ((*threadhandle)->taskHandleMMCS) {
@@ -1485,7 +1493,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
             break;
 
         case 10: // MMCSS scheduling: Vista, Windows-7 and later only...
-            if (AvrtSupported && (NULL != threadhandle)) {
+            if (AvrtSupported && (NULL != threadhandle) && allowMMCSS) {
                 foo = 0;
                 (*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Capture", &foo);
                 if ((*threadhandle)->taskHandleMMCS) {
@@ -1522,6 +1530,20 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
                     rc = SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);
                 }
             }
+            break;
+
+        case -10: // Permanently disallow MMCSS scheduling of the master thread for the remainder of this session:
+            if (threadhandle == &masterPsychtoolboxThreadhandle) {
+                masterThreadAllowMMCSS = FALSE;
+                if (FALSE) {
+                    printf("PTB-DEBUG:PsychSetThreadPriority(): Process=0x%x Thread=%i\n", GetPriorityClass(GetCurrentProcess()),
+                           GetThreadPriority(thread));
+                }
+            }
+            else {
+                printf("PTB-BUG:PsychSetThreadPriority(): MMCSS permanent disable requested for a non-master thread %p! Bug!?\n", threadhandle);
+            }
+
             break;
 
         default:
