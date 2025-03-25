@@ -312,11 +312,11 @@ static int DoActivateLicense(void)
             if (lmdebug)
                 printf("PTB-DEBUG: maxGracePeriodDays %i.\n", maxGracePeriodDays);
 
-            // We only accept grace periods of up to 30 days for now:
-            if (maxGracePeriodDays <= 30) {
-                // Ok, we got a valid grace period that is no longer than 30 days. This is acceptable.
+            // We only accept grace periods of up to 370 days for now:
+            if (maxGracePeriodDays <= 370) {
+                // Ok, we got a valid grace period that is no longer than 370 days. This is acceptable.
                 if (lmdebug)
-                    printf("PTB-DEBUG: maxGracePeriodDays %i within max 30 days bound. All good, activated.\n", maxGracePeriodDays);
+                    printf("PTB-DEBUG: maxGracePeriodDays %i within max 370 days bound. All good, activated.\n", maxGracePeriodDays);
 
                 // Mark at least locally as active:
                 SetActivationMetadata(_T("ReallyActive"), _T("1"));
@@ -327,7 +327,8 @@ static int DoActivateLicense(void)
                 return(LA_OK);
             }
             else {
-                printf("PTB-ERROR: The license for this machine does have a grace period of %i days, larger than acceptable 30 days! This is forbidden!\n", maxGracePeriodDays);
+                printf("PTB-ERROR: The license for this machine does have a grace period of %i days, larger than acceptable 370 days! This is forbidden!\n",
+                       maxGracePeriodDays);
                 printf("PTB-ERROR: Not activating on this machine. Contact support for assistance.\n");
             }
         }
@@ -852,9 +853,9 @@ PsychError PsychManageLicense(void)
     PsychAllocInCharArg(2, kPsychArgOptional, &productKey);
 
     // Get optional argument 'idString' for activation user data:
-    if (PsychAllocInCharArg(3, kPsychArgOptional, &idString) && strlen(idString) > 30) {
-        // User provided arbitrary idString gets truncated to at most 30 characters + zero terminator:
-        idString[30] = 0;
+    if (PsychAllocInCharArg(3, kPsychArgOptional, &idString) && (mode == 5) && (strlen(idString) > 99)) {
+        // User provided arbitrary idString gets truncated to at most 99 characters + zero terminator:
+        idString[99] = 0;
     }
 
     // Init license manager if not already initialized:
