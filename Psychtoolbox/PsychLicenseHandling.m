@@ -46,6 +46,12 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % Psychtoolbox will sync with the server at the first use in a session and
 % periodically every few hours.
 %
+% If your local environments firewall prevents online license management from
+% working, see the section at the bottom for how to add firewall exception rules
+% to make it work anyway. Below that section you will also find instructions for
+% operating in a fully offline "air gapped" environment without any internet access.
+% The latter may require specially configured licenses, as our default licenses do
+% not support fully offline use.
 %
 % Subfunctions and their meaning:
 % -------------------------------
@@ -99,6 +105,59 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % Our professional support personnel may ask you to provide such a token in
 % some cases.
 %
+% USE IN STRICTLY FIREWALLED ENVIRONMENTS:
+% ----------------------------------------
+%
+% If your firewall is blocking internet connections to our license servers,
+% you can configure it as follows to allow connecting to the license servers.
+% Follow the most recent instructions on this website for passthrough for EU data centers:
+%
+% https://docs.cryptlex.com/node-locked-licenses/proxies-and-firewall#for-our-eu-data-center
+%
+% As of March 2025, the following configuration would be needed, but check above
+% website for up to date informations if in doubt:
+%
+% The following IP addresses and URL should be whitelisted:
+%
+%    IP Addresses to Whitelist:
+%        75.2.113.112
+%        99.83.149.57
+%
+%    Web API URL to Whitelist:
+%        https://api.eu.cryptlex.com:443
+%
+% OFFLINE USE IN AIR GAPPED ENVIRONMENTS:
+% ---------------------------------------
+%
+% Some non-standard software subscription licenses allow offline activation and
+% deactivation by use of the customer portal and passing forth and back offline
+% activation and deactivation request and response files. This allows use in air-
+% gapped environments without access to the public internet or to our license
+% servers. If your purchased license supports this, the functions are as follows:
+%
+% PsychLicenseHandling('ActivateEnrolledKeyOffline', pathToOfflineRequestResponseFile);
+% - Either create an offline activation request file under the specified path/filename,
+% which allows creation of an offline activation response file in the customer portal,
+% or reads such an offline activation response file and activates your local machine.
+%
+% E.g., after enrolling a license key via PsychLicenseHandling('Setup') or
+% PsychLicenseHandling('Activate', licenseKey); do the following:
+%
+% 1. PsychLicenseHandling('ActivateEnrolledKeyOffline', 'offlineRequest.dat');
+%
+% 2. Login to customer portal and upload 'offlineRequest.dat' to create offline
+%    response file, downloaded to the file 'offlineResponse.dat'.
+%
+% 3. PsychLicenseHandling('ActivateEnrolledKeyOffline', 'offlineResponse.dat') to
+%    activate this machine.
+%
+% PsychLicenseHandling('DeactivateEnrolledKeyOffline', pathToOfflineProofFile);
+% - Deactivate the machine locally and write a deactivation proof file into the
+% path/filename 'pathToOfflineProofFile'. You can upload that proof file into
+% the customer portal to deactivate the machine in the license servers, so the
+% machine activation that has been freed up can be reused on a different machine.
+% Not all licenses allow offline deactivation of once activated machines.
+%
 
 % History:
 %
@@ -109,6 +168,8 @@ function rc = PsychLicenseHandling(cmd, varargin)
 %
 % 28-Feb-2025   mk  Improve auto download, make callable from external code,
 %                   e.g., PsychtoolboxPostInstallRoutine().
+%
+% 26-Mar-2025   mk  Add offline "air-gapped" activation support.
 
 persistent forceReenterKey;
 
@@ -349,6 +410,26 @@ if strcmpi(cmd, 'Setup')
     return;
 end
 
+% Check if this Psychtoolbox variant requires license management at all:
+if ~WaitSecs('ManageLicense', 6)
+    % Nope. Must be one of the free Linux variants, nothing to do:
+    rc = 1;
+
+    fprintf('This Psychtoolbox variant does neither support nor require license management. Bye!\n');
+
+    return;
+end
+
+% License management enabled?
+if WaitSecs('ManageLicense', 3) == -1
+    % Nope:
+    rc = 1;
+
+    fprintf('Run PsychLicenseHandling(''Setup'') first, to consent to license management, or I can not proceed. Bye!\n');
+
+    return;
+end
+
 if strcmpi(cmd, 'Activate')
     % Assign activation and trial metadata for upload to license servers and
     % use for aggregate statistical purposes:
@@ -360,6 +441,61 @@ if strcmpi(cmd, 'Activate')
         rc = WaitSecs('ManageLicense', 2, varargin{1});
     else
         rc = WaitSecs('ManageLicense', 1);
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'ActivateEnrolledKeyOffline')
+    % Assign activation and trial metadata for upload to license servers and
+    % use for aggregate statistical purposes:
+    UpdateMetadata;
+
+    % Must have license key already enrolled:
+    if WaitSecs('ManageLicense', 3)
+        error('License key not yet enrolled. Please do this by calling the ''Activate'' or ''Setup'' functions first.');
+    end
+
+    % Must have path/filename of to-be-created offline activation request file or
+    % already existing offline activation response file:
+    if isempty(varargin)
+        error('Required path and filename of offline activation file missing.');
+    end
+
+    fname = varargin{1};
+    if ~ischar(fname) || isempty(fname)
+        error('Passed parameter is not a string with path/filename of offline file.');
+    end
+
+    if ~exist(fname, 'file')
+        % No such file. Create an offline activation request file:
+        rc = WaitSecs('ManageLicense', 1, [], fname);
+        if rc == 0
+            fprintf('Wrote activation request file ''%s'' for this machine. You must now login to\n', fname);
+            fprintf('your customer self-service portal (https://medical-innovations.customer.eu.cryptlex.com),\n');
+            fprintf('go to the ''Activations'' section, and use the ''Create Offline'' button to enter your\n');
+            fprintf('license key and then upload the activation request file. If your license has spare activations\n');
+            fprintf('left, then the portal will allow you download of an offline activation response file.\n');
+            fprintf('Your next step would be calling this function again, but passing in the path/filename of that\n');
+            fprintf('downloaded offline activation response file. This will activate this copy of Psychtoolbox for use\n');
+            fprintf('if your purchased license actually allows offline activation, something not guaranteed for most\n');
+            fprintf('licenses by default.\n\n');
+        else
+            warning('Procedure failed for reasons given above.');
+        end
+    else
+        % File exists and is presumably an offline activation response file. Give it a shot:
+        fprintf('Trying to offline activate with the offline activation response file named:\n');
+        fprintf('''%s''. Engage!\n\n', fname);
+        rc = WaitSecs('ManageLicense', 1, [], fname);
+
+        if rc == 0
+            fprintf('Success! Please note you will have to repeat this offline procedure every time when or after\n');
+            fprintf('the offline grace period ends, unless there is not any such period set for your license. See the\n');
+            fprintf('output above.\n');
+        else
+            warning('Procedure failed for reasons given above.');
+        end
     end
 
     return;
@@ -378,6 +514,46 @@ end
 if strcmpi(cmd, 'WipeMetadata')
     WipeMetadata;
     return;
+end
+
+if strcmpi(cmd, 'DeactivateEnrolledKeyOffline')
+    UpdateMetadata;
+
+    % Must have license key already enrolled:
+    if WaitSecs('ManageLicense', 3)
+        error('License key not yet enrolled. Please do this by calling the ''Activate'' or ''Setup'' functions first.');
+    end
+
+    % Must have path/filename of to-be-created offline deactivation proof file:
+    if isempty(varargin)
+        error('Required path and filename for to be written offline deactivation proof file missing.');
+    end
+
+    fname = varargin{1};
+    if ~ischar(fname) || isempty(fname)
+        error('Passed parameter is not a string with path/filename of offline file.');
+    end
+
+    if ~exist(fname, 'file')
+        rc = WaitSecs('ManageLicense', -1, fname);
+        if rc == 0
+            fprintf('Successfully deactivated! The written offline deactivation proof file ''%s''\n', fname);
+            fprintf('must now be uploaded to the customer self-service license management portal at\n');
+            fprintf('https://medical-innovations.customer.eu.cryptlex.com . Login, go to the ''Activations''\n');
+            fprintf('section, and press the ''Delete Offline'' button. Then enter your license key for this\n');
+            fprintf('machine and upload the just written deactivation proof file, to deactivate this node\n');
+            fprintf('on the license servers. This will free up one activation on the given license to allow\n');
+            fprintf('you to reactivate a different operating system + machine combination.\n');
+            fprintf('Please note that not all license plans allow you to offline deactivate nodes after their\n');
+            fprintf('activation.\n\n');
+        else
+            warning('Procedure failed for reasons given above.');
+        end
+
+        return;
+    else
+        error('A file already exists under that path/filename. Doing nothing.');
+    end
 end
 
 if strcmpi(cmd, 'IsLicensed')
@@ -409,7 +585,7 @@ function UpdateMetadata
         % Octave version number:
         WaitSecs('ManageLicense', 5, 'hostappversion', version);
     else
-        % Matlab release name, e.g., R2024b:
+        % Matlab release name, e.g., 2024b for R2024b:
         WaitSecs('ManageLicense', 5, 'hostappversion', version('-release'));
     end
 

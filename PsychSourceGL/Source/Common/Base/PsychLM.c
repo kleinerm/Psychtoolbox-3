@@ -132,6 +132,9 @@ static const char* LMErrorString(int hr)
         case LA_GRACE_PERIOD_OVER: return("The grace period for server sync is over.");
         case LA_E_RELEASE_VERSION_NOT_ALLOWED: return("This release of Psychtoolbox is not allowed for use with the current license.");
         case LA_E_OS_USER: return("The operating system user has changed since activation and the license is user-locked.");
+        case LA_E_OFFLINE_RESPONSE_FILE: return("Invalid offline activation response file.");
+        case LA_E_OFFLINE_RESPONSE_FILE_EXPIRED: return("The offline activation response has expired.");
+
         default:
             sprintf(errorCodeString, "Error code: %i.", hr);
             return(errorCodeString);
@@ -274,7 +277,7 @@ static const char* GetSupportToken(void)
     return(ConvertToChar(activationId));
 }
 
-static int DoActivateLicense(void)
+static int DoActivateLicense(char* requestFileName)
 {
     int hr, frc;
     psych_uint64 maxGracePeriodDays;
@@ -285,10 +288,39 @@ static int DoActivateLicense(void)
     // Mark at least locally as inactive:
     SetActivationMetadata(_T("ReallyActive"), _T("0"));
 
-    // Try to activate license online:
-    hr = ActivateLicense();
-    if (lmdebug)
-        printf("PTB-DEBUG: ActivateLicense() = %i [%s]\n", hr, LMErrorString(hr));
+    if (requestFileName) {
+        // Try to activate license via provided offline activation response file:
+        hr = ActivateLicenseOffline(ConvertToTCHAR(requestFileName));
+        if (lmdebug)
+            printf("PTB-DEBUG: ActivateLicenseOffline() = %i [%s]\n", hr, LMErrorString(hr));
+
+        // Successful offline activation and allowed by this license version?
+        if ((hr == LA_OK) && !GetFeatureEnabled("AllowOfflineActivation")) {
+            // Did work, but was not actually allowed by product version of this license, so undo activation:
+            printf("PTB-ERROR: Offline activation is not supported with this type of license. Please get a suitable license.\n");
+            printf("PTB-ERROR: The file '%s' now is stored as a offline deactivation proof file for the forced deactivation.\n", requestFileName);
+
+            // Backup license key, if any:
+            frc = GetLicenseKey(keybuf, sizeof(keybuf));
+
+            hr = GenerateOfflineDeactivationRequest(ConvertToTCHAR(requestFileName));
+            if (lmdebug)
+                printf("PTB-DEBUG: GenerateOfflineDeactivationRequest() = %i [%s]\n", hr, LMErrorString(hr));
+
+            // Restore previously backed up key if possible:
+            if (frc == LA_OK)
+                SetLicenseKey(keybuf);
+
+            // Go through regular deactivation at the end:
+            goto doactivatelicensefailout;
+        }
+    }
+    else {
+        // Try to activate license online:
+        hr = ActivateLicense();
+        if (lmdebug)
+            printf("PTB-DEBUG: ActivateLicense() = %i [%s]\n", hr, LMErrorString(hr));
+    }
 
     // Failed for some reason? Bail, returning error code to caller:
     if (hr != LA_OK)
@@ -343,6 +375,8 @@ static int DoActivateLicense(void)
     else {
         printf("PTB-ERROR: Failed to get grace period! Not activating on this machine. Contact support for assistance.\n");
     }
+
+doactivatelicensefailout:
 
     // Failed to get an activated license with acceptable parameters. Deactivate
     // license again, while retaining a potentially saved license key:
@@ -691,7 +725,7 @@ static psych_bool PsychCheckLicenseStatus(void)
             // Force a server sync right now, even if server sync period is not yet reached,
             // so we get back into the grace period if possible to clear the error that brought
             // us here in the first place:
-            DoActivateLicense();
+            DoActivateLicense(NULL);
 
             // Recheck with up to date license info if we are now good again:
             hr = PTBIsLicenseGenuine();
@@ -822,7 +856,8 @@ PsychError PsychManageLicense(void)
         "+3 = Check if a valid product key is already enrolled and available. 0 = Yes.\n"
         "+4 = Get an up to date support authentication token.\n"
         "+5 = Set activation metadata property (2nd argument) to the dataString in 3rd argument.\n"
-        "+6 = Return 1 on a license managed Psychtoolbox, 0 otherwise.\n";
+        "+6 = Return 1 on a license managed Psychtoolbox, 0 otherwise.\n"
+        "+7 = Create or process an offline trial activation request/response.\n";
     static char seeAlsoString[] = "";
 
     int rc = 0;
@@ -885,7 +920,14 @@ PsychError PsychManageLicense(void)
                 SetActivationMetadata(_T("ReallyActive"), _T("0"));
 
                 // Deactivate:
-                rc = DeactivateLicense();
+                if (productKey && ConvertToTCHAR(productKey)) {
+                    // Deactivate locally and generate deactivation proof file for offline deactivation:
+                    rc = GenerateOfflineDeactivationRequest(ConvertToTCHAR(productKey));
+                }
+                else {
+                    // Deactivate locally and online:
+                    rc = DeactivateLicense();
+                }
 
                 // Restore previously backed up key if possible:
                 if (frc == LA_OK)
@@ -898,6 +940,8 @@ PsychError PsychManageLicense(void)
                 else {
                     printf("PTB-INFO: License deactivated on this machine. Product key kept for easy reactivation.\n");
                     printf("PTB-INFO: Now %i out of a maximum of %li activations for this license remain in use.\n", curActivations - 1, maxActivations);
+                    if (productKey)
+                        printf("PTB-INFO: Deactivation proof file for offline deactivation is stored at: %s\n", productKey);
                 }
             }
             break;
@@ -909,7 +953,15 @@ PsychError PsychManageLicense(void)
             // Mark at least locally as inactive:
             SetActivationMetadata(_T("ReallyActive"), _T("0"));
 
-            rc = DeactivateLicense();
+            if (productKey && ConvertToTCHAR(productKey)) {
+                // Deactivate locally and generate deactivation proof file for offline deactivation:
+                rc = GenerateOfflineDeactivationRequest(ConvertToTCHAR(productKey));
+            }
+            else {
+                // Deactivate locally and online:
+                rc = DeactivateLicense();
+            }
+
             licenseStatus = -1;
             if (rc != LA_OK) {
                 printf("PTB-ERROR: License deactivation with product key erasure failed: %s\n", LMErrorString(rc));
@@ -917,6 +969,8 @@ PsychError PsychManageLicense(void)
             else {
                 printf("PTB-INFO: License deactivated on this machine and old product key deleted from machine.\n");
                 printf("PTB-INFO: Now %i out of a maximum of %li activations for this license remain in use.\n", curActivations - 1, maxActivations);
+                if (productKey)
+                    printf("PTB-INFO: Deactivation proof file for offline deactivation is stored at: %s\n", productKey);
             }
 
             break;
@@ -974,16 +1028,41 @@ PsychError PsychManageLicense(void)
             setenv("PSYCH_LM_PRINTINGDONE", "", 1);
             licenseStatus = -1;
 
-            // Set optional user provided idString:
-            if (idString) {
-                rc = SetActivationMetadata(_T("IdString"), ConvertToTCHAR(idString));
-                if (rc != LA_OK)
-                    printf("PTB-WARNING: Could not store the optional idString you provided. Will activate license anyway, without that info: %s\n",
-                           LMErrorString(rc));
+            // Optional user provided idString with path to license activation request or response file for offline activation?
+            if (idString && ConvertToTCHAR(idString)) {
+                // Yes. Does the file exist already? If so, then we assume it is a offline activation
+                // response file and try to use it for finalizing license offline activation.
+                FILE* fid = fopen(idString, "rt");
+                if (!fid) {
+                    // Nope, no activation response file under given path. Assume we should generate an
+                    // activation request file at that location:
+                    rc = GenerateOfflineActivationRequest(ConvertToTCHAR(idString));
+                    if (rc != LA_OK) {
+                        printf("PTB-ERROR: Could not create offline activation request file at filesystem location '%s': %s\n",
+                               idString, LMErrorString(rc));
+                    }
+                    else {
+                        printf("PTB-INFO: Created offline activation request file at filesystem location '%s'.\n", idString);
+                    }
+
+                    // Done with filename for now:
+                    idString = NULL;
+
+                    // Regardless if success or failure, we are done here:
+                    break;
+                }
+
+                // Yep, it exists. Pass it into offline activation...
+                fclose(fid);
+
+                printf("PTB-INFO: Trying offline activation with activation response file '%s'.\n", idString);
+            }
+            else {
+                idString = NULL;
             }
 
             // Activate license:
-            rc = DoActivateLicense();
+            rc = DoActivateLicense(idString);
             if (rc == LA_OK) {
                 GetLicenseAllowedActivations(&maxActivations);
                 GetLicenseTotalActivations(&curActivations);
@@ -1072,6 +1151,42 @@ PsychError PsychManageLicense(void)
         case 6: // Return if license management is supported:
             // This is always 1 = true if we get here, as oppposed to the non-LM stub that always returns 0 = false:
             rc = 1;
+            break;
+
+        case 7: // Create an offline trial activation request file or process a offline trial activation response file, to offline activate a trial.
+            if (!productKey || !ConvertToTCHAR(productKey))
+                PsychErrorExitMsg(PsychError_user, "Path and filename of offline trial activation request/response file is missing!");
+
+            // Yes. Does the file exist already? If so, then we assume it is a offline activation
+            // response file and try to use it for finalizing trial offline activation.
+            FILE* fid = fopen(productKey, "rt");
+            if (!fid) {
+                // Nope, no activation response file under given path. Assume we should generate an
+                // activation request file at that location:
+                rc = GenerateOfflineTrialActivationRequest(ConvertToTCHAR(productKey));
+                if (rc != LA_OK) {
+                    printf("PTB-ERROR: Could not create trial offline activation request file at filesystem location '%s': %s\n",
+                           productKey, LMErrorString(rc));
+                }
+                else {
+                    printf("PTB-INFO: Created offline trial activation request file at filesystem location '%s'.\n", productKey);
+                }
+            }
+            else {
+                // Yep, it exists. Pass it into offline activation...
+                fclose(fid);
+
+                printf("PTB-INFO: Trying offline trial activation with activation response file '%s'.\n", productKey);
+
+                rc = ActivateTrialOffline(ConvertToTCHAR(productKey));
+                if (rc != LA_OK) {
+                    printf("PTB-ERROR: Could not activate trial offline with provided file: %s\n", LMErrorString(rc));
+                }
+                else {
+                    printf("PTB-INFO: Activated trial via offline trial activation response file.\n");
+                }
+            }
+
             break;
 
         default:
