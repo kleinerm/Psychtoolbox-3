@@ -304,19 +304,20 @@ static int DoActivateLicense(void)
         // Got grace period expiry date. Check if it is acceptable to us:
         now = time(NULL);
 
-        // We do not allow "no grace period" / "infinite grace period", iow. we
+        // DISABLED: We do not allow "no grace period" / "infinite grace period", iow. we
         // do not allow machines to run offline without server sync ever:
-        if ((endOfGracePeriod > 0) && (now > 0) && (endOfGracePeriod > now)) {
+        // if ((endOfGracePeriod > 0) && (now > 0) && (endOfGracePeriod > now)) {
+        if (TRUE) {
             // Has a finite grace period. Compute its length:
             maxGracePeriodDays = (endOfGracePeriod - now) / 86400;
             if (lmdebug)
                 printf("PTB-DEBUG: maxGracePeriodDays %i.\n", maxGracePeriodDays);
 
-            // We only accept grace periods of up to 370 days for now:
-            if (maxGracePeriodDays <= 370) {
+            // DISABLED: We only accept grace periods of up to 370 days for now:
+            if (TRUE || maxGracePeriodDays <= 370) {
                 // Ok, we got a valid grace period that is no longer than 370 days. This is acceptable.
                 if (lmdebug)
-                    printf("PTB-DEBUG: maxGracePeriodDays %i within max 370 days bound. All good, activated.\n", maxGracePeriodDays);
+                    printf("PTB-DEBUG: maxGracePeriodDays %i within max days bound. All good, activated.\n", maxGracePeriodDays);
 
                 // Mark at least locally as active:
                 SetActivationMetadata(_T("ReallyActive"), _T("1"));
@@ -618,14 +619,14 @@ static psych_bool PsychCheckLicenseStatus(void)
                    licenseDaysRemaining, ctime(&licenseExpiryDate));
 
             if (offlineDaysRemaining <= licenseDaysRemaining)
-                printf("PTB-INFO: Up to %i more days of offline use without internet connection are possible until %s",
+                printf("PTB-INFO: Up to %i more days of offline use without internet connection, or offline reactivation, are possible until %s",
                        offlineDaysRemaining, ctime(&endOfGracePeriod));
 
-            if ((offlineDaysRemaining < 2) && (offlineDaysRemaining < licenseDaysRemaining))
-                printf("PTB-INFO: CAUTION! You need to connect this machine to the internet within less than %i days to keep this Psychtoolbox working.\n",
+            if ((offlineDaysRemaining < 7) && (offlineDaysRemaining < licenseDaysRemaining))
+                printf("PTB-INFO: CAUTION! You need to connect to the internet, or offline reactivate, within less than %i days to keep this Psychtoolbox working.\n",
                        offlineDaysRemaining + 1);
 
-            if (licenseDaysRemaining < 10)
+            if (licenseDaysRemaining < 14)
                 printf("PTB-INFO: CAUTION! You need to renew your license, and then connect to the internet, within less than %i days to keep the license active.\n",
                        licenseDaysRemaining + 1);
 
