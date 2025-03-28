@@ -105,6 +105,13 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % Our professional support personnel may ask you to provide such a token in
 % some cases.
 %
+% PsychLicenseHandling('News');
+% - Print latest stored news about Psychtoolbox, and also specifically related to
+% this license and activations. Psychtoolbox prints those messages automatically
+% once when they are new. This function will print them even if they have been
+% printed before.
+%
+%
 % USE IN STRICTLY FIREWALLED ENVIRONMENTS:
 % ----------------------------------------
 %
@@ -170,6 +177,7 @@ function rc = PsychLicenseHandling(cmd, varargin)
 %                   e.g., PsychtoolboxPostInstallRoutine().
 %
 % 26-Mar-2025   mk  Add offline "air-gapped" activation support.
+% 27-Mar-2025   mk  Add 'News' function for printing of "push messages".
 
 persistent forceReenterKey;
 
@@ -575,6 +583,16 @@ if strcmpi(cmd, 'AuthenticationToken')
     % sync timestamp can be compared to timestamp of last sync in the
     % support web interface:
     rc = WaitSecs('ManageLicense', 4);
+
+    return;
+end
+
+if strcmpi(cmd, 'News')
+    % Print all news messages stored for Psychtoolbox globally, and for the given
+    % license etc.:
+    rc = WaitSecs('ManageLicense', 7);
+
+    return;
 end
 
 end

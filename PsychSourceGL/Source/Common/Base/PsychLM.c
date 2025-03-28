@@ -197,17 +197,121 @@ static TCHAR* ConvertToTCHAR(char* inString)
 #endif
 }
 
+static const char* DoGetProductMetaData(const char* key)
+{
+    static TCHAR value[4096] = { 0 };
+
+    int hr = GetProductMetadata(ConvertToTCHAR((char*) key), value, sizeof(value));
+    if (hr != LA_OK) {
+        value[0] = 0;
+
+        if (lmdebug)
+            printf("PTB-DEBUG: GetProductMetadata('%s') failed. Error %i [%s].\n", key, hr, LMErrorString(hr));
+    }
+
+    return(ConvertToChar(value));
+}
+
 static const char* DoGetLicenseMetaData(const char* key)
 {
     static TCHAR value[512] = { 0 };
 
     int hr = GetLicenseMetadata(ConvertToTCHAR((char*) key), value, sizeof(value));
     if (hr != LA_OK) {
+        value[0] = 0;
+
         if (lmdebug)
             printf("PTB-DEBUG: GetLicenseMetadata('%s') failed. Error %i [%s].\n", key, hr, LMErrorString(hr));
     }
 
     return(ConvertToChar(value));
+}
+
+static const char* DoGetActivationMetaData(const char* key)
+{
+    static TCHAR value[4096] = { 0 };
+
+    int hr = GetActivationMetadata(ConvertToTCHAR((char*) key), value, sizeof(value));
+    if (hr != LA_OK) {
+        value[0] = 0;
+
+        if (lmdebug)
+            printf("PTB-DEBUG: GetActivationMetadata('%s') failed. Error %i [%s].\n", key, hr, LMErrorString(hr));
+    }
+
+    return(ConvertToChar(value));
+}
+
+static const char* DoGetTrialActivationMetaData(const char* key)
+{
+    static TCHAR value[4096] = { 0 };
+
+    int hr = GetTrialActivationMetadata(ConvertToTCHAR((char*) key), value, sizeof(value));
+    if (hr != LA_OK) {
+        value[0] = 0;
+
+        if (lmdebug)
+            printf("PTB-DEBUG: GetTrialActivationMetadata('%s') failed. Error %i [%s].\n", key, hr, LMErrorString(hr));
+    }
+
+    return(ConvertToChar(value));
+}
+
+static psych_bool IsOneTimePushMessage(const char* latestId, psych_bool alwaysPrint, psych_bool isTrial, char* ackKey)
+{
+    if (alwaysPrint)
+        return(TRUE);
+
+    if ((strlen(latestId) > 0) && strcmp(latestId, isTrial ? DoGetTrialActivationMetaData(ackKey) : DoGetActivationMetaData(ackKey))) {
+        if (isTrial)
+            SetTrialActivationMetadata(ConvertToTCHAR(ackKey), ConvertToTCHAR((char*) latestId));
+        else
+            SetActivationMetadata(ConvertToTCHAR(ackKey), ConvertToTCHAR((char*) latestId));
+
+        return(TRUE);
+    }
+
+    return(FALSE);
+}
+
+static void PrintPushMessages(psych_bool alwaysPrint, psych_bool isTrial)
+{
+    const char* str = NULL;
+    const char* latestId = NULL;
+
+    // Check for some project news from the product metadata:
+
+    // First print unconditional messages that are always printed, if they are longer than one character:
+    str = DoGetProductMetaData("alwaysMessage");
+    if (strlen(str) > 1)
+        printf("\nMessage to all users from Team Psychtoolbox:\n%s\n", str);
+
+    // Then check for unacknowledged one-time messages per activation:
+    latestId = DoGetProductMetaData("latestMessageId");
+    if (IsOneTimePushMessage(latestId, alwaysPrint, isTrial, "latestProductMessageAckId")) {
+        // New, not yet acknowledged product message. Print it, if it is longer than one character:
+        str = DoGetProductMetaData("latestMessage");
+        if (strlen(str) > 1)
+            printf("\nOne-Time message to all users from Team Psychtoolbox:\n%s\n", str);
+    }
+
+    // Check for some messages from the license specific metadata:
+
+    // First print unconditional messages that are always printed, if they are longer than one character:
+    str = DoGetLicenseMetaData("alwaysMessage");
+    if (strlen(str) > 1)
+        printf("\nMessage to users of this license from Team Psychtoolbox:\n%s\n", str);
+
+    // Then check for unacknowledged one-time messages per activation:
+    latestId = DoGetLicenseMetaData("latestMessageId");
+    if (IsOneTimePushMessage(latestId, alwaysPrint, isTrial, "latestLicenseMessageAckId")) {
+        // New, not yet acknowledged license message. Print it, if it is longer than one character:
+        str = DoGetLicenseMetaData("latestMessage");
+        if (strlen(str) > 1)
+            printf("\nOne-Time message to users of this license from Team Psychtoolbox:\n%s\n", str);
+    }
+
+    return;
 }
 
 static psych_bool IsMinimumVersionSatisfied(void)
@@ -665,6 +769,8 @@ static psych_bool PsychCheckLicenseStatus(void)
                        licenseDaysRemaining + 1);
 
             printf("PTB-INFO: The support authentication token would be: %s\n\n", GetSupportToken());
+
+            PrintPushMessages(FALSE, FALSE);
         }
 
         return(TRUE);
@@ -782,6 +888,7 @@ static psych_bool PsychCheckLicenseStatus(void)
                 printf("PTB-INFO: Your free trial is active for %d more days, until %s", trialDays, ctime(&trialExpiryDate));
                 printf("PTB-INFO: After that date, you will have to buy a license to continue using Psychtoolbox on this machine.\n");
                 printf("PTB-INFO: The unique id of this trial is: %s\n", ConvertToChar(trialId));
+                PrintPushMessages(FALSE, TRUE);
             }
 
             return(TRUE);
@@ -857,7 +964,8 @@ PsychError PsychManageLicense(void)
         "+4 = Get an up to date support authentication token.\n"
         "+5 = Set activation metadata property (2nd argument) to the dataString in 3rd argument.\n"
         "+6 = Return 1 on a license managed Psychtoolbox, 0 otherwise.\n"
-        "+7 = Create or process an offline trial activation request/response.\n";
+        "+7 = Print all current push messages stored for this license.\n"
+        "+8 = Create or process an offline trial activation request/response.\n";
     static char seeAlsoString[] = "";
 
     int rc = 0;
@@ -1153,7 +1261,11 @@ PsychError PsychManageLicense(void)
             rc = 1;
             break;
 
-        case 7: // Create an offline trial activation request file or process a offline trial activation response file, to offline activate a trial.
+        case 7: // Print all push messages unconditionally:
+            PrintPushMessages(TRUE, FALSE);
+            break;
+
+        case 8: // Create an offline trial activation request file or process a offline trial activation response file, to offline activate a trial.
             if (!productKey || !ConvertToTCHAR(productKey))
                 PsychErrorExitMsg(PsychError_user, "Path and filename of offline trial activation request/response file is missing!");
 
