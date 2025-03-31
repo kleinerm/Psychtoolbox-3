@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.20      13 December 2024
+% Version 3.0.21      31 March 2025
 %
 % The Psychophysics Toolbox is a collection of Octave and Matlab functions
 % that extend the language to give you exquisite control of your computer
@@ -96,21 +96,25 @@
 %
 % IMPORTANT NEWS:
 %
-% You can now financially contribute to Psychtoolbox sustainability, upkeep
-% and continued improvement by buying a "Psychtoolbox Support Membership", which
-% also includes some paid support for questions regarding its use, or issues
-% you may have with it. We also offer paid feature development and other
-% useful commercial services.
+% If you need paid support, you can buy a "Psychtoolbox Paid Support
+% Membership". We also offer paid feature development and other useful
+% commercial services.
 %
 % Please type 'PsychPaidSupportAndServices' to learn more.
 %
-% Psychtoolbox for Apple macOS and Microsoft Windows will require a paid software
-% license key to work very soon, likely starting sometime in January 2025. Until
-% then you can use it with a free time-limited trial license. Psychtoolbox will
-% connect to our network licensing servers after installation and after you have
-% given consent, to enable you to use it. For more information about this, type
-% 'help PsychLicenseHandling'. Stay tuned for our announcement of start of sales
-% for these software license keys in early 2025.
+% Psychtoolbox mex files for Apple macOS and Microsoft Windows will require
+% a paid software license key to work, starting in April 2025. Already
+% existing and active installations of Psychtoolbox 3.0.20 or later from
+% before April will be usable with a free time-limited trial license until
+% 14th April 2025. New first time installations of Psychtoolbox on a
+% machine, starting at 31st of March 2025, will work for free for up to 14
+% days after first use. After that time period, a paid subscription license
+% will be required.
+%
+% Psychtoolbox on macOS and Windows will connect to our network licensing
+% servers after installation and after you have given consent, to enable
+% you to use it. For more information about our license management, type
+% 'help PsychLicenseHandling'.
 %
 
 % The OS 9 version was this:

@@ -3,15 +3,15 @@ function PsychPaidSupportAndServices(mininag)
 % If you are using a Psychtoolbox variant and version that requires a paid
 % software license key to function, e.g., on Microsoft Windows or Apple
 % macOS, then a few minutes of basic support per year for basic questions
-% may be included in the specific type of software license you bought. If,
-% when, and how much support will be provided is usually at the discretion
+% may be included in the specific type of software license you bought. If
+% at all, when, and how much support will be provided is at the discretion
 % of the Psychtoolbox team. In any case, if you wanted to ask for this
 % basic support, you'd have to present an authentication token by running
 % this function, or by calling PsychLicenseHandling('AuthenticationToken').
 %
-% If you require additional paid support regarding Psychtoolbox, or custom feature
-% development (or if you want to buy a Psychtoolbox themed coffee mug, bag or shirt)
-% go to the following website which provides such services:
+% If you require additional paid support regarding Psychtoolbox, or custom
+% feature development (or if you want to buy a Psychtoolbox themed coffee
+% mug, bag or shirt) go to the following website which provides such services:
 %
 % https://www.psychtoolbox.net
 %
@@ -92,9 +92,9 @@ function PsychPaidSupportAndServices(mininag)
 % To clarify: Psychtoolbox itself will stay open-source software. Anybody
 % able and willing to contribute code and ideas of sufficiently high quality
 % is invited to contribute to the open-source code, the documentation on our
-% public community website and Wiki
-% http://psychtoolbox.org, and to participate and help each other on the
-% public community forum https://psychtoolbox.discourse.group.
+% public community website and Wiki http://psychtoolbox.org, and to participate
+% and help each other on the public community forum under:
+% https://psychtoolbox.discourse.group
 %
 % Support by our developers will be reserved to paying community members.
 %
