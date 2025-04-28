@@ -276,39 +276,39 @@ static psych_bool IsOneTimePushMessage(const char* latestId, psych_bool alwaysPr
 
 static void PrintPushMessages(psych_bool alwaysPrint, psych_bool isTrial)
 {
-    const char* str = NULL;
+    char* str = NULL;
     const char* latestId = NULL;
 
     // Check for some project news from the product metadata:
 
     // First print unconditional messages that are always printed, if they are longer than one character:
-    str = DoGetProductMetaData("alwaysMessage");
+    str = (char*) DoGetProductMetaData("alwaysMessage");
     if (strlen(str) > 1)
-        printf("\nMessage to all users from Team Psychtoolbox:\n%s\n", str);
+        printf("\nMessage to all users from Team Psychtoolbox:\n%s\n", BreakLines(str, 80));
 
     // Then check for unacknowledged one-time messages per activation:
     latestId = DoGetProductMetaData("latestMessageId");
     if (IsOneTimePushMessage(latestId, alwaysPrint, isTrial, "latestProductMessageAckId")) {
         // New, not yet acknowledged product message. Print it, if it is longer than one character:
-        str = DoGetProductMetaData("latestMessage");
+        str = (char*) DoGetProductMetaData("latestMessage");
         if (strlen(str) > 1)
-            printf("\nOne-Time message to all users from Team Psychtoolbox:\n%s\n", str);
+            printf("\nOne-Time message to all users from Team Psychtoolbox:\n%s\n", BreakLines(str, 80));
     }
 
     // Check for some messages from the license specific metadata:
 
     // First print unconditional messages that are always printed, if they are longer than one character:
-    str = DoGetLicenseMetaData("alwaysMessage");
+    str = (char*) DoGetLicenseMetaData("alwaysMessage");
     if (strlen(str) > 1)
-        printf("\nMessage to users of this license from Team Psychtoolbox:\n%s\n", str);
+        printf("\nMessage to users of this license from Team Psychtoolbox:\n%s\n", BreakLines(str, 80));
 
     // Then check for unacknowledged one-time messages per activation:
     latestId = DoGetLicenseMetaData("latestMessageId");
     if (IsOneTimePushMessage(latestId, alwaysPrint, isTrial, "latestLicenseMessageAckId")) {
         // New, not yet acknowledged license message. Print it, if it is longer than one character:
-        str = DoGetLicenseMetaData("latestMessage");
+        str = (char*) DoGetLicenseMetaData("latestMessage");
         if (strlen(str) > 1)
-            printf("\nOne-Time message to users of this license from Team Psychtoolbox:\n%s\n", str);
+            printf("\nOne-Time message to users of this license from Team Psychtoolbox:\n%s\n", BreakLines(str, 80));
     }
 
     return;
