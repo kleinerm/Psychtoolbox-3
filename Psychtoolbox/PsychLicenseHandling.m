@@ -63,6 +63,20 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % can be manually called by users, but by default it is called by the
 % Psychtoolbox setup/install/update routines to automate license onboarding.
 %
+% PsychLicenseHandling('SetupGlobal');
+% - This behaves mostly like 'Setup', but it is meant for system administrators
+% or IT personnel to create a global configuration file to express consent to
+% license management on behalf of all users of this Psychtoolbox installation,
+% and also to store a license key for automatic node activation. The global
+% configuration file will be stored in the Psychtoolbox main folder, ie. the
+% folder printed by the PsychtoolboxRoot() function. You can use this function
+% if you use disc imaging software or similar provisioning tools to install and
+% setup a Psychtoolbox installation once as part of a provisioning image, then
+% clone the provisioning image and Psychtoolbox installation to many physical
+% machines. The global config file will cause each Psychtoolbox on each of the
+% provisioned machines to activate and setup license management and activate that
+% node at first use of Psychtoolbox.
+%
 % PsychLicenseHandling('Activate' [, licenseKey]);
 % - Activate a paid license on a machine + operating system combination.
 % This can either use a previously enrolled license key from earlier calls
@@ -214,7 +228,7 @@ end
 PsychLicenseHandling('CheckInstallLMLibs');
 
 % Check if initial setup of license management is needed, and if so then do it:
-if strcmpi(cmd, 'Setup')
+if strcmpi(cmd, 'Setup') || strcmpi(cmd, 'SetupGlobal')
     % Check if this Psychtoolbox variant is requires license management at all:
     if ~WaitSecs('ManageLicense', 6)
         % Nope. Must be one of the free Linux variants, nothing to do:
@@ -225,8 +239,8 @@ if strcmpi(cmd, 'Setup')
     % Needs license management. What's its general status?
     rc = WaitSecs('ManageLicense', 3);
 
-    % Disabled due to missing user consent?
-    if rc == -1
+    % Disabled due to missing user consent? Or global setup requested?
+    if (rc == -1) || strcmpi(cmd, 'SetupGlobal')
         % Yes. We need to inform the user about the consequences of license
         % management, ask his permission to continue, then hopefully continue:
         more(pause('query'));
@@ -285,10 +299,24 @@ if strcmpi(cmd, 'Setup')
             return;
         end
 
+        if strcmpi(cmd, 'SetupGlobal')
+            configfilepath = [PsychtoolboxRoot 'LMOpsAllowed.txt'];
+            fprintf('Global licensing setup. Storing general consent and key in global config file: %s\n', configfilepath);
+            if exist([PsychtoolboxConfigDir 'LMOpsAllowed.txt'], 'file')
+                delete([PsychtoolboxConfigDir 'LMOpsAllowed.txt']);
+            end
+        else
+            if exist([PsychtoolboxRoot 'LMOpsAllowed.txt'], 'file')
+                error('A global consent and license key config file already exists, therefore can not do regular per-user setup.');
+            end
+
+            configfilepath = [PsychtoolboxConfigDir 'LMOpsAllowed.txt'];
+        end
+
         % Consent given! Enable use of license management.
         fprintf('\n');
         fprintf('License management enabled, according to user consent.\n');
-        [fid, errmsg] = fopen([PsychtoolboxConfigDir 'LMOpsAllowed.txt'], 'w');
+        [fid, errmsg] = fopen(configfilepath, 'w');
         if fid == -1
             error(['Creating license management user consent file failed! Error: ' errmsg]);
         end
@@ -301,6 +329,11 @@ if strcmpi(cmd, 'Setup')
     % Assign activation and trial metadata for upload to license servers and
     % use for aggregate statistical purposes:
     UpdateMetadata;
+
+    % Force license key enrollment for global setup:
+    if strcmpi(cmd, 'SetupGlobal')
+        forceReenterKey = 1;
+    end
 
     % At this point, rc == 0 means license key enrolled, other rc means no
     % license key enrolled. The forceReenterKey flag can enforce taking the
@@ -329,6 +362,18 @@ if strcmpi(cmd, 'Setup')
                     % reentry immediately to avoid getting stuck:
                     fprintf('The key was invalid. You must reenter a new valid key right now.\n');
                     continue;
+                end
+
+                % Store the global file with the key if global setup requested:
+                if strcmpi(cmd, 'SetupGlobal')
+                    [fid, errmsg] = fopen(configfilepath, 'w');
+                    if fid == -1
+                        error(['Creating license management global consent and config file failed! Error: ' errmsg]);
+                    end
+
+                    % Store product key in global config file:
+                    fprintf(fid, '%s', productKey);
+                    fclose(fid);
                 end
             else
                 % No key provided. Try if a free trial can be used:
@@ -393,7 +438,7 @@ if strcmpi(cmd, 'Setup')
                         % User wants to retry the whole activation workflow:
                         clear WaitSecs;
                         fprintf('\nEncore une fois!\n');
-                        PsychLicenseHandling('SetupIfNeeded');
+                        PsychLicenseHandling('Setup');
                         clear WaitSecs;
                         rc = WaitSecs('ManageLicense', 0);
                     end

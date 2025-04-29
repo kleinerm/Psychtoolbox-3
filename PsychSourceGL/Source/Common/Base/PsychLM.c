@@ -74,6 +74,11 @@ typedef char TCHAR;
 // For time() function et al.:
 #include <time.h>
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+// For sysctl() machine model query:
+#include <sys/sysctl.h>
+#endif
+
 // LexActivator initialized?
 static psych_bool lminitialized = FALSE;
 
@@ -560,6 +565,7 @@ static psych_bool PsychInitLicenseManager(void)
 {
     char laDatFilePath[4096] = { 0 };
     char allowFilePath[4096] = { 0 };
+    char *productKey;
     int hr;
 
     // Early exit if already initialized:
@@ -569,20 +575,42 @@ static psych_bool PsychInitLicenseManager(void)
     // Verbose debug output wrt. license checking/management requested?
     lmdebug = (getenv("PSYCH_LM_DEBUG") != NULL) ? atoi(getenv("PSYCH_LM_DEBUG")) : 0;
 
-    // Check if allow file for license management exists, bail if it doesn't exist:
+    // Check if allow file for license management exists, bail if it doesn't exist. First in the per-user config directory:
     snprintf(allowFilePath, sizeof(allowFilePath), "%sLMOpsAllowed.txt", PsychRuntimeGetPsychtoolboxRoot(TRUE));
     FILE* fid = fopen(allowFilePath, "rt");
     if (!fid) {
         if (lmdebug)
-            printf("PTB-INFO: License management allow file '%s' failed to open. Game over!\n", allowFilePath);
+            printf("PTB-DEBUG: User specific license management allow file '%s' failed to open. Trying global file.\n", allowFilePath);
 
-        printf("PTB-INFO: License management is not yet approved and enabled by user, marking as not activated.\n");
-        printf("PTB-INFO: See 'help PsychLicenseHandling' for information on how to enable license management. Bye!\n");
+        // Then, on failure with per-user directory, in the Psychtoolbox root folder for an admin created global config,
+        // e.g., for site wide deployments via disk imaging or similar:
+        snprintf(allowFilePath, sizeof(allowFilePath), "%sLMOpsAllowed.txt", PsychRuntimeGetPsychtoolboxRoot(FALSE));
+        fid = fopen(allowFilePath, "rt");
 
-        return(FALSE);
+        if (!fid) {
+            if (lmdebug)
+                printf("PTB-DEBUG: Global license management allow file '%s' failed to open. Game over.\n", allowFilePath);
+
+            printf("PTB-INFO: License management is not yet approved and enabled by user or admin, marking as not activated.\n");
+            printf("PTB-INFO: See 'help PsychLicenseHandling' for information on how to enable license management. Bye!\n");
+
+            return(FALSE);
+        }
     }
 
-    // License management allowed:
+    // License management allowed. See if some license key is stored for auto-activation:
+    memset(allowFilePath, 0, sizeof(allowFilePath));
+    if (fgets(allowFilePath, sizeof(allowFilePath), fid)) {
+        productKey = allowFilePath;
+
+        if (lmdebug)
+            printf("PTB-DEBUG: Auto-Activation key '%s' provided in config file...\n", productKey);
+    }
+    else {
+        productKey = NULL;
+    }
+
+    // Done with file:
     fclose(fid);
 
     // Enable writing of network debug logs into file lexactivator-logs.log if debugging is on with flag 2:
@@ -605,7 +633,7 @@ static psych_bool PsychInitLicenseManager(void)
         PsychErrorExitMsg(PsychError_system, "License manager init failed: Failed to find and load product file.");
     }
 
-    // Set product id for LexActivator function calls: TODO use LA_USER instead, or on non-Windows?
+    // Set product id for LexActivator function calls:
     hr = SetProductId(_T("d616be88-af4b-4088-9190-cf17da37da7b"), LA_ALL_USERS);
 
     if (hr != LA_OK) {
@@ -665,6 +693,53 @@ static psych_bool PsychInitLicenseManager(void)
 
     SetReleaseChannel(_T("stable"));
 
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    // Try to detect and assign machinemodel activation metadata with Mac modelname and physical machine architecture:
+    {
+        int mib[2];
+        char modelStr[256] = { 0 };
+        size_t modelStrSize = sizeof(modelStr);
+        psych_bool isARM;
+
+        // Get Modelname of Mac in modelStr:
+        mib[0] = CTL_HW;
+        mib[1] = HW_MODEL;
+        if (sysctl(mib, 2, modelStr, &modelStrSize, NULL, 0) != 0) {
+            if (lmdebug)
+                printf("PTB-ERROR: Failed to query Mac model name - sysctl failed with: %s. Skipped\n", strerror(errno));
+        }
+        else {
+            // Got Mac model name string. Check real physical machine architecture: Intel or ARM:
+            PsychGetOSXMinorVersion(&isARM);
+            snprintf(activationMetaDataString, 255, "%s %s64", modelStr, isARM ? "ARM" : "INTEL");
+
+            SetActivationMetadata(_T("machinemodel"), ConvertToTCHAR(activationMetaDataString));
+            SetTrialActivationMetadata(_T("machinemodel"), ConvertToTCHAR(activationMetaDataString));
+
+            if (lmdebug)
+                printf("PTB-DEBUG: Set 'machinemodel' activation metadata to: %s\n", activationMetaDataString);
+        }
+    }
+    #endif
+
+    // Try to detect and assign scripting host environment version:
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    {
+        mxArray *plhs[1];
+
+        if (0 == Psych_mexCallMATLAB(1, plhs, 0, NULL, "version")) {
+            activationMetaDataString[0] = 0;
+            mxGetString(plhs[0], activationMetaDataString, 255);
+            SetActivationMetadata(_T("hostappversion"), ConvertToTCHAR(activationMetaDataString));
+            SetTrialActivationMetadata(_T("hostappversion"), ConvertToTCHAR(activationMetaDataString));
+            if (lmdebug)
+                printf("PTB-DEBUG: Set 'hostappversion' activation metadata to: %s\n", activationMetaDataString);
+        }
+
+        mxDestroyArray(plhs[0]);
+    }
+    #endif
+
     // Lock libLexActivator permanently into the host process space, so that it stays
     // put even if all PTB mex files get flushed. Why? Because the library will launch
     // a license server network sync background thread, which sleeps most of the time,
@@ -684,6 +759,61 @@ static psych_bool PsychInitLicenseManager(void)
 
     // Mark as initialized:
     lminitialized = TRUE;
+
+    // Auto-Activation of license wanted, e.g., for unsupervised setup, and not yet activated?
+    if (productKey && ((hr = IsLicenseValid()) != LA_OK)) {
+        TCHAR keybuf[128] = { 0 };
+        int frc = GetLicenseKey(keybuf, sizeof(keybuf));
+
+        // Not properly activated with valid license. Valid license key missing?
+        if ((hr == LA_E_LICENSE_KEY) || (frc != LA_OK) || !strlen(ConvertToChar(keybuf))) {
+            if (lmdebug)
+                printf("PTB-DEBUG: Enrolling Auto-Activation key '%s' ...\n", productKey);
+
+            // Yes. Try to enroll our productKey from the auto-activation file:
+            TCHAR* unicodeProductKey = ConvertToTCHAR(productKey);
+            if (!unicodeProductKey) {
+                printf("PTB-ERROR: You wanted to auto-activate the machine license, but the provided product key '%s' could not be converted to wide-char.\n", productKey);
+                return(lminitialized);
+            }
+
+            // Converted to TCHAR string. Try to validate and save product key:
+            hr = SetLicenseKey(unicodeProductKey);
+            if (hr != LA_OK) {
+                printf("PTB-ERROR: You wanted to auto-activate the machine license with a new product key, but the provided product key could not be saved:\n");
+                printf("PTB-ERROR: %s\n", LMErrorString(hr));
+                printf("PTB-ERROR: Could not auto-activate license, as product key is redundant, invalid or could not be saved.\n");
+                return(lminitialized);
+            }
+        }
+        else if (lmdebug) {
+            printf("PTB-DEBUG: Auto-Activation with existing enrolled key: [%s]\n", LMErrorString(hr));
+        }
+
+        // Valid key enrolled. Try to activate license:
+        hr = DoActivateLicense(NULL);
+        if (hr == LA_OK) {
+            int64_t maxActivations;
+            uint32_t curActivations;
+
+            GetLicenseAllowedActivations(&maxActivations);
+            GetLicenseTotalActivations(&curActivations);
+            printf("PTB-INFO: Current product key auto-activated successfully. Now %i out of a maximum of %li activations for this license are in use.\n",
+                   curActivations, maxActivations);
+        }
+        else {
+            printf("PTB-ERROR: License auto-activation failed: %s\n", LMErrorString(hr));
+            if (hr == LA_E_ACTIVATION_LIMIT) {
+                printf("PTB-INFO: You need to deactivate the same license on another operating-system + machine combination first,\n");
+                printf("PTB-INFO: before you can activate it on this machine. See 'help PsychLicenseHandling' on how to do that.\n");
+                printf("PTB-INFO: Alternatively you could buy another license.\n");
+            }
+
+            if (hr == LA_E_RELEASE_VERSION_NOT_ALLOWED) {
+                printf("PTB-INFO: Your current Psychtoolbox %s is too recent for this license.\n", PsychGetVersionString());
+            }
+        }
+    }
 
     return(lminitialized);
 }
