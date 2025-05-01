@@ -126,7 +126,7 @@ static const char* LMErrorString(int hr)
         case LA_E_INVALID_PERMISSION_FLAG: return("Invalid permission flag.");
         case LA_E_VM: return("The function failed because this instance of your program is running inside a virtual machine / hypervisor, which is not allowed.");
         case LA_E_CONTAINER: return("The function failed because this instance of your program is running inside a container, which is not allowed.");
-        case LA_E_COUNTRY: return("Using this license from this country is not allowed.");
+        case LA_E_COUNTRY: return("Using this license from a network in this country is not allowed.");
         case LA_E_IP: return("Using this license from this IP address is not allowed.");
         case LA_E_DEACTIVATION_LIMIT: return("This product key had a limited number of allowed deactivations. No more deactivations are allowed for the product key.");
         case LA_TRIAL_EXPIRED: return("The trial has expired.");
@@ -360,7 +360,7 @@ static psych_bool GetFeatureEnabled(const char* featureName)
     int hr = GetProductVersionFeatureFlag(ConvertToTCHAR((char*) featureName), &enabled, featureValue, sizeof(featureValue));
     if (hr != LA_OK) {
         if (lmdebug)
-            printf("PTB-DEBUG: GetFeatureValue('%s') failed. Error %i [%s]. Returning false.\n", featureName, hr, LMErrorString(hr));
+            printf("PTB-DEBUG: GetProductVersionFeatureFlag('%s') failed. Error %i [%s]. Returning false.\n", featureName, hr, LMErrorString(hr));
     }
 
     return(enabled);
@@ -384,6 +384,23 @@ static const char* GetSupportToken(void)
     }
 
     return(ConvertToChar(activationId));
+}
+
+static psych_bool IsNetworkRestrictedWithRoaming(void)
+{
+    return(GetFeatureEnabled("AllowNetworkRoaming"));
+}
+
+static void CheckNetworkRestrictAndPrint(int hr)
+{
+    if (hr == LA_E_IP || hr == LA_E_COUNTRY) {
+        printf("PTB-INFO: You are using some network restricted site license, so you MUST BE CONNECTED TO YOUR INSTITUTIONS LOCAL NETWORK! A public network\n");
+        printf("PTB-INFO: or your private home network WILL NOT WORK. For people on the go, some institutions provide a VPN connection for this purpose.\n");
+    }
+    else if (IsNetworkRestrictedWithRoaming()) {
+        printf("PTB-INFO: If you are using some site license, you may have to be connected to your institutions local network, as a public network\n");
+        printf("PTB-INFO: or your private home network may not work. For people on the go, some institutions provide a VPN connection for this purpose.\n");
+    }
 }
 
 static int DoActivateLicense(char* requestFileName)
@@ -429,6 +446,14 @@ static int DoActivateLicense(char* requestFileName)
         hr = ActivateLicense();
         if (lmdebug)
             printf("PTB-DEBUG: ActivateLicense() = %i [%s]\n", hr, LMErrorString(hr));
+
+        if (hr != LA_OK) {
+            CheckNetworkRestrictAndPrint(hr);
+        }
+        else if (IsNetworkRestrictedWithRoaming()) {
+            printf("PTB-INFO: For this site license, I strongly recommend quitting %s before leaving your institutions network.\n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
+            printf("PTB-INFO: Otherwise you may not be able to run Psychtoolbox after switching to another network, e.g., your home network.\n");
+        }
     }
 
     // Failed for some reason? Bail, returning error code to caller:
@@ -463,8 +488,11 @@ static int DoActivateLicense(char* requestFileName)
                 // Mark at least locally as active:
                 SetActivationMetadata(_T("ReallyActive"), _T("1"));
 
-                // Sync ReallyActive to servers:
-                ActivateLicense();
+                // Sync ReallyActive to servers. Avoid it for offline activation, as if we are online by chance,
+                // and the license is DMAR IP restricted, and we are on the wrong network, this would kick us
+                // off the license again:
+                if (!requestFileName || !IsNetworkRestrictedWithRoaming())
+                    ActivateLicense();
 
                 return(LA_OK);
             }
@@ -511,7 +539,7 @@ static int PTBIsLicenseGenuine(void)
     TCHAR reallyActive[2];
 
     // Do the real check, offline or online, depending on server sync status:
-    hr = IsLicenseGenuine();
+    hr = (IsNetworkRestrictedWithRoaming()) ? IsLicenseValid() : IsLicenseGenuine();
     if (lmdebug)
         printf("PTB-DEBUG: Real IsLicenseGenuine() = %i [%s]\n", hr, LMErrorString(hr));
 
@@ -930,8 +958,8 @@ static psych_bool PsychCheckLicenseStatus(void)
         return(FALSE);
     }
     else if (hr == LA_GRACE_PERIOD_OVER) {
-        // Is the license offline activated on this machine, but we couldn't connect to
-        // the license servers for reverification within the checkperiod + grace period?
+        // Is the license offline or locally activated on this machine, but we couldn't connect to
+        // the license servers for reverification within the grace period?
 
         // There is still activation data on the computer, and it's valid.
         // This means connections to the activation servers were blocked (intentionally or not)
@@ -944,6 +972,7 @@ static psych_bool PsychCheckLicenseStatus(void)
         printf("PTB-INFO: has passed. I must reverify with the activation servers online now, before you can use Psychtoolbox again.\n");
         printf("PTB-INFO: I will now try 3 times, with a 20 seconds pause between each try, to contact the license servers to reverify.\n");
         printf("PTB-INFO: Please connect your machine to the internet now and do not block access to the license servers (firewall etc.).\n");
+        CheckNetworkRestrictAndPrint(LA_FAIL);
 
         for (cnt = 1; cnt <= 3; cnt++) {
             printf("PTB-INFO: Try %i in 20 seconds... ", cnt);
@@ -977,12 +1006,14 @@ static psych_bool PsychCheckLicenseStatus(void)
                 return(PsychCheckLicenseStatus());
             }
             else {
-                printf("PTB-INFO: Failed to verify with the servers: %s. Make sure you are connected to the internet.\n",
+                printf("PTB-INFO: Failed to verify with the servers: %s. Make sure you are connected to the internet on an allowed IP address.\n",
                        LMErrorString(hr));
+                CheckNetworkRestrictAndPrint(hr);
             }
         }
 
         printf("\nPTB-INFO: Type 'clear all', make sure to enable an internet connection, and then try again. Psychtoolbox is disabled until then.\n");
+        CheckNetworkRestrictAndPrint(hr);
 
         // Game over for now:
         return(FALSE);
@@ -1017,6 +1048,8 @@ static psych_bool PsychCheckLicenseStatus(void)
             if (ShouldPrint()) {
                 printf("PTB-INFO: Your free trial is active for %d more days, until %s", trialDays, ctime(&trialExpiryDate));
                 printf("PTB-INFO: After that date, you will have to buy a license to continue using Psychtoolbox on this machine.\n");
+                printf("PTB-INFO: The function PsychLicenseHandling('Setup') should guide you through the most common method.\n");
+                printf("PTB-INFO: See 'help PsychLicenseHandling' for information on additional available methods.\n");
                 printf("PTB-INFO: The unique id of this trial is: %s\n", ConvertToChar(trialId));
                 PrintPushMessages(FALSE, TRUE);
             }
@@ -1032,7 +1065,7 @@ static psych_bool PsychCheckLicenseStatus(void)
                 printf("PTB-DEBUG: Final post-trial IsLicenseGenuine() = %i [%s]\n", hr, LMErrorString(hr));
 
             switch (hr) {
-                // All these have already be handled by code above/before trial handling, no need to rub it in:
+                // All these have already been handled by code above/before trial handling, no need to rub it in:
                 case LA_OK: // fallthrough
                 case LA_EXPIRED: // fallthrough
                 case LA_SUSPENDED: // fallthrough
@@ -1044,13 +1077,15 @@ static psych_bool PsychCheckLicenseStatus(void)
                 default:
                     printf("PTB-INFO: A regular non-trial license does not work for the following reason that you need to fix:\n");
                     printf("PTB-INFO: %s\n\n", LMErrorString(hr));
+                    CheckNetworkRestrictAndPrint(hr);
             }
         }
 
         // Activation or revalidation of free trial failed.
-        printf("PTB-INFO: There isn't any license active for Psychtoolbox on this machine and operating system,\n");
-        printf("PTB-INFO: and you are not, or no longer, eligible for a free trial. You need to buy a paid license\n");
-        printf("PTB-INFO: to use Psychtoolbox. See 'help PsychLicenseHandling' for information on how to do that. Bye!\n");
+        printf("PTB-INFO: There isn't any license active for Psychtoolbox on this machine and operating system, and\n");
+        printf("PTB-INFO: you are not, or no longer, eligible for a free trial. You need to buy a paid license to use\n");
+        printf("PTB-INFO: Psychtoolbox. The function PsychLicenseHandling('Setup') should guide you through the most\n");
+        printf("PTB-INFO: common method. See 'help PsychLicenseHandling' for information on additional methods. Bye!\n");
 
         return(FALSE);
     }
@@ -1334,17 +1369,30 @@ PsychError PsychManageLicense(void)
             break;
 
         case 4: // Get an up to date support authentication token:
-            {
+            if (GetFeatureEnabled("UserSupport")) {
                 time_t syncTime;
-                rc = ActivateLicense();
-                syncTime = time(NULL);
 
-                if (lmdebug)
-                    printf("PTB-DEBUG: ActivateLicense() = %i [%s].\n", rc, LMErrorString(rc));
+                if (!IsNetworkRestrictedWithRoaming()) {
+                    rc = ActivateLicense();
+                    syncTime = time(NULL);
+
+                    if (lmdebug)
+                        printf("PTB-DEBUG: Activationtoken: ActivateLicense() = %i [%s].\n", rc, LMErrorString(rc));
+                }
+                else {
+                    rc = LA_OK;
+                    syncTime = -1;
+                }
 
                 printf("PTB-INFO: The support authentication token is: %s - Synced at %s",
                        GetSupportToken(), (syncTime != -1 && rc == LA_OK) ? ctime(&syncTime) : "unknown time.\n");
             }
+            else {
+                rc = LA_FAIL;
+
+                printf("PTB-INFO: Under the license you use, you are not eligible to any user support.\n");
+            }
+
             break;
 
         case 5: // Set an optional key->value pair of activation metadata:
