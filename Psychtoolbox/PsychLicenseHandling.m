@@ -77,12 +77,16 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % provisioned machines to activate and setup license management and activate that
 % node at first use of Psychtoolbox.
 %
-% PsychLicenseHandling('Activate' [, licenseKey]);
+% PsychLicenseHandling('Activate' [, licenseKeyOrUserCredential]);
 % - Activate a paid license on a machine + operating system combination.
 % This can either use a previously enrolled license key from earlier calls
 % of PsychLicenseHandling('Activate') or PsychLicenseHandling('Setup'), or
 % providing a new license key to activate the machine with a new license,
-% by providing the new key in a string as optional 'licenseKey' parameter.
+% by providing the new key in a string as optional 'licenseKeyOrUserCredential'
+% parameter. Instead of a license key, one can also enter the login credentials
+% of a user account with associated license key, to fetch the associated key
+% automatically, e.g., if the account is jon.doe@doeland.us with password oink,
+% then the credentials would be the following text: jon.doe@doeland.us:oink
 %
 % This function can also be used if your machine was offline longer than
 % allowed and your local activation needs to be refreshed, or if your old
@@ -301,7 +305,7 @@ if strcmpi(cmd, 'Setup') || strcmpi(cmd, 'SetupGlobal')
 
         if strcmpi(cmd, 'SetupGlobal')
             configfilepath = [PsychtoolboxRoot 'LMOpsAllowed.txt'];
-            fprintf('Global licensing setup. Storing general consent and key in global config file: %s\n', configfilepath);
+            fprintf('\nGLOBAL LICENSING SETUP: Storing general consent and key in global config file: %s\n', configfilepath);
             if exist([PsychtoolboxConfigDir 'LMOpsAllowed.txt'], 'file')
                 delete([PsychtoolboxConfigDir 'LMOpsAllowed.txt']);
             end
@@ -347,20 +351,22 @@ if strcmpi(cmd, 'Setup') || strcmpi(cmd, 'SetupGlobal')
         % activate a license:
         fprintf('This machine does not yet have a valid product license key enrolled and activated.\n');
         fprintf('If you have a suitable key, e.g., as bought from\n\nhttps://psychtoolbox.net\n\n');
-        fprintf('then you can enroll it now and activate the associated license on this machine.\n');
-        fprintf('Either enter your key now, or just press ENTER to try to enable a free trial period.\n\n');
+        fprintf('then you can enroll it now and activate the associated license on this machine.\n\n');
+        fprintf('Or if you already have an account with associated license key, then you can enter\n');
+        fprintf('your user accounts credentials, as email:password, for me to fetch the associated key.\n\n');
+        fprintf('Either enter your key/credentials now, or just press ENTER to try to enable a free trial.\n\n');
 
         while rc
             clear WaitSecs;
 
-            productKey = input('License key (or ENTER for free trial): ', 's');
+            productKey = input('License key / credentials (or ENTER for free trial): ', 's');
             if ~isempty(productKey)
                 % Product key provided. Try to enroll and activate:
                 rc = WaitSecs('ManageLicense', 2, productKey);
                 if rc == 54
                     % Special case: Invalid license key entered. Force
                     % reentry immediately to avoid getting stuck:
-                    fprintf('The key was invalid. You must reenter a new valid key right now.\n');
+                    fprintf('\nThe key or credentials were invalid. You must reenter a new valid key/credentials right now.\n');
                     continue;
                 end
 

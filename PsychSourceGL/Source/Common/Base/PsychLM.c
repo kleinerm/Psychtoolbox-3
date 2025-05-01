@@ -139,6 +139,11 @@ static const char* LMErrorString(int hr)
         case LA_E_OS_USER: return("The operating system user has changed since activation and the license is user-locked.");
         case LA_E_OFFLINE_RESPONSE_FILE: return("Invalid offline activation response file.");
         case LA_E_OFFLINE_RESPONSE_FILE_EXPIRED: return("The offline activation response has expired.");
+        case LA_E_USER_NOT_AUTHENTICATED: return("The user is not authenticated.");
+        case LA_E_AUTHENTICATION_FAILED: return("Incorrect email or password.");
+        case LA_E_TWO_FACTOR_AUTHENTICATION_CODE_MISSING: return("The two-factor authentication code for the user authentication is missing.");
+        case LA_E_TWO_FACTOR_AUTHENTICATION_CODE_INVALID: return("The two-factor authentication code provided by the user is invalid.");
+        case LA_E_LOGIN_TEMPORARILY_LOCKED: return("The user account has been temporarily locked for 5 mins due to 5 failed attempts.");
 
         default:
             sprintf(errorCodeString, "Error code: %i.", hr);
@@ -1261,15 +1266,57 @@ PsychError PsychManageLicense(void)
                     goto licensemanager_out;
                 }
 
-                // Check product key for validity, then save it for use by all other functions:
-                TCHAR* unicodeProductKey = ConvertToTCHAR(productKey);
-                if (!unicodeProductKey) {
-                    printf("PTB-ERROR: You wanted to activate the machine license, but the provided product key '%s' could not be converted to wide-char.\n", productKey);
-                    goto licensemanager_out;
+                // Is the productKey actually an email + password?
+                if (strstr(productKey, "@")) {
+                    UserLicense userLicenses[1] = { 0 };
+
+                    // Split "productKey" into email and password part:
+                    char* email = productKey;
+                    char* password = strstr(productKey, ":");
+
+                    // Password there after a : ie., email:password ?
+                    if (!password) {
+                        printf("PTB-ERROR: Colon ':' followed by password missing in user authentication string '%s'.\n", productKey);
+                        rc = LA_FAIL;
+                        goto licensemanager_out;
+                    }
+
+                    // Split into email and password:
+                    *password = 0;
+                    password++;
+
+                    // Authenticate:
+                    rc = AuthenticateUser(ConvertToTCHAR(email), ConvertToTCHAR(password));
+                    if (rc != LA_OK) {
+                        printf("PTB-ERROR: User authentication failed: %s\n", LMErrorString(rc));
+                        goto licensemanager_out;
+                    }
+
+                    // Retrieve 1st and only license for this authenticated user, fail if they have more than one license:
+                    rc = GetUserLicenses(userLicenses, 1);
+                    if (rc != LA_OK) {
+                        printf("PTB-ERROR: Retrieving license associated with this user failed: %s\n", LMErrorString(rc));
+                        goto licensemanager_out;
+                    }
+                    else if (lmdebug) {
+                        printf("PTB-DEBUG: Retrieved license key for user has %i characters.\n", strlen(ConvertToChar(&userLicenses[0].key[0])));
+                    }
+
+                    // Extract product key and set it for use in license activation:
+                    rc = SetLicenseKey(&userLicenses[0].key[0]);
                 }
                 else {
-                    // Converted to TCHAR string. Try to validate and save product key:
-                    rc = SetLicenseKey(unicodeProductKey);
+                    // Check product key for validity, then save it for use by all other functions:
+                    TCHAR* unicodeProductKey = ConvertToTCHAR(productKey);
+                    if (!unicodeProductKey) {
+                        printf("PTB-ERROR: You wanted to activate the machine license, but the provided product key '%s' could not be converted to wide-char.\n", productKey);
+                        rc = LA_FAIL;
+                        goto licensemanager_out;
+                    }
+                    else {
+                        // Converted to TCHAR string. Try to validate and save product key:
+                        rc = SetLicenseKey(unicodeProductKey);
+                    }
                 }
 
                 if (rc != LA_OK) {
