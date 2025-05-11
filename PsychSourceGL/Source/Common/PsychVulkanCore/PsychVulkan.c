@@ -1271,6 +1271,7 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
 {
     VkResult result;
     int i;
+    psych_bool amdvlkHackInjectHighBpc = FALSE;
 
     // Clean up / Reset from previous call if needed:
     if (window->surfaceFormats) {
@@ -1414,6 +1415,18 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         return(FALSE);
     }
 
+    // Is this a broken AMDVLK driver of version v2023.Q2.2 or later? These have totally broken 16 bpc and partially broken 10 bpc support, with
+    // no proper fix as of 11th May 2025 and v2025.Q2.1. If we detect such a driver version, we override the returned image format table with our
+    // own hardcoded one, with up to 7 entries, enabling RGB10A2, RGBA16 and RGBA16F in both SDR mode, and on a HDR monitor also in HDR mode.
+    // We only override for fullscreen windows, as these modes are not supported by AMDVLK in windowed mode anyway:
+    if (((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) &&
+        window->isFullscreen && (vulkan->deviceProps.driverVersion >= VK_MAKE_VERSION(2, 0, 267))) {
+        if (window->surfaceFormatCount < 7)
+            window->surfaceFormatCount = 7;
+
+        amdvlkHackInjectHighBpc = TRUE;
+    }
+
     window->surfaceFormats = (VkSurfaceFormat2KHR*) malloc(window->surfaceFormatCount * sizeof(VkSurfaceFormat2KHR));
     for (i = 0; i < window->surfaceFormatCount; i++) {
         window->surfaceFormats[i].sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR;
@@ -1429,6 +1442,34 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         window->surfaceFormats = NULL;
         window->surfaceFormatCount = 0;
         return(FALSE);
+    }
+
+    if (amdvlkHackInjectHighBpc) {
+        // Check if output supports HDR colorspace:
+        for (i = 0; i < window->surfaceFormatCount; i++)
+            if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT)
+                break;
+
+        if (verbosity > 3)
+            printf("PsychVulkanCore-INFO: High color precision format override for broken AMDVLK driver! Number of driver returned supported surface colorspace + pixelformat combinations: %i\n", window->surfaceFormatCount);
+
+        // If HDR supported, return all 7 override formats defined below, otherwise only the first 4 SDR SRGB formats:
+        window->surfaceFormatCount = (i < window->surfaceFormatCount) ? 7 : 4;
+
+        window->surfaceFormats[0].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[0].surfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
+        window->surfaceFormats[1].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[1].surfaceFormat.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        window->surfaceFormats[2].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[2].surfaceFormat.format = VK_FORMAT_R16G16B16A16_UNORM;
+        window->surfaceFormats[3].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[3].surfaceFormat.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+        window->surfaceFormats[4].surfaceFormat.colorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+        window->surfaceFormats[4].surfaceFormat.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        window->surfaceFormats[5].surfaceFormat.colorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+        window->surfaceFormats[5].surfaceFormat.format = VK_FORMAT_R16G16B16A16_UNORM;
+        window->surfaceFormats[6].surfaceFormat.colorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+        window->surfaceFormats[6].surfaceFormat.format = VK_FORMAT_R16G16B16A16_SFLOAT;
     }
 
     if (verbosity > 3)
