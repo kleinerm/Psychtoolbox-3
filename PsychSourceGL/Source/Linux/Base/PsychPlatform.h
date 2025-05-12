@@ -52,7 +52,7 @@
 #if !defined(__aarch64__) && !defined(__x86_64__)
 #define PSYCH_NOLM
 #else
-#if !defined(PTB_USE_WAYLAND) && !defined(PTB_USE_WAYLAND_PRESENT) && defined(PAGE_SIZE) && ((PAGE_SIZE == 4096) || defined(PTBOCTAVE3MEX))
+#if !defined(PTB_USE_WAYLAND) && !defined(PTB_USE_WAYLAND_PRESENT) && defined(PTBOCTAVE3MEX)
 #define PSYCH_NOLM
 #endif
 #endif

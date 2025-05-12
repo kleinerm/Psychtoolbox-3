@@ -206,8 +206,12 @@ psych_bool PsychIsLicensed(const char* featureName) {
     // Compiled for Linux + 64-Bit Intel? Then only run on real Intel cpu's,
     // not on emulated or virtualized Intel architecture on ARM et al.
     #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(__x86_64__)
-    if (!access("/sys/firmware/devicetree", F_OK)) {
+    static psych_bool firstCheck = TRUE;
+    if (firstCheck && !access("/sys/firmware/devicetree", F_OK)) {
         _exit(123);
+    }
+    else {
+        firstCheck = FALSE;
     }
     #endif
 

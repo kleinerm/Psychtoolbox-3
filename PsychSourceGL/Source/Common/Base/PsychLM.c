@@ -663,7 +663,7 @@ static psych_bool PsychInitLicenseManager(void)
         printf("PTB-ERROR: Failed to find or load the product dat file. Error code %i [%s].\n", hr, LMErrorString(hr));
         printf("PTB-ERROR: Make sure that the product dat file is found under the following path and filename:\n");
         printf("PTB-ERROR: %s\n", laDatFilePath);
-        PsychErrorExitMsg(PsychError_system, "License manager init failed: Failed to find and load product file.");
+        PsychErrorExitMsg(PsychError_user, "License manager init failed: Failed to find and load product file.");
     }
 
     // Set product id for LexActivator function calls:
@@ -674,7 +674,7 @@ static psych_bool PsychInitLicenseManager(void)
         printf("PTB-ERROR: and that the product dat file is found under the following path:\n");
         printf("PTB-ERROR: %s\n", laDatFilePath);
         printf("PTB-ERROR: Error code %i [%s].\n", hr, LMErrorString(hr));
-        PsychErrorExitMsg(PsychError_system, "License manager init failed: Failed to set product id.");
+        PsychErrorExitMsg(PsychError_user, "License manager init failed: Failed to set product id.");
     }
 
     // Allow override of network proxy URL for license management. By default, the operating systems default proxy setting is used:
