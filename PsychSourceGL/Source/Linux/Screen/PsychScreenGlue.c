@@ -2454,20 +2454,8 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
         if (newX + newWidth  > maxw) maxw = newX + newWidth;
         if (newY + newHeight > maxh) maxh = newY + newHeight;
 
-        // [0, 0, maxw, maxh] is the new bounding rectangle of the scanned out framebuffer. Set screen size accordingly:
-
-        // Prevent clients from getting confused by our config sequence:
-        // XGrabServer(dpy);
-
-        // Disable target crtc:
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Disabling crtc %i.\n", outputId);
-        XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info->timestamp,
-                                    0, 0, None, RR_Rotate_0, NULL, 0);
-
-        // Resize screen: MK Don't! Skip this for now, use PsychSetScreenSettings() aka Screen('Resolution') to resize
-        // the screen without changing the crtc / output settings. More flexible...
-        // if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Resizing screen %i to %i x %i pixels.\n", screenNumber, maxw, maxh);
-        // XRRSetScreenSize(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), maxw, maxh, widthMM, heightMM);
+        // [0, 0, maxw, maxh] is the new bounding rectangle of the scanned out framebuffer. It
+        // is not used at the moment, but left here for documentation of the computation method.
 
         // Switch mode of target crtc and reenable it:
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Enabling crtc %i.\n", outputId);
@@ -2478,9 +2466,6 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
                                 crtc_info->outputs, crtc_info->noutput);
         XRRFreeCrtcInfo(crtc_info);
         XRRFreeCrtcInfo(crtc_info2);
-
-        // XUngrabServer(dpy);
-
     } else {
         // No such matching mode for given specs. Output disable requested?
         if (newWidth == 0 && newHeight == 0 && newHz == 0) {
