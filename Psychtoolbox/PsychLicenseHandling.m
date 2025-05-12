@@ -63,6 +63,10 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % can be manually called by users, but by default it is called by the
 % Psychtoolbox setup/install/update routines to automate license onboarding.
 %
+% PsychLicenseHandling('SetupLicense');
+% - Like 'Setup', but always prompts for a new license key, even if a key
+% is already enrolled, or a trial is active at the moment.
+%
 % PsychLicenseHandling('SetupGlobal');
 % - This behaves mostly like 'Setup', but it is meant for system administrators
 % or IT personnel to create a global configuration file to express consent to
@@ -208,7 +212,15 @@ rc = 0;
 % Check if LexActivator client library installed? Install if needed.
 if strcmpi(cmd, 'CheckInstallLMLibs')
     % LexActivator client library installed?
-    if ~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))
+    if ~IsARM
+        % Get rid of ARM libs in search path on non-ARM:
+        warning off;
+        rmpath([PsychtoolboxRoot 'PsychBasic/PsychPlugins/ARM64']);
+        warning on;
+    end
+
+    if (~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))) || ...
+       (IsLinux && ~IsOctave && ~exist('libLexActivator.so', 'file'))
         % Nope. Try to download and install them. This will happen for a
         % PTB checked out from our git repository or extracted from the
         % full source code zip files, or from Matlab Add-On manager,
@@ -218,7 +230,8 @@ if strcmpi(cmd, 'CheckInstallLMLibs')
         downloadlexactivator(0, 1);
 
         % Doublecheck:
-        if (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))
+        if (~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))) || ...
+           (IsLinux && ~IsOctave && ~exist('libLexActivator.so', 'file'))
             warning('Library installation FAILED! This will go badly soon...\n');
         else
             fprintf('Library installation success. Onwards!\n');
@@ -232,7 +245,7 @@ end
 PsychLicenseHandling('CheckInstallLMLibs');
 
 % Check if initial setup of license management is needed, and if so then do it:
-if strcmpi(cmd, 'Setup') || strcmpi(cmd, 'SetupGlobal')
+if strcmpi(cmd, 'Setup') || strcmpi(cmd, 'SetupGlobal') || strcmpi(cmd, 'SetupLicense')
     % Check if this Psychtoolbox variant is requires license management at all:
     if ~WaitSecs('ManageLicense', 6)
         % Nope. Must be one of the free Linux variants, nothing to do:
@@ -335,7 +348,7 @@ if strcmpi(cmd, 'Setup') || strcmpi(cmd, 'SetupGlobal')
     UpdateMetadata;
 
     % Force license key enrollment for global setup:
-    if strcmpi(cmd, 'SetupGlobal')
+    if strcmpi(cmd, 'SetupGlobal') || strcmpi(cmd, 'SetupLicense')
         forceReenterKey = 1;
     end
 
