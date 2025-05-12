@@ -2212,7 +2212,7 @@ static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
     if (((err->error_code >=x11_errorbase) && (err->error_code < x11_errorbase + XF86VidModeNumberErrors)) ||
         (err->error_code == BadValue)) {
         // We caused some error. Set error flag:
-        x11_errorval = 1;
+        x11_errorval = err->error_code - x11_errorbase;
     }
 
     // Done.
@@ -2270,8 +2270,15 @@ float PsychSetNominalFramerate(int screenNumber, float requestedHz)
         requestedHz*=1000.0f;
         vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / requestedHz;
 
+        int vtotaldiff = (int)(vrefresh + 0.5f) - mode_line.vtotal;
         // Assign it to closest modeline setting:
-        mode_line.vtotal = (int)(vrefresh + 0.5f);
+        mode_line.vtotal += vtotaldiff;
+        mode_line.vsyncstart += vtotaldiff;
+        mode_line.vsyncend += vtotaldiff;
+
+        if (PsychPrefStateGet_Verbosity() > 5)
+            printf("PTB-DEBUG:PsychSetNominalFramerate(): Screen %i : Trying to request new refresh rate %f Hz via vtotal delta %i -> vsyncstart %i, vsyncend %i, vtotal %i ...\n",
+                   screenNumber, requestedHz / 1000.0, vtotaldiff, mode_line.vsyncstart, mode_line.vsyncend, mode_line.vtotal);
     }
     else {
         // Step 2-b: Delta mode. requestedHz represents a direct integral offset
@@ -2301,11 +2308,13 @@ float PsychSetNominalFramerate(int screenNumber, float requestedHz)
 
     // Check for error:
     if (x11_errorval) {
-        // Failed to set new mode! Must be invalid. We return -1 to signal this:
-        return(-1);
-    }
+        // Failed to set new mode! Must be invalid. We return -2 to signal this:
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR:PsychSetNominalFramerate(): Screen %i : Failed to select new refresh rate %f Hz via custom XVidMode modeline. XVid error code: %i\n",
+                   screenNumber, requestedHz / 1000.0, x11_errorval);
 
-    // No error...
+        return(-2);
+    }
 
     // Step 4: Query new settings and return them:
     vrefresh = PsychGetNominalFramerate(screenNumber);
