@@ -662,34 +662,12 @@ end
 end
 
 function UpdateMetadata
-    % Assign runtime environment version to activation data:
-    if IsOctave
-        % Octave version number:
-        WaitSecs('ManageLicense', 5, 'hostappversion', version);
-    else
-        % Matlab release name, e.g., 2024b for R2024b:
-        WaitSecs('ManageLicense', 5, 'hostappversion', version('-release'));
-    end
-
-    % Assign machine model code name to activation data on macOS:
-    if IsOSX
-        [rc, model] = system('sysctl -n hw.model');
-        if rc == 0
-            model = strtrim(model);
-
-            % Also encode true machine architecture - ARM or Intel:
-            if IsARM(1)
-                model = [model ' ARM64'];
-            else
-                model = [model ' INTEL64'];
-            end
-
-            WaitSecs('ManageLicense', 5, 'machinemodel', model);
-        end
-    end
+    % Nothing to do at the moment, as MEX files do this already for
+    % 'hostappversion' and 'machinemodel'.
+    return;
 end
 
 function WipeMetadata
-        WaitSecs('ManageLicense', 5, 'hostappversion', '');
-        WaitSecs('ManageLicense', 5, 'machinemodel', '');
+    WaitSecs('ManageLicense', 5, 'hostappversion', '');
+    WaitSecs('ManageLicense', 5, 'machinemodel', '');
 end
