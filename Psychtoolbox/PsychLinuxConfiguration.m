@@ -261,6 +261,10 @@ if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file') || ...
   fprintf('These files need to be installed if you want to use high color precision mode\n');
   fprintf('to drive a HDMI or DisplayPort high precision display device with more than\n');
   fprintf('8 bpc color depths, ie. more than 256 levels of red, green and blue color.\n');
+  fprintf('\nYou also need this file if you want to use rapid, seamless video refresh rate\n');
+  fprintf('switching on modern AMD graphics with FreeSync or GSync display monitors. See\n');
+  fprintf('''help VRRSupport'' for infos about this mode.\n');
+
   if IsARM
     % Some special treatment crammed in here for the latest RPi OS 11 BS:
     fprintf('\nYou also need this file on the RaspberryPi computer to get non-broken visual\n');

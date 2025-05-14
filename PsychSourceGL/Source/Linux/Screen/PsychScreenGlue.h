@@ -55,7 +55,7 @@ psych_bool                  PsychCheckVideoSettings(PsychScreenSettingsType *set
 void                        PsychGetScreenDepth(int screenNumber, PsychDepthType *depth);   //dont' use this and get rid  of it.
 int                         PsychGetScreenDepthValue(int screenNumber);
 float                       PsychGetNominalFramerate(int screenNumber);
-float                       PsychSetNominalFramerate(int screenNumber, float requestedHz);
+double                      PsychSetNominalFramerate(int screenNumber, double requestedHz);
 void                        PsychGetScreenPixelSize(int screenNumber, long *width, long *height);
 void                        PsychGetScreenSize(int screenNumber, long *width, long *height);
 void                        PsychGetGlobalScreenRect(int screenNumber, double *rect);
@@ -105,6 +105,9 @@ void PsychOSDefineWaylandCursor(int screenNumber, int deviceId, const char* curs
 
 // Is X-Screen primary gpu driver the modesetting ddx?
 psych_bool PsychOSX11ScreenUsesModesettingDDX(int screenId);
+
+// Special fine-grained, fast, seamless refresh rate setting on an X11 output, utilizing FreeSync:
+double PsychOSRandRCreateAndSetFRRVRRMode(int screenNumber, int outputId, double requestedHz);
 
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);

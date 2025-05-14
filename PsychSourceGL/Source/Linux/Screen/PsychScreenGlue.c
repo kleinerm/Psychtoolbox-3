@@ -2200,101 +2200,204 @@ float PsychGetNominalFramerate(int screenNumber)
 #endif
 }
 
-// Error callback handler for X11 errors:
-static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
+// Error callback handler for X11 RandR errors:
+static int RandRErrorHandler(Display* dis, XErrorEvent* err)
 {
     (void) dis;
 
-    // If x11_errorbase not yet setup, simply return and ignore this error:
-    if (x11_errorbase == 0) return(0);
+    // If RandR error base not yet setup, simply return and ignore this error:
+    if (xr_error == 0)
+        return(0);
 
     // Setup: Check if its an XVidMode-Error - the only one we do handle.
-    if (((err->error_code >=x11_errorbase) && (err->error_code < x11_errorbase + XF86VidModeNumberErrors)) ||
+    if (((err->error_code >= xr_error) && (err->error_code < xr_error + RRNumberErrors)) ||
         (err->error_code == BadValue)) {
         // We caused some error. Set error flag:
-        x11_errorval = err->error_code - x11_errorbase;
+        x11_errorval = err->error_code - xr_error;
     }
 
     // Done.
     return(0);
 }
 
-float PsychSetNominalFramerate(int screenNumber, float requestedHz)
+double PsychOSRandRCreateAndSetFRRVRRMode(int screenNumber, int outputId, double requestedHz)
 {
-#ifdef USE_VIDMODEEXTS
-    // Information returned by/sent to the XF86VidModeExtension:
-    XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
-    int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
-    int event_base;
+    PsychWindowRecordType **windowRecordArray;
+    int i, numWindows;
+    RROutput rrOutputId;
+    RRMode rrModeId = 0;
+    int modeid, maxModeId = -1;
+    double hz, maxHz = 0.0;
+    XRRCrtcInfo *crtc_info = NULL;
+    char modeName[40] = { 0 };
+    CGDirectDisplayID dpy = displayCGIDs[screenNumber];
+    XRRScreenResources *res = displayX11ScreenResources[screenNumber];
+    Window root = RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber));
 
-    // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
-    float vrefresh = 0;
+    if (requestedHz < 1) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: Can't fine-grained switch refresh on screen %i, output %i: Invalid requestedHz %f < 1 Hz!\n",
+                   screenNumber, outputId, requestedHz);
 
-    if(screenNumber>=numDisplays || screenNumber < 0)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+        return(-1);
+    }
 
-    // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) return(0);
+    if (!(res && has_xrandr_1_2 && (PsychScreenToHead(screenNumber, outputId) >= 0))) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: Can't fine-grained switch refresh on screen %i, output %i: RandR unsupported!\n",
+                   screenNumber, outputId);
 
+        return(-1);
+    }
+
+    // Get RandR output id of this outputId:
+    PsychOSGetOutputProps(screenNumber, outputId, FALSE, NULL, NULL, &rrOutputId);
+
+    // Do all the actions in one "atomic" go under lock protection:
     PsychLockDisplay();
-
-    if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
-        // Failed to use VidMode-Extension. We just return a vrefresh of zero.
-        PsychUnlockDisplay();
-        return(0);
-    }
-
-    if (!XF86VidModeQueryExtension(displayCGIDs[screenNumber], &event_base, &x11_errorbase)) {
-        // Failed to use VidMode-Extension. We just return a vrefresh of zero.
-        PsychUnlockDisplay();
-        return(0);
-    }
 
     // Attach our error callback handler and reset error-state:
     x11_errorval = 0;
-    x11_olderrorhandler = XSetErrorHandler(x11VidModeErrorHandler);
+    x11_olderrorhandler = XSetErrorHandler(RandRErrorHandler);
 
-    // Step 1: Query current dotclock and modeline:
-    if (!XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
-        // Restore default error handler:
-        XSetErrorHandler(x11_olderrorhandler);
-        PsychUnlockDisplay();
+    // Query current video mode of this output:
+    XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, &crtc_info);
 
-        PsychErrorExitMsg(PsychError_internal, "Failed to query video dotclock and modeline!");
+    if (!mode || !crtc_info) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: Can't fine-grained switch refresh on screen %i, output %i: Display output is disabled!\n",
+                   screenNumber, outputId);
+
+        hz = 0;
+        goto out_freesyncvideo;
     }
 
-    // Step 2: Calculate updated modeline:
-    if (requestedHz > 10) {
-        // Step 2-a: Given current dot-clock and modeline and requested vrefresh, compute
-        // modeline for closest possible match:
-        requestedHz*=1000.0f;
-        vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / requestedHz;
+    // Compute vertical refresh rate of current mode:
+    hz = PsychOSVRefreshFromMode(mode);
 
-        int vtotaldiff = (int)(vrefresh + 0.5f) - mode_line.vtotal;
-        // Assign it to closest modeline setting:
-        mode_line.vtotal += vtotaldiff;
-        mode_line.vsyncstart += vtotaldiff;
-        mode_line.vsyncend += vtotaldiff;
+    // Does the current mode already have a refresh rate of requestedHz?
+    //  If so, then there ain't nothing to do and we can no-op return:
+    if (hz == requestedHz)
+        goto out_freesyncvideo;
 
-        if (PsychPrefStateGet_Verbosity() > 5)
-            printf("PTB-DEBUG:PsychSetNominalFramerate(): Screen %i : Trying to request new refresh rate %f Hz via vtotal delta %i -> vsyncstart %i, vsyncend %i, vtotal %i ...\n",
-                   screenNumber, requestedHz / 1000.0, vtotaldiff, mode_line.vsyncstart, mode_line.vsyncend, mode_line.vtotal);
+    // Assign unique name for this mode, consisting of output, size and refresh rate:
+    snprintf(modeName, sizeof(modeName), "PTBVRR[%i]_%ix%i@%.06f", outputId, mode->width, mode->height, requestedHz);
+
+    // Find mode with same width and height, but highest video refresh rate, or matching rate:
+    for (modeid = 0; modeid < res->nmode; modeid++) {
+        // Mode of suitable width and height?
+        if ((res->modes[modeid].width == mode->width) && (res->modes[modeid].height == mode->height)) {
+            // Keep track of maximum refresh rate and associated mode:
+            if (PsychOSVRefreshFromMode(&res->modes[modeid]) > maxHz) {
+                maxHz = PsychOSVRefreshFromMode(&res->modes[modeid]);
+                maxModeId = modeid;
+            }
+
+            // Is this modes refresh rate a perfect match for our requestedHz?
+            if ((fabs(PsychOSVRefreshFromMode(&res->modes[modeid]) - requestedHz) < 0.001) ||
+                !strcmp(res->modes[modeid].name, modeName)) {
+                // Yes! We got a winner, no need to iterate further or create a new mode:
+                break;
+            }
+        }
+    }
+
+    // No suitable existing mode found?
+    if (modeid == res->nmode) {
+        double vrefresh;
+        int vtotaldiff;
+
+        // No existing mode is suitable: Need to create and enroll a new mode, based on a
+        // tweaked version of the corresponding mode with the highest refresh rate:
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-DEBUG: On screen %i, output %i: No existing mode for requestedHz %f Hz. Need new one, derived from max refresh mode of %f Hz.\n",
+                   screenNumber, outputId, requestedHz, maxHz);
+
+        // Can't go higher than base video mode of maximum refresh rate:
+        if (requestedHz > maxHz) {
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR: Can't fine-grained switch refresh on screen %i, output %i: Invalid requestedHz %f > %f Hz maximum possible refresh rate!\n",
+                        screenNumber, outputId, requestedHz, maxHz);
+
+            hz = -1;
+            goto out_freesyncvideo;
+        }
+
+        // Copy original matching mode of maximum refresh rate as baseline / starting point for new mode:
+        XRRModeInfo newmode = res->modes[maxModeId];
+
+        // Assign a new name for the new mode:
+        newmode.name = modeName;
+        newmode.nameLength = strlen(modeName);
+
+        // Given current pixel dot clock and modeline, and requested requestedHz video refresh rate, compute
+        // modeline for closest possible match, based on existing modeline. We get the new one by tweaking
+        // vblank length by vtotaldiff scanlines:
+        vrefresh = (newmode.dotClock / newmode.hTotal) / (requestedHz);
+        vtotaldiff = ((int) (vrefresh + 0.5)) - newmode.vTotal;
+
+        // Tweak vblank timing by vtotaldiff:
+        newmode.vTotal += vtotaldiff;
+        newmode.vSyncStart += vtotaldiff;
+        newmode.vSyncEnd += vtotaldiff;
+
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-DEBUG: Screen %i, output %i: Trying to request new refresh rate %f Hz via vTotal delta %i -> vSyncStart %i, vSyncEnd %i, vTotal %i.\n",
+                   screenNumber, outputId, requestedHz, vtotaldiff, newmode.vSyncStart, newmode.vSyncEnd, newmode.vTotal);
+
+        // Create a new RandR mode, based on newmode spec:
+        rrModeId = XRRCreateMode(dpy, root, &newmode);
+        XRRAddOutputMode(dpy, rrOutputId, rrModeId);
+        XFlush(dpy);
+        XSync(dpy, FALSE);
+
+        if (x11_errorval && (PsychPrefStateGet_Verbosity() > 0)) {
+            printf("PTB-ERROR: Can't fine-grained switch refresh rate on screen %i, output %i to requestedHz %f Hz. RandR error %i.\n",
+                   screenNumber, outputId, requestedHz, x11_errorval);
+        }
+
+        // Update screen resources for screenIdx:
+        XRRFreeScreenResources(res);
+        res = XRRGetScreenResourcesCurrent(dpy, root);
+        displayX11ScreenResources[screenNumber] = res;
+
+        // Query new expected nominal refresh rate:
+        hz = PsychOSVRefreshFromMode(&newmode);
     }
     else {
-        // Step 2-b: Delta mode. requestedHz represents a direct integral offset
-        // to add or subtract from current modeline setting:
-        mode_line.vtotal+=(int) requestedHz;
+        // Can use an existing mode:
+        rrModeId = res->modes[modeid].id;
+
+        // Query new expected nominal refresh rate:
+        hz = PsychOSVRefreshFromMode(&res->modes[modeid]);
     }
 
-    // Step 3: Try to set new modeline:
-    if (!XF86VidModeModModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &mode_line)) {
-        // Restore default error handler:
-        XSetErrorHandler(x11_olderrorhandler);
-        PsychUnlockDisplay();
+    // Suitable mode found for modesetting?
+    if (rrModeId) {
+        // Switch mode of target crtc:
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Switching mode on screen %i, output %i for new requestedHz %f Hz.\n", screenNumber, outputId, requestedHz);
 
-        // Invalid modeline? Signal this:
-        return(-1);
+        XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info->timestamp,
+                         crtc_info->x, crtc_info->y, rrModeId, crtc_info->rotation,
+                         crtc_info->outputs, crtc_info->noutput);
     }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: Can't fine-grained switch refresh rate on screen %i, output %i: No mode suitable for requestedHz %f Hz.\n",
+                   screenNumber, outputId, requestedHz);
+
+        hz = 0;
+    }
+
+out_freesyncvideo:
+
+    // Dispose of no longer needed crtc_info:
+    if (crtc_info)
+        XRRFreeCrtcInfo(crtc_info);
+
+    // Make sure the screen change gets noticed by XLib:
+    ProcessRandREvents(screenNumber);
 
     // We synchronize and wait for X-Request completion. If the modeline was invalid,
     // this will trigger an invocation of our errorhandler, which in turn will
@@ -2304,26 +2407,67 @@ float PsychSetNominalFramerate(int screenNumber, float requestedHz)
     // Restore default error handler:
     XSetErrorHandler(x11_olderrorhandler);
 
-    PsychUnlockDisplay();
+    // Successful modeset on primary output for this screenNumber?
+    if ((hz > 0) && (outputId == 0)) {
+        // Try to update all onscreen windows which live on this screen wrt. new video
+        // refresh rate as good as possible without going through full recalibration:
+        // NOTE: This is a bit sketchy for multi-display on a screen configurations,
+        // because we don't make sure to update a window with the output it has the
+        // largest area intersection with, but simply choose the primary output. If
+        // the window isn't fullscreen and only covers one output, then we might pick
+        // the wrong output here...
+        PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
 
-    // Check for error:
-    if (x11_errorval) {
-        // Failed to set new mode! Must be invalid. We return -2 to signal this:
-        if (PsychPrefStateGet_Verbosity() > 0)
-            printf("PTB-ERROR:PsychSetNominalFramerate(): Screen %i : Failed to select new refresh rate %f Hz via custom XVidMode modeline. XVid error code: %i\n",
-                   screenNumber, requestedHz / 1000.0, x11_errorval);
+        for (i = 0; i < numWindows; i++) {
+            if (windowRecordArray[i]->screenNumber == screenNumber) {
+                windowRecordArray[i]->VideoRefreshInterval = 1 / hz;
+                windowRecordArray[i]->IFIRunningSum = 1 / hz;
+                windowRecordArray[i]->nrIFISamples = 1;
+            }
+        }
 
-        return(-2);
+        PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
     }
 
-    // Step 4: Query new settings and return them:
-    vrefresh = PsychGetNominalFramerate(screenNumber);
+    // Done with atomic transaction, release lock:
+    PsychUnlockDisplay();
 
-    // Done.
-    return(vrefresh);
-#else
-    return(0);
-#endif
+    return(hz);
+}
+
+double PsychSetNominalFramerate(int screenNumber, double requestedHz)
+{
+    int outputId;
+    double hz = 0;
+    double oldhz = 0;
+
+    if(screenNumber >= numDisplays || screenNumber < 0)
+        PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+
+    // Not available on non-X11:
+    if (!displayCGIDs[screenNumber])
+        return(0);
+
+    // Apply same setting to all active outputs:
+    for (outputId = 0; (PsychScreenToHead(screenNumber, outputId) >= 0) && (outputId < kPsychMaxPossibleCrtcs); outputId++) {
+        // Abort, if failure or unsupported on at least one output:
+        if ((hz = PsychOSRandRCreateAndSetFRRVRRMode(screenNumber, outputId, requestedHz)) <= 0) {
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR: Failed to fine-grained set refresh rate %f Hz on screen %i, starting with output %i: Error %f\n",
+                       requestedHz, screenNumber, outputId, hz);
+
+            break;
+        }
+
+        // Warn if we can not achieve matching refresh rate on all outputs:
+        if ((oldhz > 0) && (oldhz != hz) && (PsychPrefStateGet_Verbosity() > 1))
+            printf("PTB-WARNING: Could not fine-grained set same refresh rate %f Hz on all outputs for screen %i. Output %i %f Hz ~= %f Hz of output %i.\n",
+                   requestedHz, screenNumber, outputId, hz, oldhz, outputId - 1);
+
+        oldhz = hz;
+    }
+
+    return(hz);
 }
 
 /* Returns the physical display size as reported by X11: */
