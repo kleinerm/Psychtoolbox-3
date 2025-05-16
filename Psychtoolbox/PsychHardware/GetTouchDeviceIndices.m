@@ -58,6 +58,7 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 
 % HISTORY
 % 01-Oct-2017 mk  Wrote it. Based on GetMouseIndices.
+% 15-May-2025 mk  Filter out wrong devices when running under Linux iptds v3.0+
 
 touchIndices=[];
 productNames=cell(0);
@@ -120,6 +121,17 @@ for i =1:length(d);
             continue;
         end
 
+        % Filter out devices on Linux/X11 that are classified as touchscreens, but
+        % don't deliver events. On devices which use "Intels Precise Touch and Styles Daemon"
+        % IPTSD version 3, a physical touch screen shows up twice: Once as dysfunctional "IPTS
+        % TouchScreen" with 1 touch point, and once as "IPTSD Virtual Touchscreen" provided by
+        % IPTSD daemon after post-processing, which has many touch points and actually works.
+        % Need to filter out the first "raw" - non-working for us - IPTS screen from enumeration,
+        % according to the following filter expression:
+        if IsLinux && strcmp(d(i).product(1:4), 'IPTS') && d(i).touchDeviceType == 1 && ...
+           d(i).maxTouchpoints == 1 && strcmp(d(i).product(end-10:end), 'Touchscreen')
+           continue;
+        end
         touchIndices(end+1)=d(i).index; %#ok<AGROW>
         productNames{end+1}=d(i).product; %#ok<AGROW>
         allInfo{end+1}=d(i); %#ok<AGROW>
