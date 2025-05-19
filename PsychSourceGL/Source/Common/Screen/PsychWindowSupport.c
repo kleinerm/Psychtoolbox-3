@@ -229,7 +229,7 @@ static void PsychDrawDemoSplash(PsychWindowRecordType* windowRecord)
     PsychColorType textColor = { .mode = kPsychRGBAColor, .value.rgba = { 1023, 1023, 1023, 1023 }};
     PsychColorType bgColor = { .mode = kPsychRGBAColor, .value.rgba = { 0, 0, 0, 1023 }};
     int oldTextSize;
-    int maxHeight = 400;
+    unsigned int maxHeight = 400;
     float zoom = 0.5;
     double x = 10;
     double y = 10;
