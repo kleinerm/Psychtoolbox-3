@@ -249,7 +249,7 @@ PTB_EXPORT void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *p
     }
 
     // Abort here if machine is not actively licensed, except for use of WaitSecs():
-    if (strcmp(PsychGetModuleName(), "WaitSecs") && !PsychIsLicensed(NULL))
+    if (strcmp(PsychGetModuleName(), "WaitSecs") && !PsychIsLicensed(NULL, NULL))
         mexErrMsgTxt("This Psychtoolbox function is currently not licensed for use on this machine.");
 
     // Increment call recursion level for this invocation of the module:

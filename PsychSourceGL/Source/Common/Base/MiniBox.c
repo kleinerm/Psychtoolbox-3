@@ -179,6 +179,42 @@ psych_bool PsychIsInteger64InDouble(double *value)
     return((*value >= -9.22337203685478e+18) && (*value <= 9.22337203685478e+18) && (floor(*value) == *value));
 }
 
+/* Compute proper timeout deadlines for end of a session and start of session degradation for use with educational and teaching licenses. */
+void PsychComputeEducationLicenseTimeouts(psych_bool proFeaturesUsed, double demoProFeatureTimeout, double demoDegradeTimeout, double demoSessionTimeout,
+                                          double *demoSessionDegradeTime, double *demoSessionEndTime)
+{
+    double demoTargetTimeout = 0;
+    double now = PsychGetAdjustedPrecisionTimerSeconds(NULL);
+
+    if (proFeaturesUsed && (demoProFeatureTimeout > 0)) {
+        // This window uses at least one pro feature, subject to demoProFeatureTimeout:
+        printf("PTB-WARNING: Your script requested an advanced feature. This teaching and education license only allows sessions\n");
+        printf("PTB-WARNING: with advanced features to last at most %f minutes. The session will terminate after that time.\n", demoProFeatureTimeout / 60.0);
+
+        demoTargetTimeout = now + demoProFeatureTimeout;
+    }
+    else if (demoSessionTimeout > 0) {
+        // This window does not use pro features, so it will only be subject to standard session timeout:
+        demoTargetTimeout = now + demoSessionTimeout;
+
+        printf("PTB-INFO: Sessions under this TEACHING AND EDUCATION ONLY LICENSE last at most %f minutes.\n", demoSessionTimeout / 60.0);
+        printf("PTB-INFO: After that time, the session will abort and you need to 'clear all' or even restart the application.\n");
+    }
+    else {
+        // No pro feature timeout or standard timeout applies:
+        demoTargetTimeout = 0;
+    }
+
+    // If no session end time set yet, or valid demoTargetTimeout is earlier than currently set one, then set it as demoTargetTimeout:
+    if (demoSessionEndTime && (demoTargetTimeout != 0) && ((*demoSessionEndTime == 0) || (*demoSessionEndTime > demoTargetTimeout))) {
+        *demoSessionEndTime = demoTargetTimeout;
+    }
+
+    // If no session start of degradation time set yet, set it as demoDegradeTimeout seconds into the future:
+    if (demoSessionDegradeTime && (demoDegradeTimeout > 0) && (*demoSessionDegradeTime == 0))
+        *demoSessionDegradeTime = now + demoDegradeTimeout;
+}
+
 void PsychInitMasterThreadId(void)
 {
     // Assign unique id of this thread (the Matlab/Octave/Python main interpreter thread)
@@ -202,7 +238,9 @@ psych_bool PsychIsMasterThread(void)
 
 // Stub functions for mex files without license management:
 // License checking and management disabled in this build. Just return "Success":
-psych_bool PsychIsLicensed(const char* featureName) {
+psych_bool PsychIsLicensed(const char* featureName, const char** featureValStr) {
+    (void) featureValStr;
+
     // Compiled for Linux + 64-Bit Intel? Then only run on real Intel cpu's,
     // not on emulated or virtualized Intel architecture on ARM et al.
     #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(__x86_64__)

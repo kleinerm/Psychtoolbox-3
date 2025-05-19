@@ -43,7 +43,7 @@ extern "C" {
 #include "PsychInstrument.h"	
 
 // Define prototypes needed for license management, regardless if used or not:
-psych_bool PsychIsLicensed(const char* featureName);
+psych_bool PsychIsLicensed(const char* featureName, const char** featureValStr);
 void PsychFeatureUsed(const char* featureName);
 PsychError PsychManageLicense(void);
 

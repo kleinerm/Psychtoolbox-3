@@ -357,15 +357,19 @@ static psych_bool IsMinimumVersionSatisfied(void)
     return(TRUE);
 }
 
-static psych_bool GetFeatureEnabled(const char* featureName)
+static psych_bool GetFeatureEnabled(const char* featureName, const char** featureValStr)
 {
-    TCHAR featureValue[128] = { 0 };
+    static TCHAR featureValue[1024] = { 0 };
     uint32_t enabled = 0;
 
     int hr = GetProductVersionFeatureFlag(ConvertToTCHAR((char*) featureName), &enabled, featureValue, sizeof(featureValue));
     if (hr != LA_OK) {
         if (lmdebug)
             printf("PTB-DEBUG: GetProductVersionFeatureFlag('%s') failed. Error %i [%s]. Returning false.\n", featureName, hr, LMErrorString(hr));
+    }
+
+    if (enabled && featureValStr) {
+        *featureValStr = ConvertToChar(featureValue);
     }
 
     return(enabled);
@@ -377,7 +381,7 @@ static const char* GetSupportToken(void)
     int hr;
 
     // Only generate non-empty support token if this license enables user support:
-    if (GetFeatureEnabled("UserSupport")) {
+    if (GetFeatureEnabled("UserSupport", NULL)) {
         // Use activation id as support token:
         hr = GetActivationId(activationId, sizeof(activationId));
         if (hr != LA_OK) {
@@ -393,7 +397,7 @@ static const char* GetSupportToken(void)
 
 static psych_bool IsNetworkRestrictedWithRoaming(void)
 {
-    return(GetFeatureEnabled("AllowNetworkRoaming"));
+    return(GetFeatureEnabled("AllowNetworkRoaming", NULL));
 }
 
 static void CheckNetworkRestrictAndPrint(int hr)
@@ -426,7 +430,7 @@ static int DoActivateLicense(char* requestFileName)
             printf("PTB-DEBUG: ActivateLicenseOffline() = %i [%s]\n", hr, LMErrorString(hr));
 
         // Successful offline activation and allowed by this license version?
-        if ((hr == LA_OK) && !GetFeatureEnabled("AllowOfflineActivation")) {
+        if ((hr == LA_OK) && !GetFeatureEnabled("AllowOfflineActivation", NULL)) {
             // Did work, but was not actually allowed by product version of this license, so undo activation:
             printf("PTB-ERROR: Offline activation is not supported with this type of license. Please get a suitable license.\n");
             printf("PTB-ERROR: The file '%s' now is stored as a offline deactivation proof file for the forced deactivation.\n", requestFileName);
@@ -908,7 +912,7 @@ static psych_bool PsychCheckLicenseStatus(void)
 
         // Disallow use with Matlab if "NoMatlab" feature flag is set as true:
         #ifndef PTBOCTAVE3MEX
-        if ((PSYCH_LANGUAGE == PSYCH_MATLAB) && GetFeatureEnabled("NoMatlab")) {
+        if ((PSYCH_LANGUAGE == PSYCH_MATLAB) && GetFeatureEnabled("NoMatlab", NULL)) {
             printf("PTB-ERROR: Use of Psychtoolbox with Matlab is not allowed by the currently active license. Use GNU/Octave instead.\n");
             return(FALSE);
         }
@@ -1100,7 +1104,7 @@ static psych_bool PsychCheckLicenseStatus(void)
     return(FALSE);
 }
 
-psych_bool PsychIsLicensed(const char* featureName)
+psych_bool PsychIsLicensed(const char* featureName, const char** featureValStr)
 {
     // Licensing status unknown? Perform active check to determine it:
     if (licenseStatus == -1) {
@@ -1110,7 +1114,7 @@ psych_bool PsychIsLicensed(const char* featureName)
 
     // If enabled state of a specific feature is requested, return that:
     if (featureName)
-        return(GetFeatureEnabled(featureName));
+        return(GetFeatureEnabled(featureName, featureValStr));
 
     // Return general licensing status, cached or just determined:
     return((licenseStatus == 1) ? TRUE : FALSE);
@@ -1181,7 +1185,7 @@ PsychError PsychManageLicense(void)
 
     switch (mode) {
         case 0: // Check licensing status:
-            rc = PsychIsLicensed(productKey);
+            rc = PsychIsLicensed(productKey, NULL);
             break;
 
         case -1: // Deactivate license on this machine:
@@ -1416,7 +1420,7 @@ PsychError PsychManageLicense(void)
             break;
 
         case 4: // Get an up to date support authentication token:
-            if (GetFeatureEnabled("UserSupport")) {
+            if (GetFeatureEnabled("UserSupport", NULL)) {
                 time_t syncTime;
 
                 if (!IsNetworkRestrictedWithRoaming()) {
