@@ -846,7 +846,7 @@ AssertOpenGL;
 
 % Our little ad for our services:
 if ~dontshowad && exist('PsychPaidSupportAndServices', 'file')
-    PsychPaidSupportAndServices(1);
+    %PsychPaidSupportAndServices(1);
 end
 
 return;

@@ -780,7 +780,7 @@ fprintf('well documented.\n');
 
 % Our little ad for our services:
 if exist('PsychPaidSupportAndServices', 'file')
-    PsychPaidSupportAndServices(1);
+    % PsychPaidSupportAndServices(1);
 end
 
 more off;
