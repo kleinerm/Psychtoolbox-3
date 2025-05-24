@@ -141,12 +141,15 @@ more off;
 fprintf('\n\n');
 
 try
-    fprintf('Checking if this machine has a valid Psychtoolbox software license activated...\n');
-    PsychLicenseHandling('AuthenticationToken');
-    fprintf('If an authentication token was printed, you may be able to get a few minutes of free support.\n');
-    fprintf('This would spare you from paying for additional paid support. Worth a try...\n');
+    fprintf('Checking if this machine has a valid Psychtoolbox software license activated...\n\n');
+    if ~PsychLicenseHandling('AuthenticationToken')
+        fprintf('\nIf an authentication token was printed, you may be able to get a few minutes of\n');
+        fprintf('free support. This would spare you from paying for additional paid support. Worth a try...\n\n');
+    else
+        fprintf('\nNo valid and active Psychtoolbox software license with support option detected. That leaves the paid option...\n\n');
+    end
 catch
-    fprintf('Nope. No valid and active Psychtoolbox software license detected. That leaves the paid option...\n');
+    fprintf('No valid and active Psychtoolbox software license detected. That leaves the paid option...\n\n');
 end
 
 answer = '';
@@ -155,7 +158,7 @@ while length(answer)~=1 || ~ismember(answer, ['y', 'n'])
 end
 
 if ~strcmpi(answer, 'y')
-    fprintf('A paid support membership can be bought as described above. Bye.\n');
+    fprintf('\nThen we can not help you. Bye.\n');
     return;
 end
 
