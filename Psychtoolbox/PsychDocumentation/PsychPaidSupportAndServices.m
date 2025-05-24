@@ -1,31 +1,26 @@
 function PsychPaidSupportAndServices(mininag)
 %
 % If you are using a Psychtoolbox variant and version that requires a paid
-% software license key to function, e.g., on Microsoft Windows or Apple
-% macOS, then a few minutes of basic support per year for basic questions
-% may be included in the specific type of software license you bought. If
-% at all, when, and how much support will be provided is at the discretion
-% of the Psychtoolbox team. In any case, if you wanted to ask for this
-% basic support, you'd have to present an authentication token by running
-% this function, or by calling PsychLicenseHandling('AuthenticationToken').
+% software license key to function, e.g., on Microsoft Windows, or Apple
+% macOS, or for Matlab on Linux, then a few minutes of basic support per
+% year for basic questions may be included in the specific type of software
+% license you bought. If at all, when, and how much support will be
+% provided is at the sole discretion of the Psychtoolbox team. In any case,
+% if you wanted to ask for this basic support, you'd have to present an
+% authentication token by running this function, or by calling
+% PsychLicenseHandling('AuthenticationToken').
 %
-% If you require additional paid support regarding Psychtoolbox, or custom
-% feature development (or if you want to buy a Psychtoolbox themed coffee
-% mug, bag or shirt) go to the following website which provides such services:
+% For paid support beyond that, on the user forum or GitHub issue tracker,
+% you may have bought a "Psychtoolbox paid support membership" in the past.
+% If that membership is still valid, then the following procedure would
+% allow you to use it:
 %
-% https://www.psychtoolbox.net
-%
-% For paid support on the user forum or GitHub issue tracker, buy a
-% "Psychtoolbox support membership" under the "become a member" section:
-%
-% https://www.psychtoolbox.net/#service
-%
-% 1. As part of your purchase, you will receive a document - an invoice - with a
-%    printed "Order Id" or "Order no.", and a printed "License key".
+% 1. As part of your purchase, you will have received a document - an
+%    invoice - with a printed "Order Id" or "Order no.", and a printed "License key".
 %
 % 2. Next you can run *this* function PsychPaidSupportAndServices in Octave or
 %    Matlab. The function will ask you if you need paid support and do have
-%    an active license key to prove your community membership. Answer "y" for yes.
+%    an active license key to prove your paid membership. Answer "y" for yes.
 %
 % 3. Next the function will ask you about your "Order Id" and "License key".
 %    Please enter that info that you got from step 1.
@@ -33,7 +28,8 @@ function PsychPaidSupportAndServices(mininag)
 % 4. The function will print out an "authentication token", a string of letters and
 %    numbers. Now you can post your question on the Psychtoolbox user forum at
 %    https://psychtoolbox.discourse.group or open a new issue for bugs and feature
-%    requests on our GitHub issue tracker at https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues
+%    requests on our GitHub issue tracker at the following URL:
+%    https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues
 %
 %    Please add the "authentication token" to your forum question or GitHub issue.
 %    This will prove to us that you deserve paid support for your question or
@@ -41,64 +37,6 @@ function PsychPaidSupportAndServices(mininag)
 %    days after date of receipt of payment, so do not buy the paid support last
 %    minute, when the "house is already burning", but ahead of time, like you
 %    would do with a fire insurance.
-%
-%
-% For more detailed background information about Psychtoolbox's need for funding, read on:
-%
-% Continued development, improvement, maintenance and support of
-% Psychtoolbox itself, and also improvement of the various open-source
-% software components on which Psychtoolbox and other neuroscience toolkits
-% (e.g., PsychoPy) critically depend, including improvements to the Linux
-% operating system as the strongest and most high quality foundation for
-% demanding stimulation and data collection paradigms, requires a lot of
-% highly qualified and highly focused work.
-%
-% This work is currently (year 2006 - present) mostly carried out by Mario
-% Kleiner, who is now employed to do this work by the Medical Innovations
-% Incubator GmbH (MII) in Tuebingen, Germany ( https://www.mi-incubator.com ).
-% The MII belongs by 100% to the non-profit foundation for medical
-% innovations ( http://www.mi-foundation.org ) in Tuebingen.
-%
-% In order to fund Mario's work and provide him with the resources to do
-% this job, the MII offers different types of paid services around
-% Psychtoolbox and the use of Linux for neuroscience, among them a
-% "Psychtoolbox community membership with paid support".
-%
-% Your lab can now financially contribute to Psychtoolbox sustainability,
-% upkeep and continued improvement, by once a year buying such a community
-% membership for a modest fee. This membership entitles you to some
-% paid support for questions regarding efficient use of Psychtoolbox,
-% questions regarding the resolution of issues you may have with it, fixing
-% of bugs you may encounter, and feature requests. MII also offers paid
-% feature development and other commercial services.
-%
-% Please visit the following website, operated by MII, for our offering of
-% commercial development services, and for the community membership with
-% paid support:
-%
-%
-% https://www.psychtoolbox.net
-%
-%
-% The membership allows you to get your voice heard by the developers
-% regarding future feature development, as well as preferential treatment
-% on the public Psychtoolbox user forum and GitHub issue tracker. Spare
-% income generated by your membership fee, that does not have to be used
-% to process paid requests made individually by you, will be used to
-% fund general development and upkeep of Psychtoolbox and its ecosystem. In
-% other words, it contributes to / acts as an insurance that allows
-% Psychtoolbox to be around and in good shape years into the future.
-%
-% To clarify: Psychtoolbox itself will stay open-source software. Anybody
-% able and willing to contribute code and ideas of sufficiently high quality
-% is invited to contribute to the open-source code, the documentation on our
-% public community website and Wiki http://psychtoolbox.org, and to participate
-% and help each other on the public community forum under:
-% https://psychtoolbox.discourse.group
-%
-% Support by our developers will be reserved to paying community members.
-%
-% Thanks for your participation and support!
 %
 
 % Mini advert requested by some caller, e.g., PsychtoolboxPostInstallRoutine?
@@ -108,20 +46,11 @@ if exist('mininag', 'var') && (mininag > 0)
     % mininag 2 if called from an error handler, mininag 1 if called from
     % general setup code:
     if mininag == 2
-        fprintf('NOTE: You may want to acquire paid support for future issues like this.\n');
-    else
-        fprintf('IMPORTANT NEWS:\n\n');
-        fprintf('You can now financially contribute to Psychtoolbox sustainability, upkeep and continued\n');
-        fprintf('improvement by buying a paid support membership, which provides some paid support\n');
-        fprintf('for questions regarding its use, or issues you may have with it. We also offer paid\n');
-        fprintf('feature development and other useful commercial services.\n');
+        fprintf('NOTE: You may want to buy paid support for issues like this.\n');
     end
 
     fprintf('Please type ''PsychPaidSupportAndServices'' to learn more.\n');
     fprintf('\n\n');
-
-    if mininag == 1
-    end
 
     return;
 end
