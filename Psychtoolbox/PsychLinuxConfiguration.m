@@ -263,7 +263,7 @@ if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file') || ...
   fprintf('8 bpc color depths, ie. more than 256 levels of red, green and blue color.\n');
   fprintf('\nYou also need this file if you want to use rapid, seamless video refresh rate\n');
   fprintf('switching on modern AMD graphics with FreeSync or GSync display monitors. See\n');
-  fprintf('''help VRRSupport'' for infos about this mode.\n');
+  fprintf('''help VRRFixedRateSwitchingTest'' and ''help VRRSupport'' for infos about this mode.\n');
 
   if IsARM
     % Some special treatment crammed in here for the latest RPi OS 11 BS:
