@@ -800,7 +800,10 @@ if hmdinfo.handTrackingSupported || withGazeTracking || withHandTracking
 
             for joint = find(state.trackedJoints(hand, :))
               glPushMatrix;
-              glMultMatrixd(state.globalJointPoseMatrix{hand, joint});
+              % state.globalJointPoseMatrix{hand} is a per-hand 4-by-4-by-joints
+              % matrix, so one can select the OpenGL 4x4 matrix via (:,:,joint)
+              % indexing:
+              glMultMatrixd(state.globalJointPoseMatrix{hand}(:, :, joint));
               glutSolidCube(state.trackedJointsRadius(hand, joint));
               glPopMatrix;
             end

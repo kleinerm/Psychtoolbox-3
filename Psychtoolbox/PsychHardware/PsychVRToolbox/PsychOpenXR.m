@@ -1540,36 +1540,30 @@ if strcmpi(cmd, 'PrepareRender')
       error('PsychOpenXR:PrepareRender: Articulated hand tracking data requested, but not supported or enabled!');
     end
 
-    global tHandsMsecs
-    handy = tic;
+    %global tHandsMsecs
+    %handy = tic;
+
     % Store raw data returned from driver:
     result.handTrackingRaw = hands;
 
     for hand = 1:length(hands)
-      result.trackedHandStatus(hand) = hands(hand).Tracked;
       jointsMatrix = hands(hand).Joints;
+      numjoints = size(jointsMatrix, 2);
+
+      result.trackedHandStatus(hand) = hands(hand).Tracked;
       result.trackedJoints(hand, :) = jointsMatrix(1, :) == 3;
       result.trackedJointsRadius(hand, :) = jointsMatrix(2, :);
       result.trackedJointsPosition(hand, 1:3, :) = jointsMatrix(3:5, :);
       result.trackedJointsOrientationQuat(hand, 1:4, :) = jointsMatrix(6:9, :);
 
-      % Iterate over all joints:
-      for j = 1:size(jointsMatrix, 2)
-        % Joint tracked and valid?
-        if result.trackedJoints(hand, j)
-          % Convert j'th joint pose vector to 4x4 OpenGL right handed reference frame matrix:
-          result.localJointPoseMatrix{hand, j} = eyePoseToCameraMatrix(jointsMatrix(3:9, j)');
+      % Get local joint pose vectors as 4x4 OpenGL right handed reference frame matrices:
+      result.localJointPoseMatrix{hand} = hands(hand).JointPosesMatrix;
 
-          % Premultiply usercode provided global transformation matrix:
-          result.globalJointPoseMatrix{hand, j} = userTransformMatrix * result.localJointPoseMatrix{hand, j};
-        else
-          % Nope: Assign identity matrices:
-          result.localJointPoseMatrix{hand, j} = diag([1,1,1,1]);
-          result.globalJointPoseMatrix{hand, j} = diag([1,1,1,1]);
-        end
-      end
+      % Map them into users reference frame by premultiplying with userTransformMatrix, as usual:
+      result.globalJointPoseMatrix{hand} = reshape(userTransformMatrix * reshape(hands(hand).JointPosesMatrix, 4, 4 * numjoints), 4, 4, numjoints);
     end
-    % tHandsMsecs(end+1) = 1000 * toc(handy);
+
+    %tHandsMsecs(end+1) = 1000 * toc(handy);
   end
 
   varargout{1} = result;
