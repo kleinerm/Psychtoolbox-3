@@ -81,5 +81,6 @@
 %   TrolandTest                     - Test colorimetric conversions.
 %   VBLSyncTest                     - Tests visual stimulus onset timing and timestamping.
 %   VREyetrackingTest               - Test eye gaze tracking in VR/AR HMDs and other XR devices.
+%   VRRFixedRateSwitchingTest       - Test support for fast refresh rate switching on AMD+Linux via VRR mechanisms.
 %   VRRTest                         - Test support of your setup for Variable refresh rate mode.
 %   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.

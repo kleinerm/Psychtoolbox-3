@@ -683,13 +683,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Under Linux, AMD graphics cards since at least the year 2007, NVidia graphics
 %   cards since 2008, and Intel graphics chips since at least 2010 do support native
-%   10 bit framebuffers. Intel graphics chips must use the legacy X11 "intel" video driver
-%   to output their 10 bit framebuffers with actual 10 bit precision on Ubuntu
-%   20.04 LTS or earlier, as old "modesetting" video drivers do not support output
-%   with more than 8 bit. On Ubuntu 22.04-LTS and later, the modern modesetting driver
-%   can deal with 10 bpc output on all Intel graphics, so at least Ubuntu 22.04-LTS is
-%   recommended. XOrgConfCreator will take care of these Intel quirks when creating a
-%   custom xorg.config for such 10 bpc setups under Intel.
+%   10 bit framebuffers. On Ubuntu 22.04-LTS and later, the modern modesetting driver
+%   can deal with 10 bpc output on all Intel graphics. XOrgConfCreator will take care
+%   of these Intel quirks when creating a custom xorg.config for such 10 bpc setups
+%   under Intel.
 %
 %   Under MS-Windows, many graphics cards of the professional class AMD/ATI Fire/Pro
 %   series (2008 models and later), and all current models of the professional class
@@ -859,16 +856,19 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   on modern AMD GCN 1.1+ graphics cards [3]. On suitable setups, this will establish a 16 bpc framebuffer
 %   which packs 3 * 16 bpc = 48 bit color info into 64 bpp pixels and the gpu's display engine will scan
 %   out that framebuffer at 16 bpc. However, effective output precision is further limited to < 16 bpc by
-%   your display, video cable and specific model of graphics card. As of November 2024, the maximum effective
+%   your display, video cable and specific model of graphics card. As of May 2025, the maximum effective
 %   output precision is limited to at most 12 bpc (= 4096 levels of red, green and blue) by the graphics card,
 %   and this precision is only attainable on AMD graphics cards of the so called "Sea Islands" (cik) family
 %   (aka GraphicsCore Next GCN 1.1 or later), or any later models when used with the amdgpu-kms display driver.
+%   However, as of May 2025 it is unclear though if this support still works on current generation AMD "Navi"
+%   gpu family "RDNA" gpu's, or if some bugs in AMD's current Vulkan driver releases prevent this, and if that
+%   problem can be worked around. We know it works up to and including Vega gpu's at this point in time.
 %
 %   Older AMD cards of type GCN 1.0 "Southern Islands" or earlier won't work, as they only support at most 10
 %   bpc overall output precision.
 %
 %   Please note that actual 12 bpc output precision can only be attained on certain display devices and
-%   software configurations. As of November 2024, the following hardware + software combos have been
+%   software configurations. As of May 2025, the following hardware + software combos have been
 %   verified with a CRS ColorCal2 colorimeter to provide 12 bpc per color channel precision:
 %
 %   - The Apple MacBookPro 2017 15 inch with its built-in 10 bit Retina display, running under Ubuntu Linux
@@ -894,7 +894,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %      Driver release v-2021.Q4.1 or later from November 2021 is required to support this feature.
 %      Note that release 2023-Q3.3 from September 2023 was the last release to support pre-Navi
 %      gpu's like Polaris and Vega. Later versions only support AMD Navi and later with RDNA
-%      graphics architecture.
+%      graphics architecture. There are some open questions at the moment, as of May 2025, if
+%      this works with current drivers and for AMD Navi/RDNA, or if some driver bugs prevent
+%      this, and if it can be worked around. The problem is under investigation.
+%      For updates wrt. the Navi/RDNA situation, follow this discussion thread:
+%      https://psychtoolbox.discourse.group/t/failed-to-choose-the-12-bit-precision-window-on-amd-graphics-card/5699
 %
 %   2. You will need at least Linux kernel 5.14 or later versions. A way to manually install it on
 %      Ubuntu 20.04-LTS is described on the following web page via the "mainline" helper software:
@@ -961,10 +965,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Linux supports this mode on AMD gpu's of the "Sea Islands" gpu family or later
 %   if you install the AMDVLK AMD open-source Vulkan driver and use the imaging
 %   pipeline tasks 'UseVulkanDisplay' or 'EnableHDR'. See AMDVLK instructions
-%   above for 'EnableNative16BitFramebuffer'. You need Linux 5.8 for AMD Polaris
-%   and later (e.g. contained in Ubuntu 20.10 or 20.04.2-LTS), or Linux 5.12
-%   (e.g., from Ubuntu 21.10 or 20.04.4-LTS) for also supporting the earlier AMD
-%   "Sea Islands" and later gpu's.
+%   above for 'EnableNative16BitFramebuffer'. You need Linux 5.12 (e.g., from
+%   Ubuntu 20.04.4-LTS with HWE stack), or simply use at least Ubuntu 22.04-LTS.
 %
 %   macOS OpenGL does support this mode with what seems to be mostly software
 %   rendering on most machines, ie. with very low performance and even worse timing.

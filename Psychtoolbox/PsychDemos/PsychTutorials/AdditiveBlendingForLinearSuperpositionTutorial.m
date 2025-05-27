@@ -41,7 +41,8 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % 'Native10Bit' - Enables the native 10 bpc framebuffer support on all supported
 % GPUs. All gpus from AMD since ~2006, Intel since around ~2010 and NVidia since
 % around ~2008 support this on Linux. This also works similar modern with NVidia
-% Quadro and AMD Fire professional gpu's ounder MS-Windows.
+% Quadro and AMD Fire professional gpu's under MS-Windows. Also works on
+% Apple Silicon Macs.
 %
 % 'Native11Bit' - Enables the native ~11 bpc framebuffer support on some ATI
 % Radeon X1xxx / HDxxx GPU's with DCE-8 to DCE-12 display engine when used under
@@ -49,11 +50,15 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % is used (11 bits red, 11 bits green, 10 bits blue).
 %
 % 'Native16Bit' - Enables the native up to 16 bpc framebuffer support on AMD
-% GPU's when used under Linux with Vulkan display backend. While this activates
-% a 16 bpc framebuffer, the precision of the video output signal depends on the
-% specific gpu, connection and display. As of 2023, the "Sea Islands" AMD gpu
-% family and later can output at most 12 bpc precision to suitable displays over
-% HDMI or DisplayPort.
+% GPU's when used under Linux with Vulkan display backend. While this
+% activates a 16 bpc framebuffer, the precision of the video output signal
+% depends on the specific gpu, connection and display. As of 2023, the "Sea
+% Islands" AMD gpu family and later can output at most 12 bpc precision to
+% suitable displays over HDMI or DisplayPort. This works for gpu's up to
+% and including the Vega gpu family. However, as of May 2025 it is unclear
+% though if this support still works on current generation AMD "Navi" gpu
+% family "RDNA" gpu's, or if some bugs in AMD's current Vulkan driver
+% releases prevent this, and if that problem can be worked around.
 %
 % 'Native16BitFloat' - Enable native 16 bit floating point (~11 bit linear)
 % framebuffer support on suitable operating systems and graphics cards.

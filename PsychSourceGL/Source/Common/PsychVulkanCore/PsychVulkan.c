@@ -14,7 +14,7 @@
  * A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API
  * for special purpose display and compute tasks.
  *
- * Copyright (c) 2020 - 2024 Mario Kleiner. Licensed under the MIT license:
+ * Copyright (c) 2020 - 2025 Mario Kleiner. Licensed under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -220,6 +220,11 @@ static int windowCount = 0;
 
 static int verbosity = 3;
 static psych_bool initialized = FALSE;
+
+// Demo mode settings for educational/teaching license:
+static psych_bool demoOnlyMode = FALSE;
+static unsigned int demoDisableMask = 0;
+static double demoSessionEndTime = 0;
 
 // Do we require all enumerated gpu's to have a driver with HDR support?
 static psych_bool needHDR = FALSE;
@@ -1271,6 +1276,7 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
 {
     VkResult result;
     int i;
+    psych_bool amdvlkHackInjectHighBpc = FALSE;
 
     // Clean up / Reset from previous call if needed:
     if (window->surfaceFormats) {
@@ -1414,6 +1420,18 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         return(FALSE);
     }
 
+    // Is this a broken AMDVLK driver of version v2023.Q2.2 or later? These have totally broken 16 bpc and partially broken 10 bpc support, with
+    // no proper fix as of 11th May 2025 and v2025.Q2.1. If we detect such a driver version, we override the returned image format table with our
+    // own hardcoded one, with up to 7 entries, enabling RGB10A2, RGBA16 and RGBA16F in both SDR mode, and on a HDR monitor also in HDR mode.
+    // We only override for fullscreen windows, as these modes are not supported by AMDVLK in windowed mode anyway:
+    if (((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) &&
+        window->isFullscreen && (vulkan->deviceProps.driverVersion >= VK_MAKE_VERSION(2, 0, 267))) {
+        if (window->surfaceFormatCount < 7)
+            window->surfaceFormatCount = 7;
+
+        amdvlkHackInjectHighBpc = TRUE;
+    }
+
     window->surfaceFormats = (VkSurfaceFormat2KHR*) malloc(window->surfaceFormatCount * sizeof(VkSurfaceFormat2KHR));
     for (i = 0; i < window->surfaceFormatCount; i++) {
         window->surfaceFormats[i].sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR;
@@ -1429,6 +1447,34 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         window->surfaceFormats = NULL;
         window->surfaceFormatCount = 0;
         return(FALSE);
+    }
+
+    if (amdvlkHackInjectHighBpc) {
+        // Check if output supports HDR colorspace:
+        for (i = 0; i < window->surfaceFormatCount; i++)
+            if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT)
+                break;
+
+        if (verbosity > 3)
+            printf("PsychVulkanCore-INFO: High color precision format override for broken AMDVLK driver! Number of driver returned supported surface colorspace + pixelformat combinations: %i\n", window->surfaceFormatCount);
+
+        // If HDR supported, return all 7 override formats defined below, otherwise only the first 4 SDR SRGB formats:
+        window->surfaceFormatCount = (i < window->surfaceFormatCount) ? 7 : 4;
+
+        window->surfaceFormats[0].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[0].surfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
+        window->surfaceFormats[1].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[1].surfaceFormat.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        window->surfaceFormats[2].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[2].surfaceFormat.format = VK_FORMAT_R16G16B16A16_UNORM;
+        window->surfaceFormats[3].surfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        window->surfaceFormats[3].surfaceFormat.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+        window->surfaceFormats[4].surfaceFormat.colorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+        window->surfaceFormats[4].surfaceFormat.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        window->surfaceFormats[5].surfaceFormat.colorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+        window->surfaceFormats[5].surfaceFormat.format = VK_FORMAT_R16G16B16A16_UNORM;
+        window->surfaceFormats[6].surfaceFormat.colorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+        window->surfaceFormats[6].surfaceFormat.format = VK_FORMAT_R16G16B16A16_SFLOAT;
     }
 
     if (verbosity > 3)
@@ -4145,6 +4191,10 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
     // One less:
     windowCount--;
 
+    // Reset demo session timeout for education and teaching licenses after last window closed:
+    if (windowCount == 0)
+        demoSessionEndTime = 0;
+
     return(TRUE);
 }
 
@@ -4375,6 +4425,7 @@ PsychError PSYCHVULKANOpenWindow(void)
 
     static char seeAlsoString[] = "CloseWindow";
 
+    const char* demoOnlyModeStr = NULL;
     psych_uint8* targetdeviceUUID;
     int gpuIndex, screenId;
     int isFullscreen;
@@ -4457,6 +4508,64 @@ PsychError PSYCHVULKANOpenWindow(void)
 
     // Assign window index already for diagnostic purpose in called routines:
     window->index = handle;
+
+    // Reset demo session timeout for education and teaching licenses if this is the first window open:
+    if (windowCount == 0)
+        demoSessionEndTime = 0;
+
+    // Define general mode of operation:
+    demoOnlyMode |= PsychIsLicensed("TeachingUseOnly", &demoOnlyModeStr);
+    if (demoOnlyMode) {
+        double demoProFeatureTimeout, demoVisualDegradeTimeout, demoAudioDegradeTimeout, demoSessionTimeout;
+
+        // Pro features used, according to edu license?
+        psych_bool proFeaturesUsed = (screenId != 0) || (colorPrecision > 0) || (windowCount > 0) || (hdrMode > 0);
+
+        // Teaching license only: Parse its v1 type parameters:
+        demoOnlyModeStr = strstr(demoOnlyModeStr, "v1: ");
+        if (!demoOnlyModeStr || (5 != sscanf(demoOnlyModeStr, "v1: %i %lf %lf %lf %lf", &demoDisableMask, &demoSessionTimeout, &demoProFeatureTimeout,
+                                             &demoVisualDegradeTimeout, &demoAudioDegradeTimeout))) {
+            demoDisableMask = 0xffffffff;
+            demoProFeatureTimeout = 0;
+            demoVisualDegradeTimeout = 20;
+            demoAudioDegradeTimeout = 20;
+            demoSessionTimeout = 60;
+            printf("PTB-WARNING: Failed to parse disable bits for this teaching and education license. Will go for maximum restrictions.\n");
+        }
+
+        if ((demoDisableMask & (1 << 0)) && (screenId != 0)) {
+            printf("PsychVulkanCore-ERROR: You tried to open an onscreen window on screen %i, but only use of screen 0 is\n", screenId);
+            printf("PsychVulkanCore-ERROR: allowed under this teaching and education license. Aborting.\n");
+            PsychErrorExitMsg(PsychError_user, "Failed to open vulkan output window. Requested feature unsupported with this teaching and education license.");
+        }
+
+        if ((demoDisableMask & (1 << 1)) && (colorPrecision > 0)) {
+            printf("PsychVulkanCore-ERROR: You tried to open an onscreen window with deep color precision, but this\n");
+            printf("PsychVulkanCore-ERROR: is not allowed under this teaching and education license. Aborting.\n");
+            PsychErrorExitMsg(PsychError_user, "Failed to open vulkan output window. Requested feature unsupported with this teaching and education license.");
+        }
+
+        if ((demoDisableMask & (1 << 4)) && (windowCount > 0)) {
+            printf("PsychVulkanCore-ERROR: You tried to open more than one onscreen window, but only one onscreen window is allowed\n");
+            printf("PsychVulkanCore-ERROR: with this teaching and education license. Aborting.\n");
+            PsychErrorExitMsg(PsychError_user, "Failed to open vulkan output window. Requested feature unsupported with this teaching and education license.");
+        }
+
+        if ((demoDisableMask & (1 << 6)) && (hdrMode > 0)) {
+            printf("PsychVulkanCore-ERROR: You tried to open an onscreen window in High Dynamic Range (HDR), but this\n");
+            printf("PsychVulkanCore-ERROR: is not allowed under this teaching and education license. Aborting.\n");
+            PsychErrorExitMsg(PsychError_user, "Failed to open vulkan output window. Requested feature unsupported with this teaching and education license.");
+        }
+
+        // Compute timeouts and deadlines:
+        PsychComputeEducationLicenseTimeouts(proFeaturesUsed, demoProFeatureTimeout, demoVisualDegradeTimeout, demoSessionTimeout,
+                                             NULL, &demoSessionEndTime);
+    }
+    else {
+        // No timeouts whatsoever in production mode:
+        demoSessionEndTime = 0;
+        demoDisableMask = 0;
+    }
 
     if (!PsychOpenVulkanWindow(window, gpuIndex, targetdeviceUUID, isFullscreen, screenId, outputHandle, rect, colorPrecision, hdrMode, refreshHz, colorSpace, colorFormat, flags))
         PsychErrorExitMsg(PsychError_user, "Failed to open vulkan output window.");
@@ -5090,6 +5199,15 @@ PsychError PSYCHVULKANPresent(void)
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
+    // Cut sessions short if on a teaching and education license and pro features may limit session time:
+    if (demoOnlyMode && (demoSessionEndTime != 0) && (demoSessionEndTime < PsychGetAdjustedPrecisionTimerSeconds(NULL))) {
+        if (verbosity > 0)
+            printf("PsychVulkanCore-INFO: Session has exceeded its maximum duration under this teaching and eduction license. Not presenting stimulus update.\n");
+
+        doTimestamp = 0;
+        goto vulkanpresent_out;
+    }
+
     // Make sure driver is initialized:
     PsychVulkanCheckInit(FALSE);
 
@@ -5116,6 +5234,8 @@ PsychError PSYCHVULKANPresent(void)
         if (verbosity > 0)
             printf("PsychVulkanCore-ERROR: 'Present' operation failed for some reason! Trying to keep going, brace for impact!\n");
     }
+
+vulkanpresent_out:
 
     // Return estimated onset time:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (doTimestamp > 0) ? window->tPresentComplete : -1.0);

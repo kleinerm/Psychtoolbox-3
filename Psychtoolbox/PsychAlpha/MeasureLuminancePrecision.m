@@ -43,7 +43,7 @@ function data = MeasureLuminancePrecision(meterType)
 % To use this program to measure the precision of your computer display you
 % need three things:
 % 1. MATLAB or Octave. http://mathworks.com , https://www.gnu.org/software/octave
-% 2. The Psychtoolbox, free from http://psychtoolbox.org.
+% 2. The Psychtoolbox, from http://psychtoolbox.org.
 % 3. A photometer or colorimeter supported by CMCheckInit(), e.g., the CRS ColorCal2
 % http://www.crsltd.com/tools-for-vision-science/light-measurement-display-calibation/colorcal-mkii-colorimeter/
 % It's plug and play, taking power through its USB cable.
@@ -61,7 +61,11 @@ function data = MeasureLuminancePrecision(meterType)
 % https://developer.apple.com/library/content/samplecode/DeepImageDisplayWithOpenGL/Introduction/Intro.html#//apple_ref/doc/uid/TP40016622
 % https://developer.apple.com/library/content/samplecode/DeepImageDisplayWithOpenGL/Introduction/Intro.html#//apple_ref/doc/uid/TP40016622
 % https://macperformanceguide.com/blog/2016/20161127_1422-Apple2016MacBookPro-10-bit-color.html
-
+%
+% 10 bpc precision should also work on macOS with Apple Silicon Macs,
+% pro-class gpu's from AMD and NVidia on MS-Windows, and many gpu's on Linux,
+% e.g., AMD, NVidia, Intel, RaspberryPi 4 and later, other modern SoC's...
+%
 % My Hewlett-Packard Z Book laptop running Linux also attains 10-bit
 % luminance precision. I have not yet succeeded in getting dither to work
 % on the Z Book. Thanks to my former student, H�rmet Yiltiz, for setting up

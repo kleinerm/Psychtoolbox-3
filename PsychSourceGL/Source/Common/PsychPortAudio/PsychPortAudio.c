@@ -247,6 +247,12 @@ double debugdummy1, debugdummy2;
 
 psych_bool pa_initialized = FALSE;
 
+// Demo mode settings for educational/teaching license:
+static psych_bool demoOnlyMode = FALSE;
+static unsigned int demoDisableMask = 0;
+static double demoSessionEndTime = 0;
+static double demoSessionDegradeTime = 0;
+
 // Definition of an audio buffer:
 struct PsychPABuffer_Struct {
     unsigned int locked;            // locked: >= 1 = Buffer in use by some active audio device. 0 = Buffer unused.
@@ -856,6 +862,20 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         // Retrieve current system time:
         PsychGetAdjustedPrecisionTimerSeconds(&now);
 
+        // Abort audio operations when a defined session end time in demo mode is exceeded:
+        if (demoOnlyMode && (demoSessionEndTime != 0) && (demoSessionEndTime < now)) {
+            // Acknowledge any request by resetting it:
+            dev->reqstate = 255;
+
+            // Update "true" state to inactive:
+            dev->state = 0;
+
+            // Signal state change:
+            PsychPASignalChange(dev);
+
+            return(paComplete);
+        }
+
         #if PSYCH_SYSTEM == PSYCH_LINUX
         // Enable realtime scheduling for our audio processing thread on ALSA and Pulseaudio backends.
         // Jack backend does setup by itself, OSS and ASIHPI don't matter anymore.
@@ -1129,7 +1149,16 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         PsychPAUnlockDeviceMutex(dev);
 
         // Prime the outputbuffer with silence to simulate a stopped audio device:
-        if (outputBuffer && !isSlave) memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
+        if (outputBuffer && !isSlave) {
+            memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
+
+            // Degrade audio signal with random noise when a defined degradation start time in demo mode is exceeded:
+            if (demoOnlyMode && (demoSessionDegradeTime != 0) && (demoSessionDegradeTime < dev->currentTime)) {
+                out = (float*) outputBuffer;
+                for (i = 0; i < framesPerBuffer * outchannels; i++)
+                    *out++ = 0.05 * 2 * (((float) rand() / RAND_MAX) - 0.5);
+            }
+        }
 
         // Done:
         return(paContinue);
@@ -1672,6 +1701,13 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                     return(paContinue);
                 }
             }
+    }
+
+    // Degrade audio signal with random noise when a defined degradation start time in demo mode is exceeded:
+    if (demoOnlyMode && (demoSessionDegradeTime != 0) && (demoSessionDegradeTime < dev->currentTime)) {
+        out = (float*) outputBuffer;
+        for (i = 0; i < framesPerBuffer * outchannels; i++)
+            *out++ += 0.05 * 2 * (((float) rand() / RAND_MAX) - 0.5);
     }
 
     // Tell engine to continue stream processing, i.e., call us again...
@@ -2259,6 +2295,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PaStreamFlags sflags;
     PaError err;
     PaStream *stream = NULL;
+    const char* demoOnlyModeStr = NULL;
 
     #if PSYCH_SYSTEM == PSYCH_OSX
         #ifdef paMacCoreChangeDeviceParameters
@@ -2978,6 +3015,62 @@ PsychError PSYCHPORTAUDIOOpen(void)
             PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters. Prevalidation failure.");
         else
             err = paNoError;
+    }
+
+    // Define general mode of operation:
+    demoOnlyMode |= PsychIsLicensed("TeachingUseOnly", &demoOnlyModeStr);
+    if (demoOnlyMode) {
+        psych_bool proFeaturesUsed;
+        double demoProFeatureTimeout, demoVisualDegradeTimeout, demoAudioDegradeTimeout, demoSessionTimeout;
+
+        // Teaching license only: Parse its v1 type parameters:
+        demoOnlyModeStr = strstr(demoOnlyModeStr, "v1: ");
+        if (!demoOnlyModeStr || (5 != sscanf(demoOnlyModeStr, "v1: %i %lf %lf %lf %lf", &demoDisableMask, &demoSessionTimeout, &demoProFeatureTimeout,
+                                             &demoVisualDegradeTimeout, &demoAudioDegradeTimeout))) {
+            demoDisableMask = 0xffffffff;
+            demoProFeatureTimeout = 0;
+            demoVisualDegradeTimeout = 20;
+            demoAudioDegradeTimeout = 20;
+            demoSessionTimeout = 60;
+            printf("PTB-WARNING: Failed to parse disable bits for this teaching and education license. Will go for maximum restrictions.\n");
+        }
+
+        if ((demoDisableMask & (1 << 7)) && (latencyclass > 1 || (suggestedLatency != -1 && suggestedLatency < 0.010))) {
+            printf("PTB-ERROR: You tried to open an audio device with extra low latency, but this\n");
+            printf("PTB-ERROR: is not allowed under this teaching and education license. Aborting.\n");
+            return(FALSE);
+        }
+
+        if ((demoDisableMask & (1 << 8)) && (outputParameters.channelCount > 2 || inputParameters.channelCount > 2 || freq > 48000)) {
+            printf("PTB-ERROR: You tried to open an audio device with more than 2 audio channels, or a samplerate over 48 kHz, but\n");
+            printf("PTB-ERROR: this is not allowed under this teaching and education license. Aborting.\n");
+            return(FALSE);
+        }
+
+        if ((demoDisableMask & (1 << 9)) && (audiodevicecount > 0)) {
+            printf("PTB-ERROR: You tried to open more than one simultaneous audio device , but this\n");
+            printf("PTB-ERROR: is not allowed under this teaching and education license. Aborting.\n");
+            return(FALSE);
+        }
+
+        // Pro features used, according to edu license?
+        proFeaturesUsed = (audiodevicecount > 0) || (latencyclass > 1 || (suggestedLatency != -1 && suggestedLatency < 0.010)) ||
+                          (outputParameters.channelCount > 2 || inputParameters.channelCount > 2 || freq > 48000);
+
+        // If no session start of degradation time set yet, set it as demoDegradeTimeout seconds into the future:
+        if ((demoAudioDegradeTimeout > 0) && (verbosity > 2))
+            printf("PTB-INFO: Will degrade audio signal with noise in this session %i seconds from now under this teaching and education license.\n",
+                   (int) demoAudioDegradeTimeout);
+
+        // Compute timeouts and deadlines:
+        PsychComputeEducationLicenseTimeouts(proFeaturesUsed, demoProFeatureTimeout, demoAudioDegradeTimeout, demoSessionTimeout,
+                                             &demoSessionDegradeTime, &demoSessionEndTime);
+    }
+    else {
+        // No timeouts whatsoever in production mode:
+        demoSessionEndTime = 0;
+        demoSessionDegradeTime = 0;
+        demoDisableMask = 0;
     }
 
     // Try to create & open stream:

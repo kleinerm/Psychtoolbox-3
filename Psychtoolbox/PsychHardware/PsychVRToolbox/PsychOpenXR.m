@@ -820,7 +820,30 @@ function varargout = PsychOpenXR(cmd, varargin)
 %      The following fields are mandatory as part of the returned state struct,
 %      if hand tracking is supported and enabled and requested:
 %
-%      TODO
+%      'hand' denotes the id of the tracked hand: 1 for the left hand, 2
+%      for the right hand. 'joint' is the joint id of a specific finger or
+%      hand joint. See the list of 26 defined joints below, with symbolic
+%      names or numeric indices.
+%
+%      state.trackedHandStatus(hand) = Is the given 'hand' tracked, ie. its pose
+%                                      and possible joint configurations are
+%                                      at least partially known? 0 = No, 1 = Yes.
+%
+%      state.trackedJoints(hand, joint) = Is the given 'joint' tracked? 0 = No, 1 = Yes.
+%
+%      state.trackedJointsRadius(hand, joint) = What is the estimated radius of the given 'joint' in meters?
+%
+%      state.trackedJointsPosition(hand, 1:3, joint) = A 3 row matrix with the x, y, and z positions of the 'joint'.
+%
+%      state.trackedJointsOrientationQuat(hand, 1:4, joint) = A 4 component orientation quaternion for the 'joint'.
+%
+%      state.localJointPoseMatrix{hand} = A 3D array of OpenGL style 4x4 pose matrices describing joint position
+%                                         and orientation. Format is (:,:,joint) where 'joint' selects a 4x4 matrix
+%                                         slice for joint 'joint' on hand 'hand'.
+%
+%      state.globalJointPoseMatrix{hand} = A 3D array identical in format to localJointPoseMatrix, but transformed
+%                                          via the user supplied global 'userTransformMatrix' transformation matrix to
+%                                          the PsychVRHMD('PrepareRender', ...) subfunction.
 %
 %      The following constants allow to index the returned set of 26 hand joints
 %      by symbolic names for the different parts of the fingers and hand, or you
@@ -853,7 +876,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 %        OVR.XR_HAND_JOINT_LITTLE_DISTAL = 24 + 1;
 %        OVR.XR_HAND_JOINT_LITTLE_TIP = 25 + 1;
 %
-%      TODO, IMPLEMENTATION OF FEATURE NOT YET FINISHED.
 %
 %
 % More flags to follow...
@@ -1540,36 +1562,30 @@ if strcmpi(cmd, 'PrepareRender')
       error('PsychOpenXR:PrepareRender: Articulated hand tracking data requested, but not supported or enabled!');
     end
 
-    global tHandsMsecs
-    handy = tic;
+    %global tHandsMsecs
+    %handy = tic;
+
     % Store raw data returned from driver:
     result.handTrackingRaw = hands;
 
     for hand = 1:length(hands)
-      result.trackedHandStatus(hand) = hands(hand).Tracked;
       jointsMatrix = hands(hand).Joints;
+      numjoints = size(jointsMatrix, 2);
+
+      result.trackedHandStatus(hand) = hands(hand).Tracked;
       result.trackedJoints(hand, :) = jointsMatrix(1, :) == 3;
       result.trackedJointsRadius(hand, :) = jointsMatrix(2, :);
       result.trackedJointsPosition(hand, 1:3, :) = jointsMatrix(3:5, :);
       result.trackedJointsOrientationQuat(hand, 1:4, :) = jointsMatrix(6:9, :);
 
-      % Iterate over all joints:
-      for j = 1:size(jointsMatrix, 2)
-        % Joint tracked and valid?
-        if result.trackedJoints(hand, j)
-          % Convert j'th joint pose vector to 4x4 OpenGL right handed reference frame matrix:
-          result.localJointPoseMatrix{hand, j} = eyePoseToCameraMatrix(jointsMatrix(3:9, j)');
+      % Get local joint pose vectors as 4x4 OpenGL right handed reference frame matrices:
+      result.localJointPoseMatrix{hand} = hands(hand).JointPosesMatrix;
 
-          % Premultiply usercode provided global transformation matrix:
-          result.globalJointPoseMatrix{hand, j} = userTransformMatrix * result.localJointPoseMatrix{hand, j};
-        else
-          % Nope: Assign identity matrices:
-          result.localJointPoseMatrix{hand, j} = diag([1,1,1,1]);
-          result.globalJointPoseMatrix{hand, j} = diag([1,1,1,1]);
-        end
-      end
+      % Map them into users reference frame by premultiplying with userTransformMatrix, as usual:
+      result.globalJointPoseMatrix{hand} = reshape(userTransformMatrix * reshape(hands(hand).JointPosesMatrix, 4, 4 * numjoints), 4, 4, numjoints);
     end
-    % tHandsMsecs(end+1) = 1000 * toc(handy);
+
+    %tHandsMsecs(end+1) = 1000 * toc(handy);
   end
 
   varargout{1} = result;
@@ -1704,25 +1720,8 @@ if strcmpi(cmd, 'Start')
 
   % Use of multi-threading only in stopped 3D mode? Then we need to stop thread now.
   if (hmd{myhmd.handle}.multiThreaded == 1) && PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
-    % Stop thread:
-
-    % Need Windows runtimes workaround?
-    if hmd{myhmd.handle}.needWinThreadingWa1 && false
-      texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 0);
-      if hmd{myhmd.handle}.StereoMode > 0
-        texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 1);
-      else
-        texRight = [];
-      end
-    end
-
     % Shutdown thread, wait for it to be done:
     PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 0);
-
-    if hmd{myhmd.handle}.needWinThreadingWa1 && false
-      % Switch back to OpenXR swapchain backing textures:
-      Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
-    end
   end
 
   % Mark userscript driven tracking as active:
@@ -1751,12 +1750,6 @@ if strcmpi(cmd, 'Stop')
      ((PsychOpenXRCore('NeedLocateForProjectionLayers', hmd{myhmd.handle}.handle) && ~hmd{myhmd.handle}.switchTo2DViewsOnStop) || ...
       (hmd{myhmd.handle}.switchTo2DViewsOnStop && hmd{myhmd.handle}.needMTFor2DQuadViews)) && ...
      ~PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
-
-    % Need Windows runtimes workaround?
-    if hmd{myhmd.handle}.needWinThreadingWa1 && false
-      % Switch back to Screen's own backing textures:
-      Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '',hmd{myhmd.handle}.oldglLeftTex, hmd{myhmd.handle}.oldglRightTex);
-    end
 
     % Start thread:
     PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 1);
@@ -2546,7 +2539,7 @@ end
 % [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample, screenid] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
-  screenid = varargin{2}; %#ok<NASGU>
+  screenid = varargin{2};
   winRect = varargin{3};
   ovrfbOverrideRect = varargin{4}; %#ok<NASGU>
   ovrSpecialFlags = varargin{5};

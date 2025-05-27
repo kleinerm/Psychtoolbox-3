@@ -63,12 +63,34 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % can be manually called by users, but by default it is called by the
 % Psychtoolbox setup/install/update routines to automate license onboarding.
 %
-% PsychLicenseHandling('Activate' [, licenseKey]);
+% PsychLicenseHandling('SetupLicense');
+% - Like 'Setup', but always prompts for a new license key, even if a key
+% is already enrolled, or a trial is active at the moment.
+%
+% PsychLicenseHandling('SetupGlobal');
+% - This behaves mostly like 'Setup', but it is meant for system administrators
+% or IT personnel to create a global configuration file to express consent to
+% license management on behalf of all users of this Psychtoolbox installation,
+% and also to store a license key for automatic node activation. The global
+% configuration file will be stored in the Psychtoolbox main folder, ie. the
+% folder printed by the PsychtoolboxRoot() function. You can use this function
+% if you use disc imaging software or similar provisioning tools to install and
+% setup a Psychtoolbox installation once as part of a provisioning image, then
+% clone the provisioning image and Psychtoolbox installation to many physical
+% machines. The global config file will cause each Psychtoolbox on each of the
+% provisioned machines to activate and setup license management and activate that
+% node at first use of Psychtoolbox.
+%
+% PsychLicenseHandling('Activate' [, licenseKeyOrUserCredential]);
 % - Activate a paid license on a machine + operating system combination.
 % This can either use a previously enrolled license key from earlier calls
 % of PsychLicenseHandling('Activate') or PsychLicenseHandling('Setup'), or
 % providing a new license key to activate the machine with a new license,
-% by providing the new key in a string as optional 'licenseKey' parameter.
+% by providing the new key in a string as optional 'licenseKeyOrUserCredential'
+% parameter. Instead of a license key, one can also enter the login credentials
+% of a user account with associated license key, to fetch the associated key
+% automatically, e.g., if the account is jon.doe@doeland.us with password oink,
+% then the credentials would be the following text: jon.doe@doeland.us:oink
 %
 % This function can also be used if your machine was offline longer than
 % allowed and your local activation needs to be refreshed, or if your old
@@ -190,7 +212,15 @@ rc = 0;
 % Check if LexActivator client library installed? Install if needed.
 if strcmpi(cmd, 'CheckInstallLMLibs')
     % LexActivator client library installed?
-    if ~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))
+    if ~IsARM
+        % Get rid of ARM libs in search path on non-ARM:
+        warning off;
+        rmpath([PsychtoolboxRoot 'PsychBasic/PsychPlugins/ARM64']);
+        warning on;
+    end
+
+    if (~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))) || ...
+       (IsLinux && ~IsOctave && ~exist('libLexActivator.so', 'file'))
         % Nope. Try to download and install them. This will happen for a
         % PTB checked out from our git repository or extracted from the
         % full source code zip files, or from Matlab Add-On manager,
@@ -200,7 +230,8 @@ if strcmpi(cmd, 'CheckInstallLMLibs')
         downloadlexactivator(0, 1);
 
         % Doublecheck:
-        if (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))
+        if (~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))) || ...
+           (IsLinux && ~IsOctave && ~exist('libLexActivator.so', 'file'))
             warning('Library installation FAILED! This will go badly soon...\n');
         else
             fprintf('Library installation success. Onwards!\n');
@@ -214,7 +245,7 @@ end
 PsychLicenseHandling('CheckInstallLMLibs');
 
 % Check if initial setup of license management is needed, and if so then do it:
-if strcmpi(cmd, 'Setup')
+if strcmpi(cmd, 'Setup') || strcmpi(cmd, 'SetupGlobal') || strcmpi(cmd, 'SetupLicense')
     % Check if this Psychtoolbox variant is requires license management at all:
     if ~WaitSecs('ManageLicense', 6)
         % Nope. Must be one of the free Linux variants, nothing to do:
@@ -225,8 +256,8 @@ if strcmpi(cmd, 'Setup')
     % Needs license management. What's its general status?
     rc = WaitSecs('ManageLicense', 3);
 
-    % Disabled due to missing user consent?
-    if rc == -1
+    % Disabled due to missing user consent? Or global setup requested?
+    if (rc == -1) || strcmpi(cmd, 'SetupGlobal')
         % Yes. We need to inform the user about the consequences of license
         % management, ask his permission to continue, then hopefully continue:
         more(pause('query'));
@@ -285,10 +316,24 @@ if strcmpi(cmd, 'Setup')
             return;
         end
 
+        if strcmpi(cmd, 'SetupGlobal')
+            configfilepath = [PsychtoolboxRoot 'LMOpsAllowed.txt'];
+            fprintf('\nGLOBAL LICENSING SETUP: Storing general consent and key in global config file: %s\n', configfilepath);
+            if exist([PsychtoolboxConfigDir 'LMOpsAllowed.txt'], 'file')
+                delete([PsychtoolboxConfigDir 'LMOpsAllowed.txt']);
+            end
+        else
+            if exist([PsychtoolboxRoot 'LMOpsAllowed.txt'], 'file')
+                error('A global consent and license key config file already exists, therefore can not do regular per-user setup.');
+            end
+
+            configfilepath = [PsychtoolboxConfigDir 'LMOpsAllowed.txt'];
+        end
+
         % Consent given! Enable use of license management.
         fprintf('\n');
         fprintf('License management enabled, according to user consent.\n');
-        [fid, errmsg] = fopen([PsychtoolboxConfigDir 'LMOpsAllowed.txt'], 'w');
+        [fid, errmsg] = fopen(configfilepath, 'w');
         if fid == -1
             error(['Creating license management user consent file failed! Error: ' errmsg]);
         end
@@ -302,6 +347,11 @@ if strcmpi(cmd, 'Setup')
     % use for aggregate statistical purposes:
     UpdateMetadata;
 
+    % Force license key enrollment for global setup:
+    if strcmpi(cmd, 'SetupGlobal') || strcmpi(cmd, 'SetupLicense')
+        forceReenterKey = 1;
+    end
+
     % At this point, rc == 0 means license key enrolled, other rc means no
     % license key enrolled. The forceReenterKey flag can enforce taking the
     % "no key enrolled" path:
@@ -314,21 +364,35 @@ if strcmpi(cmd, 'Setup')
         % activate a license:
         fprintf('This machine does not yet have a valid product license key enrolled and activated.\n');
         fprintf('If you have a suitable key, e.g., as bought from\n\nhttps://psychtoolbox.net\n\n');
-        fprintf('then you can enroll it now and activate the associated license on this machine.\n');
-        fprintf('Either enter your key now, or just press ENTER to try to enable a free trial period.\n\n');
+        fprintf('then you can enroll it now and activate the associated license on this machine.\n\n');
+        fprintf('Or if you already have an account with associated license key, then you can enter\n');
+        fprintf('your user accounts credentials, as email:password, for me to fetch the associated key.\n\n');
+        fprintf('Either enter your key/credentials now, or just press ENTER to try to enable a free trial.\n\n');
 
         while rc
             clear WaitSecs;
 
-            productKey = input('License key (or ENTER for free trial): ', 's');
+            productKey = input('License key / credentials (or ENTER for free trial): ', 's');
             if ~isempty(productKey)
                 % Product key provided. Try to enroll and activate:
                 rc = WaitSecs('ManageLicense', 2, productKey);
                 if rc == 54
                     % Special case: Invalid license key entered. Force
                     % reentry immediately to avoid getting stuck:
-                    fprintf('The key was invalid. You must reenter a new valid key right now.\n');
+                    fprintf('\nThe key or credentials were invalid. You must reenter a new valid key/credentials right now.\n');
                     continue;
+                end
+
+                % Store the global file with the key if global setup requested:
+                if strcmpi(cmd, 'SetupGlobal')
+                    [fid, errmsg] = fopen(configfilepath, 'w');
+                    if fid == -1
+                        error(['Creating license management global consent and config file failed! Error: ' errmsg]);
+                    end
+
+                    % Store product key in global config file:
+                    fprintf(fid, '%s', productKey);
+                    fclose(fid);
                 end
             else
                 % No key provided. Try if a free trial can be used:
@@ -393,7 +457,7 @@ if strcmpi(cmd, 'Setup')
                         % User wants to retry the whole activation workflow:
                         clear WaitSecs;
                         fprintf('\nEncore une fois!\n');
-                        PsychLicenseHandling('SetupIfNeeded');
+                        PsychLicenseHandling('Setup');
                         clear WaitSecs;
                         rc = WaitSecs('ManageLicense', 0);
                     end
@@ -598,34 +662,12 @@ end
 end
 
 function UpdateMetadata
-    % Assign runtime environment version to activation data:
-    if IsOctave
-        % Octave version number:
-        WaitSecs('ManageLicense', 5, 'hostappversion', version);
-    else
-        % Matlab release name, e.g., 2024b for R2024b:
-        WaitSecs('ManageLicense', 5, 'hostappversion', version('-release'));
-    end
-
-    % Assign machine model code name to activation data on macOS:
-    if IsOSX
-        [rc, model] = system('sysctl -n hw.model');
-        if rc == 0
-            model = strtrim(model);
-
-            % Also encode true machine architecture - ARM or Intel:
-            if IsARM(1)
-                model = [model ' ARM64'];
-            else
-                model = [model ' INTEL64'];
-            end
-
-            WaitSecs('ManageLicense', 5, 'machinemodel', model);
-        end
-    end
+    % Nothing to do at the moment, as MEX files do this already for
+    % 'hostappversion' and 'machinemodel'.
+    return;
 end
 
 function WipeMetadata
-        WaitSecs('ManageLicense', 5, 'hostappversion', '');
-        WaitSecs('ManageLicense', 5, 'machinemodel', '');
+    WaitSecs('ManageLicense', 5, 'hostappversion', '');
+    WaitSecs('ManageLicense', 5, 'machinemodel', '');
 end

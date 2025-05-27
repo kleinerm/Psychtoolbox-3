@@ -29,7 +29,7 @@ function HDRViewer(imfilepattern, highprecision, windowed, scalefactor, gpudebug
 % 'highprecision' If set to 1, request floating point 16 fp16 display
 % output, instead of the default 10 bpc fixed point output of HDR-10.
 % If set to 2, will request a 16 bpc fixed point framebuffer, which allows for up
-% to 16 bpc linear precision, but in reality on early 2021 hardware at most 12 bpc.
+% to 16 bpc linear precision, but in reality on early 2025 hardware at most 12 bpc.
 % On most operating-systems + driver + gpu combos this 16 bpc mode will fail.
 %
 % 'windowed' If set to 1 and running on MS-Windows, create a non-fullscreen

@@ -1,9 +1,6 @@
 function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % BitsPlusCSFDemo([screenid=max] [, gamma = 2.2][, method=0][, charttype=0])
 %
-% This demo utilizes the Psychtoolbox imaging pipeline. Therefore it won't
-% work on gfx-hardware older than ATI Radeon X1000 or NVidia Geforce 6000.
-%
 % Demonstrates advantage of the 14 bpc Mono++ display mode, and similar high
 % bit depths display modes over the standard 8 bpc display mode of standard
 % graphics hardware. The demo displays either the Campbell-Robson CSF chart
@@ -16,8 +13,8 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % A 'method' of 0 outputs to a regular 8 bit framebuffer. This is the
 % default, if no method argument is provided.
 %
-% A 'method' of 1 tries to utilize the native 10 bpc framebuffers of recent
-% AMD/NVidia hardware.
+% A 'method' of 1 tries to utilize the native 10 bpc framebuffers of modern
+% hardware.
 %
 % A 'method' of 2 uses a method known as "PseudoGray" or "Bitstealing" for
 % output.
@@ -29,11 +26,11 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 %
 % In 'method' == 5, the M16 display mode of the VPixx - DataPixx box is used.
 %
-% A 'method' of 6 tries to utilize the native ~11 bpc framebuffers of recent
-% AMD hardware.
+% A 'method' of 6 tries to utilize the native ~11 bpc framebuffers of
+% modern AMD hardware with DCE display engines on Linux.
 %
-% A 'method' of 7 tries to utilize the native up to 16 bpc framebuffers of recent
-% AMD hardware.
+% A 'method' of 7 tries to utilize the native up to 16 bpc framebuffers of
+% modern AMD hardware.
 %
 % A 'method' of 8 tries to utilize the native 16 bpc float framebuffers of recent
 % hardware.

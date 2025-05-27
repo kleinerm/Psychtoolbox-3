@@ -142,6 +142,20 @@ PsychError SCREENConfigureDisplay(void)
                     "is only a polite request to the graphics driver. Example call:\n"
                     "Screen('ConfigureDisplay', 'RequestMinimumOutputPrecision', screenNumber, minBpc); "
                     "\n\n"
+                    "'FineGrainedSwitchRefreshRate': Switch the video refresh rate of a given output 'outputId' of screen 'screenNumber'.\n"
+                    "On Linux/X11 this function tries to quickly switch the video refresh rate of an output in a seamless way "
+                    "with no or only minimum visual disruption, in a tiny fraction of a second, e.g., at most one video refresh cycle. "
+                    "Allow for very fine-grained choice of refresh rate, e.g., fractions of 1 Hz. This generally only works well on some "
+                    "graphics cards and Linux kernels while driving Variable Refresh Rate capable displays (FreeSync, GSync, DP adaptive sync).\n"
+                    "One limitation at the moment is that in a multi-display setup, your visual stimulation window must be "
+                    "fully or at least predominantly covering the display area of the primary video output monitor, as the "
+                    "refresh rate of only that monitor will be assigned for Screen('Flip', ...) scheduling of stimulus onset time. "
+                    "Otherwise only immediate flips at each video refresh cycle will work with reliable timing. "
+                    "See 'help VRRSupport' for possibly more background and setup info.\n"
+                    "As of the year 2025 this works with FreeSync capable AMD graphics cards and display devices connected via DisplayPort. "
+                    "Other graphics cards or display devices (even HDMI VRR!) may not allow fast seamless switching. Example call:\n"
+                    "actualHz = Screen('ConfigureDisplay', 'FineGrainedSwitchRefreshRate', screenNumber, outputId, requestedHz); "
+                    "\n\n"
                     "'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
                     "Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
                     "It returns and accepts the following optional parameters:\n\n"
@@ -531,6 +545,31 @@ PsychError SCREENConfigureDisplay(void)
         #else
             // Nope: Report failure back:
             PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
+        #endif
+
+        return(PsychError_none);
+    }
+
+    if (PsychMatch(settingName, "FineGrainedSwitchRefreshRate")) {
+        double requestedHz;
+
+        // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if (screenNumber == -1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
+
+        PsychCopyInIntegerArg(3, TRUE, &outputId);
+        if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided.");
+
+        // Get minimum bpc for video output:
+        PsychCopyInDoubleArg(4, TRUE, &requestedHz);
+        if (requestedHz < 1) PsychErrorExitMsg(PsychError_user, "Invalid video refresh rate requested. Must be at least 1 Hz.");
+
+        // Running under Linux/X11 native?
+        #if !defined(PTB_USE_WAFFLE)
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychOSRandRCreateAndSetFRRVRRMode(screenNumber, outputId, requestedHz));
+        #else
+        // Nope: Report failure back:
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
         #endif
 
         return(PsychError_none);

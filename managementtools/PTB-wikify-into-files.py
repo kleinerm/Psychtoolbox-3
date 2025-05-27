@@ -648,15 +648,26 @@ def main(argv):
                 % First extract help for main function, including subfunction list
                 fprintf(fid,'[section:__main__]\\n');
                 synopsisText = evalc([mexname ';']);
-                helpText     = help([mexname '.m']);
                 fprintf(fid,'[key:usage]\\n%s\\n',synopsisText);
-                fprintf(fid,'[key:help]\\n%s\\n',helpText);
+                try
+                    helpText     = help(which([mexname '.m']));
+                    fprintf(fid,'[key:help]\\n%s\\n',helpText);
+                catch
+                end
                 fprintf(fid,'[key:seealso]\\n');
 
                 if iscell(subfunctions) && ~isempty(subfunctions)
                     for i=1:size(subfunctions,2)
                         fprintf(fid,'[section:%s]\\n',subfunctions{i});
-                        docs = eval([mexname '(''DescribeModulefunctionshelper'',1,subfunctions{i})']);
+                        try
+                            docs = eval([mexname '(''DescribeModulefunctionshelper'',1,subfunctions{i})']);
+                            if ~iscell(docs)
+                                continue;
+                            end
+                        catch
+                            continue;
+                        end
+
                         fprintf(fid,'[key:usage]:\\n%s\\n',docs{1});
                         fprintf(fid,'[key:help]\\n%s\\n',docs{2});
                         fprintf(fid,'[key:seealso]\\n%s\\n',docs{3});
