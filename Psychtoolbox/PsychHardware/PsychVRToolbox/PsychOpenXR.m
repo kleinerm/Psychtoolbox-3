@@ -1720,25 +1720,8 @@ if strcmpi(cmd, 'Start')
 
   % Use of multi-threading only in stopped 3D mode? Then we need to stop thread now.
   if (hmd{myhmd.handle}.multiThreaded == 1) && PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
-    % Stop thread:
-
-    % Need Windows runtimes workaround?
-    if hmd{myhmd.handle}.needWinThreadingWa1 && false
-      texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 0);
-      if hmd{myhmd.handle}.StereoMode > 0
-        texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{myhmd.handle}.handle, 1);
-      else
-        texRight = [];
-      end
-    end
-
     % Shutdown thread, wait for it to be done:
     PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 0);
-
-    if hmd{myhmd.handle}.needWinThreadingWa1 && false
-      % Switch back to OpenXR swapchain backing textures:
-      Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
-    end
   end
 
   % Mark userscript driven tracking as active:
@@ -1767,12 +1750,6 @@ if strcmpi(cmd, 'Stop')
      ((PsychOpenXRCore('NeedLocateForProjectionLayers', hmd{myhmd.handle}.handle) && ~hmd{myhmd.handle}.switchTo2DViewsOnStop) || ...
       (hmd{myhmd.handle}.switchTo2DViewsOnStop && hmd{myhmd.handle}.needMTFor2DQuadViews)) && ...
      ~PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle)
-
-    % Need Windows runtimes workaround?
-    if hmd{myhmd.handle}.needWinThreadingWa1 && false
-      % Switch back to Screen's own backing textures:
-      Screen('Hookfunction', hmd{myhmd.handle}.win, 'SetDisplayBufferTextures', '',hmd{myhmd.handle}.oldglLeftTex, hmd{myhmd.handle}.oldglRightTex);
-    end
 
     % Start thread:
     PsychOpenXRCore('PresenterThreadEnable', hmd{myhmd.handle}.handle, 1);
