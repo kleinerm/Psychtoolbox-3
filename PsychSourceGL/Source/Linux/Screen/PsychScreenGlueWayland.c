@@ -1905,10 +1905,9 @@ float PsychGetNominalFramerate(int screenNumber)
     return((float) mode->refresh / 1000.0);
 }
 
-float PsychSetNominalFramerate(int screenNumber, float requestedHz)
+double PsychSetNominalFramerate(int screenNumber, double requestedHz)
 {
-    // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
-    float vrefresh = 0;
+    (void) requestedHz;
 
     if (screenNumber >= numDisplays || screenNumber < 0)
         PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");

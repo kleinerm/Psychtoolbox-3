@@ -89,6 +89,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            special path setup on Matlab for Windows. (MK)
 % 02/28/2025 Call PsychLicenseHandling() for license manager client libs setup before 1st
 %            call to WaitSecs, so those get installed early enough if they are missing. (MK)
+% 05/24/2025 Disable call to PsychPaidSupportAndServices(). Update Linux requirements wrt.
+%            Ubuntu 22.04-LTS minimum. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -596,16 +598,14 @@ try
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
         fprintf('\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance and the full set of features, use the latest available versions. E.g., for optimal HDR\n');
-        fprintf('  movie playback GStreamer 1.18 would be needed, although it can be made to work less conveniently with v1.16.\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.20 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('  For optimal performance and the full set of features, please use the latest available versions.\n');
         fprintf('  You may need to install additional packages to playback all common audio and video file formats.\n');
         fprintf('  See "help GStreamer" for more info.\n');
         fprintf('\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('\n');
-        fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library.\n');
-        fprintf('  libdc1394.25.or later.\n');
+        fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library, version libdc1394.25.or later.\n');
         fprintf('\n');
         fprintf('* libraw1394 Firewire low-level access library.\n');
         fprintf('\n\n');
@@ -780,7 +780,7 @@ fprintf('well documented.\n');
 
 % Our little ad for our services:
 if exist('PsychPaidSupportAndServices', 'file')
-    PsychPaidSupportAndServices(1);
+    % PsychPaidSupportAndServices(1);
 end
 
 more off;

@@ -44,5 +44,7 @@ void PsychInitMasterThreadId(void);
 psych_threadid PsychGetMasterThreadId(void);
 psych_bool PsychIsMasterThread(void);
 
+void PsychComputeEducationLicenseTimeouts(psych_bool proFeaturesUsed, double demoProFeatureTimeout, double demoDegradeTimeout, double demoSessionTimeout,
+                                          double *demoSessionDegradeTime, double *demoSessionEndTime);
 // end include once
 #endif

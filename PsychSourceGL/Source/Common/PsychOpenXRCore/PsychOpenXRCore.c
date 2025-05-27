@@ -386,6 +386,51 @@ static double rad2deg(double rad)
     return rad / M_PI * 180.0;
 }
 
+// Convert (tx,ty,tz,x,y,z,w) pose vector with (tx,ty,tz) = Position and (x,y,z,w) being an orientation quaternion
+// into a 4x4 OpenGL RHS style matrix which expresses the same pose. Like a simplified but fast version of our
+// M-File helper function eyePoseToCameraMatrix(), equivalent to M = eyePoseToCameraMatrix(eyePose);
+static void poseVectorToMatrix(double tx, double ty, double tz, double x, double y, double z, double w, double M[4][4])
+{
+    // 4x4 Matrix order is [column][row]:
+
+    // Upper 3x3 rotation matrix, converted from quaternion:
+    double Rxx = 1 - 2*(y*y + z*z);
+    double Rxy = 2*(x*y - z*w);
+    double Rxz = 2*(x*z + y*w);
+
+    double Ryx = 2*(x*y + z*w);
+    double Ryy = 1 - 2*(x*x + z*z);
+    double Ryz = 2*(y*z - x*w );
+
+    double Rzx = 2*(x*z - y*w );
+    double Rzy = 2*(y*z + x*w );
+    double Rzz = 1 - 2 *(x*x + y*y);
+
+    // Put upper 3x3 rotation matrix in place:
+    M[0][0] = Rxx;
+    M[0][1] = Ryx;
+    M[0][2] = Rzx;
+
+    M[1][0] = Rxy;
+    M[1][1] = Ryy;
+    M[1][2] = Rzy;
+
+    M[2][0] = Rxz;
+    M[2][1] = Ryz;
+    M[2][2] = Rzz;
+
+    // 4th column tx, ty, tz translation vector:
+    M[3][0] = tx;
+    M[3][1] = ty;
+    M[3][2] = tz;
+
+    // 4th row 0,0,0,1
+    M[0][3] = 0;
+    M[1][3] = 0;
+    M[2][3] = 0;
+    M[3][3] = 1;
+}
+
 PsychOpenXRDevice* PsychGetXR(int handle, psych_bool dontfail)
 {
     if (handle < 1 || handle > MAX_PSYCH_OPENXR_DEVS || !openxrdevices[handle-1].opened) {
@@ -3258,12 +3303,13 @@ PsychError PSYCHOPENXRStop(void)
 
 static PsychError PsychOpenXRTrackHands(PsychOpenXRDevice* openxr, int outArgPos, XrTime xrPredictionTime)
 {
-    const char *FieldNamesHand[] = { "Tracked", "Joints" };
-    const int FieldCountHand = 2;
+    const char *FieldNamesHand[] = { "Tracked", "Joints", "JointPosesMatrix" };
+    const int FieldCountHand = 3;
 
-    int StatusFlags;
+    double MP[XR_HAND_JOINT_COUNT_EXT][4][4];
     PsychGenericScriptType *status;
     PsychGenericScriptType *outMat;
+    int StatusFlags;
     double *v;
 
     if (openxr->hasHandTracking) {
@@ -3333,6 +3379,12 @@ static PsychError PsychOpenXRTrackHands(PsychOpenXRDevice* openxr, int outArgPos
             v = NULL;
             PsychAllocateNativeDoubleMat(1 + 1 + 7, handJointLocations.jointCount, 1, &v, &outMat);
 
+            // Assign to Joints struct element for this hands struct:
+            PsychSetStructArrayNativeElement("Joints", hand, outMat, status);
+
+            // Set MP matrix array to all-zero:
+            memset(MP, 0, sizeof(MP));
+
             for (joint = 0; joint < handJointLocations.jointCount; joint++) {
                 // Joint tracking state:
                 StatusFlags = 0;
@@ -3364,10 +3416,30 @@ static PsychError PsychOpenXRTrackHands(PsychOpenXRDevice* openxr, int outArgPos
                 *v++ = jointLocations[joint].pose.orientation.y;
                 *v++ = jointLocations[joint].pose.orientation.z;
                 *v++ = jointLocations[joint].pose.orientation.w;
+
+                // Joint pose valid?
+                if (StatusFlags & 3) {
+                    // Yes: Convert to pose matrix MP. Order is [column][row]:
+                    poseVectorToMatrix(jointLocations[joint].pose.position.x, jointLocations[joint].pose.position.y, jointLocations[joint].pose.position.z, jointLocations[joint].pose.orientation.x,
+                                       jointLocations[joint].pose.orientation.y, jointLocations[joint].pose.orientation.z, jointLocations[joint].pose.orientation.w, MP[joint]);
+                }
+                else {
+                    // No: Init with diagonal neutral 1's matrix:
+                    MP[joint][0][0] = 1;
+                    MP[joint][1][1] = 1;
+                    MP[joint][2][2] = 1;
+                    MP[joint][3][3] = 1;
+                }
             }
 
-            // Assign to Joints struct element for this hands struct:
-            PsychSetStructArrayNativeElement("Joints", hand, outMat, status);
+            // JointPosesMatrix is a 4 x 4 by jointCount matrix for each hand:
+            PsychAllocateNativeDoubleMat(4, 4, handJointLocations.jointCount, &v, &outMat);
+
+            // Assign to JointPosesMatrix struct element for this hands struct:
+            PsychSetStructArrayNativeElement("JointPosesMatrix", hand, outMat, status);
+
+            // Copy MP into v output matrix stack:
+            memcpy(v, MP, sizeof(MP));
 
             // Done with this hand. On to next hand...
         }
@@ -3467,6 +3539,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "Row 2 encodes the radius in meters of this joint - The estimated distance from joint axis to skin of the hand.\n"
         "Rows 3-5 encode the 3D [x; y; z] position in meters of the joint in the tracking reference space.\n"
         "Rows 6-9 define the [rx; ry; rz; rw] quaternion, encoding the relative orientation of the joint with respect to the tracking reference space.\n"
+        "'JointPosesMatrix' A OpenGL style RHS transformation matrix which encodes all joints poses: 4-by-4-by-26 matrix, ie. one 4x4 matrix per joint.\n"
         "\n";
     static char seeAlsoString[] = "Start Stop GetTrackersState GetInputState";
 
