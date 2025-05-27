@@ -820,7 +820,30 @@ function varargout = PsychOpenXR(cmd, varargin)
 %      The following fields are mandatory as part of the returned state struct,
 %      if hand tracking is supported and enabled and requested:
 %
-%      TODO
+%      'hand' denotes the id of the tracked hand: 1 for the left hand, 2
+%      for the right hand. 'joint' is the joint id of a specific finger or
+%      hand joint. See the list of 26 defined joints below, with symbolic
+%      names or numeric indices.
+%
+%      state.trackedHandStatus(hand) = Is the given 'hand' tracked, ie. its pose
+%                                      and possible joint configurations are
+%                                      at least partially known? 0 = No, 1 = Yes.
+%
+%      state.trackedJoints(hand, joint) = Is the given 'joint' tracked? 0 = No, 1 = Yes.
+%
+%      state.trackedJointsRadius(hand, joint) = What is the estimated radius of the given 'joint' in meters?
+%
+%      state.trackedJointsPosition(hand, 1:3, joint) = A 3 row matrix with the x, y, and z positions of the 'joint'.
+%
+%      state.trackedJointsOrientationQuat(hand, 1:4, joint) = A 4 component orientation quaternion for the 'joint'.
+%
+%      state.localJointPoseMatrix{hand} = A 3D array of OpenGL style 4x4 pose matrices describing joint position
+%                                         and orientation. Format is (:,:,joint) where 'joint' selects a 4x4 matrix
+%                                         slice for joint 'joint' on hand 'hand'.
+%
+%      state.globalJointPoseMatrix{hand} = A 3D array identical in format to localJointPoseMatrix, but transformed
+%                                          via the user supplied global 'userTransformMatrix' transformation matrix to
+%                                          the PsychVRHMD('PrepareRender', ...) subfunction.
 %
 %      The following constants allow to index the returned set of 26 hand joints
 %      by symbolic names for the different parts of the fingers and hand, or you
@@ -853,7 +876,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 %        OVR.XR_HAND_JOINT_LITTLE_DISTAL = 24 + 1;
 %        OVR.XR_HAND_JOINT_LITTLE_TIP = 25 + 1;
 %
-%      TODO, IMPLEMENTATION OF FEATURE NOT YET FINISHED.
 %
 %
 % More flags to follow...
@@ -2540,7 +2562,7 @@ end
 % [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample, screenid] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
-  screenid = varargin{2}; %#ok<NASGU>
+  screenid = varargin{2};
   winRect = varargin{3};
   ovrfbOverrideRect = varargin{4}; %#ok<NASGU>
   ovrSpecialFlags = varargin{5};
