@@ -1,15 +1,15 @@
 function PsychJavaSwingCleanup
 % PsychJavaSwingCleanup - Clean up some internal Java stuff.
 %
-% The Matlab GUI is based on Java Swing, which occasionly causes problems
-% when used with Psychtoolbox due to internal quirks of Swing's
-% RepaintManager class ("OutOfMemoryError in Java heap space").
-% PsychJavaSwingCleanup() forces the RepaintManager to re-initialize by
-% temporarily setting its screen buffer to zero size. Calling the garbage
-% collector is probably not really necessary because it gets called by
-% Matlab at some point anyway. Finally we try to overcome the problem that
-% the RepaintManager apparently forgets about its dirty regions while
-% re-initializing.
+% The Matlab GUI for releases older than R2025a is based on Java Swing,
+% which occasionly causes problems when used with Psychtoolbox due to
+% internal quirks of Swing's RepaintManager class ("OutOfMemoryError in
+% Java heap space"). PsychJavaSwingCleanup() forces the RepaintManager to
+% re-initialize by temporarily setting its screen buffer to zero size.
+% Calling the garbage collector is probably not really necessary because it
+% gets called by Matlab at some point anyway. Finally we try to overcome
+% the problem that the RepaintManager apparently forgets about its dirty
+% regions while re-initializing.
 %
 % This routine is closely derived from the one posted in Psychtoolbox forum
 % message #16043 by user qx1147.
@@ -23,33 +23,10 @@ function PsychJavaSwingCleanup
 % 05-Mar-2015  mk  Use size 1x1 instead of 0x0 for RM reset.
 % 14-Nov-2018  mk  Work around latest macOS Mojave bugs - Stuck onscreen
 %                  window after close.
+% 22-Jun-2025  mk  Remove long dead workaround for Mojave bugs, comment
+%                  that Java GUI workaround also no longer used on R2025a+.
 
-% OSX 10.14 Mojave or later?
-if 0 % IsOSX
-    c = Screen('Computer');
-    v = sscanf(c.system, 'Mac OS %i.%i.%i');
-    if v(1) == 10 && v(2) >= 14
-        % The latest Apple brain damage is some bugs likely related to
-        % window event handling, which cause PTB onscreen windows to not
-        % actually close after close, but get stuck -- The script
-        % continues, or likely finishes, but the window gets stuck on the
-        % screen like a zombie, until something kicks system event
-        % handling. Lets work around this by opening a figure window, then
-        % closing it again, because hey insane OS'es need insane
-        % workarounds:
-        h = figure;
-        drawnow;
-        if ~IsOctave
-            % On Octave, as of version 4.4.1, we can't close figure windows
-            % without crashing Octave, yay! Well, a screen filling up with
-            % empty figures is still better than one stuck on a black
-            % fullscreen PTB window...
-            close(h);
-        end
-    end
-end
-
-% Running on Matlab with Java based desktop GUI enabled? Otherwise we no-op.
+% Running on Matlab older than R2025a with Java based desktop GUI enabled?
 if ~IsOctave && psychusejava('desktop')
     % Yes: Need to do the cleanup cycle:
     
