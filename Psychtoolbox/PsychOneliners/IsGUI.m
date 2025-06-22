@@ -7,9 +7,9 @@ function rc = IsGUI
 %
 
 if IsOctave && exist('isguirunning', 'builtin')
-    rc = eval('isguirunning');
+    rc = isguirunning;
 else
-    rc = psychusejava('desktop');
+    rc = usejava('desktop');
 end
 
 return;
