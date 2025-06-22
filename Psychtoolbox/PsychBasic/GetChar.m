@@ -37,13 +37,14 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % or Octave, and if you use Matlab with or without Java based GUI active.
 % For portability it is therefore best to ignore all info returned beyond
 % the character code. Composed characters, e.g., putting accents on top of
-% letters, do not always work on all setups. In general, only Matlab with
-% Java based desktop GUI enabled on Linux and macOS will get optimal
-% international keyboard and composed character handling, at reduced timing
-% precision, whereas anything on MS-Windows, and on Linux with KDE desktop,
-% and on Octave, and Matlab in -nodesktop mode, will use an implementation
-% based on KbQueues, which has better timing and flexibility, but worse
-% handling of international keyboards and composed characters at the moment.
+% letters, do not always work on all setups. In general, only Matlab
+% versions older than R2025a, which have a Java based desktop GUI, on Linux
+% and macOS, will get optimal international keyboard and composed character
+% handling, at reduced timing precision, whereas anything on MS-Windows,
+% and on Linux with KDE desktop, and on Octave, and Matlab in -nodesktop
+% mode, and Matlab R2025a or later, will use an implementation based on
+% KbQueues, which has better timing and flexibility, but worse handling of
+% international keyboards and composed characters at the moment.
 %
 % "when" is a struct. It (used to) return the time of the keypress, the "adb"
 % address of the input device, and the state of all the modifier keys
@@ -97,7 +98,8 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % ---> If precise timing of the keypress is important, use KbCheck or
 % KbWait or KbQueueXXX functions or KbEventGet for consistent results!
 %
-% macOS or Linux (with other than KDE desktop GUI), with Matlab and Java enabled:
+% macOS or Linux (with other than KDE desktop GUI), with Matlab older than
+% R2025a, and Java GUI enabled:
 %
 % JAVA PATH: The GetChar implementation for Matlab on these systems is
 % based on Java. Therefore, the Psychtoolbox subfolder PsychJava must be
@@ -122,7 +124,9 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % keyboard input via ListenChar(0) or ListenChar(1), Matlab will be left
 % with a dead keyboard until you press the CTRL+C key combo. This silencing
 % of clutter does currently not work in matlab -nojvm mode, or if you use
-% GNU/Octave instead of Matlab.
+% GNU/Octave instead of Matlab. It also does not work on Matlab R2025a in
+% GUI mode anymore, as Mathworks switched to a JavaScript based GUI, with
+% no known good and reliable way of suppressing keystrokes on that GUI.
 %
 % OTHER "when" RETURN ARGUMENT FIELDS: Owing to differences in what
 % accessory information the underlying operating systems provides about
@@ -177,6 +181,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % 10/22/12 mk Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 % 10/22/12 mk Add support for KbQueue-Based implementation.
 % 06/20/19 mk Try to protect against KDE focus stealing nastiness via kbqueues.
+% 06/22/25 mk Make baseline compatible with Matlab R2025a+ non-Java GUI.
 
 % NOTES:
 %
@@ -192,7 +197,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 %     shiftKey: 0
 % 
 
-global OSX_JAVA_GETCHAR;
+global OSX_JAVA_GETCHAR; %#ok<GVMIS>
 
 % If no command line argument was passed we'll assume that the user only
 % wants to get character data and timing/modifier data.
@@ -203,8 +208,15 @@ elseif nargin == 1
     getRawCode = 0;
 end
 
-% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later? Isn't the Linux KDE GUI active?
-if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
+persistent isjavadesktop;
+
+% Is this old Matlab with Java based GUI? Isn't this Windows? Isn't the Linux KDE GUI active?
+% Only check this once because psychusejava is a slow command.
+if isempty(isjavadesktop)
+    isjavadesktop = psychusejava('desktop') && ~IsWin && isempty(getenv('KDE_FULL_SESSION'));
+end
+
+if isjavadesktop
     % Java virtual machine and AWT and Desktop are running. Use our Java based
     % GetChar.
 
@@ -272,7 +284,7 @@ if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
     return;
 end
 
-% Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
+% Running either on Octave, or on Matlab command line, or on Matlab R2025a+, or on MS-Windows:
 
 % If we are on Linux and the keyboard queue is already in use by usercode,
 % we can fall back to 'GetMouseHelper' low-level terminal tty magic. The
