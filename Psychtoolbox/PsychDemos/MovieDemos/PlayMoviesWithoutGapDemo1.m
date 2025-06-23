@@ -163,7 +163,23 @@ try
         
         % Close movie object:
         Screen('CloseMovie', movie);
-        
+
+        if prefetched < 2
+            % Try to start playback for next movie:
+
+            % Open the movie - this should take zero-time as the movie
+            % should have been already prefetched during playback of
+            % the current movie. In case loading did not finish, this
+            % command will pause Matlabs execution until the movie is
+            % really ready.
+            [newmovie newmovieduration newfps newimgw newimgh] = Screen('OpenMovie', win, moviename);
+
+            % Start it:
+            Screen('PlayMovie', newmovie, rate, 0, 1.0);
+
+            prefetched = 2;
+        end
+
         % Ok, now our 'newmovie' becomes the current 'movie':
         if prefetched == 2
             movie = newmovie;
