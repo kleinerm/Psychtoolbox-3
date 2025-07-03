@@ -221,7 +221,6 @@ PsychError SCREENConfigureDisplay(void)
         double nbrightness;
 
         PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
-        io_service_t service = CGDisplayIOServicePort(displayID);
 
         // Return current brightness value: Prefer SPI (System private interface) for this,
         // as it isn't as fucked up as Apple's public implementation:
@@ -237,22 +236,20 @@ PsychError SCREENConfigureDisplay(void)
                 else
                     brightness = -1;
             }
-
-            // Supported. Query it:
-            brightness = CoreDisplay_Display_GetUserBrightness(displayID);
+            else {
+                // Supported. Query it:
+                brightness = CoreDisplay_Display_GetUserBrightness(displayID);
+            }
         }
         else {
-            err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
-            if (err != kIOReturnSuccess) {
-                // Failed. This means "unsupported". Return -1 for "not supported" if this was just a query,
-                // but fail if code tried to set a new value. This way a failure to set a brightness level
-                // won't go unnoticed, but code can query first if setting/getting brightness is supported
-                // before it trusts results:
-                if (PsychIsArgPresent(PsychArgIn, 4))
-                    PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
-                else
-                    brightness = -1;
-            }
+            // Unsupported: Return -1 for "not supported" if this was just a query,
+            // but fail if code tried to set a new value. This way a failure to set a brightness level
+            // won't go unnoticed, but code can query first if setting/getting brightness is supported
+            // before it trusts results:
+            if (PsychIsArgPresent(PsychArgIn, 4))
+                PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
+            else
+                brightness = -1;
         }
         PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
 
@@ -276,9 +273,7 @@ PsychError SCREENConfigureDisplay(void)
                     DisplayServicesBrightnessChanged(displayID, nbrightness);
             }
             else {
-                err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
-                if (err != kIOReturnSuccess)
-                    PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
+                PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
             }
         }
         #endif
