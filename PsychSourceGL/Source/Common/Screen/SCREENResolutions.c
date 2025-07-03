@@ -85,6 +85,9 @@ extern void CoreDisplay_Display_SetUserBrightness(CGDirectDisplayID id, double b
  */
 extern _Bool DisplayServicesCanChangeBrightness(CGDirectDisplayID id) __attribute__((weak_import));
 extern void DisplayServicesBrightnessChanged(CGDirectDisplayID id, double brightness) __attribute__((weak_import));
+
+extern int DisplayServicesGetBrightness(CGDirectDisplayID id, float *brightness) __attribute__((weak_import));
+extern int DisplayServicesSetBrightness(CGDirectDisplayID id, float brightness) __attribute__((weak_import));
 #endif
 
 const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
@@ -222,35 +225,34 @@ PsychError SCREENConfigureDisplay(void)
 
         PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
 
-        // Return current brightness value: Prefer SPI (System private interface) for this,
-        // as it isn't as fucked up as Apple's public implementation:
-        if (CoreDisplay_Display_GetUserBrightness != NULL) {
-            // Query possible and meaningful?
-            if ((DisplayServicesCanChangeBrightness != NULL) && !DisplayServicesCanChangeBrightness(displayID)) {
-                // Nope. This means "unsupported". Return -1 for "not supported" if this was just a query,
-                // but fail if code tried to set a new value. This way a failure to set a brightness level
-                // won't go unnoticed, but code can query first if setting/getting brightness is supported
-                // before it trusts results:
-                if (PsychIsArgPresent(PsychArgIn, 4))
-                    PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system via SPI. Unsupported on this system.");
-                else
-                    brightness = -1;
-            }
-            else {
-                // Supported. Query it:
-                brightness = CoreDisplay_Display_GetUserBrightness(displayID);
-            }
-        }
-        else {
-            // Unsupported: Return -1 for "not supported" if this was just a query,
+        // Query possible and meaningful?
+        if ((DisplayServicesCanChangeBrightness != NULL) && !DisplayServicesCanChangeBrightness(displayID)) {
+            // Nope. This means "unsupported". Return -1 for "not supported" if this was just a query,
             // but fail if code tried to set a new value. This way a failure to set a brightness level
             // won't go unnoticed, but code can query first if setting/getting brightness is supported
             // before it trusts results:
-            if (PsychIsArgPresent(PsychArgIn, 4))
-                PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
-            else
-                brightness = -1;
+            goto brightness_unsupported;
         }
+
+        // Return current brightness value: Prefer SPI (System private interface) for this,
+        // as it isn't as fucked up as Apple's public implementation:
+        if ((DisplayServicesGetBrightness != NULL) && ((err = DisplayServicesGetBrightness(displayID, &brightness)) == 0)) {
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-INFO: Current display brightness %f queried via system SPI DisplayServicesGetBrightness().\n", brightness);
+        }
+        else if (CoreDisplay_Display_GetUserBrightness != NULL) {
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-INFO: Display brightness system SPI DisplayServicesGetBrightness() unsupported [%p] or failed [%i]. Trying IntelMac SPI fallback.\n",
+                       DisplayServicesGetBrightness, (int) err);
+
+            // Supported. Query it:
+            brightness = CoreDisplay_Display_GetUserBrightness(displayID);
+        }
+        else {
+            goto brightness_unsupported;
+        }
+
+        // Return old / current brightness value:
         PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
 
         // Optionally set new brightness value:
@@ -260,20 +262,26 @@ PsychError SCREENConfigureDisplay(void)
             if (nbrightness > 1.0) nbrightness = 1.0;
 
             // Set it: Prefer SPI (System private interface) for this, as it isn't as fucked up as Apple's public implementation:
-            if (CoreDisplay_Display_SetUserBrightness != NULL) {
-                // Can brightness be changed on this system?
-                if ((DisplayServicesCanChangeBrightness != NULL) && !DisplayServicesCanChangeBrightness(displayID))
-                    PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness via SPI. Unsupported on this system?");
+            if ((DisplayServicesSetBrightness != NULL) && ((err = DisplayServicesSetBrightness(displayID, (float) nbrightness)) == 0)) {
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("PTB-INFO: New display brightness %f set via system SPI DisplayServicesSetBrightness().\n", nbrightness);
+            }
+            else if (CoreDisplay_Display_SetUserBrightness != NULL) {
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("PTB-INFO: Display brightness system SPI DisplayServicesSetBrightness() unsupported [%p] or failed [%i]. Trying IntelMac SPI fallback.\n",
+                           DisplayServicesSetBrightness, (int) err);
 
-                // Set it:
+                // Fallback, only works on IntelMacs, no way to figure out if it worked:
                 CoreDisplay_Display_SetUserBrightness(displayID, nbrightness);
 
-                // Notify UI:
+                // Notify UI, this function only exists on Intel Macs, not on Apple Silicon:
+                #ifdef __amd64__
                 if (DisplayServicesBrightnessChanged != NULL)
                     DisplayServicesBrightnessChanged(displayID, nbrightness);
+                #endif
             }
             else {
-                PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
+                PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness due to unsupported system functionality.");
             }
         }
         #endif
@@ -411,7 +419,7 @@ PsychError SCREENConfigureDisplay(void)
             // won't go unnoticed, but code can query first if setting/getting brightness is supported
             // before it trusts results:
             if (PsychIsArgPresent(PsychArgIn, 4))
-                PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
+                PsychErrorExitMsg(PsychError_user, "Failed to query and/or set current display brightness from system. Unsupported on this system.");
             else
                 PsychCopyOutDoubleArg(1, kPsychArgOptional, -1);
 
