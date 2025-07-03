@@ -85,9 +85,6 @@ extern void CoreDisplay_Display_SetUserBrightness(CGDirectDisplayID id, double b
  */
 extern _Bool DisplayServicesCanChangeBrightness(CGDirectDisplayID id) __attribute__((weak_import));
 extern void DisplayServicesBrightnessChanged(CGDirectDisplayID id, double brightness) __attribute__((weak_import));
-
-/* Also try to get a handle on AutoBrightness switch function: */
-extern void CoreDisplay_Display_SetAutoBrightnessIsEnabled(CGDirectDisplayID id, bool enable) __attribute__((weak_import));
 #endif
 
 const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
@@ -104,15 +101,14 @@ PsychError SCREENConfigureDisplay(void)
                     " The function will either return a >= brightness value, or -1 if the system doesn't support brightness control. "
                     " If you try to set brightness on a system that doesn't support it, the function will abort with an error. "
                     " Brightness values are in the range 0.0 to 1.0 from darkest to brightest. Returns old brightness setting.\n"
-                    "'AutoBrightnessMode': Set the AutoBrightness mode on supported systems, macOS only at the moment. "
+                    "'AutoBrightnessMode': Set the AutoBrightness mode on supported systems. Doesn't work anywhere at the moment. "
                     "If you call the function without specifying a new mode, it will return -1 if setting AutoBrightness is "
                     "unsupported on the system, otherwise it will return the value 2 to confirm setting AutoBrightness should be possible.\n"
                     "If you try to set AutoBrightness on a system that doesn't support it, the function will abort with an error. "
                     "Otherwise it will return 2 to confirm it tried to set AutoBrightness mode and then try to set the mode you "
                     "specified: A mode of 1 tries to enable AutoBrightness, a mode of 0 tries to disable AutoBrightness on the given output. "
                     "Please note that there isn't any feedback if switching AutoBrightness worked, or what the current or previous enable "
-                    "state of AutoBrightness is or was, as queries are not supported by macOS. Neither will there be reliable visual feedback "
-                    "in the macOS display settings GUI! This feature is experimental and may not work at any time for any reason!\n"
+                    "state of AutoBrightness is or was.\n"
                     "'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
                     "'Capture': Capture output 'outputId' of a screen 'screenNumber' for exclusive use by Psychtoolbox.\n"
                     "'Release': Release output 'outputId' of a screen 'screenNumber' from exclusive use by Psychtoolbox.\n"
@@ -191,56 +187,16 @@ PsychError SCREENConfigureDisplay(void)
     PsychAllocInCharArg(1, kPsychArgRequired, &settingName);
 
     if (PsychMatch(settingName, "AutoBrightnessMode")) {
-        // OS/X specific section:
-        #if PSYCH_SYSTEM == PSYCH_OSX
-            CGDirectDisplayID displayID;
-            int autobrightnessMode;
-            outputId = -1;
+        // Unsupported on all operating systems, including on macOS, where it never ever worked, to my knowledge.
+        // Return -1 for "not supported" if this was just a query, but fail if code tries to set a new value.
+        // This way a failure to change autobrightness won't go unnoticed, but code can query first if setting
+        // autobrightness is supported before it trusts results:
+        if (PsychIsArgPresent(PsychArgIn, 4))
+            PsychErrorExitMsg(PsychError_user, "Failed to change current display auto-brightness mode. Unsupported on this system.");
+        else
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, -1);
 
-            // Get the screen number from the windowPtrOrScreenNumber. This also checks to make sure that the specified screen exists.
-            if (PsychCopyInScreenNumberArg(2, FALSE, &screenNumber)) {
-                if (screenNumber == -1) PsychErrorExitMsg(PsychError_user, "Invalid screen number.");
-                outputId = screenNumber;
-            }
-
-            // Get outputId:
-            PsychCopyInIntegerArg(3, FALSE, &outputId);
-            if (outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
-
-            PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
-
-            // Return if setting autobrightness mode is supported: -1 for unsupported, 2 for supported.
-            PsychCopyOutDoubleArg(1, kPsychArgOptional, (CoreDisplay_Display_SetAutoBrightnessIsEnabled != NULL) ? 2 : -1);
-
-            // Optionally set new auto-brightness enable state:
-            if (PsychCopyInIntegerArg(4, FALSE, &autobrightnessMode)) {
-                if (autobrightnessMode < 0 || autobrightnessMode > 1)
-                    PsychErrorExitMsg(PsychError_user, "Invalid autobrightnessMode specified! Must be 0 for disable or 1 for enable.");
-
-                // Set it: Is the system private interface for this available?
-                if (CoreDisplay_Display_SetAutoBrightnessIsEnabled != NULL) {
-                    // Yes: Set new enable state. In god we trust, as there isn't any known way to query if we succeeded:
-                    CoreDisplay_Display_SetAutoBrightnessIsEnabled(displayID, (autobrightnessMode > 0) ? true : false);
-                }
-                else {
-                    // Nope: We fail.
-                    PsychErrorExitMsg(PsychError_user, "Failed to set new auto-brightness mode via SPI. Unsupported on this system.");
-                }
-            }
-
-            return(PsychError_none);
-        #else
-            // Unsupported on non-OSX atm. Return -1 for "not supported" if this was just a query,
-            // but fail if code tried to set a new value. This way a failure to change autobrightness
-            // won't go unnoticed, but code can query first if setting autobrightness is supported
-            // before it trusts results:
-            if (PsychIsArgPresent(PsychArgIn, 4))
-                PsychErrorExitMsg(PsychError_user, "Failed to change current display auto-brightness mode. Unsupported on this system.");
-            else
-                PsychCopyOutDoubleArg(1, kPsychArgOptional, -1);
-
-            return(PsychError_none);
-        #endif
+        return(PsychError_none);
     }
 
     // Usercode wants to change display brightness:
