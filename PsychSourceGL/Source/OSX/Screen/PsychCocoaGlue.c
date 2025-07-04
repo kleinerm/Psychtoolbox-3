@@ -351,6 +351,8 @@ hwinpidout:
 // PsychCocoaSetUserFocusWindow is a replacement for Carbon's SetUserFocusWindow().
 void PsychCocoaSetUserFocusWindow(void* window)
 {
+    pid_t pid = (window == NULL) ? GetHostingWindowsPID() : 0;
+
     // Allocate auto release pool:
     //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
     DISPATCH_SYNC_ON_MAIN({
@@ -376,7 +378,6 @@ void PsychCocoaSetUserFocusWindow(void* window)
             // Problem: Finding the pid requires iterating and filtering over all windows and name matching for
             // all possible candidates, and a shielding window from CGDisplayCapture() will still prevent keyboard
             // input, even if the window has input focus...
-            pid_t pid = GetHostingWindowsPID();
 
             // Also, the required NSRunningApplication class is unsupported on 64-Bit OSX 10.5, so we need to
             // dynamically bind it and no-op if it is unsupported:
