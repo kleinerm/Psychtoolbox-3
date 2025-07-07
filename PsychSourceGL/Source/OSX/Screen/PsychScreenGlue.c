@@ -519,6 +519,11 @@ void InitializePsychDisplayGlue(void)
 
     // Prevent OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
     PsychCocoaPreventAppNap(TRUE);
+
+    // Query and store Unix pid of the process with the active GUI window that has
+    // keyboard focus, so we can restore that process again as the frontmost active
+    // keyboard focus process:
+    PsychCocoaSetUserFocusWindow((void*) 0x1);
 }
 
 void PsychCleanupDisplayGlue(void)

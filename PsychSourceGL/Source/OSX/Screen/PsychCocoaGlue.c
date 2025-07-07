@@ -343,7 +343,10 @@ hwinpidout:
     if (found) {
         if (verbose) printf("TARGETWINDOWNAME: '%s' with pid %i.\n", winName, pid);
     }
-    else pid = 0;
+    else {
+        pid = getpgrp(); // Process group id works as ok fallback for GUI host apps.
+        if (verbose) printf("TARGET: pid %i.\n", pid);
+    }
 
     return(pid);
 }
@@ -351,40 +354,43 @@ hwinpidout:
 // PsychCocoaSetUserFocusWindow is a replacement for Carbon's SetUserFocusWindow().
 void PsychCocoaSetUserFocusWindow(void* window)
 {
-    pid_t pid = (window == NULL) ? GetHostingWindowsPID() : 0;
+    static pid_t guiAppPid = 0;
+    __block pid_t pid = 0;
+
+    // Store pid of current active / frontmost process with keyboard input focus in guiAppPid for
+    // later use by a PsychCocoaSetUserFocusWindow(NULL) call during onscreen window close ops:
+    if (window == (void*) 0x1) {
+        DISPATCH_SYNC_ON_MAIN({ pid = [[[NSWorkspace sharedWorkspace] frontmostApplication] processIdentifier]; });
+        guiAppPid = pid;
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: PID of current active GUI process with keyboard input focus stored as %i.\n", guiAppPid);
+
+        return;
+    }
 
     // Allocate auto release pool:
     //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
     DISPATCH_SYNC_ON_MAIN({
         NSWindow* focusWindow = (NSWindow*) window;
 
-        // Special flag: Try to restore main apps focus:
-        if (focusWindow == (NSWindow*) 0x1) {
-            focusWindow = [[NSApplication sharedApplication] mainWindow];
-        }
-
         // Direct keyboard input focus to window 'inWindow':
         if (focusWindow) [focusWindow makeKeyAndOrderFront: nil];
 
         // Special handle NULL provided? Try to regain keyboard focus rambo-style for
-        // our hosting window for octave / matlab -nojvm in terminal window:
+        // our hosting window for octave / matlab -nodesktop  in terminal window, and for
+        // Matlab R2025a+ with JavaScript GUI:
         if (focusWindow == NULL) {
             // This works to give keyboard focus to a process other than our (Matlab/Octave) runtime, if
             // the process id (pid_t) of the process is known and valid for a GUI app. E.g., passing in
-            // the pid of the XServer process X11.app or the Konsole.app will restore the xterm'inal windows
-            // or Terminal windows keyboard focus after a CGDisplayRelease() call, and thereby to the
-            // octave / matlab -nojvm process which is hosted by those windows.
-            //
-            // Problem: Finding the pid requires iterating and filtering over all windows and name matching for
-            // all possible candidates, and a shielding window from CGDisplayCapture() will still prevent keyboard
-            // input, even if the window has input focus...
-
-            // Also, the required NSRunningApplication class is unsupported on 64-Bit OSX 10.5, so we need to
-            // dynamically bind it and no-op if it is unsupported:
-            Class nsRunningAppClass = NSClassFromString(@"NSRunningApplication");
-
-            if (pid && (nsRunningAppClass != NULL)) {
-                NSRunningApplication* motherapp = [nsRunningAppClass runningApplicationWithProcessIdentifier: pid];
+            // the pid of the Terminal.app will restore the Terminal windows keyboard focus after a
+            // CGDisplayRelease() call, and thereby to the octave or matlab -nojvm command line interface
+            // process which is hosted by those terminal windows. This is also needed since Matlab R2025a
+            // to restore input focus for Matlab's GUI window, as R2025a uses separate processes for Psychtoolbox
+            // and the new JavaScript based Matlab GUI, so keyboard focus gets stolen from the Matlab GUI process
+            // by the Matlab interpreter / Psychtoolbox process.
+            if (guiAppPid) {
+                NSRunningApplication* motherapp = [NSRunningApplication runningApplicationWithProcessIdentifier: guiAppPid];
                 [motherapp activateWithOptions: NSApplicationActivateIgnoringOtherApps];
             }
         }
