@@ -147,6 +147,7 @@ static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer, Pane
 
 PsychError SCREENOpenWindow(void)
 {
+    const int               maxOutputArgs = 2;
     int                     screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode;
     psych_int64             specialflags;
     PsychRectType           rect, screenrect, clientRect, fbOverrideRect;
@@ -172,7 +173,7 @@ PsychError SCREENOpenWindow(void)
 
     //cap the number of inputs
     PsychErrorExit(PsychCapNumInputArgs(12));  // The maximum number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(2));  // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(maxOutputArgs));  // The maximum number of outputs
 
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
@@ -346,7 +347,7 @@ PsychError SCREENOpenWindow(void)
                 printf("PTB-INFO: Running on a macOS Apple Silicon system: Checking if Vulkan display backend should be used with this legacy script.\n");
 
             // Array with PsychImaging return arguments [win, winRect]:
-            PsychGenericScriptType *outputs[2];
+            PsychGenericScriptType *outputs[maxOutputArgs];
 
             // Prepare/Assing PsychImaging('OpenWindow', ...); call arguments:
             int nrInputs = PsychGetNumInputArgs() + 1;
@@ -363,7 +364,7 @@ PsychError SCREENOpenWindow(void)
             // Its return arguments will be post-processed by PsychImaging and then PsychImaging returns
             // final [win, winRect] = PsychImaging('OpenWindow', ...); [win, winRect] arguments to us
             // when returning from this call, and we will return those return args to our caller.
-            if (Psych_mexCallMATLAB(2, outputs, nrInputs, inputs, "PsychImaging"))
+            if (Psych_mexCallMATLAB(maxOutputArgs, outputs, nrInputs, inputs, "PsychImaging"))
                 PsychErrorExitMsg(PsychError_user, "Error in PsychImaging('OpenWindow', ...) redirected call on Apple Silicon system!");
 
             // Worked! Return the window index and the rect argument from [win, winRect] = PsychImaging('OpenWindow', ...):
@@ -375,6 +376,11 @@ PsychError SCREENOpenWindow(void)
 
             // Back to caller of [win, winRect] = Screen('OpenWindow', ...);
             return(PsychError_none);
+        }
+
+        // On macOS with Vulkan display backend or other external display backend, do not capture the screen:
+        if (specialflags & kPsychExternalDisplayMethod) {
+            dontCaptureScreen = TRUE;
         }
     }
     #endif
@@ -602,7 +608,7 @@ PsychError SCREENOpenWindow(void)
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0),
                                           sharedContextWindow, specialflags, vrrMode, vrrStyleHint, vrrMinDuration, vrrMaxDuration);
     if (!didWindowOpen) {
-        if (!dontCaptureScreen) {
+        if (PsychIsScreenCaptured(screenNumber)) {
             PsychRestoreScreenSettings(screenNumber);
             PsychReleaseScreen(screenNumber);
         }
