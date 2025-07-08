@@ -340,6 +340,19 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         return(FALSE);
     }
 
+    // In the casee of a CGL fullscreen exclusive window, create a "ghost window", which is a NSWindow in our application
+    // process that's behind our fullscreen window, fully occluded, but can receive keyboard events and consume them to
+    // avoid the annoying beep tone we'd be getting otherwise, if macOS would decide to give foreground activation status
+    // and keyboard input focus to windows of our hosting process, while taking keyboard focus away from the GUI window
+    // process and its GUI windows. This happens whenever the process hosting Psychtoolbox / Screen() and the process
+    // implementing the GUI are different and separate processes, instead of one unified process. Iow. it happens when
+    // Matlab or Octave are running in command line only mode inside a terminal window, where the hosting Terminal.app is
+    // a separate GUI process, or when Matlab R2025a+ is used, which implements its JavaScript GUI in a separate process
+    // from the PTB hosting process:
+    if (useCGL && (!PsychCocoaCreateGhostWindow(TRUE)) && (PsychPrefStateGet_Verbosity() > 1)) {
+        printf("PTB-WARNING: Could not create Cocoa ghost window for suppressing annoying keypress beeps. Cover your ears.\n");
+    }
+
     // Transparent window requested?
     if (!useCGL && (windowLevel >= 1000) && (windowLevel < 2000)) {
         // Setup of global window alpha value for transparency. This is premultiplied to
@@ -960,8 +973,14 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
     windowRecord->targetSpecific.windowHandle = NULL;
 
-    if (PsychIsLastOnscreenWindow(windowRecord))
+    // Was this the last onscreen window?
+    if (PsychIsLastOnscreenWindow(windowRecord)) {
+        // Show potentially hidden mouse cursor again:
         PsychShowCursor(windowRecord->screenNumber, 0);
+
+        // Destroy potentially existing ghost window:
+        PsychCocoaCreateGhostWindow(FALSE);
+    }
 
     return;
 }

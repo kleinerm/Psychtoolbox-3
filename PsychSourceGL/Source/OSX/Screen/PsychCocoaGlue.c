@@ -750,4 +750,84 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
     //[pool drain];
 }
 
+psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate)
+{
+    NSRect windowRect = NSMakeRect(0, 0, 1, 1);
+    static NSWindow *cocoaGhostWindow = NULL;
+    __block NSWindow *cocoaWindow = NULL;
+
+    // If our instance already has the ghost window state requested by doCreate, then we are done:
+    if ((doCreate && cocoaGhostWindow) || (!doCreate && !cocoaGhostWindow))
+        return(PsychError_none);
+
+    // Destruction of ghost window requested?
+    if (!doCreate) {
+        // Get rid of it:
+        DISPATCH_SYNC_ON_MAIN({
+            // Close window. This will also release the associated contentView:
+            [cocoaGhostWindow close];
+        });
+
+        cocoaGhostWindow = NULL;
+
+        return(TRUE);
+    }
+
+    // Some diagnostics wrt. main-thread or not:
+    if (PsychPrefStateGet_Verbosity() > 4)
+        printf("PTB-DEBUG: PsychCocoaCreateGhostWindow(): On %s thread.\n", ([NSThread isMainThread]) ? "MAIN APPLICATION" : "other");
+
+    // Create single pixel sized window with title bar, as needed for keyboard input focus / keystroke reception to work:
+    DISPATCH_SYNC_ON_MAIN({
+        cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:YES];
+    });
+
+    if (cocoaWindow == nil) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychCocoaCreateGhostWindow(): Could not create Cocoa ghost window!\n");
+
+        // Return failure:
+        return(FALSE);
+    }
+
+    // Setup the already created ghost window and show it:
+    DISPATCH_SYNC_ON_MAIN({
+        // Assign window title for debugging in view inspector:
+        [cocoaWindow setTitle:[NSString stringWithUTF8String:"PTB Ghost Window"]];
+
+        // Assign a content view which can process keyboard input instead of ignoring it,
+        // as ignoring key-down events would simply let them fall off the responder chain
+        // and cause a call to NSResponder:noResponderFor: at the end off the chain, whose
+        // default behavior is to create the annoying beep tone. We use a text input field
+        // as receiver of keyboard input:
+        [cocoaWindow setContentView:[[NSText alloc] initWithFrame:windowRect]];
+
+        // Set window as non-opaque, with a transparent window background color, so the
+        // window can be mostly invisible:
+        [cocoaWindow setOpaque:false];
+        [cocoaWindow setBackgroundColor:[NSColor colorWithDeviceWhite:0.0 alpha:0.0]];
+        [[cocoaWindow contentView] setDrawsBackground:NO];
+        [[cocoaWindow contentView] setTextColor:[NSColor colorWithDeviceWhite:0.0 alpha:0.0]];
+
+        // Make sure to be transparent to mouse events, e.g., mouse clicks, so the mouse
+        // can never interact with this ghost window:
+        [cocoaWindow setIgnoresMouseEvents:true];
+
+        // Position the window: TODO: Do we need to make this adaptive for multi-display setups?
+        [cocoaWindow setFrameTopLeftPoint:NSMakePoint(0, 0)];
+
+        // Bring it to front, so it will get keyboard input focus:
+        [cocoaWindow orderFrontRegardless];
+
+        // Show window:
+        [cocoaWindow display];
+    });
+
+    // Assign our new ghost window:
+    cocoaGhostWindow = cocoaWindow;
+
+    // Return success:
+    return(TRUE);
+}
+
 #pragma clang diagnostic pop
