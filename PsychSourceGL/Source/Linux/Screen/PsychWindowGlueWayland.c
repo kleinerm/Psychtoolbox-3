@@ -64,6 +64,9 @@ GLenum glewContextInit(void);
 // source tree, as permitted by license, just like presentation_timing-protocol.c:
 #include "presentation_timing-client-protocol.h"
 
+// Header file for commit-timing-protocol extension:
+#include "commit_timing-client-protocol.h"
+
 // XDG shell protocol:
 #include "xdg_shell-client-protocol.h"
 
@@ -85,6 +88,7 @@ extern psych_bool displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 
 // From PsychScreenGlueWayland.c:
 struct wp_presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord);
+struct wp_commit_timing_manager_v1 *get_wayland_commit_timing_manager(PsychWindowRecordType* windowRecord);
 
 // Container with feedback about a completed swap - the equivalent of
 // our good old INTEL_swap_event on X11/GLX, here for Wayland:
@@ -635,8 +639,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     } else if (bpc == 10) {
         // 10 bpc drawable: We have a 32 bpp pixel format with R10G10B10 10 bpc per color channel.
         // There are at most 2 bits left for the alpha channel, so we request an alpha channel with
-        // minimum size 1 bit --> Will likely translate into a 2 bit alpha channel:
-        attrib[attribcount++] = 1;
+        // minimum size 1 bit --> Will likely translate into a 2 bit alpha channel, unless this is a
+        // fullscreen opaque window, which does not have use for alpha, so request no alpha channel:
+        attrib[attribcount++] = ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel >= 2000)) ? 0 : 1;
     }
     else {
         // 11 bpc drawable - or more likely a 32 bpp drawable with R11G11B10, ie., all 32 bpp
@@ -1213,6 +1218,12 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
 
     PsychLockDisplay();
 
+    // Destroy a potentially associated commit timer:
+    if (windowRecord->targetSpecific.wp_commit_timer) {
+        wp_commit_timer_v1_destroy((struct wp_commit_timer_v1*) windowRecord->targetSpecific.wp_commit_timer);
+        windowRecord->targetSpecific.wp_commit_timer = NULL;
+    }
+
     // Detach OpenGL rendering context again - just to be safe!
     waffle_make_current(windowRecord->targetSpecific.deviceContext, NULL, NULL);
     currentContext = NULL;
@@ -1491,13 +1502,15 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
  */
 void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
+    struct wp_commit_timing_manager_v1 *wayland_commit_timing_manager = NULL;
+
     // Initialize fudge factor needed by PsychOSAdjustForCompositorDelay().
     // Default to 0.2 msecs, allow user override for testing and benchmarking via
     // environment variable:
     delayFromFrameStart = 0.0002;
     if (getenv("PSYCH_WAYLAND_SWAPDELAY")) delayFromFrameStart = atof(getenv("PSYCH_WAYLAND_SWAPDELAY"));
 
-    // Disable clever swap scheduling for now:
+    // Disable clever swap scheduling by default:
     windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 
     // Timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
@@ -1515,8 +1528,29 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     // Enable use of Wayland presentation_feedback extension for swap completion timestamping:
     windowRecord->specialflags &= ~kPsychOpenMLDefective;
 
-    // Ready to rock on Wayland:
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Enabling Wayland wp_presentation_feedback extension for swap completion timestamping.\n");
+
+    // Enable clever swap scheduling if the required wp_commit_timing extension version 1 or later is supported,
+    // unless this is disabled upon user script request:
+    if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDisableOpenMLScheduling) &&
+        ((wayland_commit_timing_manager = get_wayland_commit_timing_manager(windowRecord)) != NULL)) {
+        // Retrieve underlying native wl_surface stored in xwindowHandle:
+        struct wl_surface *wl_surface = windowRecord->targetSpecific.xwindowHandle;
+
+        // Create wp_commit_timer for windowRecord's associated wl_surface:
+        windowRecord->targetSpecific.wp_commit_timer = (void*) wp_commit_timing_manager_v1_get_timer(wayland_commit_timing_manager, wl_surface);
+        if (windowRecord->targetSpecific.wp_commit_timer) {
+            // Mark clever swap scheduling as usable for this windowRecord:
+            windowRecord->gfxcaps |= kPsychGfxCapSupportsOpenML;
+
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-INFO: Enabling Wayland wp_commit_timing extension for swap scheduling on window %i.\n", windowRecord->windowIndex);
+        }
+        else if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Failed to enable Wayland wp_commit_timing extension for swap scheduling on window %i. Could not get commit timer object for wl_surface!\n",
+                   windowRecord->windowIndex);
+        }
+    }
 
     return;
 }
@@ -1527,31 +1561,119 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     Schedules a double buffer swap operation for given window at a given
     specific target time or target refresh count in a specified way.
 
-    This uses OS specific API's and algorithms to schedule the asynchronous
+    This uses Wayland specific protocol extensions to schedule the asynchronous
     swap. This function is optional, target platforms are free to not implement
-    it but simply return a "not supported" status code.
+    it but simply return a "not supported" status code. In case of Wayland, as
+    the timing extensions are optional, returns a "not supported" status in case
+    the extension is unsupported, or explicitely disabled on user script request,
+    or if an unsupported argument is passed.
+
+    Currently all non-zero arguments except for target time tWhen are unsupported
+    and will trigger the fallback path.
 
     Arguments:
 
     windowRecord - The window to be swapped.
     tWhen        - Requested target system time for swap. Swap shall happen at first
-                    VSync >= tWhen.
-    targetMSC    - If non-zero, specifies target msc count for swap. Overrides tWhen.
-    divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
+                   possible time >= tWhen.
+    targetMSC    - Unsupported: If non-zero, specifies target msc count for swap. Overrides tWhen.
+    divisor, remainder - Unsupported: If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
     specialFlags - Additional options, a bit field consisting of single bits that can be or'ed together:
-                    1 = Constrain swaps to even msc values, 2 = Constrain swaps to odd msc values. (Used for frame-seq. stereo field selection)
+                   Unsupported: 1 = Constrain swaps to even msc values, 2 = Constrain swaps to odd msc values.
 
     Return value:
 
-    Value greater than or equal to zero on success: The target msc for which swap is scheduled.
+    Value greater than or equal to zero on success: In theoy the target msc for which swap is scheduled.
+    In practice the value 0 is returned, as the concept of target msc does not exist under Wayland.
+
     Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
+    This triggers silent fallback to timed wait + swap scheduling.
     -2 ... -x == Error condition.
 
 */
 psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC, psych_int64 divisor, psych_int64 remainder, unsigned int specialFlags)
 {
-    // Unsupported:
-    return(-1);
+    double tComp;
+    uint32_t tv_sec_hi, tv_sec_lo, tv_nsec;
+
+    // wp_commit_timing unsupported for this windows wl_surface, or in general?
+    if (!windowRecord->targetSpecific.wp_commit_timer) {
+        // Unsupported return code to trigger fallback:
+        return(-1);
+    }
+
+    // Is the extension supported by the system and enabled by Psychtoolbox and user? If not, we return
+    // a "not-supported" status code of -1 and turn into a no-op. Use the OpenML flag as stand in for swap
+    // scheduling:
+    if (!(windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML))
+        return(-1);
+
+    // Reject all unsupported parameters and flags:
+    if (targetMSC != 0 || divisor != 0 || remainder != 0 || specialFlags != 0) {
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() called with  a non-zero targetMSC %lli, divisor %lli, remainder %lli or specialFlags %i. This is not supported on Wayland. Fallback to simple timing!\n",
+                  targetMSC, divisor, remainder, specialFlags);
+
+        // Signal "unsupported" to trigger fallback:
+        return(-1);
+    }
+
+    // Clamp target time to positive values:
+    if (tWhen < 0)
+        tWhen = 0;
+
+    // Convert tWhen to compositor timebase tComp:
+    switch (wayland_presentation_clock_id) {
+        case CLOCK_MONOTONIC:
+            tComp = PsychOSRefTimeToMonotonicTime(tWhen);
+            break;
+
+        case CLOCK_REALTIME:
+            // TODO Only correct if our main_clock is CLOCK_REALTIME, handle monotonic -> realtime!
+            if (FALSE) {
+            //if (main_clock != CLOCK_REALTIME) {
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers(): Wayland compositor uses CLOCK_REALTIME presentation clock, but Psychtoolbox doesn't, and no mapping available! Fallback to simple timing!\n");
+
+                // Signal "unsupported" to trigger fallback:
+                return(-1);
+            }
+
+            // Matching clocks, therefore identity mapping:
+            tComp = tWhen;
+            break;
+
+        default:
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR: PsychOSScheduleFlipWindowBuffers(): Wayland compositor uses unknown presentation clock of id %i! Fallback to simple timing!\n", wayland_presentation_clock_id);
+
+            // Signal "unsupported" to trigger fallback:
+            return(-1);
+    }
+
+    // Clamp mapped target time to positive values:
+    if (tComp < 0)
+        tComp = 0;
+
+    // Split to 32 bit seconds hi/lo and nanoseconds values:
+    psych_uint64 secs = (psych_uint64) tComp;
+    tv_sec_hi = (uint32_t) (secs >> 32);
+    tv_sec_lo = (uint32_t) (secs & 0xffffffff);
+    tv_nsec = (uint32_t) ((tComp - (double) secs) * 1e9);
+
+    // Use wp_commit_timer for this wl_surface to add target presentation time, converted from tWhen:
+    wp_commit_timer_v1_set_timestamp((struct wp_commit_timer_v1*) windowRecord->targetSpecific.wp_commit_timer, tv_sec_hi, tv_sec_lo, tv_nsec);
+
+    // Trigger normal swap / Wayland surface commit sequence by (ab)using PsychOSFlipWindowBuffers():
+    PsychOSFlipWindowBuffers(windowRecord);
+
+    if (PsychPrefStateGet_Verbosity() > 12)
+        printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers() scheduled a Wayland surface present for target time %f seconds [Compositor clock %f seconds].\n", tWhen, tComp);
+
+    // Return a "fake msc" of 0 to signal success. Wayland commit timing protocol does not support or
+    // report a target msc "vblank count", as scheduling is not based on vblank counts, but on absolute
+    // presentation target times:
+    return(0);
 }
 
 /*
@@ -1571,7 +1693,7 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     PsychExecuteBufferSwapPrefix(windowRecord);
 
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-    // This must be lock-protected for use with X11/XLib.
+    // This must be lock-protected.
     PsychLockDisplay();
     waffle_window_swap_buffers(windowRecord->targetSpecific.windowHandle);
     windowRecord->target_sbc = windowRecord->submitted_sbc;
@@ -1965,13 +2087,6 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     if (nominalIFI > 0) nominalIFI = 1.0 / nominalIFI;
 
     if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
-        // This was needed to compensate for Westons 1 frame composition lag, but is
-        // no longer needed as of Weston 1.8+ due to Pekka's lag reduction patch.
-        if (FALSE && onlyForCalibration) {
-            targetTime -= nominalIFI;
-            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", nominalIFI * 1000.0);
-        }
-
         // Robustness improvement for swap scheduling on at least Weston 1.8, likely
         // won't hurt on other Wayland implementations - not for use in refresh rate
         // calibration.
@@ -2025,13 +2140,13 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
                 targetTime += delayFromFrameStart;
 
                 if (PsychPrefStateGet_Verbosity() > 4) {
-                    printf("PTB-DEBUG: Setting swap targetTime to %f secs [fudge %f secs] %f msecs after last swap, for Wayland composition compensation.\n",
+                    printf("PTB-DEBUG:PsychOSAdjustForCompositorDelay(): Setting swap targetTime to %f secs [fudge %f secs] %f msecs after last swap, for Wayland composition compensation.\n",
                            targetTime, delayFromFrameStart, 1000 * (targetTime - windowRecord->time_at_last_vbl));
                 }
             }
             else {
                 if (PsychPrefStateGet_Verbosity() > 4) {
-                    printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay(): No-Op due to lack of baseline data tvbl=%f, videorefresh=%f\n",
+                    printf("PTB-DEBUG:PsychOSAdjustForCompositorDelay(): No-Op due to lack of baseline data tvbl=%f, videorefresh=%f\n",
                            windowRecord->time_at_last_vbl, windowRecord->VideoRefreshInterval);
                 }
             }

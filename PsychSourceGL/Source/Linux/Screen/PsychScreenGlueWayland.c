@@ -115,6 +115,9 @@
 // source tree, as permitted by license. There's probably a better way to do this?
 #include "presentation_timing-client-protocol.h"
 
+// Header file for commit-timing-protocol extension:
+#include "commit_timing-client-protocol.h"
+
 /* These are needed for our GPU specific beamposition query implementation: */
 #include <errno.h>
 #include <stdio.h>
@@ -176,6 +179,9 @@ struct wp_presentation *wayland_pres = NULL;
 
 // And our presentation reference clock:
 uint32_t wayland_presentation_clock_id;
+
+// Handle to commit timing extension:
+struct wp_commit_timing_manager_v1 *wayland_commit_timing_manager = NULL;
 
 static struct wl_registry *wl_registry = NULL;
 static psych_bool wayland_roundtrip_needed = FALSE;
@@ -1126,6 +1132,17 @@ wayland_registry_listener_global(void *data,
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland wp_presentation_interface bound!\n");
     }
 
+    // Look for wp_commit_timing_manager_v1_interface support of version v1+:
+    if (!strcmp(interface, "wp_commit_timing_manager_v1") && (version >= 1)) {
+        wayland_commit_timing_manager = wl_registry_bind(registry, name, &wp_commit_timing_manager_v1_interface, 1);
+        if (!wayland_commit_timing_manager) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for wp_commit_timing_manager_v1_interface failed!\n");
+            return;
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland wp_commit_timing_manager_v1_interface bound!\n");
+    }
+
     // Look for Wayland outputs ~ video outputs ~ displays ~ our PTB screens:
     // Not yet sure if wl_output ~ PTB screen is the optimal abstraction/mapping,
     // but as a starter...
@@ -1153,7 +1170,6 @@ wayland_registry_listener_global(void *data,
 
     if (!strcmp(interface, "wl_shm")) {
         wl_shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
-        // wl_shm_add_listener(shm, &shm_listener, NULL);
     }
 
     return;
@@ -1174,6 +1190,12 @@ struct wp_presentation *get_wayland_presentation_extension(PsychWindowRecordType
 {
     // Already have a cached presentation_interface? If so, just return it:
     return(wayland_pres);
+}
+
+struct wp_commit_timing_manager_v1 *get_wayland_commit_timing_manager(PsychWindowRecordType* windowRecord)
+{
+    // Already have a cached wayland_commit_timing_manager interface? If so, just return it:
+    return(wayland_commit_timing_manager);
 }
 
 psych_bool PsychWaylandGetKbNames(PsychGenericScriptType *kbNames)
@@ -1660,6 +1682,11 @@ void PsychCleanupDisplayGlue(void)
         wp_presentation_destroy(wayland_pres);
 
     wayland_pres = NULL;
+
+    if (wayland_commit_timing_manager)
+        wp_commit_timing_manager_v1_destroy(wayland_commit_timing_manager);
+
+    wayland_commit_timing_manager = NULL;
 
     // Destroy our reference to the registry:
     wl_registry_destroy(wl_registry);

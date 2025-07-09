@@ -287,6 +287,7 @@ typedef struct {
     struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
     struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
     struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
+    void*                     wp_commit_timer;                // Holds the wp_commit_timer for the commit timing extension for scheduled presents.
 } PsychTargetSpecificWindowRecordType;
 #else
 // For the Linux Waffle generic backend:
