@@ -134,8 +134,8 @@ catch %#ok<*CTCH>
     %   end
 
     if IsWin
-        fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.20.5\n');
-        fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
+        fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.22.0\n');
+        fprintf('or a later version. Screen() will not work with earlier versions, or without GStreamer,\n');
         fprintf('or with the MinGW variants of the GStreamer runtime!\n');
         fprintf('Read ''help GStreamer'' for more info.\n\n');
     end

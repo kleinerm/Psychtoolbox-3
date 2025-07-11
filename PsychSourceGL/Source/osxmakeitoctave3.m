@@ -75,8 +75,8 @@ if mode==0
     -framework,IOKit,-framework,SystemConfiguration,-framework,Carbon,-framework,CoreText,-framework,QuartzCore,\
     -framework,CoreDisplay,-F/System/Library/PrivateFrameworks,-framework,DisplayServices,\
     -U,CoreDisplay_Display_SetUserBrightness,-U,CoreDisplay_Display_GetUserBrightness,\
+    -U,DisplayServicesGetBrightness,-U,DisplayServicesSetBrightness,\
     -U,DisplayServicesCanChangeBrightness,-U,DisplayServicesBrightnessChanged,\
-    -U,CoreDisplay_Display_SetAutoBrightnessIsEnabled,\
     -framework,Cocoa" ...
     -I/usr/include -I/usr/local/include -I/opt/homebrew/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-1.0 ...
     -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/libxml2 -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/glib-2.0 ...

@@ -47,18 +47,18 @@ function [avail, numChars] = CharAvail
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
 % 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 % 06/20/19 mk   Try to protect against KDE focus stealing nastiness via kbqueues.
+% 06/22/25 mk   Make baseline compatible with Matlab R2025a+ non-Java GUI.
 
-global OSX_JAVA_GETCHAR;
+global OSX_JAVA_GETCHAR; %#ok<GVMIS>
 persistent isjavadesktop;
 
+% Is this old Matlab with Java based GUI? Isn't this Windows? Isn't the Linux KDE GUI active?
 % Only check this once because psychusejava is a slow command.
 if isempty(isjavadesktop)
-    isjavadesktop = psychusejava('desktop');
+    isjavadesktop = psychusejava('desktop') && ~IsWin && isempty(getenv('KDE_FULL_SESSION'));
 end
 
-% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
-% Isn't the Linux KDE GUI active?
-if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
+if isjavadesktop
     % Make sure that the GetCharJava class is loaded and registered with
     % the java focus manager.
     if isempty(OSX_JAVA_GETCHAR)
@@ -84,7 +84,7 @@ if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
     return;
 end
 
-% Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
+% Running either on Octave, or on Matlab command line, or on Matlab R2025a+, or on MS-Windows:
 drawnow;
 if exist('fflush') %#ok<EXIST>
     builtin('fflush', 1);

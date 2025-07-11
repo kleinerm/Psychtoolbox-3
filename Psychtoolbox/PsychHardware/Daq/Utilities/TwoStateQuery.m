@@ -38,7 +38,7 @@ if nargin < 2 || isempty(TheChoices)
 elseif length(TheChoices) ~= 2 || ~iscell(TheChoices)
   warning('I don''t like the choices I received.  Am substituting unadulterated originals.');
   disp('But for kicks, this is what I was passed:');
-  TheChoices
+  disp(TheChoices);
   TheChoices{1} = 'Yes';
   TheChoices{2} = 'No';
 end	
@@ -70,7 +70,7 @@ end
 % Except on Matlab for macOS on Apple Silicon, where questdlg() is broken
 % as of R2024a - Half of the time it works, the other half clicking on a
 % button causes Matlab to hang with the spinning beach ball of death.
-if IsOctave || ~(IsOSX && IsARM)
+if IsOctave || ~(IsOSX && IsARM) || ~verLessThan('matlab', '25') %#ok<VERLESSMATLAB>
   button = questdlg(TheQuestion, 'Question', TheChoices{1}, TheChoices{2}, 'Cancel', 'Cancel');
   if ~isempty(strfind(button, TheChoices{1}))
     UserResponse = 1;
@@ -82,7 +82,8 @@ if IsOctave || ~(IsOSX && IsARM)
   return;
 end
 
-% NOT reached in current implementation!
+% Not reached in current implementation, except for Matlab pre R2025a on
+% macOS for Apple Silicon. Ugly fallback:
 FigPos = [300 600];
 FigWidth = 500;
 FigHeight = 200;
@@ -90,8 +91,6 @@ YesBPos = [125 30];
 YesBWidth = 80;
 YesBHeight = 50;
 NoBPos = [295 30];
-
-PrimeFontSize = 36;
 
 QueryFigh = figure('Position',[FigPos FigWidth FigHeight],'Resize','off','NumberTitle','off', ...
                   'Name','Question','MenuBar','none','Color','k');
@@ -106,7 +105,7 @@ th=text(FigWidth/2,0.65*FigHeight,TheQuestion,'FontSize',36,'Color',get_color('h
 TextExt = get(th,'Extent');
 if TextExt(1) < 0
   SpaceLocs = find(TheQuestion == 32 | TheQuestion == abs(filesep));
-  [MinDist, MinInd] = min(abs(floor(length(TheQuestion)/2)-SpaceLocs));
+  [~, MinInd] = min(abs(floor(length(TheQuestion)/2)-SpaceLocs));
   if TheQuestion(SpaceLocs(MinInd)) == abs(filesep)
     set(th,'String',sprintf('%s\n%s',TheQuestion(1:SpaceLocs(MinInd)),TheQuestion((SpaceLocs(MinInd)+1):end)));
   else
