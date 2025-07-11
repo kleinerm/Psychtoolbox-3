@@ -36,8 +36,10 @@ function FlushEvents(varargin)
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
 % 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 % 06/20/19 mk   Try to protect against KDE focus stealing nastiness via kbqueues.
+% 06/22/25 mk   Make baseline compatible with Matlab R2025a+ non-Java GUI.
 
-global OSX_JAVA_GETCHAR;
+global OSX_JAVA_GETCHAR; %#ok<GVMIS>
+persistent isjavadesktop;
 
 % We only flush the character queue if we are either called without
 % any arguments, or an empty argument string (which means: Flush
@@ -51,16 +53,20 @@ else
             doclear = 1;
         end
     end
-end;
+end
 
 % Execute a single drawnow() to kick in Matlabs event processing.
 % This will nicely eat up pending mouse-clicks, so they can't "spill over"
 % into Matlab GUI after end of an experiment script.
 drawnow;
 
-% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
-% Isn't the Linux KDE GUI active?
-if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
+% Is this old Matlab with Java based GUI? Isn't this Windows? Isn't the Linux KDE GUI active?
+% Only check this once because psychusejava is a slow command.
+if isempty(isjavadesktop)
+    isjavadesktop = psychusejava('desktop') && ~IsWin && isempty(getenv('KDE_FULL_SESSION'));
+end
+
+if isjavadesktop
     % Make sure that the GetCharJava class is loaded and registered with
     % the java focus manager.
     if isempty(OSX_JAVA_GETCHAR)
@@ -77,13 +83,13 @@ if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
         OSX_JAVA_GETCHAR.clear;
         % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
         % reported by Denis:
-        while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
+        while CharAvail, drawnow; GetChar; end
     end
 
     return;
 end
 
-% Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
+% Running either on Octave, or on Matlab command line, or on Matlab R2025a+, or on MS-Windows:
 if doclear == 1
     % Clear the internal queue of characters:
 
@@ -98,7 +104,7 @@ if doclear == 1
 
         % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
         % reported by Denis:
-        while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
+        while CharAvail, drawnow; GetChar; end
     else
         % Use keyboard queue by default:
         

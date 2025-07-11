@@ -1768,7 +1768,7 @@ end
 
 % Some non-standard driver: We support Matlab's serial() 
 % Windows or Linux: Matlab supports serial() object in JVM mode:
-if ~psychusejava('desktop')
+if ~usejava('jvm')
     error('You must run Matlab in JVM mode (JAVA enabled) for Cedrus response box to work!');
 end
 

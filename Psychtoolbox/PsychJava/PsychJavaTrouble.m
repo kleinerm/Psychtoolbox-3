@@ -67,6 +67,8 @@ function PsychJavaTrouble(installStatic)
 % 02.01.2019 Fix wrong argument order of strfind(), which caused redundant
 %            classpath updates all these years! Thanks to user tibaurauer for
 %            pointing this out. (MK)
+% 11.07.2025 Disable static classpath setup on Matlab R2025a or later - no
+%            longer needed, as it does not use a Java GUI anymore. (MK)
 
 % Only fix class path dynamically by default:
 if nargin < 1 || isempty(installStatic)
@@ -100,9 +102,10 @@ end
 
 % If we reach this point, then we're asked to update the static classpath
 % file, just as it would happen during PTB updates and installation:
-% If we're using Matlab then add the PsychJava stuff to the static
-% Java classpath.
-if ~IsOctave
+% If we're using Matlab then add the PsychJava stuff to the static Java
+% classpath. Unless we are on R2025a or later, where this is no longer
+% needed.
+if ~IsOctave && verLessThan('matlab', '25')
     try
         % Figure out the PsychJava path we need to add to the static Java
         % classpath.

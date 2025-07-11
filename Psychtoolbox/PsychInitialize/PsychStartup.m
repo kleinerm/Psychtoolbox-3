@@ -28,6 +28,7 @@ function PsychStartup
 % 11.10.2021  mk  Fix wrong drive letters in Win fallback GStreamer detection, introduced in 3.0.17.0.
 % 20.09.2023  mk  Remove all 32-Bit support on MS-Windows.
 % 04.11.2024  mk  Add support for PsychPlugins subfolder as runtime dll search path.
+% 11.07.2025  mk  Add priority fallback probe sequence for GStreamer 1.26+ default install location on Windows.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -55,6 +56,7 @@ try
             fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_MSVC_X86_64 is undefined.\n');
             fprintf('PsychStartup: Either GStreamer-1.22 MSVC or a later version is not installed at all, or if it is installed, then\n');
             fprintf('PsychStartup: something is botched. Trying various common locations for the GStreamer runtime to keep going.\n');
+            fprintf('PsychStartup: Maybe simply restarting Matlab or Octave, or logging out and in again, will fix this problem.\n');
         else
             if ~exist(sdkroot, 'dir')
                 % Env variable points to non-existent SDK dir. How peculiar?
@@ -66,7 +68,28 @@ try
             end
         end
 
-        % Probe standard install location on drives C,D,E,F,G:
+        % First, probe standard install location of GStreamer 1.26 and later on drives C,D,E,F,G:
+        if isempty(sdkroot) && exist(['C:\Program Files\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['C:\Program Files\gstreamer\1.0\' suffix];
+        end
+
+        if isempty(sdkroot) && exist(['D:\Program Files\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['D:\Program Files\gstreamer\1.0\' suffix];
+        end
+
+        if isempty(sdkroot) && exist(['E:\Program Files\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['E:\Program Files\gstreamer\1.0\' suffix];
+        end
+
+        if isempty(sdkroot) && exist(['F:\Program Files\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['F:\Program Files\gstreamer\1.0\' suffix];
+        end
+
+        if isempty(sdkroot) && exist(['G:\Program Files\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['G:\Program Files\gstreamer\1.0\' suffix];
+        end
+
+        % Then probe standard install location of GStreamer 1.24 and earlier on drives C,D,E,F,G:
         if isempty(sdkroot) && exist(['C:\gstreamer\1.0\' suffix], 'dir')
             sdkroot = ['C:\gstreamer\1.0\' suffix];
         end

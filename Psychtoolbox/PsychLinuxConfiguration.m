@@ -781,11 +781,9 @@ fprintf('Press Return key to continue.\n');
 pause;
 fprintf('\n\n\n');
 
-% Matlab version 8.4 (R2014b) or later?
-if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXIST>
-  % Yes.
-
-  % Latest Matlab bundles a totally crippled libvulkan.so.1 Vulkan loader
+% Matlab with broken libvulkan.so.1?
+if ~IsOctave
+  % Latest Matlabs bundle a totally crippled libvulkan.so.1 Vulkan loader
   % that overrides the good system installed Vulkan loader and sabotages
   % our PsychVulkan support. Apparently competent people are hard to hire...
   % Try to detect this and and rename the file:
@@ -802,11 +800,16 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXI
       fprintf('Success. Vulkan should work now.\n');
     end
   end
+end
 
+% Matlab version between 8.4 (R2014b) and 24.x (R2024b), ie. pre-R2025a?
+% Need to workaround bugs in its Java OpenGL JOGL GUI. No longer a problem
+% in R2025a and later with new JavaScript + WebGL GUI.
+if ~IsOctave && ~verLessThan('matlab', '8.4.0') && verLessThan('matlab', '25')
   % Disable use of ARB contexts for Matlab's plotting, as Mathworks can't be bothered to fix this
-  % bug for Linux + Intel gpu's now since at least the year 2020, but still present in R2024a:
+  % bug for Linux + Intel gpu's now since at least the year 2020, but still present in R2024b:
   cmd = sprintf('echo "-Djogl.disable.openglarbcontext=1" | sudo tee -a "%s/bin/glnxa64/java.opts"', matlabroot);
-  fprintf('Matlab releases from R2020b up to at least R2024a, possibly later ones as well, have\n');
+  fprintf('Matlab releases from R2020b up to and including Matlab R2024b have\n');
   fprintf('a bug that makes plotting with Matlab fail on Intel graphics chips. Will apply a fix to\n');
   fprintf('your Matlab installation to work around this bug. You may have to enter your administrator\n');
   fprintf('password to execute the following command:\n%s\n\n', cmd);

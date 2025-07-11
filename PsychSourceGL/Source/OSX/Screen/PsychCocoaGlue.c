@@ -343,7 +343,10 @@ hwinpidout:
     if (found) {
         if (verbose) printf("TARGETWINDOWNAME: '%s' with pid %i.\n", winName, pid);
     }
-    else pid = 0;
+    else {
+        pid = getpgrp(); // Process group id works as ok fallback for GUI host apps.
+        if (verbose) printf("TARGET: pid %i.\n", pid);
+    }
 
     return(pid);
 }
@@ -351,39 +354,43 @@ hwinpidout:
 // PsychCocoaSetUserFocusWindow is a replacement for Carbon's SetUserFocusWindow().
 void PsychCocoaSetUserFocusWindow(void* window)
 {
+    static pid_t guiAppPid = 0;
+    __block pid_t pid = 0;
+
+    // Store pid of current active / frontmost process with keyboard input focus in guiAppPid for
+    // later use by a PsychCocoaSetUserFocusWindow(NULL) call during onscreen window close ops:
+    if (window == (void*) 0x1) {
+        DISPATCH_SYNC_ON_MAIN({ pid = [[[NSWorkspace sharedWorkspace] frontmostApplication] processIdentifier]; });
+        guiAppPid = pid;
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: PID of current active GUI process with keyboard input focus stored as %i.\n", guiAppPid);
+
+        return;
+    }
+
     // Allocate auto release pool:
     //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
     DISPATCH_SYNC_ON_MAIN({
         NSWindow* focusWindow = (NSWindow*) window;
 
-        // Special flag: Try to restore main apps focus:
-        if (focusWindow == (NSWindow*) 0x1) {
-            focusWindow = [[NSApplication sharedApplication] mainWindow];
-        }
-
         // Direct keyboard input focus to window 'inWindow':
         if (focusWindow) [focusWindow makeKeyAndOrderFront: nil];
 
         // Special handle NULL provided? Try to regain keyboard focus rambo-style for
-        // our hosting window for octave / matlab -nojvm in terminal window:
+        // our hosting window for octave / matlab -nodesktop  in terminal window, and for
+        // Matlab R2025a+ with JavaScript GUI:
         if (focusWindow == NULL) {
             // This works to give keyboard focus to a process other than our (Matlab/Octave) runtime, if
             // the process id (pid_t) of the process is known and valid for a GUI app. E.g., passing in
-            // the pid of the XServer process X11.app or the Konsole.app will restore the xterm'inal windows
-            // or Terminal windows keyboard focus after a CGDisplayRelease() call, and thereby to the
-            // octave / matlab -nojvm process which is hosted by those windows.
-            //
-            // Problem: Finding the pid requires iterating and filtering over all windows and name matching for
-            // all possible candidates, and a shielding window from CGDisplayCapture() will still prevent keyboard
-            // input, even if the window has input focus...
-            pid_t pid = GetHostingWindowsPID();
-
-            // Also, the required NSRunningApplication class is unsupported on 64-Bit OSX 10.5, so we need to
-            // dynamically bind it and no-op if it is unsupported:
-            Class nsRunningAppClass = NSClassFromString(@"NSRunningApplication");
-
-            if (pid && (nsRunningAppClass != NULL)) {
-                NSRunningApplication* motherapp = [nsRunningAppClass runningApplicationWithProcessIdentifier: pid];
+            // the pid of the Terminal.app will restore the Terminal windows keyboard focus after a
+            // CGDisplayRelease() call, and thereby to the octave or matlab -nojvm command line interface
+            // process which is hosted by those terminal windows. This is also needed since Matlab R2025a
+            // to restore input focus for Matlab's GUI window, as R2025a uses separate processes for Psychtoolbox
+            // and the new JavaScript based Matlab GUI, so keyboard focus gets stolen from the Matlab GUI process
+            // by the Matlab interpreter / Psychtoolbox process.
+            if (guiAppPid) {
+                NSRunningApplication* motherapp = [NSRunningApplication runningApplicationWithProcessIdentifier: guiAppPid];
                 [motherapp activateWithOptions: NSApplicationActivateIgnoringOtherApps];
             }
         }
@@ -741,6 +748,86 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
 
     // Drain the pool:
     //[pool drain];
+}
+
+psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate)
+{
+    NSRect windowRect = NSMakeRect(0, 0, 1, 1);
+    static NSWindow *cocoaGhostWindow = NULL;
+    __block NSWindow *cocoaWindow = NULL;
+
+    // If our instance already has the ghost window state requested by doCreate, then we are done:
+    if ((doCreate && cocoaGhostWindow) || (!doCreate && !cocoaGhostWindow))
+        return(PsychError_none);
+
+    // Destruction of ghost window requested?
+    if (!doCreate) {
+        // Get rid of it:
+        DISPATCH_SYNC_ON_MAIN({
+            // Close window. This will also release the associated contentView:
+            [cocoaGhostWindow close];
+        });
+
+        cocoaGhostWindow = NULL;
+
+        return(TRUE);
+    }
+
+    // Some diagnostics wrt. main-thread or not:
+    if (PsychPrefStateGet_Verbosity() > 4)
+        printf("PTB-DEBUG: PsychCocoaCreateGhostWindow(): On %s thread.\n", ([NSThread isMainThread]) ? "MAIN APPLICATION" : "other");
+
+    // Create single pixel sized window with title bar, as needed for keyboard input focus / keystroke reception to work:
+    DISPATCH_SYNC_ON_MAIN({
+        cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:YES];
+    });
+
+    if (cocoaWindow == nil) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychCocoaCreateGhostWindow(): Could not create Cocoa ghost window!\n");
+
+        // Return failure:
+        return(FALSE);
+    }
+
+    // Setup the already created ghost window and show it:
+    DISPATCH_SYNC_ON_MAIN({
+        // Assign window title for debugging in view inspector:
+        [cocoaWindow setTitle:[NSString stringWithUTF8String:"PTB Ghost Window"]];
+
+        // Assign a content view which can process keyboard input instead of ignoring it,
+        // as ignoring key-down events would simply let them fall off the responder chain
+        // and cause a call to NSResponder:noResponderFor: at the end off the chain, whose
+        // default behavior is to create the annoying beep tone. We use a text input field
+        // as receiver of keyboard input:
+        [cocoaWindow setContentView:[[NSText alloc] initWithFrame:windowRect]];
+
+        // Set window as non-opaque, with a transparent window background color, so the
+        // window can be mostly invisible:
+        [cocoaWindow setOpaque:false];
+        [cocoaWindow setBackgroundColor:[NSColor colorWithDeviceWhite:0.0 alpha:0.0]];
+        [[cocoaWindow contentView] setDrawsBackground:NO];
+        [[cocoaWindow contentView] setTextColor:[NSColor colorWithDeviceWhite:0.0 alpha:0.0]];
+
+        // Make sure to be transparent to mouse events, e.g., mouse clicks, so the mouse
+        // can never interact with this ghost window:
+        [cocoaWindow setIgnoresMouseEvents:true];
+
+        // Position the window: TODO: Do we need to make this adaptive for multi-display setups?
+        [cocoaWindow setFrameTopLeftPoint:NSMakePoint(0, 0)];
+
+        // Bring it to front, so it will get keyboard input focus:
+        [cocoaWindow orderFrontRegardless];
+
+        // Show window:
+        [cocoaWindow display];
+    });
+
+    // Assign our new ghost window:
+    cocoaGhostWindow = cocoaWindow;
+
+    // Return success:
+    return(TRUE);
 }
 
 #pragma clang diagnostic pop

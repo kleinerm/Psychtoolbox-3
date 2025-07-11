@@ -270,7 +270,7 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
 
     // Initiate a power-down cycle to bring camera into standby mode:
     if (dc1394_camera_set_power(capdev->camera, DC1394_OFF)!=DC1394_SUCCESS) {
-        printf("PTB-WARNING: Tried to power down camera %i, but powerdown-cycle failed for some reason!\n", capturehandle); fflush(NULL);
+        printf("PTB-WARNING: Tried to power down camera %i, but powerdown-cycle failed for some reason!\n", capturehandle);
     }
 
     // Close & Shutdown camera, release ressources:
@@ -474,7 +474,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         deviceIndex + 1, deviceIndex, numCameras);
     }
 
-    fflush(NULL);
+
 
     // Prepare error message in case its needed below:
     sprintf(msgerr, "PTB-ERROR: Opening the %i. Firewire camera (deviceIndex=%i) failed! Failed to initialize camera with GUID %"PRIx64"\n", deviceIndex + 1, deviceIndex, cameras->ids[deviceIndex].guid);
@@ -544,12 +544,12 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Initiate a power-up cycle in case the camera is in standby mode:
     if (dc1394_camera_set_power(capdev->camera, DC1394_ON)!=DC1394_SUCCESS) {
-        printf("PTB-WARNING: Tried to power up camera %i, but powerup-cycle failed for some reason!\n", deviceIndex); fflush(NULL);
+        printf("PTB-WARNING: Tried to power up camera %i, but powerup-cycle failed for some reason!\n", deviceIndex);
     }
 
     // Initiate a reset-cycle on the camera to bring it into a clean state to start with:
     if (dc1394_camera_reset(capdev->camera)!=DC1394_SUCCESS) {
-        printf("PTB-WARNING: Tried to reset camera %i, but reset cycle failed for some reason!\n", deviceIndex); fflush(NULL);
+        printf("PTB-WARNING: Tried to reset camera %i, but reset cycle failed for some reason!\n", deviceIndex);
     }
 
     // Presence or absence of dc1394_read_cycle_timer() support is an indicator if we are running
@@ -564,7 +564,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     }
     else if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera %i seems to be a USB camera. Capture timestamps will be only approximations.\n", deviceIndex);
 
-    printf("PTB-INFO: Camera successfully opened...\n"); fflush(NULL);
+    printf("PTB-INFO: Camera successfully opened...\n");
 
     return(TRUE);
 }
@@ -769,7 +769,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
         printf("PTB-INFO: Using a %s input color format instead of a RGB color format. This requires expensive color conversion and\n",
                (color_code == DC1394_COLOR_CODING_RAW8 || color_code == DC1394_COLOR_CODING_MONO8 || color_code == DC1394_COLOR_CODING_RAW16 || color_code == DC1394_COLOR_CODING_MONO16) ? "RAW" : "YUV");
         printf("PTB-INFO: can lead to higher cpu load and longer latencies. You may be able to avoid this with different settings\n");
-        printf("PTB-INFO: for ROI, color depth and framerate...\n"); fflush(NULL);
+        printf("PTB-INFO: for ROI, color depth and framerate...\n");
     }
 
     // Query final image size and therefore ROI:
@@ -801,7 +801,6 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
         if(framerate < capturerate) {
             printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps. Using maximum of %f fps instead.\n",
                               (float) capturerate, framerate);
-        fflush(NULL);
         }
     }
 
@@ -810,7 +809,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
 
     if(PsychPrefStateGet_Verbosity() > 4){
         printf("PTB-INFO: Will use non-Format7 mode %i: Width x Height = %i x %i, fps=%f, colormode=%i ...\n",
-        (int) mode, mw, mh, framerate, (int) color_code); fflush(NULL);
+        (int) mode, mw, mh, framerate, (int) color_code);
     }
 
     // Success!
@@ -1144,7 +1143,6 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         if(framerate < capturerate) {
             printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps at given ROI setting. Using %f fps instead.\n",
                               (float) capturerate, framerate);
-        fflush(NULL);
         }
     }
 
@@ -1735,7 +1733,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (strstr(capdev->camera->vendor, "Unibrain") && strstr(capdev->camera->model, "Fire-i")) {
             // Unibrain Fire-i: Enforce correct speed:
             speed = DC1394_ISO_SPEED_400;
-            if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Unibrain Fire-i detected. Setting override bus speed 400 MBit...\n"); fflush(NULL);
+            if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Unibrain Fire-i detected. Setting override bus speed 400 MBit...\n");
         }
 
         // Assign final mode and framerate:
@@ -1750,40 +1748,40 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // =================
 
         // Set ISO speed:
-        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting ISO speed... "); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting ISO speed... ");
         err = dc1394_video_set_iso_speed(capdev->camera, speed);
         if (err != DC1394_SUCCESS) {
             PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting ISO speed failed!");
         }
 
-        if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n"); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n");
 
         // Set Mode:
-        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting mode..."); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting mode...");
         err = dc1394_video_set_mode(capdev->camera, mode);
         if (err != DC1394_SUCCESS) {
             PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting mode failed!");
         }
-        if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n"); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n");
 
         // Set Framerate for non-Format7 modes: This is redundant in Format7 mode...
-        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting framerate (even in nonFormat-7!)..."); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting framerate (even in nonFormat-7!)...");
         err = dc1394_video_set_framerate(capdev->camera, dc1394_framerate);
         if (err != DC1394_SUCCESS) {
             PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting fixed framerate failed!");
         }
-        if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n"); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n");
 
         // Format-7 capture?
         if (packetsize > 0) {
             // Format-7 capture DMA setup: We only set mode, color format, packetsize (and thereby framerate) and ROI (and thereby imagesize):
-            if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting format-7 ROI..."); fflush(NULL);
+            if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting format-7 ROI...");
             err = dc1394_format7_set_roi(capdev->camera, mode, color_code, packetsize, (unsigned int) capdev->roirect[kPsychLeft], (unsigned int) capdev->roirect[kPsychTop],
                                             (unsigned int) PsychGetWidthFromRect(capdev->roirect), (unsigned int) PsychGetHeightFromRect(capdev->roirect));
             if (err != DC1394_SUCCESS) {
                 PsychErrorExitMsg(PsychError_system, "Unable to setup and start capture engine: Setting Format7 ROI failed!");
             }
-            if(PsychPrefStateGet_Verbosity()>5) printf("...done. \n"); fflush(NULL);
+            if(PsychPrefStateGet_Verbosity()>5) printf("...done. \n");
 
             // Query total number of bytes per delivered frame (including SFF chunks and other meta-data):
             capdev->total_bytes = 0;
@@ -1811,7 +1809,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 
         // Finally setup and start DMA video capture engine with default flags (auto allocation and
         // release of iso bandwidth and channels) and num_dmabuffers DMA buffer slots in internal video FIFO:
-        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting up DMA capture now!"); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting up DMA capture now!");
         err = dc1394_capture_setup(capdev->camera, capdev->num_dmabuffers, DC1394_CAPTURE_FLAGS_DEFAULT);
         if (err != DC1394_SUCCESS) {
             // Failed! We clean up and fail:
@@ -1819,7 +1817,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             PsychErrorExitMsg(PsychError_system, "Unable to setup and start DMA capture engine - Start of video capture failed!");
         }
 
-        if(PsychPrefStateGet_Verbosity()>5) printf(" DMA-Engine started.\n"); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf(" DMA-Engine started.\n");
 
         // No sync master by default. Once the sync master gets started, it will set this
         // field on all slaves to reference himself:
@@ -1919,7 +1917,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Record real start time:
         PsychGetAdjustedPrecisionTimerSeconds(startattime);
 
-        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Capture engine fully running...\n"); fflush(NULL);
+        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Capture engine fully running...\n");
 
         // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
         if (capdev->syncmode & kPsychIsBusSynced) {

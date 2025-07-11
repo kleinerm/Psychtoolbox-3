@@ -4221,7 +4221,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // it means that we missed the proper video refresh cycle:
         tshouldflip = flipwhen;
 
-        if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
+        if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce) && !osspecific_asyncflip_scheduled) {
             // Adjust target time for potential OS-specific compositor delay:
             flipwhen = PsychOSAdjustForCompositorDelay(windowRecord, flipwhen, FALSE);
         }
