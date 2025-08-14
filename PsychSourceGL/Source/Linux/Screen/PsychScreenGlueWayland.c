@@ -1534,7 +1534,7 @@ void InitCGDisplayIDList(void)
     free(wafflenatdis);
     wafflenatdis = NULL;
 
-    if (!getenv("PSYCH_DISABLE_COLORD")) {
+    if (getenv("PSYCH_ENABLE_COLORD") /* !getenv("PSYCH_DISABLE_COLORD") */) {
         // Initialize connection to colord - the color management daemon:
         colord_client = cd_client_new();
 
@@ -1584,7 +1584,7 @@ void InitCGDisplayIDList(void)
     }
     else {
         colord_client = NULL;
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Disabled colord support via users setenv('PSYCH_DISABLE_COLORD', '1'). Gamma table functions disabled.\n");
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Disabled colord support due to lack of user setenv('PSYCH_ENABLE_COLORD', '1'). Gamma table functions disabled.\n");
     }
 
     // Get our own wl_registry, do the enumeration and binding:
