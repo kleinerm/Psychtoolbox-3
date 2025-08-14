@@ -118,6 +118,9 @@
 // Header file for commit-timing-protocol extension:
 #include "commit_timing-client-protocol.h"
 
+// fifo protocol extension:
+#include "fifo-client-protocol.h"
+
 /* These are needed for our GPU specific beamposition query implementation: */
 #include <errno.h>
 #include <stdio.h>
@@ -182,6 +185,8 @@ uint32_t wayland_presentation_clock_id;
 
 // Handle to commit timing extension:
 struct wp_commit_timing_manager_v1 *wayland_commit_timing_manager = NULL;
+
+struct wp_fifo_manager_v1 *wayland_fifo_manager = NULL;
 
 static struct wl_registry *wl_registry = NULL;
 static psych_bool wayland_roundtrip_needed = FALSE;
@@ -1143,6 +1148,17 @@ wayland_registry_listener_global(void *data,
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland wp_commit_timing_manager_v1_interface bound!\n");
     }
 
+    // Look for wp_fifo_manager_v1_interface support of version v1+:
+    if (!strcmp(interface, "wp_fifo_manager_v1") && (version >= 1)) {
+        wayland_fifo_manager = wl_registry_bind(registry, name, &wp_fifo_manager_v1_interface, 1);
+        if (!wayland_fifo_manager) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for wp_fifo_manager_v1 failed!\n");
+            return;
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland wp_fifo_manager_v1 bound!\n");
+    }
+
     // Look for Wayland outputs ~ video outputs ~ displays ~ our PTB screens:
     // Not yet sure if wl_output ~ PTB screen is the optimal abstraction/mapping,
     // but as a starter...
@@ -1683,10 +1699,17 @@ void PsychCleanupDisplayGlue(void)
 
     wayland_pres = NULL;
 
+    // Reset commit timing extension binding:
     if (wayland_commit_timing_manager)
         wp_commit_timing_manager_v1_destroy(wayland_commit_timing_manager);
 
     wayland_commit_timing_manager = NULL;
+
+    // Reset fifo extension binding:
+    if (wayland_fifo_manager)
+        wp_fifo_manager_v1_destroy(wayland_fifo_manager);
+
+    wayland_fifo_manager = NULL;
 
     // Destroy our reference to the registry:
     wl_registry_destroy(wl_registry);
@@ -1715,37 +1738,16 @@ void PsychCleanupDisplayGlue(void)
 
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
-    int* x11_depths = NULL;
-    int  i, count = 0;
-
     if (screenNumber >= numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
 
-    // Update out view of this screens configuration:
-    PsychLockDisplay();
-//      ProcessWaylandEvents(screenNumber);
-//
-//     if (displayCGIDs[screenNumber]) {
-//         x11_depths = XListDepths(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &count);
-//     }
-
-    PsychUnlockDisplay();
-
-    if (x11_depths && depths && count > 0) {
-        // Query successful: Add all values to depth struct:
-//         for(i=0; i<count; i++) PsychAddValueToDepthStruct(x11_depths[i], depths);
-//         XFree(x11_depths);
-    }
-    else {
-        // Query failed: Assume at least 32 bits is available.
-        printf("PTB-WARNING: Couldn't query available display depths values! Returning a made up list...\n");
-        PsychAddValueToDepthStruct(32, depths);
-        PsychAddValueToDepthStruct(24, depths);
-        PsychAddValueToDepthStruct(16, depths);
-    }
+    // Not possible on Wayland: Assume at least 24 bits is available:
+    PsychAddValueToDepthStruct(24, depths);
 }
 
 double PsychOSVRefreshFromMode(XRRModeInfo *mode)
 {
+    (void) mode;
+
     // This routine is not really needed anymore. Only theoretically called from
     // SCREENResolutions.c, where it gets skipped anyway. Just define a no-op
     // implementation to avoid linker failure or ugly workarounds for the moment:
@@ -1900,18 +1902,9 @@ psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 {
     if (screenNumber>=numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
-// TODO: Make it work for real.
-    PsychLockDisplay();
-//     ProcessWaylandEvents(screenNumber);
-//
-//     if (displayCGIDs[screenNumber]) {
-//         PsychAddValueToDepthStruct(DefaultDepth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), depth);
-//     }
-//     else {
-        PsychAddValueToDepthStruct(24, depth);
-//     }
 
-    PsychUnlockDisplay();
+    // Use a safe default of 24 bit color depth aka 8 bpc / 16.8 million colors:
+    PsychAddValueToDepthStruct(24, depth);
 }
 
 float PsychGetNominalFramerate(int screenNumber)

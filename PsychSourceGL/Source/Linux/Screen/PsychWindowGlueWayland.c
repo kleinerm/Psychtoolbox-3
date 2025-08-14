@@ -67,6 +67,9 @@ GLenum glewContextInit(void);
 // Header file for commit-timing-protocol extension:
 #include "commit_timing-client-protocol.h"
 
+// fifo protocol extension:
+#include "fifo-client-protocol.h"
+
 // XDG shell protocol:
 #include "xdg_shell-client-protocol.h"
 
@@ -89,6 +92,7 @@ extern psych_bool displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 // From PsychScreenGlueWayland.c:
 struct wp_presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord);
 struct wp_commit_timing_manager_v1 *get_wayland_commit_timing_manager(PsychWindowRecordType* windowRecord);
+extern struct wp_fifo_manager_v1 *wayland_fifo_manager;
 
 // Container with feedback about a completed swap - the equivalent of
 // our good old INTEL_swap_event on X11/GLX, here for Wayland:
@@ -1224,6 +1228,11 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
         windowRecord->targetSpecific.wp_commit_timer = NULL;
     }
 
+    if (windowRecord->targetSpecific.wp_fifo) {
+        wp_fifo_v1_destroy(windowRecord->targetSpecific.wp_fifo);
+        windowRecord->targetSpecific.wp_fifo = NULL;
+    }
+
     // Detach OpenGL rendering context again - just to be safe!
     waffle_make_current(windowRecord->targetSpecific.deviceContext, NULL, NULL);
     currentContext = NULL;
@@ -1504,6 +1513,9 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
     struct wp_commit_timing_manager_v1 *wayland_commit_timing_manager = NULL;
 
+    // Retrieve underlying native wl_surface stored in xwindowHandle:
+    struct wl_surface *wl_surface = windowRecord->targetSpecific.xwindowHandle;
+
     // Initialize fudge factor needed by PsychOSAdjustForCompositorDelay().
     // Default to 0.2 msecs, allow user override for testing and benchmarking via
     // environment variable:
@@ -1528,15 +1540,12 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     // Enable use of Wayland presentation_feedback extension for swap completion timestamping:
     windowRecord->specialflags &= ~kPsychOpenMLDefective;
 
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Enabling Wayland wp_presentation_feedback extension for swap completion timestamping.\n");
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Enabling Wayland wp_presentation_feedback extension for swap completion timestamping on window %i.\n", windowRecord->windowIndex);
 
     // Enable clever swap scheduling if the required wp_commit_timing extension version 1 or later is supported,
     // unless this is disabled upon user script request:
     if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDisableOpenMLScheduling) &&
         ((wayland_commit_timing_manager = get_wayland_commit_timing_manager(windowRecord)) != NULL)) {
-        // Retrieve underlying native wl_surface stored in xwindowHandle:
-        struct wl_surface *wl_surface = windowRecord->targetSpecific.xwindowHandle;
-
         // Create wp_commit_timer for windowRecord's associated wl_surface:
         windowRecord->targetSpecific.wp_commit_timer = (void*) wp_commit_timing_manager_v1_get_timer(wayland_commit_timing_manager, wl_surface);
         if (windowRecord->targetSpecific.wp_commit_timer) {
@@ -1550,6 +1559,13 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
             printf("PTB-WARNING: Failed to enable Wayland wp_commit_timing extension for swap scheduling on window %i. Could not get commit timer object for wl_surface!\n",
                    windowRecord->windowIndex);
         }
+    }
+
+    // Support for fifo extension? Bind a control object for the surface, if so:
+    if (wayland_fifo_manager) {
+        windowRecord->targetSpecific.wp_fifo = (void*) wp_fifo_manager_v1_get_fifo(wayland_fifo_manager, wl_surface);
+        if (windowRecord->targetSpecific.wp_fifo && (PsychPrefStateGet_Verbosity() > 3))
+            printf("PTB-INFO: Enabling Wayland wp_fifo extension for swap control on window %i.\n", windowRecord->windowIndex);
     }
 
     return;
@@ -1687,6 +1703,17 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     // need to setup a proper present_feedback event for the upcoming swap:
     if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
         wayland_window_create_feedback(windowRecord);
+    }
+
+    // If fifo protocol supported, use it to add a new fifo barrier to this window present, and make
+    // the upcoming new present of this window wait for a potentially pending fifo barrier from a previous
+    // present. This should make sure that any presented image is on screen for at least one video refresh
+    // cycle, ie. FIFO present behaviour instead of default Wayland MAILBOX behaviour, where a "presented"
+    // image can be discarded if a more recent one is presented in the same video refresh cycle - ie. an
+    // image never shows:
+    if (windowRecord->targetSpecific.wp_fifo) {
+        wp_fifo_v1_set_barrier(windowRecord->targetSpecific.wp_fifo);
+        wp_fifo_v1_wait_barrier(windowRecord->targetSpecific.wp_fifo);
     }
 
     // Execute OS neutral bufferswap code first:
