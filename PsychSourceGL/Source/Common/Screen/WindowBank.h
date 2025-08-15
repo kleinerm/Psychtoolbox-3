@@ -120,7 +120,7 @@
                                             // post-processing to the two outputs. An example is display mirroring or special HDR displays.
 #define kPsychNeedGPUPanelFitter      32768     // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
 #define kPsychNeedOtherStreamInput (1 << 17)    // This flag signals that the input image for the other view channel of a stereo pipeline should be bound to texture unit 1 as 2nd input.
-#define kPsychNeedRetinaResolution (1 << 18)    // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution.
+#define kPsychNeedRetinaResolution (1 << 18)    // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution. Wayland: Request full Retina.
 #define kPsychNeedClientRectNoFitter (1 << 19)  // Do not use the panelfitter, but still use provided clientRect to define window geometry as seen by client code.
 #define kPsychNeedFinalizedFBOSinks   (1 << 20) // finalizedFBO's must be backed by real OpenGL FBO's as image sinks, not by the system backbuffer, as would be the default.
 #define kPsychUseExternalSinkTextures (1 << 21) // finalizedFBO's have backing OpenGL FBO's which use externally created and injected OpenGL textures as color attachment (aka rendertargets).
@@ -153,7 +153,7 @@
 #define kPsychIsEGLWindow                   4096    // 'specialflags' setting 4096: This window is living on a EGL backend (X11/Wayland/GBM/Android/...)
 #define kPsychSurfacelessContexts           16384   // 'specialflags' setting 16384: This windows main context and userspace contexts must not attach to windowing system framebuffer surfaces.
 #define kPsychDontDeleteOnClose             (1 << 17) // 'specialflags' setting 2^17: Do not close this texture/offscreen window on a call to Screen('Close'), only if explicitely closed by handle.
-#define kPsychNeedPostSwapLockedFlush       (1 << 18) // 'specialflags' setting 2^18: Window needs display lock protected pixelwrite+flush on framebuffer immediately after bufferswap.
+//kPsychNeedRetinaResolution shared (S)     (1 << 18) // 'specialflags' setting 2^18: From imagingMode flags in OpenWindow: Tell WSI backend that native Retina resolution is needed, cfe. Wayland.
 #define kPsychGUIWindowWMPositioned         (1 << 19) // 'specialflags' setting 2^19: GUI window is positioned onscreen by window manager, users position spec is ignored.
 #define kPsychNeedOpenMLTSWorkaround        (1 << 20) // 'specialflags' setting 2^20: KMS pageflip completion events are faulty on a FOSS driver: Use glXGetSyncValuesOML workaround.
 #define kPsychClockPrecisionOneTimeWarningDone (1 << 21) // 'specialflags' setting 2^21: Signals that the one-time warning wrt. imprecise visual onset timestamp was issued.
@@ -172,13 +172,14 @@
 #define kPsychDontUseFlipperThread          (1ULL << 34) // 'specialflags': Do not allow use of the background flipper thread, because it conflicts with some external display method.
 #define kPsychSkipSecondaryVsyncForFlip     (1ULL << 35) // 'specialflags': Perform flips on this windows associated secondary/slavewindow without VSYNC, e.g., for mirror mode.
 #define kPsychBackendDecisionMade           (1ULL << 36) // 'specialflags': Decision wrt. use of display backend has been intentionally made by high-level 'OpenWindow' caller.
+#define kPsychNeedPostSwapLockedFlush       (1ULL << 37) // 'specialflags': Window needs display lock protected pixelwrite+flush on framebuffer immediately after bufferswap.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18(S),2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,
-// 2^31,2^32,2^33,2^34,2^35,2^36. --> Flags of 2^37 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18(S),2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,
+// 2^31,2^32,2^33,2^34,2^35,2^36,2^37. --> Flags of 2^38 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -289,6 +290,7 @@ typedef struct {
     struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
     void*                     wp_commit_timer;                // Holds the wp_commit_timer for the commit timing extension for scheduled presents.
     void*                     wp_fifo;                        // Holds the wp_fifo for the fifo extension for FIFO presents vs. Mailbox presents.
+    void*                     wp_viewport;                    // Holds the wp_viewport for Retina / HiDPI scaling purposes.
 } PsychTargetSpecificWindowRecordType;
 #else
 // For the Linux Waffle generic backend:

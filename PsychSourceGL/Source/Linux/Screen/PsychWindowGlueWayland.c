@@ -70,6 +70,9 @@ GLenum glewContextInit(void);
 // fifo protocol extension:
 #include "fifo-client-protocol.h"
 
+// viewporter extension for HiDPI scaling:
+#include "viewporter-client-protocol.h"
+
 // XDG shell protocol:
 #include "xdg_shell-client-protocol.h"
 
@@ -93,6 +96,10 @@ extern psych_bool displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 struct wp_presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord);
 struct wp_commit_timing_manager_v1 *get_wayland_commit_timing_manager(PsychWindowRecordType* windowRecord);
 extern struct wp_fifo_manager_v1 *wayland_fifo_manager;
+extern struct wp_viewporter *wayland_viewporter;
+
+// Function in PsychScreenGlueWayland.c:
+double PsychGetScreenOutputScale(int screenNumber);
 
 // Container with feedback about a completed swap - the equivalent of
 // our good old INTEL_swap_event on X11/GLX, here for Wayland:
@@ -378,7 +385,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     CGDirectDisplayID dpy;
     int scrnum;
     unsigned long mask;
-    int i, x, y, width, height, nrconfigs, buffdepth;
+    int i, x, y, nrconfigs, buffdepth;
+    long width, height;
     GLenum glerr;
     int32_t attrib[41];
     int attribcount = 0;
@@ -393,6 +401,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     union waffle_native_window *wafflewin;
     struct waffle_wayland_window *wayland_window;
     struct waffle_context *ctx;
+    psych_bool useFullRetina = (windowRecord->specialflags & kPsychNeedRetinaResolution) ? TRUE : FALSE;
 
     // Always init the list for wayland present events:
     wl_list_init(&windowRecord->targetSpecific.presentation_feedback_list);
@@ -553,6 +562,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // HACK TODO:
     windowRecord->targetSpecific.privDpy = NULL;
 
+    // Use of native display Retina / HiDPI resolution requested? We can only do that with
+    // the help of the wp_viewporter extension, so if that is unsupported then force disable
+    // useFullRetina:
+    if (useFullRetina && !wayland_viewporter) {
+        useFullRetina = FALSE;
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: Native Retina resolution requested for window %i, but required wp_viewporter extension unsupported. Fallback to non-Retina mode.\n",
+                   windowRecord->windowIndex);
+    }
+
     // Check if this should be a fullscreen window:
     PsychGetScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
@@ -565,8 +584,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // the current display/desktop:
         x = 0;
         y = 0;
-        width = PsychGetWidthFromRect(screenrect);
-        height = PsychGetHeightFromRect(screenrect);
+
+        if (useFullRetina) {
+            PsychGetScreenPixelSize(screenSettings->screenNumber, &width, &height);
+        }
+        else {
+            PsychGetScreenSize(screenSettings->screenNumber, &width, &height);
+        }
+
+        // Sync window rect to expected reality:
+        PsychMakeRect(windowRecord->rect, x, y, x + (int) width, y + (int) height);
 
         // Mark this window as fullscreen window:
         windowRecord->specialflags |= kPsychIsFullscreenWindow;
@@ -586,16 +613,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
         // Copy absolute screen location and area of window to 'globalrect',
         // so functions like Screen('GlobalRect') can still query the real
-        // bounding gox of a window onscreen:
+        // bounding box of a window onscreen:
         PsychCopyRect(windowRecord->globalrect, windowRecord->rect);
     }
 
-    // TODO XXX the whole bscale buffer scaling for getting native Retina resolution does not work
-    // at all. Don't know what's wrong, ...
-    int bscale = 1;
-    width *= bscale;
-    height *= bscale;
-    printf("Wayland window width x height is %i x %i\n", width, height);
+    if (PsychPrefStateGet_Verbosity() > 3)
+        printf("PTB-INFO: Wayland window %i framebuffer content width x height is %i x %i\n", windowRecord->windowIndex, width, height);
 
     // Select OpenGL context API for use with this window:
     attrib[attribcount++] = WAFFLE_CONTEXT_API;
@@ -824,6 +847,47 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     wafflewin = waffle_window_get_native(window);
     wayland_window = wafflewin->wayland;
 
+    // windowrect width x height == width x height == waffle window width x height == wl_buffer width x height == OpenGL window width x height
+    // Non-Retina windowed:   No viewporter => wl_buffer size == wl_surface logical size --> Will be scaled up by compositor on Retina display.
+    // Non-Retina fullscreen: No viewporter => wl_buffer size is Wayland output logical size == wl_surface logical size (covering whole output) --> Will be scaled up by compositor on Retina.
+    // Retina windowed: Viewporter: wl_buffer size is windowrect size, viewporter dest size == wl_surface size = windowrect size / retina scaling --> Upscale by compositor * retina == cancels out.
+    // Retina fullscreen: Viewporter: wl_buffer size is Wayland output PHYSICAL size, viewporter dest size = wl_surface size == Wayland output logical size ~ wl_buffer size / retina scaling.
+    // If wp_viewporter extension is available, use it for wl_buffer -> wl_surface cropping, scaling, sizing to handle
+
+    // Non-Retina: No viewporter, width and height from user window rect (windowed) or logical output size (fullscreen) aka PsychGetScreenRect()       : All scaled up by compositor.
+    // Retina:    Use viewporter, width and height from user window rect (windowed) or physical output size (fullscreen) aka PsychGetScreenPixelSize() : vp dstsize = size / retina scaling
+    // Retina / HiDPI displays in an appropriate way:
+    PsychUnlockDisplay();
+    if (useFullRetina && wayland_viewporter) {
+        // Destination size aka wl_surface size is in Wayland desktop logical pixel units, not display physical pixel units.
+        // Calculate logical size as width x height divided by Retina scaling factor:
+        double scale = PsychGetScreenOutputScale(screenSettings->screenNumber);
+        long surface_logical_width = (long) (width / scale + 0.5);
+        long surface_logical_height = (long) (height / scale + 0.5);
+
+        // For fullscreen windows, override with queried logical size of the output, to avoid any roundoff errors:
+        if (windowRecord->specialflags & kPsychIsFullscreenWindow)
+            PsychGetScreenSize(screenSettings->screenNumber, &surface_logical_width, &surface_logical_height);
+
+        // Create Wayland viewporter to enforce surface_logical_width x surface_logical_height size of output wl_surface:
+        windowRecord->targetSpecific.wp_viewport = wp_viewporter_get_viewport(wayland_viewporter, wayland_window->wl_surface);
+        if (windowRecord->targetSpecific.wp_viewport) {
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("\nPTB-INFO: Native Retina mode: Attaching Wayland viewporter to window %i. Scaled (%0.2f%%) window output logical size set to %i x %i points.\n", 100 * scale,
+                       windowRecord->windowIndex, surface_logical_width, surface_logical_height);
+
+            //wp_viewport_set_source(windowRecord->targetSpecific.wp_viewport, wl_fixed_from_double(0), wl_fixed_from_double(0), wl_fixed_from_double(width), wl_fixed_from_double(height));
+            wp_viewport_set_destination(windowRecord->targetSpecific.wp_viewport, (int32_t) surface_logical_width, (int32_t) surface_logical_height);
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("\nPTB-ERROR: Attaching Wayland viewporter to window %i for native Retina resolution failed! This should not happen! Expect Retina scaling trouble on HiDPI displays!\n",
+                       windowRecord->windowIndex);
+        }
+    }
+
+    PsychLockDisplay();
+
     // Set hints for window sizing and positioning:
     // TODO FIXME Wayland...
     {
@@ -941,12 +1005,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
         // Done with defining input and display regions, so destroy our region:
         wl_region_destroy(region);
-
-        if (wl_proxy_get_version((struct wl_proxy *) wayland_window->wl_surface) >= 3)
-            wl_surface_set_buffer_scale(wayland_window->wl_surface, bscale);
-        else
-            printf("PTB-INFO: wl_surface version %i < 3! HiDPI/Retina window scaling unsupported.\n",
-                   wl_proxy_get_version((struct wl_proxy *) wayland_window->wl_surface));
 
         if (PsychPrefStateGet_Verbosity() > 3)
             printf("PTB-INFO: Onscreen window uses: wl_shell_surface %p, xdg_toplevel %p\n", wayland_window->wl_shell_surface, wayland_window->xdg_toplevel);
@@ -1249,6 +1307,11 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
     if (windowRecord->targetSpecific.glusercontextObject) {
         waffle_context_destroy(windowRecord->targetSpecific.glusercontextObject);
         windowRecord->targetSpecific.glusercontextObject = NULL;
+    }
+
+    if (windowRecord->targetSpecific.wp_viewport) {
+        wp_viewport_destroy(windowRecord->targetSpecific.wp_viewport);
+        windowRecord->targetSpecific.wp_viewport = NULL;
     }
 
     // Close & Destroy the window:
@@ -1728,6 +1791,18 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     PsychLockDisplay();
     waffle_window_swap_buffers(windowRecord->targetSpecific.windowHandle);
     windowRecord->target_sbc = windowRecord->submitted_sbc;
+
+    // HACK: Immediately post-swap, we must "resize" the Waffle window to the size it is supposed to have,
+    // aka the windowRecord->rect. Why? This is for Retina / HiDPI displays in 'useFullRetina' mode,
+    // when the framebuffer size / EGL window size must match the full native resolution. As Waffle
+    // is unaware of Retina stuff, it will resize the EGL framebuffer whenever it receives a configure
+    // event - which contains the virtual size of the wl_surface, not the wanted framebuffer size!
+    // The effect is that the framebuffer gets reduced in size periodically during each swap, and we
+    // must manually counteract this here Immediately post-swap and before the first render. Wayland
+    // EGL is designed to latch actual EGL window size and framebuffer size on first glDrawXXX call
+    // after swap, so this should hopefully do the trick, and at least does so under testing with
+    // KDE KWin 6.4 + Mesa 25.2.0, so fingers crossed for this hack:
+    waffle_window_resize(windowRecord->targetSpecific.windowHandle,(int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
     PsychUnlockDisplay();
 
     return;
