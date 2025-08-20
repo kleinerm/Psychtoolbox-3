@@ -1561,8 +1561,12 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         }
     }
 
-    // Support for fifo extension? Bind a control object for the surface, if so:
-    if (wayland_fifo_manager) {
+    // Support for fifo extension? Bind a control object for the surface if so, unless the Mesa Gallium zink OpenGL
+    // driver is used, because zink implements OpenGL on top of Vulkan, and will use Vulkan VK_FIFO present modes, which
+    // in turn are implemented on Wayland by using wp_fifo. Iow. The zink driver uses wp_fifo internally already and us
+    // using it ourselves is both redundant, and causes Wayland protocol errors and hangs.
+    if (wayland_fifo_manager && !strstr((char*) glGetString(GL_RENDERER), "zink")) {
+        // wp_fifo supported, and zink driver not in use - go for it:
         windowRecord->targetSpecific.wp_fifo = (void*) wp_fifo_manager_v1_get_fifo(wayland_fifo_manager, wl_surface);
         if (windowRecord->targetSpecific.wp_fifo && (PsychPrefStateGet_Verbosity() > 3))
             printf("PTB-INFO: Enabling Wayland wp_fifo extension for swap control on window %i.\n", windowRecord->windowIndex);
