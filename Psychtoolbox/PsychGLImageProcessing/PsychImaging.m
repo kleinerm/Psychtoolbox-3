@@ -2152,6 +2152,18 @@ if strcmpi(cmd, 'OpenWindow')
         vrrParams = varargin{12};
     end
 
+    % Native Retina resolution requested? This affects panel fitter configuration.
+    screenResQueryFlag = 1;
+    if bitand(imagingMode, kPsychNeedRetinaResolution)
+        if IsWayland
+            screenResQueryFlag = 1;
+        end
+    else
+        if IsWayland
+            screenResQueryFlag = 0;
+        end
+    end
+
     if ~isempty(find(mystrcmp(reqs, 'UseDisplayRotation'))) %#ok<*EFIND>
         % Yes. Extract parameters:
         floc = find(mystrcmp(reqs, 'UseDisplayRotation'));
@@ -2178,7 +2190,7 @@ if strcmpi(cmd, 'OpenWindow')
 
         % Get full size of output framebuffer:
         if isempty(fitRefRect)
-            [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid, 1);
+            [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid, screenResQueryFlag);
         else
             clientRes = [RectWidth(fitRefRect), RectHeight(fitRefRect)];
         end
@@ -2240,7 +2252,7 @@ if strcmpi(cmd, 'OpenWindow')
 
         % Define full size of output framebuffer:
         if isempty(fitRefRect)
-            dstFit = Screen('Rect', screenid, 1);
+            dstFit = Screen('Rect', screenid, screenResQueryFlag);
         else
             dstFit = SetRect(0, 0, RectWidth(fitRefRect), RectHeight(fitRefRect));
         end
@@ -2395,7 +2407,7 @@ if strcmpi(cmd, 'OpenWindow')
             degrad = 2 * pi * rotAngle / 360;
             rotOffset(1) = -(winCenter(2) - rotX) * sin(degrad);
             rotOffset(2) =  (winCenter(1) - rotY) * sin(degrad);
-            dstFit = OffsetRect(dstFit, rotOffset(1), rotOffset(2));
+            dstFit = OffsetRect(dstFit, rotOffset(1), rotOffset(2)) + 1e-6;
         end
 
         % Build final fitterParams vector:

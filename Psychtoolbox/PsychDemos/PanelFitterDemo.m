@@ -102,7 +102,8 @@ try
     
     % Prepare imaging pipeline for some fitting work:
     PsychImaging('PrepareConfiguration');
-    
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     % Rotate framebuffer clockwise for portrait mode:
     PsychImaging('AddTask', 'General', 'UseDisplayRotation', 90);
     
@@ -123,7 +124,8 @@ try
     
     % Prepare imaging pipeline for some fitting work:
     PsychImaging('PrepareConfiguration');
-    
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     % Rotate framebuffer counter-clockwise for portrait mode:
     PsychImaging('AddTask', 'General', 'UseDisplayRotation', -90);
     
@@ -144,7 +146,8 @@ try
     
     % Prepare imaging pipeline for some fitting work:
     PsychImaging('PrepareConfiguration');
-    
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     % Rotate framebuffer 180 degrees for upside down landscape mode:
     PsychImaging('AddTask', 'General', 'UseDisplayRotation', 180);
     
@@ -169,7 +172,8 @@ try
     
     % Prepare imaging pipeline for some fitting work:
     PsychImaging('PrepareConfiguration');
-    
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     % Center small framebuffer inside big framebuffer:
     PsychImaging('AddTask', 'General', 'UsePanelFitter', fitSize, 'Centered');
     
@@ -190,7 +194,8 @@ try
     
     % Prepare imaging pipeline for some fitting work:
     PsychImaging('PrepareConfiguration');
-    
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     % Center small framebuffer inside big framebuffer. Scale it up to
     % maximum size while preserving aspect ration of the original
     % framebuffer:
@@ -213,7 +218,8 @@ try
     
     % Prepare imaging pipeline for some fitting work:
     PsychImaging('PrepareConfiguration');
-    
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     % Center small framebuffer inside big framebuffer. Scale it up to
     % maximum size, even if it would not preserve aspect ratio:
     PsychImaging('AddTask', 'General', 'UsePanelFitter', fitSize, 'Full');
