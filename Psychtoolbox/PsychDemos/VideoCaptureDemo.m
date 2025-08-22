@@ -114,7 +114,7 @@ screenid=max(Screen('Screens'));
 
 try
     if fullscreen<1
-        win=Screen('OpenWindow', screenid, 0, [0 0 800 600]);
+        win=Screen('OpenWindow', screenid, 0, [0 0 1290 730]);
     else
         win=Screen('OpenWindow', screenid, 0);
     end;
