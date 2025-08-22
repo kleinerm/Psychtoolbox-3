@@ -21,6 +21,7 @@ try
     whichScreen = max(Screen('Screens'));
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
     [theWindow,theRect] = PsychImaging('OpenWindow', whichScreen, 0);
 
     % Move the cursor to the center of the screen
@@ -41,17 +42,19 @@ try
     end
     Screen(theWindow,'DrawText','Release button to finish',50,50,255);
 
-    HideCursor;
+    HideCursor(theWindow);
 
     % Loop and track the mouse, drawing the contour
-    [theX,theY] = GetMouse(theWindow);
+    [x,y] = GetMouse(theWindow);
+    [theX,theY] = RemapMouse(theWindow, 'AllViews', x, y);
     thePoints = [theX theY];
     Screen(theWindow,'DrawLine',255,theX,theY,theX,theY);
     % Set the 'dontclear' flag of Flip to 1 to prevent erasing the
     % frame-buffer:
     Screen('Flip', theWindow, 0, 1);
     while (1)
-        [x,y,buttons] = GetMouse(theWindow);	
+        [x,y,buttons] = GetMouse(theWindow);
+        [x,y] = RemapMouse(theWindow, 'AllViews', x, y);
         if ~buttons(1)
             break;
         end

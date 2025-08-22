@@ -127,6 +127,9 @@
 // xdg_output extension for getting logical size of a wayland output - for HiDPI scaling:
 #include "xdg_output_unstable-client-protocol.h"
 
+// pointer-warp protocol for mouse cursor positioning:
+#include "pointer_warp-client-protocol.h"
+
 /* These are needed for our GPU specific beamposition query implementation: */
 #include <errno.h>
 #include <stdio.h>
@@ -197,6 +200,8 @@ struct wp_fifo_manager_v1 *wayland_fifo_manager = NULL;
 struct wp_viewporter *wayland_viewporter = NULL;
 
 struct zxdg_output_manager_v1 *wayland_output_manager = NULL;
+
+struct wp_pointer_warp_v1 *wayland_pointer_warp = NULL;
 
 static struct wl_registry *wl_registry = NULL;
 static psych_bool wayland_roundtrip_needed = FALSE;
@@ -739,9 +744,7 @@ static const struct wp_presentation_listener wayland_presentation_listener = {
 };
 
 struct seat_info {
-//    struct global_info global;
     struct wl_seat *seat;
-//    struct weston_info *info;
 
     uint32_t capabilities;
     char *name;
@@ -1310,6 +1313,17 @@ wayland_registry_listener_global(void *data,
         numDisplays++;
     }
 
+    // Look for wp_pointer_warp_v1 support of version v1+:
+    if (!strcmp(interface, "wp_pointer_warp_v1") && (version >= 1)) {
+        wayland_pointer_warp = wl_registry_bind(registry, name, &wp_pointer_warp_v1_interface, 1);
+        if (!wayland_pointer_warp) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for wp_pointer_warp failed!\n");
+            return;
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland wp_pointer_warp bound!\n");
+    }
+
     // Look for Wayland wl_seat ~ collections of input devices:
     if (!strcmp(interface, "wl_seat") && (version >= 1)) {
         if (numSeats >= kPsychMaxWaylandSeats) {
@@ -1862,6 +1876,12 @@ void PsychCleanupDisplayGlue(void)
         zxdg_output_manager_v1_destroy(wayland_output_manager);
 
     wayland_output_manager = NULL;
+
+    // Reset our pointer warp binding:
+    if (wayland_pointer_warp)
+        wp_pointer_warp_v1_destroy(wayland_pointer_warp);
+
+    wayland_pointer_warp = NULL;
 
     // Destroy our reference to the registry:
     wl_registry_destroy(wl_registry);
@@ -2472,7 +2492,6 @@ void PsychOSDefineWaylandCursor(int screenNumber, int deviceId, const char* curs
     seat = waylandInputDevices[deviceId];
 
     if (wayland_cursor_theme) {
-        // Assign initial default cursor: The classic left-tilted arrow pointer:
         seat->current_cursor = wl_cursor_theme_get_cursor(wayland_cursor_theme, cursorName);
         if (!seat->current_cursor) {
             if (PsychPrefStateGet_Verbosity() > 0) {
@@ -2577,9 +2596,49 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
-    // Not available on Wayland, as of version 1.6 - January 2015:
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetCursor() request ignored, as this isn't currently supportable on Wayland.\n");
-    return;
+    PsychWindowRecordType* windowRecord;
+    struct seat_info* seat;
+    double xs, ys;
+
+    if (!wayland_pointer_warp) {
+        // Not available on this Wayland setup:
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: SetMouse() mouse cursor positioning request ignored, as this is not supported on this Wayland system.\n");
+
+        return;
+    }
+
+    // deviceIdx -1 means "auto-detected default pointer". Simply use the first found pointer device:
+    if (deviceIdx < 0) {
+        for (deviceIdx = 0; deviceIdx < numInputDevices; deviceIdx++) {
+            if (waylandInputDevices[deviceIdx] && (waylandInputDevices[deviceIdx]->capabilities & WL_SEAT_CAPABILITY_POINTER))
+                break;
+        }
+    }
+
+    // Outside valid range for input devices?
+    if (deviceIdx < 0 || deviceIdx >= numInputDevices)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+
+    // No device under that id, or device isn't a pointer?
+    if (!waylandInputDevices[deviceIdx] || !(waylandInputDevices[deviceIdx]->capabilities & WL_SEAT_CAPABILITY_POINTER))
+        PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+
+    seat = waylandInputDevices[deviceIdx];
+
+    // Doesn't work if no window has pointer focus:'
+    if (!seat->pointerFocusWindow)
+        return;
+
+    // Rescale for proper handling of native Retina / HiDPI mode:
+    windowRecord = (PsychWindowRecordType*) wl_surface_get_user_data(seat->pointerFocusWindow);
+    xs = (double) x / windowRecord->externalMouseMultFactor;
+    ys = (double) y / windowRecord->externalMouseMultFactor;
+
+    // Execute request: Sadly there is no feedback if the request was actually honored by the compositor:
+    wp_pointer_warp_v1_warp_pointer(wayland_pointer_warp, seat->pointerFocusWindow, wl_seat_get_pointer(seat->seat), wl_fixed_from_double(xs), wl_fixed_from_double(ys), seat->last_serial);
+
+    ProcessWaylandEvents(screenNumber);
 }
 
 /*

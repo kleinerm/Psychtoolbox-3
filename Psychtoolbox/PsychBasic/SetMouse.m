@@ -9,19 +9,29 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid, detachFromMouse)
 % Otherwise it's "global", i.e. relative to the origin of the main screen
 % (Screen 0). It is advisable to specify an onscreen window handle for
 % proper handling of Retina displays on macOS if you use backwards
-% compatibility mode.
+% compatibility mode. Note: (x,y) is always local to the onscreen window on
+% Linux with Wayland, as of the year 2025, a stark difference to all other systems!
 %
 % On Linux with X11, the optional 'mouseid' parameter allows to select
 % which of potentially multiple cursors should be repositioned. On OS/X and
 % Windows this parameter is silently ignored.
 %
-% On OSX, the optional 'detachFromMouse' parameter, if set to 1 instead of
+% On macOS, the optional 'detachFromMouse' parameter, if set to 1 instead of
 % its default value of zero, will detach mouse cursor movements from mouse
 % movements. The cursor will be frozen in place and can only be moved via
 % SetMouse(), but no longer via mouse movements. On Linux and Windows this
 % parameter is currently silently ignored.
 %
-% On Linux with the Wayland backend, this function does nothing.
+% On Linux with the Wayland backend, this function is only supported by some
+% Wayland based GUI's, but not others. On systems lacking SetMouse() support,
+% a warning message will be printed. On systems with support, it is up to the
+% display server if the SetMouse() request is actually honored, or ignored, but
+% in general it only works while an onscreen window has pointer focus, and then
+% the provided (x,y) position is local to the onscreen window, not to the screen,
+% as opposed to how it works on non-Wayland systems! This is sadly unavoidable, due
+% to Waylands refusal to operate anything in desktop global coordinates.
+% The following link may give some info about which Wayland GUI's support mouse
+% cursor positioning: https://wayland.app/protocols/pointer-warp-v1#wp_pointer_warp_v1
 %
 % The delay between a call to SetMouse and when GetMouse will report the
 % new mouse cursor position is not known. GetMouse seems to report the new
@@ -83,7 +93,7 @@ if IsOSX && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
     y = y * isf;
 end
 
-if IsLinux && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
+if IsLinux && (Screen('WindowKind', windowPtrOrScreenNumber) == 1) && ~IsWayland
     rect = Screen('GlobalRect', windowPtrOrScreenNumber);
     x = x + rect(1);
     y = y + rect(2);
