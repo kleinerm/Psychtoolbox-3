@@ -57,6 +57,7 @@ function SetupPsychtoolbox(tryNonInteractiveSetup)
 % 01/25/24 mk  Cleanup, dead code removal.
 % 06/12/24 mk  Fixup for spaces in install path on macOS for use of xattr,
 %              and skip xattr if installed as .mltbx file via Add-On explorer.
+% 09/25/25 mk  Update for PTB 3.0.22.2 and Octave 10+ on macOS.
 
 % Flush all MEX files: This is needed at least on M$-Windows if Screen et al. are still loaded.
 clear mex; %#ok<CLMEX>
@@ -215,9 +216,9 @@ if IsOSX && isempty(strfind(targetdirectory, 'MATLAB Add-Ons')) %#ok<STREMP>
     if IsOctave
         % Fix the Octave mex files:
         if IsARM
-            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave8OSXFilesARM64/*.mex 2>&1']);
+            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave10OSXFilesARM64/*.mex 2>&1']);
         else
-            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave8OSXFiles64/*.mex 2>&1']);
+            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave10OSXFiles64/*.mex 2>&1']);
         end
     else
         % Fix the Matlab mex files:

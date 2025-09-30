@@ -6,9 +6,7 @@ function osxsetoctaverpath(mexfname, mexpath)
 %
 % We change from absolute path to @rpath.
 %
-% E.g.,
-%
-% osxsetoctaverpath('Screen'); would rewrite Screen.mex
+% E.g., osxsetoctaverpath('Screen'); would rewrite Screen.mex
 % to use the @rpath settings stored in this function.
 % We define one rpath as @loader_path, so the runtime dylibs
 % are expected in loader_path, e.g., a system library path,
@@ -18,8 +16,8 @@ function osxsetoctaverpath(mexfname, mexpath)
 % files should always find a dylib for the currently running Octave.
 % We also add Psychtoolbox/PsychBasic/PsychPlugins to the dylib search path.
 
-    if ~IsOSX(1) || ~IsOctave || ~compare_versions(version, '9.4.0', '==')
-        error('osxsetoctaverpath only works with a 64-Bit version of HomeBrew Octave-9.4.0 for macOS!');
+    if ~IsOSX(1) || ~IsOctave || ~compare_versions(version, '10.2.0', '>=')
+        error('osxsetoctaverpath only works with a 64-Bit version of HomeBrew Octave-10.2.0 or later for macOS!');
     end
 
     % If no mex filename given, iterate over 'mexpath' - or the default install
@@ -27,9 +25,9 @@ function osxsetoctaverpath(mexfname, mexpath)
     if nargin < 1 || isempty(mexfname)
         if nargin < 2 || isempty(mexpath)
             if IsARM
-                mexpath = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFilesARM64/'];
+                mexpath = [PsychtoolboxRoot 'PsychBasic/Octave10OSXFilesARM64/'];
             else
-                mexpath = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFiles64/'];
+                mexpath = [PsychtoolboxRoot 'PsychBasic/Octave10OSXFiles64/'];
             end
         end
 
@@ -56,27 +54,24 @@ function osxsetoctaverpath(mexfname, mexpath)
     % This is how the libdir should be defined automatically:
     libdir = GetOctlibDir;
 
-    % This is sadly how we have to do it with Octave on macOS 13-14 due to
-    % the latest macOS linker crap - Hardcoding the path for a Octave install
+    % This is sadly how we have to do it with Octave on macOS due to the
+    % latest macOS linker crap - Hardcoding the path for a Octave install
     % from HomeBrew. Yes, this is sad...
     if IsARM
-        libdir = '/opt/homebrew/opt/octave/lib/octave/9.4.0';
+        libdir = '/opt/homebrew/opt/octave/lib/octave/10.2.0';
     else
-        libdir = '/usr/local/opt/octave/lib/octave/9.4.0';
+        libdir = '/usr/local/opt/octave/lib/octave/10.2.0';
     end
 
-    % Replace absolute path to liboctinterp.12.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctinterp.12.dylib @rpath/liboctinterp.dylib ' mexfname]);
-
-    % Replace absolute path to liboctave.11.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctave.11.dylib @rpath/liboctave.dylib ' mexfname]);
+    % Replace absolute path to liboctmex.1.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctmex.1.dylib @rpath/liboctmex.dylib ' mexfname]);
 
     % Add @loader_path to the @rpath. This is the path to our folder where our
-    % mex file is stored. If we place symlinks to liboctave.dylib and liboctinterp.dylib
-    % there, then the linker will find them. In absence, the linker will also search the
-    % users $HOME/lib/ directory as a possible fallback. Additionally we add the path to
-    % our Psychtoolbox/PsychBasic/PsychPlugins folder, so our mex files can find additional
-    % helper dylibs there which are needed by some of them:
+    % mex file is stored. If we place symlinks to liboctmex.1.dylib there, then
+    % the linker will find them. In absence, the linker will also search the users
+    % $HOME/lib/ directory as a possible fallback. Additionally we add the path to
+    % our Psychtoolbox/PsychBasic/PsychPlugins folder, so our mex files can find
+    % additional helper dylibs there which are needed by some of them:
     lpaths = { '@loader_path', '@loader_path/../PsychPlugins' };
 
     % Add all paths in lpaths as potential search paths for the octave

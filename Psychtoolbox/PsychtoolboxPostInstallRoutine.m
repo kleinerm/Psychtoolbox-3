@@ -91,6 +91,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            call to WaitSecs, so those get installed early enough if they are missing. (MK)
 % 05/24/2025 Disable call to PsychPaidSupportAndServices(). Update Linux requirements wrt.
 %            Ubuntu 22.04-LTS minimum. (MK)
+% 09/25/2025 Update for PTB 3.0.22.2 and Octave 10+ on macOS. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -347,6 +348,14 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave8WindowsFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10OSXFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10OSXFilesARM64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10OSXFilesARM64']);
+        end
+
         % Encode prefix and Octave major version of proper folder:
         octavev = sscanf(version, '%i.%i.%i');
         octavemajorv = octavev(1);
@@ -364,7 +373,7 @@ if IsOctave
         end
 
         if ((octavemajorv >= 5) || (octavemajorv == 4 && octaveminorv >= 4)) && IsLinux
-            % Octave-4.4, 5.x, 6.x, 7.x and Octave-8.x can share the same mex files in the Octave-5 folder on Linux:
+            % Octave-4.4, 5.x, 6.x, 7.x, 8.x and Octave-9.x can share the same mex files in the Octave-5 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave5'];
         elseif ismember(octavemajorv, [3,4]) && IsLinux
             % Octave-3 and Octave-4.0/4.2 can share the same mex files in the Octave-3 folder on Linux:
@@ -376,9 +385,9 @@ if IsOctave
                 fprintf('Press any key to confirm you read and understand this message.\n');
                 pause;
             end
-        elseif ismember(octavemajorv, [6,7,8,9]) && IsOSX
-            % Octave 6 - 9 can share the same mex files built against Octave 8:
-            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave8'];
+        elseif (octavemajorv >= 10) && IsOSX
+            % Octave 10 and later can share the same mex files built against Octave 10:
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave10'];
         else
             % Everything else (aka other OS'es) goes by Octave major version:
             %rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
@@ -433,17 +442,17 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if  (IsOSX && (~ismember(octavemajorv, [6,7,8,9]))) || ...
+    if  (IsOSX && (octavemajorv < 10)) || ...
         (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, 3))) || ...
         (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 8)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything from 4.4 to at least 8.x and presumably 9.x is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x, 7.x, 8.x or maybe 9.x series.\n');
+            % On Linux everything from 4.4 to at least 9.x is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x, 7.x, 8.x or 9.x series.\n');
             fprintf('WARNING: You can get Psychtoolbox for other, or more recent, versions of Octave from NeuroDebian.\n');
         elseif IsOSX
-            fprintf('WARNING: only using Octave 6 or Octave 7 or Octave 8 or Octave 9 with this version of Psychtoolbox.\n');
+            fprintf('WARNING: only using Octave 10 and likely later versions with this version of Psychtoolbox.\n');
         else
             % On Windows we only care about 7.3 atm:
             fprintf('WARNING: only using Octave 7.3 with this version of Psychtoolbox.\n');
@@ -456,22 +465,22 @@ if IsOctave
     end
 
     if IsOSX
-        % Need to symlink the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
+        % Need to symlink the Octave mex runtime library somewhere our mex files can find it. The only low-maintenance
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
         % Preferred location is the folder with our mex files - found by the @rpath = @loader_path encoded in our mex files.
         tdir = PsychHomeDir('lib');
         dummy = unlink([tdir 'liboctinterp.dylib']); %#ok<*NASGU>
         dummy = unlink([tdir 'liboctave.dylib']);
+        dummy = unlink([tdir 'liboctmex.dylib']);
         dummy = unlink([rdir filesep 'liboctinterp.dylib']);
         dummy = unlink([rdir filesep 'liboctave.dylib']);
-        if symlink([GetOctlibDir filesep 'liboctinterp.dylib'], [rdir filesep 'liboctinterp.dylib']) || ...
-           symlink([GetOctlibDir filesep 'liboctave.dylib'], [rdir filesep 'liboctave.dylib'])
+        dummy = unlink([rdir filesep 'liboctmex.dylib']);
+        if symlink([GetOctlibDir filesep 'liboctmex.dylib'], [rdir filesep 'liboctmex.dylib'])
             % Symlink from our mex files folder failed. A second location where the linker will search is the
             % $HOME/lib directory of the current user, so try that as target location:
-            fprintf('\n\nFailed to symlink Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
-            if symlink([GetOctlibDir filesep 'liboctinterp.dylib'], [tdir 'liboctinterp.dylib']) || ...
-               symlink([GetOctlibDir filesep 'liboctave.dylib'], [tdir 'liboctave.dylib'])
-                fprintf('\nFailed to symlink runtime libs to [%s] as well :(.\n', tdir);
+            fprintf('\n\nFailed to symlink Octave mex runtime library to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
+            if symlink([GetOctlibDir filesep 'liboctinterp.dylib'], [tdir 'liboctinterp.dylib'])
+                fprintf('\nFailed to symlink mex runtime lib to [%s] as well :(.\n', tdir);
                 fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
                 fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', GetOctlibDir);
             end

@@ -1,17 +1,17 @@
 function osxmakeitoctave3(mode)
-% This is the macOS version of makeit: It is meant for building PTB for
-% 64-Bit Octave-9.4 on macOS 13.4.1 Ventura or later, using the 13.x or later SDK.
+% This is the macOS Octave version of makeit: It is meant for building PTB for
+% 64-Bit Octave-10+ on macOS 13.7.5 Ventura or later, using the 14.x or later SDK.
 %
 % The rpath Octave version independent encoding is done by the helper
 % function osxsetoctaverpath().
-dst = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFiles64/'];
+dst = [PsychtoolboxRoot 'PsychBasic/Octave10OSXFiles64/'];
 
 if IsARM
-    dst = [PsychtoolboxRoot 'PsychBasic/Octave8OSXFilesARM64/'];
+    dst = [PsychtoolboxRoot 'PsychBasic/Octave10OSXFilesARM64/'];
 end
 
 if ~IsOSX(1) || ~IsOctave
-    error('osxmakeitoctave3 only works with a 64-Bit version of Octave 9 for macOS!');
+    error('osxmakeitoctave3 only works with a 64-Bit version of Octave 10 or later for macOS!');
 end
 
 if nargin < 1 || isempty(mode)
@@ -250,9 +250,9 @@ end
 % Our own override implementation of mex(), shadowing
 % octave's mex.m . This one uses glob() to glob-expand all
 % *.c shell patterns to corresponding lists of source
-% filenames, so Octave 3.8's mkoctfile can "handle" such
-% wildcards. Older mkoctfile implementations did this,
-% but Octave 3.8.1's mkoctfile is reimplemented from scratch
+% filenames, so Octave 10's mkoctfile can "handle" such
+% wildcards. Older mkoctfile implementations did this, but
+% since Octave 3.8.1 mkoctfile is reimplemented from scratch
 % as a C++ piece of art, which can't expand wildcards anymore.
 function mex(varargin)
   inargs = {varargin{:}};
