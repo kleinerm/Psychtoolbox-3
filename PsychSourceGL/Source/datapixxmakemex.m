@@ -198,11 +198,11 @@ function datapixxmakemex()
             system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libusb/*.o'], '/', filesep));
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/OSX/Base/*.o'], '/', filesep));
             if IsARM
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave8OSXFilesARM64'], '/', filesep));
-                osxsetoctaverpath('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave8OSXFilesARM64/']);
+                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave10OSXFilesARM64'], '/', filesep));
+                osxsetoctaverpath('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave10OSXFilesARM64/']);
             else
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave8OSXFiles64'], '/', filesep));
-                osxsetoctaverpath('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave8OSXFiles64/']);
+                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave10OSXFiles64'], '/', filesep));
+                osxsetoctaverpath('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave10OSXFiles64/']);
             end
         elseif IsLinux
             system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libusb/*.o'], '/', filesep));
