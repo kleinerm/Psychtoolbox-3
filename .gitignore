@@ -29,6 +29,7 @@ LexTypes.h
 .fuse_*
 liboctave.*
 liboctinterp.*
+liboctmex.*
 *.pyc
 __pycache__
 PsychPython/psychtoolbox/*.so
