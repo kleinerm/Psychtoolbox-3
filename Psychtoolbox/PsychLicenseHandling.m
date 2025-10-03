@@ -214,9 +214,9 @@ if strcmpi(cmd, 'CheckInstallLMLibs')
     % LexActivator client library installed?
     if ~IsARM
         % Get rid of ARM libs in search path on non-ARM:
-        warning off;
+        s = warning('off');
         rmpath([PsychtoolboxRoot 'PsychBasic/PsychPlugins/ARM64']);
-        warning on;
+        warning(s);
     end
 
     if (~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))) || ...
