@@ -58,9 +58,9 @@ function osxsetoctaverpath(mexfname, mexpath)
     % latest macOS linker crap - Hardcoding the path for a Octave install
     % from HomeBrew. Yes, this is sad...
     if IsARM
-        libdir = '/opt/homebrew/opt/octave/lib/octave/10.2.0';
+        libdir = ['/opt/homebrew/opt/octave/lib/octave/' version];
     else
-        libdir = '/usr/local/opt/octave/lib/octave/10.2.0';
+        libdir = ['/usr/local/opt/octave/lib/octave/' version];
     end
 
     % Replace absolute path to liboctmex.1.dylib with @rpath:
