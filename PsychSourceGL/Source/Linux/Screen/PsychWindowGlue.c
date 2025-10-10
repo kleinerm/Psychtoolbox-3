@@ -1089,7 +1089,23 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychUnlockDisplay();
 
     if (!visinfo && !fbconfig) {
-        printf("\nPTB-ERROR[glXChooseVisual() failed]: Couldn't get any suitable visual from X-Server.\n\n");
+        printf("\nPTB-ERROR: [glXChooseVisual() failed]: Couldn't get any suitable visual from X-Server!\n");
+        #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && !defined(PTBOCTAVE3MEX)
+            printf("PTB-ERROR: The most likely reason is an incompatible set of libraries used by Matlab,\n");
+            printf("PTB-ERROR: especially after a Matlab upgrade or operating system update. Let's try to\n");
+            printf("PTB-ERROR: fix this by following the following advice and procedure:\n");
+            printf("PTB-ERROR: \n");
+            printf("PTB-ERROR: On a Debian or Ubuntu based Linux distribution, you should run the following\n");
+            printf("PTB-ERROR: command from a terminal window after each upgrade of Matlab, and then exit and restart\n");
+            printf("PTB-ERROR: Matlab, to fix compatibility problems caused by Matlab. Sometimes this may also be needed\n");
+            printf("PTB-ERROR: after an upgrade or software update of your Linux system. Execute the following command ...\n");
+            printf("PTB-ERROR: \n");
+            printf("PTB-ERROR: sudo dpkg-reconfigure matlab-support\n");
+            printf("PTB-ERROR: \n");
+            printf("PTB-WARNING: ... and when prompted, answer all questions, if problems should be fixed by renaming library\n");
+            printf("PTB-WARNING: files, with a YES. After that, restart Matlab and retry.\n");
+        #endif
+
         return(FALSE);
     }
 
