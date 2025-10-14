@@ -2263,12 +2263,13 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     }
 
     if (colorPrecision) {
-        // As of June 2020, Mesa 20.0.4, none of the OSS or proprietary drivers from AMD, Intel or NVidia support > 8 bpc in windowed X11 mode.
-        // As far as fullscreen mode, NVidia proprietary blob and AMD written amdvlk do support 10 bit on Linux. Ergo, if precision is needed,
-        // we should reject Mesa radv early, so the probe gets more quickly to amdvlk or amdgpu-pro on AMD gpu's. Rejecting anything else early
-        // is pointless, as for Intel and NVidia on Linux and all manufacturers on Windows there is only one driver and thereby VkPhysicalDevice
-        // per physical gpu, iow. there is no choice to find via probing. Let the probe go fully through and fail later on in the "game-over" case:
-        if (vulkan->driverProps.driverID == VK_DRIVER_ID_MESA_RADV_KHR) {
+        // As of October 2025 and Mesa 25, none of the OSS or proprietary drivers from AMD, Intel or NVidia support > 8 bpc in windowed X11 mode.
+        // As far as fullscreen mode, NVidia proprietary blob and AMD written amdvlk do support 10 bit on Linux, as does Mesa starting with v25.2.99
+        // aka Mesa 25.3-devel. We should reject older Mesa radv drivers early if > 8 bpc precision is needed, so the probe gets more quickly to amdvlk
+        // or amdgpu-pro on AMD gpu's. Rejecting anything else early is pointless, as for Intel and NVidia on Linux and for all manufacturers on Windows
+        // there is only one driver, and thereby one VkPhysicalDevice per physical gpu, iow. there is no choice to make via probing. Let the probe go
+        // fully through and fail later on in the "game-over" case:
+        if ((vulkan->driverProps.driverID == VK_DRIVER_ID_MESA_RADV_KHR) && (vulkan->deviceProps.driverVersion < VK_MAKE_VERSION(25, 2, 99))) {
             if (verbosity > 4) {
                 printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required visual stimulus color precision by window %i.\n", vulkan->deviceProps.deviceName, window->index);
             }
