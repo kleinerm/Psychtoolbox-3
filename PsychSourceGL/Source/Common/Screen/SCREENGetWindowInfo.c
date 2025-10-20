@@ -587,15 +587,21 @@ PsychError SCREENGetWindowInfo(void)
         PsychSetStructArrayDoubleElement("SwapBarrier", 0, windowRecord->swapBarrier, s);
 
         // Windowing system low-level onscreen window handle or equivalent info:
-        #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAYLAND)
-            // Linux/X11: The X-Window handle 'Window':
+        #if (PSYCH_SYSTEM == PSYCH_LINUX)
+            // Linux/X11: The X-Window handle 'Window', and under Linux/Wayland the wl_surface backing the windowRecord:
             PsychSetStructArrayUnsignedInt64Element("SysWindowHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.xwindowHandle, s);
         #else
             PsychSetStructArrayUnsignedInt64Element("SysWindowHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.windowHandle, s);
         #endif
 
-        // Windowing system low-level onscreen window related handle used for graphics/display api interop in some way: macOS use only atm.
-        PsychSetStructArrayUnsignedInt64Element("SysWindowInteropHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.deviceContext, s);
+        // Windowing system low-level onscreen window related handle used for graphics/display api interop in some way: macOS and Linux/Wayland use only atm.
+        #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(PTB_USE_WAYLAND)
+            // These are defined in PsychScreenGlueWayland.c: TODO Could use targetSpecific.privDpy for storing wl_display as a more clean solution?
+            extern struct wl_display* wl_display;
+            PsychSetStructArrayUnsignedInt64Element("SysWindowInteropHandle", 0, (psych_uint64) (size_t) wl_display, s);
+        #else
+            PsychSetStructArrayUnsignedInt64Element("SysWindowInteropHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.deviceContext, s);
+        #endif
 
         // Scaling factor for input coordinate transformation functions like RemapMouse.m:
         PsychSetStructArrayDoubleElement("ExternalMouseMultFactor", 0, windowRecord->externalMouseMultFactor, s);
