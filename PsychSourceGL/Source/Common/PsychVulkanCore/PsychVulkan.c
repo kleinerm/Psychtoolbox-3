@@ -43,6 +43,7 @@
 #define VK_USE_PLATFORM_XLIB_KHR
 #define VK_USE_PLATFORM_DISPLAY_KHR
 #define VK_USE_PLATFORM_XLIB_XRANDR_EXT
+#define VK_USE_PLATFORM_WAYLAND_KHR
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -232,6 +233,9 @@ static psych_bool needHDR = FALSE;
 static unsigned int preferredDriver = 0; //VK_DRIVER_ID_MESA_RADV_KHR;
 static psych_bool isSuitableDriver[4];
 
+// Presentation via Wayland WSI supported?
+static psych_bool has_Wayland = FALSE;
+
 // Global count and requested instance extensions:
 static uint32_t instanceExtensionsCount = 0;
 static unsigned int instanceExtensionsEnabledCount = 0;
@@ -305,7 +309,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychVulkanCore - A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API\n";
     synopsis[i++] = "This driver allows to utilize the Vulkan graphics API for special purpose display and compute tasks.";
-    synopsis[i++] = "Copyright (c) 2020 - 2024 Mario Kleiner. Licensed to you under the terms of the MIT license.";
+    synopsis[i++] = "Copyright (c) 2020 - 2025 Mario Kleiner. Licensed to you under the terms of the MIT license.";
     synopsis[i++] = "";
     synopsis[i++] = "This driver is used internally by Psychtoolbox. You should not call its functions";
     synopsis[i++] = "directly as a regular end-user from your scripts, as the API may change at any time";
@@ -319,7 +323,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "numDevices = PsychVulkanCore('GetCount');";
     synopsis[i++] = "devices = PsychVulkanCore('GetDevices');";
     synopsis[i++] = "PsychVulkanCore('Close');";
-    synopsis[i++] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);";
+    synopsis[i++] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags, displayHandle);";
     synopsis[i++] = "PsychVulkanCore('CloseWindow' [, vulkanWindow]);";
     synopsis[i++] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
     synopsis[i++] = "oldlocalDimmmingEnable = PsychVulkanCore('HDRLocalDimming', vulkanWindow [, localDimmmingEnable]);";
@@ -639,6 +643,12 @@ void PsychVulkanCheckInit(psych_bool dontfail)
         free(instanceExtensions);
         goto instance_init_out;
     }
+
+    #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    // Query support for Wayland instance extension, bind it if possible. On success, query Wayland server support:
+    if (addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME))
+        has_Wayland = getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET");
+    #endif
 
     // The swapchain color space extension is optional and has no associated entry points, just defines some additional
     // color spaces. Therefore we don't care if getting it succeeds or not:
@@ -1791,16 +1801,18 @@ void PsychProcessWindowEvents(PsychVulkanWindow* window)
     (void) window;
 }
 
-psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
+psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* displayHandle, void* outputHandle,
+                                          PsychRectType rect, double refreshHz)
 {
     VkResult result;
     psych_bool rc = FALSE;
     int saved_default_screen = -1;
-    // We need a per-window X-Display connection, otherwise the NVidia proprietary blob will be unhappy in direct display mode.
+
+    // On X11 we need a per-window X-Display connection, otherwise the NVidia proprietary blob will be unhappy in direct display mode.
     // More specifically it will work on 1st invocation, but then fail on repeated open window calls, unless the display connection
     // is closed each time / a new connection created for the next open window invocation. Ergo we need per-window instance display
     // connections to work around this driver bug:
-    Display* connection = XOpenDisplay(NULL);
+    Display* connection = (!has_Wayland || !displayHandle) ? XOpenDisplay(NULL) : NULL;
 
     window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
     window->display = (VkDisplayKHR) VK_NULL_HANDLE;
@@ -2020,20 +2032,22 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
             goto createsurface_out;
         }
 
-        // We got a raw display surface for displaying to in direct display mode!
+        // We got a raw display surface for displaying to in direct display mode. Mark success:
+        rc = TRUE;
+
         if (verbosity > 3)
             printf("PsychVulkanCore-INFO: For gpu [%s] created a direct display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
     }
     else {
-        // Open a X11 windowed output window on Linux:
-
-        // outputHandle contains the X11 Window handle of the Psychtoolbox onscreen window.
         #if defined(VK_USE_PLATFORM_XLIB_KHR)
-        // The NVidia blob needs its own X-Window, it doesn't want to present into the standard Psychtoolbox onscreen window.
-        // But even for the FOSS drivers there are corner cases where things go sideways without a dedicated X-Window, e.g.,
-        // when using mirror mode where primary stimulus is presented by Vulkan, but a slave window presents an experimenter
-        // feedback image (mirroring/cloning) via OpenGL. So the safe thing to do is to always use a dedicated X-Window:
-        {
+        if (!has_Wayland || !displayHandle) {
+            // Open a X11 windowed output window on Linux:
+            // outputHandle contains the X11 Window handle of the Psychtoolbox onscreen window.
+
+            // The NVidia blob needs its own X-Window, it doesn't want to present into the standard Psychtoolbox onscreen window.
+            // But even for the FOSS drivers there are corner cases where things go sideways without a dedicated X-Window, e.g.,
+            // when using mirror mode where primary stimulus is presented by Vulkan, but a slave window presents an experimenter
+            // feedback image (mirroring/cloning) via OpenGL. So the safe thing to do is to always use a dedicated X-Window:
             unsigned int windowMapEventCount = 0;
             XSetWindowAttributes attr = { 0 };
 
@@ -2062,42 +2076,75 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
                 if (ev.type == MapNotify || ev.type == ConfigureNotify)
                     windowMapEventCount++;
             }
+
+            VkXlibSurfaceCreateInfoKHR createInfoX11 = {
+                .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+                .pNext = NULL,
+                .flags = 0,
+                .dpy = connection,
+                .window = (window->x11PrivateWindow != None) ? window->x11PrivateWindow : (Window) outputHandle,
+            };
+
+            result = vkCreateXlibSurfaceKHR(vulkanInstance, &createInfoX11, NULL, &window->surface);
+            if (result != VK_SUCCESS) {
+                if (verbosity > 0)
+                    printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateXlibSurfaceKHR: %i\n", vulkan->deviceProps.deviceName, result);
+
+                goto createsurface_out;
+            }
+
+            // Mark success:
+            rc = TRUE;
         }
+        #endif
 
-        VkXlibSurfaceCreateInfoKHR createInfoX11 = {
-            .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
-            .pNext = NULL,
-            .flags = 0,
-            .dpy = connection,
-            .window = (window->x11PrivateWindow != None) ? window->x11PrivateWindow : (Window) outputHandle,
-        };
+        #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+        if (has_Wayland && displayHandle) {
+            if(!vkGetPhysicalDeviceWaylandPresentationSupportKHR(vulkan->physicalDevice, vulkan->graphicsQueueFamilyIndex, displayHandle)) {
+                if (verbosity > 0)
+                    printf("PsychVulkanCore-ERROR: vkGetPhysicalDeviceWaylandPresentationSupportKHR() failed: wl_display %p can't present to queue %i.\n",
+                           displayHandle, vulkan->graphicsQueueFamilyIndex);
 
-        result = vkCreateXlibSurfaceKHR(vulkanInstance, &createInfoX11, NULL, &window->surface);
-        if (result != VK_SUCCESS) {
-            if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateXlibSurfaceKHR: %i\n", vulkan->deviceProps.deviceName, result);
+                goto createsurface_out;
+            }
 
-            goto createsurface_out;
+            // Open a Wayland window, ie. a window based on an existing wl_display (in displayHandle) and wl_surface (in outputHandle):
+            VkWaylandSurfaceCreateInfoKHR createInfoWayland = {
+                .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+                .pNext = NULL,
+                .flags = 0,
+                .display = displayHandle,
+                .surface = outputHandle,
+            };
+
+            result = vkCreateWaylandSurfaceKHR(vulkanInstance, &createInfoWayland, NULL, &window->surface);
+            if (result != VK_SUCCESS) {
+                if (verbosity > 0)
+                    printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateWaylandSurfaceKHR: %i\n", vulkan->deviceProps.deviceName, result);
+
+                goto createsurface_out;
+            }
+
+            // Mark success:
+            rc = TRUE;
         }
         #endif
 
         // Got a windowed window for Vulkan stimulus display.
-        if (verbosity > 3)
-            printf("PsychVulkanCore-INFO: For gpu [%s] created a windowing system window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+        if (verbosity > 3 && rc)
+            printf("PsychVulkanCore-INFO: For gpu [%s] created a windowing system window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName,
+                   window->surface, window->index);
     }
-
-    // Mark success:
-    rc = TRUE;
 
 createsurface_out:
 
     #if defined(VK_USE_PLATFORM_XLIB_KHR)
-        if (!rc && (window->x11PrivateWindow != None)) {
-            XUnmapWindow(connection, window->x11PrivateWindow);
-            XDestroyWindow(connection, window->x11PrivateWindow);
-            XFlush(connection);
-            window->x11PrivateWindow = None;
-        }
+    if (!rc && (window->x11PrivateWindow != None)) {
+        XUnmapWindow(connection, window->x11PrivateWindow);
+        XDestroyWindow(connection, window->x11PrivateWindow);
+        XFlush(connection);
+        window->x11PrivateWindow = None;
+    }
     #endif
 
     if (!rc && window->display) {
@@ -2105,11 +2152,13 @@ createsurface_out:
         window->display = VK_NULL_HANDLE;
     }
 
-    if (saved_default_screen != -1)
+    #if defined(VK_USE_PLATFORM_XLIB_KHR)
+    if (saved_default_screen != -1 && connection)
         ((_XPrivDisplay) connection)->default_screen = saved_default_screen;
 
     if (!rc && connection)
         XCloseDisplay(connection);
+    #endif
 
     if (rc)
         window->connection = connection;
@@ -2155,10 +2204,11 @@ psych_bool PsychCreateMoltenVKDisplaySurface(PsychVulkanWindow* window, PsychVul
 }
 #endif
 
-psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
+psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* displayHandle, void* outputHandle,
+                                     PsychRectType rect, double refreshHz)
 {
     #if PSYCH_SYSTEM == PSYCH_LINUX
-        return(PsychCreateLinuxDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
+        return(PsychCreateLinuxDisplaySurface(window, vulkan, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz));
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -2170,7 +2220,9 @@ psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevic
     #endif
 }
 
-psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_uint8* targetdeviceUUID, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz, int hdrMode, psych_bool needsTiming, unsigned int colorPrecision, int colorSpace, int colorFormat, int flags)
+psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_uint8* targetdeviceUUID, psych_bool isFullscreen, int screenId,
+                                    void* displayHandle, void* outputHandle, PsychRectType rect, double refreshHz, int hdrMode, psych_bool needsTiming,
+                                    unsigned int colorPrecision, int colorSpace, int colorFormat, int flags)
 {
     VkResult result;
     VkBool32 supportsPresent;
@@ -2279,7 +2331,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     }
 
     // This is as far as we can get without creating a display surface on the target display, so lets create one:
-    if (!PsychCreateDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz)) {
+    if (!PsychCreateDisplaySurface(window, vulkan, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz)) {
         if (verbosity > 0)
             printf("PsychVulkanCore-ERROR: Creating a display surface on Vulkan gpu '%s' for further probing on window %i failed.\n", vulkan->deviceProps.deviceName, window->index);
 
@@ -2326,7 +2378,10 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
                 printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required visual onset timing precision in the %s configuration required by window %i.\n", vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
             }
 
-            return(FALSE);
+            // Normally we'd fail here, but for the time being make an exception for Wayland
+            // while Wayland isn't a production backend: TODO Remove this workaround/exception asap.
+            if (!has_Wayland)
+                return(FALSE);
         }
 
         if (!window->supports_vsync_FIFO) {
@@ -3404,7 +3459,8 @@ psych_bool PsychSetHDRMetaData(PsychVulkanWindow* window)
     return(TRUE);
 }
 
-psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_uint8* targetdeviceUUID, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, int colorPrecision, int hdrMode, double refreshHz, int colorSpace, int colorFormat, int flags)
+psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_uint8* targetdeviceUUID, psych_bool isFullscreen, int screenId, void* displayHandle, void* outputHandle,
+                                 PsychRectType rect, int colorPrecision, int hdrMode, double refreshHz, int colorSpace, int colorFormat, int flags)
 {
     VkResult result;
     int i;
@@ -3472,7 +3528,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         if (memcmp(targetdeviceUUID, allzeros, 16) == 0)
             memcpy(targetdeviceUUID, &vulkan->physDeviceProps.deviceUUID[0], 16);
 
-        if (!PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, colorSpace, colorFormat, flags)) {
+        if (!PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, colorSpace, colorFormat, flags)) {
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable for requested settings.\n", gpuIndex, vulkan->deviceProps.deviceName);
 
@@ -3485,7 +3541,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         // No. Try to auto-detect the proper gpuIndex / gpu by probing:
         for (gpuIndex = 1; gpuIndex <= physicalGpuCount; gpuIndex++) {
             vulkan = PsychGetVulkan(gpuIndex, FALSE);
-            supportsPresent = PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, colorSpace, colorFormat, flags);
+            supportsPresent = PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, colorSpace, colorFormat, flags);
 
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: Does gpu %i [%s] meet our requirements for target surface: %s\n", gpuIndex, vulkan->deviceProps.deviceName, supportsPresent ? "Yes" : "No");
@@ -4371,7 +4427,7 @@ PsychError PSYCHVULKANCloseWindow(void)
 
 PsychError PSYCHVULKANOpenWindow(void)
 {
-    static char useString[] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);";
+    static char useString[] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags, displayHandle);";
     //                         1                                            1         2           3             4         5     6             7        8               9          10          11           12
     static char synopsisString[] =
         "Open a display window on a Vulkan device.\n\n"
@@ -4421,6 +4477,8 @@ PsychError PSYCHVULKANOpenWindow(void)
         "'flags' Special mode selection flags or'ed together: +1 = Diagnostic display only, no Screen() OpenGL interop, just show an alternating black-white test image. Useful "
         "for most basic Vulkan testing and driver bringup if the given gpu does not have graphics drivers with OpenGL+Vulkan interop capabilities yet.\n"
         "+2 = Do not switch to fullscreen-exclusive mode on MS-Windows, even for fullscreen windows. This is useful as workaround for some buggy Vulkan drivers.\n"
+        "'displayHandle' Handle defining the display server connection to use, if any, in an operating system dependent manner. "
+        "This is currently unused on all systems except Linux with Wayland display backend, where it encodes the wl_display handle.\n"
         "\n\n"
         "Returns: The 'vulkanWindow' handle of the Vulkan presentation window.\n";
 
@@ -4436,6 +4494,7 @@ PsychError PSYCHVULKANOpenWindow(void)
     double* mat;
     PsychRectType rect;
     void* outputHandle;
+    void* displayHandle;
     double refreshHz;
     int colorSpace;
     int colorFormat;
@@ -4449,8 +4508,8 @@ PsychError PSYCHVULKANOpenWindow(void)
 
     // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(12));
-    PsychErrorExit(PsychRequireNumInputArgs(12));
+    PsychErrorExit(PsychCapNumInputArgs(13));
+    PsychErrorExit(PsychRequireNumInputArgs(13));
 
     // Make sure Vulkan api is initialized, fail if not:
     PsychVulkanCheckInit(FALSE);
@@ -4495,6 +4554,9 @@ PsychError PSYCHVULKANOpenWindow(void)
 
     // Get mandatory flags:
     PsychCopyInIntegerArg(12, kPsychArgRequired, &flags);
+
+    // Get mandatory displayHandle:
+    PsychCopyInPointerArg(13, kPsychArgRequired, &displayHandle);
 
     // Find a free window slot:
     for (handle = 1; (handle <= MAX_PSYCH_VULKAN_WINDOWS) && vulkanWindows[handle - 1].isValid; handle++);
@@ -4568,7 +4630,7 @@ PsychError PSYCHVULKANOpenWindow(void)
         demoDisableMask = 0;
     }
 
-    if (!PsychOpenVulkanWindow(window, gpuIndex, targetdeviceUUID, isFullscreen, screenId, outputHandle, rect, colorPrecision, hdrMode, refreshHz, colorSpace, colorFormat, flags))
+    if (!PsychOpenVulkanWindow(window, gpuIndex, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, colorPrecision, hdrMode, refreshHz, colorSpace, colorFormat, flags))
         PsychErrorExitMsg(PsychError_user, "Failed to open vulkan output window.");
 
     windowCount++;

@@ -546,6 +546,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Restore rank 0 output setting in Screen:
     Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
 
+    % On Linux with Wayland, always use "windowed" mode setup, even for fullscreen windows,
+    % as all the wl_surface setup, also for fullscreen mode, was already done by Screen(),
+    % and we currently do not use Wayland / DRM-KMS output leasing:
+    if IsLinux && IsWayland
+        isFullscreen = 0;
+    end
+
     % NVidia gpu under Linux/X11 with NVIDIA proprietary driver? And onscreen window fills complete target X-Screen?
     % Or this is a single-output display NVidia Optimus PRIME render offload setup, where NVIDIA's RandR output leasing does not work?
     if IsLinux && ~IsWayland && ~isempty(strfind(winfo.GLVendor, 'NVIDIA')) && ...
@@ -603,6 +610,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             for i=1:length(devs)
                 if ~ismember(devs(i).DriverId, [1, 2, 3, 4, 14])
                     gpuIndex = devs(i).DeviceIndex;
+                    break;
                 end
             end
         end
@@ -744,6 +752,16 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         end
     end
 
+    % On Linux, this encodes the display server client connection handle, ie.
+    % X-Display handle on X11, wl_display on Wayland. Right now, this is only
+    % used on Linux+Wayland. On macOS the info is redundant and already provided
+    % as outputHandle (see above), on MS-Windows the info is unused:
+    if IsWayland
+        displayHandle = uint64(winfo.SysWindowInteropHandle);
+    else
+        displayHandle = uint64(0);
+    end
+
     % Get the UUID of the Vulkan device that is compatible with our associated
     % OpenGL renderer/gpu. Compatible means: Can by used for OpenGL-Vulkan interop:
     if ~isempty(winfo.GLDeviceUUID)
@@ -811,7 +829,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         end
 
         % Open the Vulkan window:
-        vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);
+        vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags, displayHandle);
 
         % No interop, or semaphores unsupported?
         if noInterop || isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_semaphore')) %#ok<STREMP>
