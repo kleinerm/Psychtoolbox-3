@@ -116,7 +116,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
 
         return;
     end
-    
+
     if cmd == 1
         % Vulkan window close operation, closes the Vulkan onscreen window associated with
         % a PTB onscreen window. Called from Screen('Close', win) and Screen('CloseAll') as
@@ -783,7 +783,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             system(sprintf('xrandr --screen %i --output %s --off ; sleep 1', screenId, outputName));
         end
 
-        if hdrMode
+        % Special gamma table setup for HDR mode, except when Wayland is used for display, where
+        % we currently can not control gamma tables, so skip it.
+        if hdrMode && ~IsWayland
             % We want an identity hardware gamma lut in HDR, but at maximum lut precision,
             % so output does not get truncated to 8 bpc. Therefore we can't use LoadIdentityClut()
             % which is aimed at 8 bpc identity pixel passthrough.
