@@ -1356,6 +1356,24 @@ static const struct wl_registry_listener wayland_registry_listener = {
     .global_remove = wayland_registry_listener_global_remove
 };
 
+// Callback function for wl_display error reporting and handling:
+static void wayland_display_handle_error(const struct wl_interface *interface, uint32_t code, uint32_t id)
+{
+    printf("PTB-CRITICAL: Fatal Wayland protocol error %u for object %u with Wayland interface: %s\n", code, id, (interface) ? interface->name : "Unknown");
+    printf("PTB-CRITICAL: Terminating the whole host application in 10 seconds, as it otherwise would permanently hang! Run from a terminal for more persistent output.\n");
+
+    fprintf(stderr, "PTB-CRITICAL: Fatal Wayland protocol error %u for object %u with Wayland interface: %s\n", code, id, (interface) ? interface->name : "Unknown");
+    fprintf(stderr, "PTB-CRITICAL: Terminating the whole host application in 10 seconds, as it otherwise would permanently hang!\n");
+
+    fflush(NULL);
+
+    // Wait 10 seconds before terminating:
+    PsychWaitIntervalSeconds(10);
+
+    // Protocol errors are fatal and terminate the connection, so we exit.
+    exit(1);
+}
+
 struct wp_presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord)
 {
     // Already have a cached presentation_interface? If so, just return it:
@@ -1522,7 +1540,17 @@ static void ProcessWaylandEvents(int screenNumber)
     do {
         wayland_roundtrip_needed = FALSE;
         if (wl_display_roundtrip(wl_display) == -1) {
-            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: ProcessWaylandEvents(): wl_display_roundtrip failed!\n");
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-WARNING: ProcessWaylandEvents(): wl_display_roundtrip failed! Error: %u\n", wl_display_get_error(wl_display));
+
+            // An EPROTO error is fatal / unrecoverable and will lead to complete host application termination!
+            if (EPROTO == wl_display_get_error(wl_display)) {
+                const struct wl_interface* interface;
+                uint32_t code, id;
+
+                code = wl_display_get_protocol_error(wl_display, &interface, &id);
+                wayland_display_handle_error(interface, code, id);
+            }
         }
         // Repeat until everything is enumerated.
     } while (wayland_roundtrip_needed);

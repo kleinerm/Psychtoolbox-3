@@ -114,6 +114,11 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
             Screen('Hookfunction', win, 'SetOneshotFlipResults', '', vblTime, predictedOnset, [], winfo.Beamposition);
         end
 
+        if IsWayland
+            % Do a Rect query to trigger Wayland event processing, and potential error handling:
+            Screen('Rect', win);
+        end
+
         return;
     end
 

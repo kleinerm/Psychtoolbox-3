@@ -334,6 +334,9 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
     int w, h, x, y;
 
+    // This non-sensical query just to trigger Wayland event processing in PsychScreenGlueWayland.c:
+    PsychGetDisplaySize(0, &w, &h);
+
     // Trigger event queue dispatch processing for GUI windows:
     if (windowRecord == NULL) {
         // No op, so far...
