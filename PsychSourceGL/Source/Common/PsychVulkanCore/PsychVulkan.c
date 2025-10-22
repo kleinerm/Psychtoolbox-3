@@ -645,9 +645,15 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     }
 
     #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    // Query support for Wayland instance extension, bind it if possible. On success, query Wayland server support:
-    if (addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME))
-        has_Wayland = getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET");
+    // Query support for Wayland server, and if we are running under Wayland, query Wayland surface instance extension and bind it if possible:
+    //
+    // Note that activating the Wayland surface extension will disable support for some extensions which can not be provided by all Wayland
+    // implementations, but also don't have a dynamic query ability per surface. E.g., VK_KHR_present_id and VK_KHR_present_wait as well as
+    // VK_GOOGLE_DISPLAY_TIMING would get disabled by default, as soon as the Wayland surface extension gets bound. That is why we only bind
+    // the Wayland surface extension if we know that we are running under Wayland and therefore really need it. Without this, support for the above
+    // extensions would get unconditionally disabled, even when running under X11 or in Direct Display mode, something we certainly want to avoid!
+    if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET"))
+        has_Wayland = addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
     #endif
 
     // The swapchain color space extension is optional and has no associated entry points, just defines some additional
