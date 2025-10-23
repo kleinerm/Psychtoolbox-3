@@ -1582,6 +1582,13 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     // Retrieve underlying native wl_surface stored in xwindowHandle:
     struct wl_surface *wl_surface = windowRecord->targetSpecific.xwindowHandle;
 
+    // Use of Wayland fifo protocol and wp_commit_timing protocol is only safe if our window is not presented through Vulkan/WSI/Wayland,
+    // as that uses those protocols internally, and there can only be one! So we need to exclude direct use of Vulkan/WSI via our PsychVulkan
+    // driver (signalled by kPsychExternalDisplayMethod), and indirect use via the Mesa gallium zink OpenGL-on-Vulkan driver, unless zink does
+    // not use its Vulkan/WSI based Kopper display backend, but the traditional X11/GLX backend:
+    psych_bool fifo_timing_safe = ((!strstr((char*) glGetString(GL_RENDERER), "zink") || (getenv("LIBGL_KOPPER_DISABLE") && atoi(getenv("LIBGL_KOPPER_DISABLE")))) &&
+                                    !(windowRecord->specialflags & kPsychExternalDisplayMethod));
+
     // Initialize fudge factor needed by PsychOSAdjustForCompositorDelay().
     // Default to 0.2 msecs, allow user override for testing and benchmarking via
     // environment variable:
@@ -1609,8 +1616,8 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Enabling Wayland wp_presentation_feedback extension for swap completion timestamping on window %i.\n", windowRecord->windowIndex);
 
     // Enable clever swap scheduling if the required wp_commit_timing extension version 1 or later is supported,
-    // unless this is disabled upon user script request:
-    if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDisableOpenMLScheduling) &&
+    // unless this is disabled upon user script request, or not safe due to concurrent use of Vulkan/WSI or zink:
+    if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDisableOpenMLScheduling) && fifo_timing_safe &&
         ((wayland_commit_timing_manager = get_wayland_commit_timing_manager(windowRecord)) != NULL)) {
         // Create wp_commit_timer for windowRecord's associated wl_surface:
         windowRecord->targetSpecific.wp_commit_timer = (void*) wp_commit_timing_manager_v1_get_timer(wayland_commit_timing_manager, wl_surface);
@@ -1627,12 +1634,9 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         }
     }
 
-    // Support for fifo extension? Bind a control object for the surface if so, unless the Mesa Gallium zink OpenGL
-    // driver is used, because zink implements OpenGL on top of Vulkan, and will use Vulkan VK_FIFO present modes, which
-    // in turn are implemented on Wayland by using wp_fifo. Iow. The zink driver uses wp_fifo internally already and us
-    // using it ourselves is both redundant, and causes Wayland protocol errors and hangs.
-    if (wayland_fifo_manager && !strstr((char*) glGetString(GL_RENDERER), "zink")) {
-        // wp_fifo supported, and zink driver not in use - go for it:
+    // Support for fifo extension? Bind a control object for the surface if so and if it is safe to do:
+    if (wayland_fifo_manager && fifo_timing_safe) {
+        // wp_fifo supported, and zink driver and/or Vulkan/WSI not in use - go for it:
         windowRecord->targetSpecific.wp_fifo = (void*) wp_fifo_manager_v1_get_fifo(wayland_fifo_manager, wl_surface);
         if (windowRecord->targetSpecific.wp_fifo && (PsychPrefStateGet_Verbosity() > 3))
             printf("PTB-INFO: Enabling Wayland wp_fifo extension for swap control on window %i.\n", windowRecord->windowIndex);
