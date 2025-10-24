@@ -2238,7 +2238,7 @@ psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevic
 
 psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_uint8* targetdeviceUUID, psych_bool isFullscreen, int screenId,
                                     void* displayHandle, void* outputHandle, PsychRectType rect, double refreshHz, int hdrMode, psych_bool needsTiming,
-                                    unsigned int colorPrecision, int colorSpace, int colorFormat, int flags)
+                                    unsigned int colorPrecision, int flags)
 {
     VkResult result;
     VkBool32 supportsPresent;
@@ -2472,9 +2472,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         }
     }
 
-    // TODO FIXME probe for specific colorSpace support.
-    // TODO FIXME probe for specific colorFormat support.
-    // TODO FIXME probe for specific refreshHz support.
+    // TODO probe for specific refreshHz support.
 
     // Some time granted to GUI event dispatch:
     PsychProcessWindowEvents(window);
@@ -3517,8 +3515,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 // to use the scRGB colorspace, because only scRGB supports fp16
                 // consistently across multiple gpu vendors, and only scRGB is
                 // supported for windowed HDR, ie. when the DWM compositor is responsible
-                // for SDR + HDR compositing. We also use scRGB + fp16 on macOS:
-                if (((PSYCH_SYSTEM == PSYCH_WINDOWS) && (!isFullscreen || (colorPrecision > 1))) || (PSYCH_SYSTEM == PSYCH_OSX)) {
+                // for SDR + HDR compositing. We also use scRGB + fp16 on macOS.
+                // TODO: We could also use scRGB + fp16 on Linux under Wayland + KWin 6.4 -> Disabled for now. Detection needs more work...
+                if (((PSYCH_SYSTEM == PSYCH_WINDOWS) && (!isFullscreen || (colorPrecision > 1))) || (PSYCH_SYSTEM == PSYCH_OSX) ||
+                    ((PSYCH_SYSTEM == PSYCH_LINUX) && !isFullscreen && has_Wayland && FALSE)) {
                     colorSpace = VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
 
                     // The scRGB colorspace only works with exactly fp16 == precision 2:
@@ -3555,7 +3555,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         if (memcmp(targetdeviceUUID, allzeros, 16) == 0)
             memcpy(targetdeviceUUID, &vulkan->physDeviceProps.deviceUUID[0], 16);
 
-        if (!PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, colorSpace, colorFormat, flags)) {
+        if (!PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, flags)) {
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable for requested settings.\n", gpuIndex, vulkan->deviceProps.deviceName);
 
@@ -3568,7 +3568,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         // No. Try to auto-detect the proper gpuIndex / gpu by probing:
         for (gpuIndex = 1; gpuIndex <= physicalGpuCount; gpuIndex++) {
             vulkan = PsychGetVulkan(gpuIndex, FALSE);
-            supportsPresent = PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, colorSpace, colorFormat, flags);
+            supportsPresent = PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming,
+                                                       colorPrecision, flags);
 
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: Does gpu %i [%s] meet our requirements for target surface: %s\n", gpuIndex, vulkan->deviceProps.deviceName, supportsPresent ? "Yes" : "No");
