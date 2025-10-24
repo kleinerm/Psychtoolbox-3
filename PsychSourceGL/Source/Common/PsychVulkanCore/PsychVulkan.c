@@ -2401,10 +2401,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
                        vulkan->deviceIndex, vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
             }
 
-            // Normally we'd fail here, but for the time being make an exception for Wayland
-            // while Wayland isn't a production backend: TODO Remove this workaround/exception asap.
-            if (!has_Wayland)
-                return(FALSE);
+            return(FALSE);
         }
 
         if (!window->supports_vsync_FIFO) {

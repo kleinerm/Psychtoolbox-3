@@ -615,7 +615,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             for i=1:length(devs)
                 if ~ismember(devs(i).DriverId, [1, 2, 3, 4, 14])
                     gpuIndex = devs(i).DeviceIndex;
-                    break;
+                    % Choose last viable index for test mode: break;
                 end
             end
         end
