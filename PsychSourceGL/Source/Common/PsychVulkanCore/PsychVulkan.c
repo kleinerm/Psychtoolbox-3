@@ -1844,13 +1844,15 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         result = fpGetRandROutputDisplayEXT(vulkan->physicalDevice, connection, (RROutput) outputHandle, &window->display);
         if (result != VK_SUCCESS || window->display == VK_NULL_HANDLE) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: For gpu [%s] Mapping vulkan output to target display failed in vkGetRandROutputDisplayEXT (display=%p): result = %i\n", vulkan->deviceProps.deviceName, window->display, result);
+                printf("PsychVulkanCore-ERROR: For gpu %i [%s] Mapping vulkan output to target display failed in vkGetRandROutputDisplayEXT (display=%p): result = %i\n",
+                       vulkan->deviceIndex, vulkan->deviceProps.deviceName, window->display, result);
 
             goto createsurface_out;
         }
 
         if (verbosity > 3)
-            printf("PsychVulkanCore-INFO: gpu [%s] has access to target display %p. Trying to switch to direct display mode...\n", vulkan->deviceProps.deviceName, window->display);
+            printf("PsychVulkanCore-INFO: gpu %i [%s] has access to target display %p. Trying to switch to direct display mode...\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, window->display);
 
         result = fpAcquireXlibDisplayEXT(vulkan->physicalDevice, connection, window->display);
         if (result != VK_SUCCESS) {
@@ -1861,7 +1863,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         }
 
         if (verbosity > 3)
-            printf("PsychVulkanCore-INFO: gpu [%s] display %p switched to direct display mode. Setting up for direct display surface.\n", vulkan->deviceProps.deviceName, window->display);
+            printf("PsychVulkanCore-INFO: gpu %i [%s] display %p switched to direct display mode. Setting up for direct display surface.\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, window->display);
 
         // We have exclusive direct display mode access now. Probe all properties needed to create a fullscreen display surface.
         // Get the video modes supported by the display:
@@ -1901,7 +1904,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         result = vkGetDisplayModePropertiesKHR(vulkan->physicalDevice, window->display, &modeCount, modes);
         if ((result != VK_SUCCESS) && (result != VK_INCOMPLETE)) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: For gpu [%s] could not find any valid display modes! count = %i, result = %i\n", vulkan->deviceProps.deviceName, modeCount, result);
+                printf("PsychVulkanCore-ERROR: For gpu %i [%s] could not find any valid display modes! count = %i, result = %i\n", vulkan->deviceIndex,
+                       vulkan->deviceProps.deviceName, modeCount, result);
 
             free(modes);
             goto createsurface_out;
@@ -1930,7 +1934,7 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
 
         if (i == modeCount) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: For gpu [%s] could not find any suitable display mode for our requirements!\n", vulkan->deviceProps.deviceName);
+                printf("PsychVulkanCore-ERROR: For gpu %i [%s] could not find any suitable display mode for our requirements!\n", vulkan->deviceIndex, vulkan->deviceProps.deviceName);
 
             goto createsurface_out;
         }
@@ -2012,7 +2016,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         // Found a suitable planeIndex and planeStackIndex?
         if (planeIndex == planeCount) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: For gpu [%s] Could not find any plane which supports our display in a set of %i planes!?!\n", vulkan->deviceProps.deviceName, planeCount);
+                printf("PsychVulkanCore-ERROR: For gpu %i [%s] Could not find any plane which supports our display in a set of %i planes!?!\n", vulkan->deviceIndex,
+                       vulkan->deviceProps.deviceName, planeCount);
 
             goto createsurface_out;
         }
@@ -2033,7 +2038,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         result = vkCreateDisplayPlaneSurfaceKHR(vulkanInstance, &createInfo, NULL, &window->surface);
         if (result != VK_SUCCESS) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: For gpu [%s] vkCreateDisplayPlaneSurfaceKHR() failed for planeIndex %i, result = %i\n", vulkan->deviceProps.deviceName, planeIndex, result);
+                printf("PsychVulkanCore-ERROR: For gpu %i [%s] vkCreateDisplayPlaneSurfaceKHR() failed for planeIndex %i, result = %i\n", vulkan->deviceIndex,
+                       vulkan->deviceProps.deviceName, planeIndex, result);
 
             goto createsurface_out;
         }
@@ -2042,7 +2048,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         rc = TRUE;
 
         if (verbosity > 3)
-            printf("PsychVulkanCore-INFO: For gpu [%s] created a direct display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a direct display surface [%p] for display window %i\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, window->surface, window->index);
     }
     else {
         #if defined(VK_USE_PLATFORM_XLIB_KHR)
@@ -2069,7 +2076,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
 
             if (window->x11PrivateWindow == None) {
                 if (verbosity > 0)
-                    printf("PsychVulkanCore-ERROR: For gpu [%s] creating private vulkan output window for NVidia Vulkan failed in XCreateSimpleWindow.\n", vulkan->deviceProps.deviceName);
+                    printf("PsychVulkanCore-ERROR: For gpu %i [%s] creating private vulkan output window for NVidia Vulkan failed in XCreateSimpleWindow.\n", vulkan->deviceIndex,
+                           vulkan->deviceProps.deviceName);
 
                 goto createsurface_out;
             }
@@ -2094,7 +2102,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
             result = vkCreateXlibSurfaceKHR(vulkanInstance, &createInfoX11, NULL, &window->surface);
             if (result != VK_SUCCESS) {
                 if (verbosity > 0)
-                    printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateXlibSurfaceKHR: %i\n", vulkan->deviceProps.deviceName, result);
+                    printf("PsychVulkanCore-ERROR: For gpu %i [%s] creating vulkan output window failed in vkCreateXlibSurfaceKHR: %i\n", vulkan->deviceIndex,
+                           vulkan->deviceProps.deviceName, result);
 
                 goto createsurface_out;
             }
@@ -2126,7 +2135,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
             result = vkCreateWaylandSurfaceKHR(vulkanInstance, &createInfoWayland, NULL, &window->surface);
             if (result != VK_SUCCESS) {
                 if (verbosity > 0)
-                    printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateWaylandSurfaceKHR: %i\n", vulkan->deviceProps.deviceName, result);
+                    printf("PsychVulkanCore-ERROR: For gpu %i [%s] creating vulkan output window failed in vkCreateWaylandSurfaceKHR: %i\n", vulkan->deviceIndex,
+                           vulkan->deviceProps.deviceName, result);
 
                 goto createsurface_out;
             }
@@ -2138,8 +2148,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
 
         // Got a windowed window for Vulkan stimulus display.
         if (verbosity > 3 && rc)
-            printf("PsychVulkanCore-INFO: For gpu [%s] created a windowing system window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName,
-                   window->surface, window->index);
+            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a windowing system window display surface [%p] for display window %i\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, window->surface, window->index);
     }
 
 createsurface_out:
@@ -2258,7 +2268,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         // Mismatch: This Vulkan physical device does not represent the same physical gpu that is used
         // on the OpenGL / external side for stimulus rendering and interop - Reject as unsuitable:
         if (verbosity > 4) {
-            printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not represent same physical gpu as required by external client on window %i.\n", vulkan->deviceProps.deviceName, window->index);
+            printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not represent same physical gpu as required by external client on window %i.\n",
+                   vulkan->deviceIndex, vulkan->deviceProps.deviceName, window->index);
             printf("PsychVulkanCore-INFO: Requested OpenGL targetdeviceUUID: ");
             for (int i = 0; i < 16; i++)
                 printf("%02x ", targetdeviceUUID[i]);
@@ -2276,7 +2287,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // If we need HDR, then does the device support HDR at all?
     if (hdrMode && !vulkan->hasHDR) {
         if (verbosity > 4)
-            printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support HDR as required by window %i.\n", vulkan->deviceProps.deviceName, window->index);
+            printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not support HDR as required by window %i.\n", vulkan->deviceIndex, vulkan->deviceProps.deviceName, window->index);
 
         return(FALSE);
     }
@@ -2311,7 +2322,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
                 (vulkan->deviceProps.driverVersion < VK_MAKE_VERSION(19, 3, 0))) {
                 // This is a no-go:
                 if (verbosity > 4) {
-                    printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required visual onset timing precision in the windowed configuration required by window %i.\n", vulkan->deviceProps.deviceName, window->index);
+                    printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not support required visual onset timing precision in the windowed configuration required by window %i.\n",
+                           vulkan->deviceIndex, vulkan->deviceProps.deviceName, window->index);
                     printf("PsychVulkanCore-INFO: This limitation can be resolved by upgrading your Mesa installation to Mesa version 19.3.0 or any later versions.\n");
                 }
 
@@ -2329,7 +2341,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         // fully through and fail later on in the "game-over" case:
         if ((vulkan->driverProps.driverID == VK_DRIVER_ID_MESA_RADV_KHR) && (vulkan->deviceProps.driverVersion < VK_MAKE_VERSION(25, 2, 99))) {
             if (verbosity > 4) {
-                printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required visual stimulus color precision by window %i.\n", vulkan->deviceProps.deviceName, window->index);
+                printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not support required visual stimulus color precision by window %i.\n",
+                       vulkan->deviceIndex, vulkan->deviceProps.deviceName, window->index);
             }
 
             return(FALSE);
@@ -2339,7 +2352,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // This is as far as we can get without creating a display surface on the target display, so lets create one:
     if (!PsychCreateDisplaySurface(window, vulkan, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz)) {
         if (verbosity > 0)
-            printf("PsychVulkanCore-ERROR: Creating a display surface on Vulkan gpu '%s' for further probing on window %i failed.\n", vulkan->deviceProps.deviceName, window->index);
+            printf("PsychVulkanCore-ERROR: Creating a display surface on Vulkan gpu %i '%s' for further probing on window %i failed.\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, window->index);
 
         return(FALSE);
     }
@@ -2359,7 +2373,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     }
 
     if (verbosity > 4)
-        printf("PsychVulkanCore-INFO: Probing if gpu '%s' supports presenting to the target surface: %s\n", vulkan->deviceProps.deviceName, supportsPresent ? "Yes" : "No");
+        printf("PsychVulkanCore-INFO: Probing if gpu %i '%s' supports presenting to the target surface: %s\n", vulkan->deviceIndex,
+               vulkan->deviceProps.deviceName, supportsPresent ? "Yes" : "No");
 
     if (!supportsPresent)
         return(FALSE);
@@ -2370,7 +2385,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // Presenting to the surface is supported. Check supported color spaces, formats, present modes against requirements:
     if (!PsychProbeSurfaceProperties(window, vulkan)) {
         if (verbosity > 0)
-            printf("PsychVulkanCore-ERROR: Failed to probe surface properties on gpu '%s' for window %i [%p]: %i\n", vulkan->deviceProps.deviceName, window->index, window, result);
+            printf("PsychVulkanCore-ERROR: Failed to probe surface properties on gpu %i '%s' for window %i [%p]: %i\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, window->index, window, result);
 
         return(FALSE);
     }
@@ -2381,7 +2397,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         if (!vulkan->hasTiming && !vulkan->hasWait && (window->surfaceCapabilities.minImageCount > 2)) {
             // No dice.
             if (verbosity > 4) {
-                printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required visual onset timing precision in the %s configuration required by window %i.\n", vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
+                printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not support required visual onset timing precision in the %s configuration required by window %i.\n",
+                       vulkan->deviceIndex, vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
             }
 
             // Normally we'd fail here, but for the time being make an exception for Wayland
@@ -2393,7 +2410,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         if (!window->supports_vsync_FIFO) {
             // Vsync'ed VK_PRESENT_MODE_FIFO_KHR not supported? This should never happen!
             if (verbosity > 4)
-                printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support VK_PRESENT_MODE_FIFO_KHR in the %s configuration required by window %i! Driver bug?\n", vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
+                printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not support VK_PRESENT_MODE_FIFO_KHR in the %s configuration required by window %i! Driver bug?\n",
+                       vulkan->deviceIndex, vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
 
             return(FALSE);
         }
@@ -2405,7 +2423,9 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         if (!(window->supports_hdr10_rgb10a2 || window->supports_hdr10_bgr10a2 || window->supports_hdr10_rgba16f || window->supports_scrgb_rgba16f || window->supports_fs2_hdr)) {
             // Nope:
             if (verbosity > 3) {
-                printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support HDR in the %s configuration required by window %i.\n", vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
+                printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not support HDR in the %s configuration required by window %i.\n", vulkan->deviceIndex,
+                       vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
+
                 if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && !isFullscreen)
                     printf("PsychVulkanCore-INFO: You may be able to make this work on Windows-10 if you enable HDR support in the display settings.\n");
             }
@@ -2444,7 +2464,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         if (!supportsPrecision) {
             // Nope:
             if (verbosity > 4) {
-                printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required precision %i in the %s configuration required by window %i.\n", vulkan->deviceProps.deviceName, colorPrecision, isFullscreen ? "fullscreen" : "windowed", window->index);
+                printf("PsychVulkanCore-INFO: Vulkan gpu %i '%s' does not support required precision %i in the %s configuration required by window %i.\n", vulkan->deviceIndex,
+                       vulkan->deviceProps.deviceName, colorPrecision, isFullscreen ? "fullscreen" : "windowed", window->index);
             }
 
             return(FALSE);
@@ -3621,7 +3642,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         numBuffers = MAX_BUFFERS;
     }
 
-    if ((optBuffers == 2) && (numBuffers != 2) && (verbosity > 1))
+    if ((optBuffers == 2) && (numBuffers != 2) && (!vulkan->hasWait) && (!vulkan->hasTiming) && (verbosity > 1))
         printf("PsychVulkanCore-WARNING: Window %i does not support strict double-buffering (numBuffers=%i). Expect timing trouble!\n", window->index, numBuffers);
 
     window->numBuffers = 0;
