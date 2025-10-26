@@ -4331,11 +4331,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Take preswap timestamp:
     PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
 
+    #if PSYCH_SYSTEM == PSYCH_LINUX
     // Request swap completion event for next present from Linux Wayland backend when using it with the external Vulkan display backend
     // and this is requested by the backend, or by 'GetFlipInfo':
     if ((windowRecord->specialflags & kPsychSkipSwapForFlipOnce) && (windowRecord->specialflags & kPsychExternalDisplayMethod) &&
         (windowRecord->swapevents_enabled != 0) && (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND))
         PsychOSSwapCompletionLogging(windowRecord, 5, 0);
+    #endif
 
     // Execute the hookchain for non-OpenGL operations that need to happen immediately before the bufferswap, e.g.,
     // sending out control signals or commands to external hardware to somehow sync it up to imminent bufferswaps:
