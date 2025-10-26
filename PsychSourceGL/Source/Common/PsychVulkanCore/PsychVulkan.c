@@ -1399,6 +1399,12 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
                 if (verbosity > 1)
                     printf("PsychVulkanCore-WARNING: Buggy AMD Vulkan driver reports wrong (too small) color gamut. Hopefully fixing this by scaling up with a factor of 5.0x.\n");
             }
+            else {
+                window->nativeDisplayHDRMetadataValidity = 0;
+
+                if (verbosity > 1)
+                    printf("PsychVulkanCore-WARNING: Vulkan driver reports wrong (too small) color gamut! Marking HDR display properties invalid.\n");
+            }
         }
     }
 
@@ -1416,6 +1422,7 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         printf("Surface minImageCount %i - maxImageCount %i\n", window->surfaceCapabilities.minImageCount, window->surfaceCapabilities.maxImageCount);
         printf("Surface currentExtent %i x %i pixels with up to %i view layers\n", window->surfaceCapabilities.currentExtent.width, window->surfaceCapabilities.currentExtent.height, window->surfaceCapabilities.maxImageArrayLayers);
         printf("Display native HDR properties as queried from monitor:\n");
+        printf("Display properties considered valid: %s\n", window->nativeDisplayHDRMetadataValidity ? "Yes" : "No");
         printf("Display Supports control of HDR local dimming: %s\n", nativeHDRCapabilitiesAMD.localDimmingSupport ? "Yes" : "No");
         printf("Display Gamut  R: [%f, %f]\n", window->nativeDisplayHDRMetadata.displayPrimaryRed.x, window->nativeDisplayHDRMetadata.displayPrimaryRed.y);
         printf("Display Gamut  G: [%f, %f]\n", window->nativeDisplayHDRMetadata.displayPrimaryGreen.x, window->nativeDisplayHDRMetadata.displayPrimaryGreen.y);
@@ -4049,13 +4056,23 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         goto openwindow_out1;
     }
 
-    // Enable HDR metadata packet transmission to display output:
+    // Assign hdrMode in use:
     window->hdrMode = hdrMode;
-    if (hdrMode && !PsychSetHDRMetaData(window)) {
-        if (verbosity > 0)
-            printf("PsychVulkanCore-ERROR: Failed to enable HDR mode %i for window %i.\n", hdrMode, window->index);
 
-        goto openwindow_out1;
+    // Enable HDR metadata packet transmission to display output if we have valid default HDR static metadata,
+    // or if the specific OS + WSI + Vulkan ICD combo needs it to get HDR going. Conformant implementations should
+    // not need setting HDR metadata just to switch to HDR mode and signalling, as selecting a HDR colorspace for
+    // the swapchain should be enough. Some systems have slightly buggy drivers and need this extra kick, specifically
+    // the AMD made drivers for Linux, ie. AMDVLK open-source and AMDVLK-Pro proprietary:
+    if (hdrMode &&
+        (window->nativeDisplayHDRMetadataValidity ||
+         (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR || vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR))) {
+        if (!PsychSetHDRMetaData(window)) {
+            if (verbosity > 0)
+                printf("PsychVulkanCore-ERROR: Failed to enable HDR mode %i for window %i.\n", hdrMode, window->index);
+            
+            goto openwindow_out1;
+        }
     }
 
     // Report nominal refresh rate of display if this is supported:
