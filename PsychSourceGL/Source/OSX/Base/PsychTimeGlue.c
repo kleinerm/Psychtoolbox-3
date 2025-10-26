@@ -618,12 +618,12 @@ const char* PsychSupportStatus(void)
         // Query macOS version and machine processor architecture:
         osMinor = PsychGetOSXMinorVersion(&isARM);
 
-        // Only macOS 13 and 14 are officially tested and supported:
-        isSupported = ((osMinor - 5 >= 13) && (osMinor - 5 <= 14)) ? 1 : 0;
-        isTested = (isARM && (osMinor - 5 == 14)) || (!isARM && (osMinor - 5 == 13));
+        // Only macOS 13 to 15 are officially tested and supported:
+        isSupported = ((osMinor - 5 >= 13) && (osMinor - 5 <= 15)) ? 1 : 0;
+        isTested = (isARM && (osMinor - 5 >= 14) && (osMinor - 5 <= 15)) || (!isARM && (osMinor - 5 == 13));
 
         if (osMinor <= 15) {
-            // macOS 10 family is done, although there's some chance it still works back to 10.11, but who knows?
+            // macOS 10 family is done, although there's some chance it still works back to 10.13, but who knows?
             sprintf(statusString, "macOS 10.%i is no longer tested or officially supported for this Psychtoolbox release.", osMinor);
         } else if (osMinor - 5 <= 12) {
             // Now unsupported macOS 11 and 12:
