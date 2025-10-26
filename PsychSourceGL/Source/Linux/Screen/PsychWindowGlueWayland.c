@@ -243,7 +243,7 @@ wayland_feedback_presented(void *data,
 
     // Delete our own completion wayland_feedback container if swap completion logging
     // isn't enabled:
-    if (windowRecord->swapevents_enabled == 0) destroy_wayland_feedback(wayland_feedback);
+    if (windowRecord->swapevents_enabled <= 0) destroy_wayland_feedback(wayland_feedback);
 
     return;
 }
@@ -271,7 +271,7 @@ wayland_feedback_discarded(void *data, struct wp_presentation_feedback *presenta
 
     // Delete our own completion wayland_feedback container if swap completion logging
     // isn't enabled:
-    if (windowRecord->swapevents_enabled == 0) destroy_wayland_feedback(wayland_feedback);
+    if (windowRecord->swapevents_enabled <= 0) destroy_wayland_feedback(wayland_feedback);
 }
 
 static void
@@ -1556,7 +1556,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         !(windowRecord->swapcompletiontype & WP_PRESENTATION_FEEDBACK_KIND_ZERO_COPY) && (PsychPrefStateGet_Verbosity() > 1)) {
         // Do some rate limiting for the moment - Only one warning every 600 flips:
         static unsigned int ratelimitcounter = 0;
-        if ((ratelimitcounter++ % 600) == 0)
+        if (((ratelimitcounter++ % 600) == 0) && (ratelimitcounter > 0))
             printf("PTB-WARNING: Flip for window %i didn't use zero copy pageflips %i times. Stimulus may not display pixel-perfect as specified.\n",
                    windowRecord->windowIndex, ratelimitcounter);
     }
@@ -1975,22 +1975,23 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 
     // Currently only have meaningful handling for Wayland with wp_presentation_feedback extension:
     if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
-        if (cmd == 0 || cmd == 1 || cmd == 2) {
-            // Check if wp_presentation_feedback extension is supported. Enable/Disable swap completion event delivery for our window, if so:
+        if (cmd == 0 || cmd == 1 || cmd == 2 || cmd == 6) {
+            // Enable/Disable swap completion event delivery for our window, as specified by cmd:
             PsychLockDisplay();
+
             // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
-            // it gets directed to us:
-            // UPDATE: Actually no. Disable by usercode means disable for now, until we have an actual
-            // use case for automatic redirection to our code on Wayland. Otherwise we'd just incur extra
-            // overhead for nothing.
-            // Old style with redirect: if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
-            // New style: Enable if usercode wants it, disable if usercode doesn't want it:
-            if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = cmd;
+            // it gets directed to external backend handling:
+            if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : -1;
 
             // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
+            // Note: Not used atm.
             if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
 
+            // If we want the data for external backend and usercode doesn't have exclusive access to it already, then redirect to us:
+            if (cmd == 6 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = -1;
+
             PsychUnlockDisplay();
+
             return(TRUE);
         }
 
@@ -2176,6 +2177,12 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                     return(TRUE);
                 }
             }
+        }
+
+        // For external display backends like Vulkan only. Request a timing feedback event when our
+        // wl_surface has been presented or discarded:
+        if ((cmd == 5) && (windowRecord->specialflags & kPsychExternalDisplayMethod)) {
+            wayland_window_create_feedback(windowRecord);
         }
     } else {
         // Failed to enable swap events, because they're unsupported without

@@ -65,43 +65,54 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
 
             % Inject predictedOnset == visual stimulus onset time into Screen(), for usual handling
             % and reporting back to usercode via Screen('Flip'):
-            Screen('Hookfunction', win, 'SetOneshotFlipResults', '', predictedOnset);
+            Screen('Hookfunction', win, 'SetOneshotFlipResults', '', max(predictedOnset, 0));
         else
             % No. Need to use fallback with the help of Screen():
+            if ~IsWayland
+                % Assign this windows usedOutput as rank 0 output setting in Screen:
+                % This affects beamposition based Vblank timestamping and Beamposition
+                % in Screen('GetWindowInfo'), so we query scanout position of the correct
+                % display engine for this win'dow:
+                outputIndex = vulkan{win}.usedOutput;
+                if ~isempty(outputIndex)
+                    screenId = vulkan{win}.screenId;
+                    Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, outputIndex + 1), outputMappings{screenId + 1}(2, outputIndex + 1), 0);
+                end
 
-            % Assign this windows usedOutput as rank 0 output setting in Screen:
-            % This affects beamposition based Vblank timestamping and Beamposition
-            % in Screen('GetWindowInfo'), so we query scanout position of the correct
-            % display engine for this win'dow:
-            outputIndex = vulkan{win}.usedOutput;
-            screenId = vulkan{win}.screenId;
-            if ~isempty(outputIndex)
-                Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, outputIndex + 1), outputMappings{screenId + 1}(2, outputIndex + 1), 0);
+                % Perform a blocking Vulkan Present operation of the rendered interop image
+                % to the display of Vulkan window vwin associated with onscreen window win.
+                %
+                % vblTime is the visual stimulus onset time, as computed by PsychVulkanCore's
+                % own timestamping. This would only be accurate if the underlying Vulkan driver
+                % supported high-precision timestamping, which it doesn't if we are in this path.
+                % Therefore it is a simple GetSecs() style approximation:
+                vblTime = PsychVulkanCore('Present', vwin, tWhen, doTimestamp);
+
+                % As long as we don't have high precision timestamp support in PsychVulkanCore,
+                % use Screen()'s VBLANK timestamps as reasonably accurate and mostly reliable surrogate:
+                winfo = Screen('GetWindowInfo', win, 7);
+
+                % Restore rank 0 output setting in Screen:
+                if ~isempty(outputIndex)
+                    Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
+                end
+
+                % predictedOnset is the last known vbl timestamp from Screen():
+                predictedOnset = winfo.LastVBLTime;
+                beamPosition = winfo.Beamposition;
+            else
+                % On Wayland we can piggyback on Screen's internal Wayland timestamping.
+
+                % Perform blocking present - should block until present complete:
+                vblTime = PsychVulkanCore('Present', vwin, tWhen, doTimestamp);
+
+                % Retrieve corresponding Screen() timestamp:
+                predictedOnset = Screen('GetFlipInfo', win, 5);
+                beamPosition = [];
             end
-
-            % Perform a blocking Vulkan Present operation of the rendered interop image
-            % to the display of Vulkan window vwin associated with onscreen window win.
-            %
-            % vblTime is the visual stimulus onset time, as computed by PsychVulkanCore's
-            % own timestamping. This would only be accurate if the underlying Vulkan driver
-            % supported high-precision timestamping, which it doesn't if we are in this path.
-            % Therefore it is a simple GetSecs() style approximation:
-            vblTime = PsychVulkanCore('Present', vwin, tWhen, doTimestamp);
-
-            % As long as we don't have high precision timestamp support in PsychVulkanCore,
-            % use Screen()'s VBLANK timestamps as reasonably accurate and mostly reliable surrogate:
-            winfo = Screen('GetWindowInfo', win, 7);
-
-            % Restore rank 0 output setting in Screen:
-            if ~isempty(outputIndex)
-                Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
-            end
-
-            % predictedOnset is the last known vbl timestamp from Screen():
-            predictedOnset = winfo.LastVBLTime;
 
             % If predictedOnset is valid and not stale, use it. Otherwise fall back to vblTime:
-            if (predictedOnset > 0) && (predictedOnset ~= vulkan{win}.LastVBLTime)
+            if doTimestamp && (predictedOnset > 0) && (predictedOnset ~= vulkan{win}.LastVBLTime)
                 vblTime = predictedOnset;
             else
                 predictedOnset = vblTime;
@@ -111,7 +122,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
 
             % Inject vblTime and visual stimulus onset time into Screen(), for usual handling
             % and reporting back to usercode via Screen('Flip'), also current beamposition:
-            Screen('Hookfunction', win, 'SetOneshotFlipResults', '', vblTime, predictedOnset, [], winfo.Beamposition);
+            Screen('Hookfunction', win, 'SetOneshotFlipResults', '', max(vblTime, 0), max(predictedOnset, 0), [], beamPosition);
         end
 
         if IsWayland
@@ -728,8 +739,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                 oldbpc = bpc;
             end
         else
-            % On Linux in windowed mode, outputHandle encodes the X11 window handle of
-            % the PTB onscreen window, which we will use for the Vulkan display:
+            % On Linux in windowed mode, outputHandle encodes the X11 window handle
+            % or Wayland wl_surface backing surface of the PTB onscreen window,
+            % which we will use for the Vulkan display:
             outputHandle = uint64(winfo.SysWindowHandle);
 
             % TODO XXX: Should we calculate refreshHz per output or from FlipInterval instead?
@@ -973,6 +985,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Store for win'dow if Vulkan driver supports high-precision timing and timestamping natively:
     vulkan{win}.SupportsTiming = devs(gpuIndex).SupportsTiming;
+
+    % If we are running on top of a Wayland display server and the Vulkan driver doesn't support
+    % native timing, we can piggyback on Screen's internal Wayland timestamping on most compositors,
+    % with some setup in place:
+    if ~vulkan{win}.SupportsTiming && IsWayland
+        Screen('GetFlipInfo', win, 4);
+    end
 
     % Interop enabled. Set up callbacks from Screen() imaging pipeline into our driver:
 

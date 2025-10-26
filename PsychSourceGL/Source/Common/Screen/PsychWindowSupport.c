@@ -45,11 +45,6 @@
 
 #include "Screen.h"
 
-// Define this for non-Waffle builds:
-#ifndef WAFFLE_PLATFORM_WAYLAND
-#define WAFFLE_PLATFORM_WAYLAND 0x0014
-#endif
-
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #include <errno.h>
 // utsname for uname() so we can find out on which kernel we're running:
@@ -4335,6 +4330,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
     // Take preswap timestamp:
     PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
+
+    // Request swap completion event for next present from Linux Wayland backend when using it with the external Vulkan display backend
+    // and this is requested by the backend, or by 'GetFlipInfo':
+    if ((windowRecord->specialflags & kPsychSkipSwapForFlipOnce) && (windowRecord->specialflags & kPsychExternalDisplayMethod) &&
+        (windowRecord->swapevents_enabled != 0) && (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND))
+        PsychOSSwapCompletionLogging(windowRecord, 5, 0);
 
     // Execute the hookchain for non-OpenGL operations that need to happen immediately before the bufferswap, e.g.,
     // sending out control signals or commands to external hardware to somehow sync it up to imminent bufferswaps:

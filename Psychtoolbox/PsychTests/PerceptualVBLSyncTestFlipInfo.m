@@ -189,8 +189,6 @@ try
        HideCursor(win);
    end
 
-   Screen('GetFlipInfo', win, 1);
-
    flickerRect = InsetRect(winRect, 100, 0);
    color = 0;
    deadline = GetSecs + maxduration;
@@ -200,6 +198,8 @@ try
 
    VBLTimestamp = Screen('Flip', win, 0, 2);
 
+   % Now enable flip info event recording:
+   Screen('GetFlipInfo', win, 1);
    while (~KbCheck) && (GetSecs < deadline)
       % Draw left eye view (if stereo enabled):
       Screen('SelectStereoDrawBuffer', win, 0);

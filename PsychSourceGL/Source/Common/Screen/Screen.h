@@ -56,6 +56,11 @@
 #define WAFFLE_API_VERSION 0x0107
 #define WAFFLE_API_EXPERIMENTAL
 #include <waffle-1/waffle.h>
+#else
+// Define this for non-Waffle builds:
+#ifndef WAFFLE_PLATFORM_WAYLAND
+#define WAFFLE_PLATFORM_WAYLAND 0x0014
+#endif
 #endif
 
 // Include specifications of the GPU registers:

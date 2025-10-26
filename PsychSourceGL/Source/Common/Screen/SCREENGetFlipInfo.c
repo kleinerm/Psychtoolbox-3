@@ -23,7 +23,7 @@ static char useString[] = "info = Screen('GetFlipInfo', windowPtr [, infoType=0]
 static char synopsisString[] = 
     "Returns a struct with miscellaneous info about finished flips on the specified onscreen window.\n"
     "\n"
-    "This function is currently only supported on Linux X11/GLX with the free graphics drivers,\n"
+    "This function is currently only supported on Linux X11/GLX with the free graphics drivers, "
     "and on Linux/Wayland with support for the presentation_feedback extension.\n\n"
     "The function allows you to enable logging of timestamps and other status information "
     "about all completed bufferswaps, as triggered via Screen('Flip'), Screen('AsyncFlipBegin') etc. "
@@ -37,7 +37,11 @@ static char synopsisString[] =
     "This allows to associate specific flips with the returned logged timestamps and other info.\n"
     "If set to 1, logging of flip completion info is enabled.\n"
     "If set to 2, logging of flip completion info is disabled.\n"
-    "If set to 3, the oldest stored flip completion info is returned in a struct 'info'.\n\n"
+    "If set to 3, the oldest stored flip completion info is returned in a struct 'info'.\n"
+    "If set to 4, only with Wayland and use of the Vulkan display backend, some required "
+    "manual preparation for timestamping is performed. This is not for use by user scripts!\n"
+    "If set to 5, only with Wayland and use of the Vulkan display backend, return the "
+    "present timestamp for the most recently completed present, or zero if unknown.\n\n"
     "The info struct contains the following fields:\n"
     "----------------------------------------------\n\n"
     "OnsetTime: Visual stimulus onset time of the completed Screen('Flip') operation.\n"
@@ -75,7 +79,7 @@ PsychError SCREENGetFlipInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-    if (infoType < 0 || infoType > 3) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3.");
+    if (infoType < 0 || infoType > 5) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0 to 5.");
 
     // Type 0: Return SBC handle of last scheduled flip:
     if (infoType == 0) {
@@ -98,6 +102,23 @@ PsychError SCREENGetFlipInfo(void)
     // Type 3: Fetch logged swap completion events:
     if (infoType == 3) {
         PsychOSSwapCompletionLogging(windowRecord, 3, 1);
+        return(PsychError_none);
+    }
+
+    // Type 4: Request Wayland presentation_feedback processing for all presents from Linux Wayland backend when using with external Vulkan display backend:
+    if ((infoType == 4) && (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && (windowRecord->specialflags & kPsychExternalDisplayMethod)) {
+        PsychOSSwapCompletionLogging(windowRecord, 6, 0);
+        return(PsychError_none);
+    }
+
+    // Type 5: Request swap completion timestamp from last completed present from Linux Wayland backend when using with external Vulkan display backend:
+    if ((infoType == 5) && (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && (windowRecord->specialflags & kPsychExternalDisplayMethod)) {
+        double tSwap = 0;
+
+        if (windowRecord->swapevents_enabled != 0)
+            PsychOSGetSwapCompletionTimestamp(windowRecord, windowRecord->submitted_sbc, &tSwap);
+
+        PsychCopyOutDoubleArg(1, FALSE, tSwap);
         return(PsychError_none);
     }
 #else
