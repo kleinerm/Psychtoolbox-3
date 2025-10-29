@@ -3999,7 +3999,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         case 0x8086: // Intel gpu: Verified to work with tiled rendering on Iris as of Mesa 21.0.0-devel + OpenGL interop patchset.
         case 0x10de: // NVidia gpu: At least proprietary drivers allow tiled rendering:
         case 0x14e4: // Broadcom gpu: Verified to work with tiled rendering on VideoCore-6 / RaspberryPi 4/400.
-            if ((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) {
+        case VK_VENDOR_ID_MESA: // Mesa Honeykrisp or llvmpipe driver, assuming Honeykrisp, ergo: Apple Silicon SoC AGFX gpu.
+            if (((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) && !(flags & 0x4)) {
                 window->interopTextureTiled = TRUE;
                 break;
             }
@@ -4470,7 +4471,7 @@ PsychError PSYCHVULKANCloseWindow(void)
 PsychError PSYCHVULKANOpenWindow(void)
 {
     static char useString[] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags, displayHandle);";
-    //                         1                                            1         2           3             4         5     6             7        8               9          10          11           12
+    //                         1                                            1         2           3             4         5     6             7        8               9          10          11           12      13
     static char synopsisString[] =
         "Open a display window on a Vulkan device.\n\n"
         "'gpuIndex' is the index of the Vulkan gpu that should be used for displaying the window. Devices "
@@ -4519,6 +4520,7 @@ PsychError PSYCHVULKANOpenWindow(void)
         "'flags' Special mode selection flags or'ed together: +1 = Diagnostic display only, no Screen() OpenGL interop, just show an alternating black-white test image. Useful "
         "for most basic Vulkan testing and driver bringup if the given gpu does not have graphics drivers with OpenGL+Vulkan interop capabilities yet.\n"
         "+2 = Do not switch to fullscreen-exclusive mode on MS-Windows, even for fullscreen windows. This is useful as workaround for some buggy Vulkan drivers.\n"
+        "+4 = Do not use a tiled format for the OpenGL-Vulkan interop image, use linear instead.\n"
         "'displayHandle' Handle defining the display server connection to use, if any, in an operating system dependent manner. "
         "This is currently unused on all systems except Linux with Wayland display backend, where it encodes the wl_display handle.\n"
         "\n\n"
