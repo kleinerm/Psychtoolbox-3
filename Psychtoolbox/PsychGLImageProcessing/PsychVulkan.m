@@ -570,6 +570,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Restore rank 0 output setting in Screen:
     Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
 
+    % Mesa zink OpenGL driver in use on Linux? zink does not support OpenGL-Vulkan
+    % interop images with a tiled layout, so we must force-disable tiling and instead
+    % use a linear layout:
+    if IsLinux && ~isempty(strfind(winfo.GLRenderer, 'zink'))
+        flags = mor(flags, 4);
+    end
+
     % On Linux with Wayland, always use "windowed" mode setup, even for fullscreen windows,
     % as all the wl_surface setup, also for fullscreen mode, was already done by Screen(),
     % and we currently do not use Wayland / DRM-KMS output leasing:
