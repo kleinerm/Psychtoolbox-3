@@ -1760,12 +1760,12 @@ const char* PsychSupportStatus(void)
 
         // It is a Vista or later if major version is equal to 6 or higher:
         // 6.0  = Vista, 6.1 = Windows-7, 6.2 = Windows-8, 6.3 = Windows-8.1, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
-        // 10.0 = Windows-10
-        isSupported = ((osvi.dwMajorVersion == 10) || ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 1))) ? 1 : 0;
+        // 10.0 = Windows-10, 11.0 = Windows-11
+        isSupported = ((osvi.dwMajorVersion >= 10) && (osvi.dwMajorVersion <= 11)) ? 1 : 0;
 
         if (isSupported) {
             // Windows-10 is fully supported, earlier Windows only partially:
-            sprintf(statusString, "Windows %s (Version %i.%i) %s.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "may partially work ok'ish, but no longer tested or officially supported at all");
+            sprintf(statusString, "Windows %s (Version %i.%i) %s.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion <= 11) ? "supported and tested to some limited degree" : "may partially work ok'ish, but no longer tested or officially supported at all");
         }
         else {
             sprintf(statusString, "Windows %s (Version %i.%i) is not supported.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion);
