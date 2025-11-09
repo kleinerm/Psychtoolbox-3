@@ -156,10 +156,10 @@ try
         pixelFormat = [];
     end
 
-    % On ARM set the default pixelFormat to 6 for shader based decode.
+    % On ARM 32-Bit set the default pixelFormat to 6 for shader based decode.
     % On a RaspberryPi-4 this makes a world of difference when playing
     % HD movies, between slow-motion 2 fps and proper 24 fps playback.
-    if isempty(pixelFormat) && IsARM && IsLinux
+    if isempty(pixelFormat) && IsARM && IsLinux && ~Is64Bit
         pixelFormat = 6;
     end
 
