@@ -29,7 +29,7 @@ try
     % use of callback function and eye camera image display:
     if ~EyelinkInit([], 1)
         fprintf('Eyelink Init aborted.\n');
-        cleanup;
+        EyelinkCleanupHelper;
         return;
     end
 
@@ -57,26 +57,14 @@ try
     % Done.
 catch
     % In case of error, be tidy:
-    cleanup;
+    EyelinkCleanupHelper;
 end
 
 % Shutdown everything at regular end:
-cleanup;
+EyelinkCleanupHelper;
 
 if sndinit == 2
     PsychPortAudio('Close', el.ppa_pahandle);
 end
 
-end
-
-% Cleanup routine:
-function cleanup
-    % Shutdown Eyelink:
-    Eyelink('Shutdown');
-
-    % Close window:
-    sca;
-
-    % Restore keyboard output to Matlab:
-    ListenChar(0);
 end
