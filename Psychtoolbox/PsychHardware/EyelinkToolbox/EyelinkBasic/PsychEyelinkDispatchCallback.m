@@ -99,6 +99,9 @@ persistent beep_waveforms;
 
 persistent inDrift;
 
+IMAGINGPIPE_FLIPTWHEN=[]; %#ok<NASGU>
+IMAGINGPIPE_FLIPVBLSYNCLEVEL=[]; %#ok<NASGU>
+
 if 0 == Screen('WindowKind', eyelinktex)
     eyelinktex = []; % Previous PTB Screen() window has closed, needs to be recreated.
 end
