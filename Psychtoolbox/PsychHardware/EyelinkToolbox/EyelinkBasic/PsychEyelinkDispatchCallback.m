@@ -95,11 +95,9 @@ persistent audio_status;
 persistent audio_devinfo;
 persistent audio_n_chan;
 persistent audio_fs;
-%persistent audio_ppa_isSlave;
 persistent beep_waveforms;
 
 persistent inDrift;
-newImage = 0;
 
 if 0 == Screen('WindowKind', eyelinktex)
     eyelinktex = []; % Previous PTB Screen() window has closed, needs to be recreated.
@@ -159,8 +157,6 @@ if ~isempty(el.ppa_pahandle) && isempty(audio_status)
     audio_devinfo = PsychPortAudio('GetDevices', [], audio_status.OutDeviceIndex);
     audio_n_chan = min(2,audio_devinfo.NrOutputChannels);
     audio_fs = audio_status.SampleRate;
-    %if PsychPortAudio('SetOpMode', pamaster) > 
-    %    audio_ppa_isSlave
 elseif isempty(el.ppa_pahandle) && isempty(audio_fs)
     audio_status = NaN;
     audio_devinfo = NaN;
@@ -276,7 +272,6 @@ switch eyecmd
         if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 8; Setup Image Display\n');
         end
-        newImage = 1;
         eyewidth  = callArgs(2);
         eyeheight = callArgs(3);
         ineyeimagemodedisplay=1;
@@ -456,7 +451,7 @@ if newcamimage      % New image frame received from EyeLink camera stream
 end
 
 if ~isempty(eyelinktex) && ineyeimagemodedisplay==1     % Draw cam image and caption
-    [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage);
+    [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle);
 end
 
 if ~isempty(calxy)  % Draw Cal Target
@@ -507,7 +502,7 @@ return;
         Screen(eyewin,'TextSize',oldFontSize);
     end
 
-    function [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, newImage)
+    function [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle)
         eyerect=Screen('Rect', eyelinktex);
         % we could cash some of the below values....
         wrect=Screen('Rect', eyewin);
