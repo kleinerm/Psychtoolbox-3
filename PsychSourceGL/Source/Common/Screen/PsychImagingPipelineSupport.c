@@ -2091,7 +2091,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
  *
  */
 psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, int leftglHandle, int rightglHandle, int glTextureTarget, int format,
-                                         int multiSample, int width, int height)
+                                         int multiSample, int width, int height, int deleteOldTexIfPossible)
 {
     int viewid;
     GLint drawFBO = 0, readFBO = 0;
@@ -2214,7 +2214,16 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
             PsychTestForGLErrors();
         }
         else {
-            // Success: Assign new values:
+            // Success. Delete old coltexid if any. It is zero if fbo unsharing happened, so the new finalizedFBO
+            // doesn't have one yet, and the drawBufferFBO keeps the old FBO and color backing texture:
+            if (fbo->coltexid && deleteOldTexIfPossible) {
+                glDeleteTextures(1, &fbo->coltexid);
+
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-DEBUG: For viewid=%i: fbo %i, deleting old interop backing texture id %i.\n", viewid, fbo->fboid, fbo->coltexid);
+            }
+
+            // Assign new values:
             fbo->coltexid = (GLuint) ((viewid == 0) ? leftglHandle : rightglHandle);
             fbo->textarget = (GLenum) glTextureTarget;
             fbo->format = (GLenum) format;

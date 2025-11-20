@@ -97,7 +97,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
 // Set new OpenGL color renderbuffer attachment backing textures for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
 psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, int leftglHandle, int rightglHandle, int glTextureTarget, int format,
-                                         int multiSample, int width, int height);
+                                         int multiSample, int width, int height, int deleteOldTexIfPossible);
 
 // Get current OpenGL color renderbuffer attachment backing textures and OpenGL FBO ids for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
 psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, int *leftglHandle, int *rightglHandle, int *glTextureTarget, int *format,

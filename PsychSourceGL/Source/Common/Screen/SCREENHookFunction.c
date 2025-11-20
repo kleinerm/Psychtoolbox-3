@@ -123,10 +123,12 @@ static char synopsisString[] =
     "Change or query imagingMode flags of provided proxy window 'proxyPtr' to 'imagingMode'. Proxy windows are used to define "
     "image processing operations, mostly for Screen('TransformTexture'). Returns old imaging mode."
     "\n\n"
-    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'SetDisplayBufferTextures' [, hookname][, leftglHandle][, rightglHandle][, glTextureTarget][, format][, multiSample][, width][, height]);\n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'SetDisplayBufferTextures' [, hookname][, leftglHandle][, rightglHandle][, glTextureTarget][, format][, multiSample][, width][, height][, deleteOldTexturesIfPossible=0]);\n"
     "Changes the external backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
     "Optionally returns the previously used backing textures and their old parameters. All new parameters are optional, the "
-    "old values are left as they were if a parameter is not provided.\n"
+    "old values are left as they were if a parameter is not provided. Note that returned backing textures may no longer exist "
+    "when these leftglHandle and rightglHandle values are returned if 'deleteOldTexturesIfPossible' is set to 1, or the values "
+    "may be stale after buffer unsharing, so those handles are possibly useless in some usage scenarios.\n"
     "This only works if imagingMode flags kPsychNeedFinalizedFBOSinks and kPsychUseExternalSinkTextures are set, "
     "otherwise external changes are rejected. It is not allowed to set a configuration which would cause the underlying "
     "framebuffers to become framebuffer incomplete. Trying to do so will fail and try to revert to the old framebuffer configuration. "
@@ -147,6 +149,8 @@ static char synopsisString[] =
     "'format' OpenGL internal texture format, e.g., GL_RGBA. Must be a framebuffer renderable format to prevent framebuffer incompleteness.\n"
     "'multiSample' The number of samples per texel. Must be 0 for single-sampled GL_TEXTURE_2D textures, > 0 for GL_TEXTURE_2D_MULTISAMPLE textures.\n"
     "'width' and 'height' Width and height of the output framebuffer (=texture) in pixels or texels.\n"
+    "'deleteOldTexturesIfPossible' defaults to 0. If set to 1, it will delete potential previously attached textures after assignment "
+    "of the new ones if this is safely possible, in order to save some memory."
     "\n\n"
     "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height, leftFboId, rightFboId] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures');\n"
     "Get the OpenGL handles of the backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
@@ -260,6 +264,7 @@ PsychError SCREENHookFunction(void)
     int                         cmd, slotid, flag1, whereloc = 0;
     int                         leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height;
     int                         leftFboHandle, rightFboHandle;
+    int                         deleteOldTexIfPossible;
     psych_int64                 flag64;
     double                      doubleptr;
     double                      shaderid, luttexid1 = 0;
@@ -507,7 +512,11 @@ PsychError SCREENHookFunction(void)
             PsychCopyInIntegerArg(8, FALSE, &multiSample);
             PsychCopyInIntegerArg(9, FALSE, &width);
             PsychCopyInIntegerArg(10, FALSE, &height);
-            if (!PsychSetPipelineExportTexture(windowRecord, leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height) && (verbosity > 1))
+            if (!PsychCopyInIntegerArg(11, FALSE, &deleteOldTexIfPossible))
+                deleteOldTexIfPossible = 0;
+
+            if (!PsychSetPipelineExportTexture(windowRecord, leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height,
+                                               deleteOldTexIfPossible) && (verbosity > 1))
                 printf("PTB-WARNING: HookFunction call to SetDisplayBufferTextures failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
         break;
 

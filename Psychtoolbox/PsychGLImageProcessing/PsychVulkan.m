@@ -952,8 +952,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Set it up:
     if ~noInterop
         if IsOSX
-            oldtex = Screen('Hookfunction', win, 'SetDisplayBufferTextures', [], double(interopObjectHandle), [], GL.TEXTURE_RECTANGLE, internalFormat, 0, width, height);
-            glDeleteTextures(1, oldtex); % Get rid of now unused old texture.
+            Screen('Hookfunction', win, 'SetDisplayBufferTextures', [], double(interopObjectHandle), [], GL.TEXTURE_RECTANGLE, internalFormat, 0, width, height, 1);
         else
             Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height, renderCompleteSemaphore);
         end
