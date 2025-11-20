@@ -1,5 +1,5 @@
-function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, usevulkan, screenNumber)
-% VBLSyncTest([n=600][, numifis=0][, loadjitter=0][, clearmode=0][, stereo=0][, flushpipe=0][, synchronous=0][, usedpixx=0][, usevulkan=0][, screenNumber=max])
+function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, usevulkan, gpumeasure, screenNumber)
+% VBLSyncTest([n=600][, numifis=0][, loadjitter=0][, clearmode=0][, stereo=0][, flushpipe=0][, synchronous=0][, usedpixx=0][, usevulkan=0][, gpumeasure=0][, screenNumber=max])
 %
 % Tests syncing of Psychtoolbox to the vertical retrace (VBL) and demonstrates
 % how to implement the old Screen('WaitBlanking') behaviour with
@@ -115,6 +115,8 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % 'usevulkan' If 1, try to use a Vulkan display backend instead of the
 % OpenGL display backend. See 'help PsychVulkan'.
 %
+% 'gpumeasure' If 1, try to measure GPU time spent for all OpenGL processing
+% for a given frame.
 %
 % screenNumber =  Use a screen other than the default (max) for testing .
 %
@@ -248,19 +250,17 @@ if nargin < 9 || isempty(usevulkan)
     usevulkan = 0;
 end
 
-if nargin < 10
+if nargin < 10 || isempty(gpumeasure)
+    gpumeasure = 0;
+end
+
+if nargin < 11
     screenNumber = [];
 end
 
 try
     PsychDefaultSetup(2);
     RestrictKeysForKbCheck(KbName('ESCAPE'));
-
-    if IsWin && 0
-        % Enforce use of DWM on Windows-Vista and later: This simulates the
-        % situation of Windows-8 or later on Windows-Vista and Windows-7:
-        Screen('Preference','ConserveVRAM', 16384); % Force use of DWM.
-    end
     
     % Get the list of Screens and choose the one with the highest screen number.
     % Screen 0 is, by definition, the display with the menu bar. Often when 
@@ -350,9 +350,9 @@ try
     dpixxdelay=ts;
     td=ts;
     so=ts;
-    tSecondary = ts;
     sodpixx = ts;
     boxTime = ts;
+    gpudur = ts;
     
     % Compute random load distribution for provided loadjitter value:
     wt=rand(1,n)*(loadjitter*ifi);
@@ -362,7 +362,13 @@ try
     % started. We need it as a reference value for our WaitBlanking
     % emulation:
     tvbl=Screen('Flip', w);
-    
+
+    if gpumeasure
+        % Start GPU timer: gpumeasure will be true if this
+        % is actually supported and will return valid results:
+        gpumeasure = Screen('GetWindowInfo', w, 5);
+    end
+
     % Test-loop: Collects n samples.
     for i=1:n
         % Presentation time calculation for waiting 'numifis' monitor refresh
@@ -422,28 +428,27 @@ try
             [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp');
             dpixxdelay(i) = GetSecs;
         end
-        
-        % Special code for DWM debugging: Disabled by default - Not for pure
-        % mortals!
-        tSecondary(i) = 0;
-        if IsWin && 0
-            while 1
-                WaitSecs('YieldSecs', 0.001);
-                wdminfo = Screen('GetWindowInfo', w, 2);
 
-                if ~isstruct(wdminfo)
-                    break;
-                end
-                
-                if wdminfo.cDXPresentConfirmed == wdminfo.cDXPresentSubmitted
-                    tSecondary(i) = wdminfo.qpcVBlank - ((wdminfo.cDXRefresh - wdminfo.cDXRefreshConfirmed) * wdminfo.qpcRefreshPeriod);
-                    tvbl = tSecondary(i);
-                    so(i) = tSecondary(i);
+        if gpumeasure
+            % Retrieve results from GPU load measurement:
+            % Need to poll, as this is asynchronous and non-blocking,
+            % so it may return a zero time value at first invocation(s),
+            % depending on how deep the rendering pipeline is:
+            while 1
+                winfo = Screen('GetWindowInfo', w);
+                if winfo.GPULastFrameRenderTime > 0
                     break;
                 end
             end
+    
+            % Store it:
+            gpudur(i) = winfo.GPULastFrameRenderTime;
+
+            % Restart GPU timer: gpumeasure will be true if this
+            % is actually supported and will return valid results:
+            gpumeasure = Screen('GetWindowInfo', w, 5);
         end
-        
+
         % Record timestamp for later use:
         ts(i) = tvbl;
         
@@ -519,9 +524,9 @@ try
     beampos = beampos(1:n);
     td = td(1:n);
     dpixxdelay = dpixxdelay(1:n);
-    tSecondary = tSecondary(1:n);
     sodpixx = sodpixx(1:n);
     boxTime = boxTime(1:n); %#ok<NASGU>
+    gpudur = gpudur(1:n);
 
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
@@ -596,7 +601,7 @@ try
         title('Rasterbeam position when timestamp was taken (in scanlines):');
     end
 
-    if (numbermisses > 1) || (numberearly > 0)
+    if ((numbermisses > 1) || (numberearly > 0)) && any(missest)
         % Figure 3 shows estimated size of presentation deadline-miss in
         % milliseconds:
         figure
@@ -644,14 +649,14 @@ try
         plot(td*1000);
         title('Total duration of all drawing commands in milliseconds:');
     end
-    
-    if IsWin && (tSecondary(1)>0 && tSecondary(2)>0)
-        figure;
-        plot((tSecondary - so) * 1000);
-        title('Time delta in milliseconds between stimulus onset according to DWM and stimulus onset according to Flip:');
-        fprintf('Average discrepancy between DWM and beamposition timestamping is %f msecs, stddev = %f msecs.\n', mean((tSecondary - so) * 1000), std((tSecondary - so) * 1000));
+
+    % Plot gpu OpenGL processing time if available:
+    if gpumeasure
+        figure
+        plot(gpudur*1000);
+        title('Total duration of all OpenGL GPU rendering in milliseconds:');
     end
-    
+
     if usedpixx
         figure;
         plot((so - sodpixx) * 1000);
