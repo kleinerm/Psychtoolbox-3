@@ -2949,7 +2949,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if ((count < 1) && (tNow < tStart + tQueryTimeout)) {
                     PsychYieldIntervalSeconds(0.001);
                     if (verbosity > 9)
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for vkGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for vkGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
                 }
             }
 
