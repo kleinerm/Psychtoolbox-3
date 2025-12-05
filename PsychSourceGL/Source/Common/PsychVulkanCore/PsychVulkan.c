@@ -2676,7 +2676,7 @@ VkResult PsychGetNextSwapChainTargetBuffer(PsychVulkanWindow* window)
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Acquired currentSwapChainBuffer - the index of the next swapchain image
         // to copy the to-be-presented stimulus into, iow. our "backBuffer".
-        if ((verbosity > 6) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
+        if ((verbosity > 7) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
             printf("PsychVulkanCore-DEBUG: PsychGetNextSwapChainTargetBuffer(%i): frameIndex %i - Next swapChain backBuffer image with index %i acquired.\n", window->index,
                    window->frameIndex, window->currentSwapChainBuffer);
 
@@ -2726,8 +2726,10 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 {
     VkResult result;
     VkPresentTimeGOOGLE targetPresentTimeG;
-    PsychVulkanDevice* vulkan = window->vulkan;
     uint64_t targetPresentId;
+    double tPre, tPost;
+    PsychVulkanDevice* vulkan = window->vulkan;
+    double tPreviousPresent = window->tPresentComplete;
 
     // Mark presentation timestamp as so far "invalid"/"unknown":
     window->tPresentComplete = -1;
@@ -2829,7 +2831,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         targetPresentTimeG.presentID = window->frameIndex;
 
         if (verbosity > 7)
-            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Queuing frame %i with VkPresentTimesInfoGOOGLE for present at time >= tWhen %f secs.\n", window->index, window->frameIndex, tWhen);
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Queuing frame %i with VkPresentTimesInfoGOOGLE for time >= tWhen %f secs [Vulkan %lu nsecs%s].\n",
+                   window->index, window->frameIndex, tWhen, targetPresentTimeG.desiredPresentTime,
+                   (!targetPresentTimeG.desiredPresentTime) ? " - IMMEDIATE" : "");
     }
     else {
         // No: Simply wait for target present time:
@@ -2848,8 +2852,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
         if ((verbosity > 6) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
-            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): frameIndex %i - swapChain image with index %i queued for present at tWhen %f secs.\n", window->index,
-                   window->frameIndex, window->currentSwapChainBuffer, tWhen);
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i - ScImage index %i queued for present at tWhen %f secs. %f msecs since last one.\n",
+                   window->index, window->frameIndex, window->currentSwapChainBuffer, tWhen,
+                   (window->frameIndex > 0) ? (1000 * (PsychGetAdjustedPrecisionTimerSeconds(NULL) - tPreviousPresent)) : NAN);
 
         // Suboptimal present? This may tear or have reduced performance / increased latency, and also
         // potentially screwed up timing:
@@ -2880,6 +2885,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Try to acquire next target swapchain buffer. window->currentSwapChainBuffer will
     // contain the index of the proper swapChainImage. This will setup the flipDoneFence
     // to signal Present completion of the present we just sent out:
+    tPre = PsychGetAdjustedPrecisionTimerSeconds(NULL);
     if (PsychGetNextSwapChainTargetBuffer(window) != VK_SUCCESS)
         return(FALSE);
 
@@ -2889,13 +2895,20 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     if (!PsychWaitForPresentCompletion(window))
         return(FALSE);
 
+    tPost = PsychGetAdjustedPrecisionTimerSeconds(NULL);
+    if (verbosity > 8)
+        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i waited for buffers / presentfence %f msecs.\n",
+               window->index, window->frameIndex - 1, 1000 * (tPost - tPre));
+
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
         // Wait for present completion supported?
         #ifdef VK_KHR_present_id
         if (vulkan->hasWait) {
             // Blocking wait with timeout of 1 second for present completion of the just-queued present:
+            tPre = PsychGetAdjustedPrecisionTimerSeconds(NULL);
             result = fpWaitForPresentKHR(vulkan->device, window->swapChain, targetPresentId, 1e9);
+            tPost = PsychGetAdjustedPrecisionTimerSeconds(NULL);
             if ((result != VK_SUCCESS) && (verbosity > 0)) {
                 if (result == VK_TIMEOUT) {
                     printf("PsychVulkanCore-ERROR: vkWaitForPresentKHR(%i): Failed due to timeout!\n", window->index);
@@ -2906,7 +2919,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             else if (verbosity > 8) {
                 double tNow;
                 PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i with presentID %lli signalled by vkWaitForPresentKHR as complete at %f seconds.\n", window->index, window->frameIndex - 1, targetPresentId, tNow);
+                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i with presentID %lli signalled by vkWaitForPresentKHR as complete at %f seconds [blocked %f msecs].\n", window->index, window->frameIndex - 1, targetPresentId, tNow, 1000 * (tPost - tPre));
             }
         }
         #endif
