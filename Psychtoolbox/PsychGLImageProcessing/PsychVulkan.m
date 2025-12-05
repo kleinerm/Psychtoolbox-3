@@ -184,6 +184,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
 
         % Present and maybe get an ok precision and not too unreliable timestamp from Vulkan driver:
         predictedOnset = PsychVulkanCore('Present', vwin, tWhen, doTimestamp);
+        vblTime = GetSecs;
 
         % Get a second opinion on onset time from Screen's VBLANK timestamping:
         winfo = Screen('GetWindowInfo', win, 7);
@@ -192,15 +193,12 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         if (winfo.VBLEndline > 0) && (winfo.LastVBLTime > 0)
             % Yes. Assign:
             vblTime = winfo.LastVBLTime;
-        else
-            % No. Fallback to GetSecs as a noisy last resort:
-            vblTime = GetSecs;
         end
 
         % If predictedOnset is valid, use it. Otherwise fall back to vblTime:
         if predictedOnset > 0
             % Valid timestamp from Vulkan? Validate a bit and warn if not:
-            if (verbosity > 4) || ((verbosity > 1) && (winfo.VBLEndline > 0) && (abs(predictedOnset - vblTime) > 0.001))
+            if (verbosity > 6) || ((verbosity > 1) && (winfo.VBLEndline > 0) && (abs(predictedOnset - vblTime) > 0.001))
                 fprintf('PsychVulkan-DEBUG: Delta between Vulkan and reference timestamps is %f usecs.\n', 1e6 * (predictedOnset - vblTime));
             end
 

@@ -2851,7 +2851,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     result = vkQueuePresentKHR(vulkan->graphicsQueue, &present);
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
-        if ((verbosity > 6) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
+        if ((verbosity > 5) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
             printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i - ScImage index %i queued for present at tWhen %f secs. %f msecs since last one.\n",
                    window->index, window->frameIndex, window->currentSwapChainBuffer, tWhen,
                    (window->frameIndex > 0) ? (1000 * (PsychGetAdjustedPrecisionTimerSeconds(NULL) - tPreviousPresent)) : NAN);
@@ -3082,7 +3082,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             PsychGetAdjustedPrecisionTimerSeconds(&window->tPresentComplete);
         }
 
-        if (verbosity > 5)
+        if (verbosity > 6)
             printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Present for frameIndex %i completed: tComplete = %f secs.\n", window->index, window->frameIndex - 1, window->tPresentComplete);
     }
 
