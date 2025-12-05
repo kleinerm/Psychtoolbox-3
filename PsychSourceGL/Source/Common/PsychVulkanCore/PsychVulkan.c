@@ -2785,34 +2785,37 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
     // VK_KHR_PRESENT_ID supported?
     #ifdef VK_KHR_present_id
+    VkPresentIdKHR presentIdInfo = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR,
+        .swapchainCount = present.swapchainCount,
+        .pPresentIds = &targetPresentId,
+    };
+
     if (vulkan->hasWait && (timestampMode > 0)) {
         // Assign present id - the current frameIndex:
-        VkPresentIdKHR presentIdInfo = {
-            .sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR,
-            .pNext = present.pNext,
-            .swapchainCount = 1,
-            .pPresentIds = &targetPresentId,
-        };
-
         // targetPresentId must start with 1 for 1st queued present, hence the frameIndex + 1:
         targetPresentId = window->frameIndex + 1;
+
+        // Hook it up:
+        presentIdInfo.pNext = present.pNext;
         present.pNext = &presentIdInfo;
 
         if (verbosity > 7)
-            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Assigning frame %i with VkPresentIdKHR presentID %lli.\n", window->index, window->frameIndex, targetPresentId);
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Assigning frame %i with VkPresentIdKHR presentID %lli.\n",
+                   window->index, window->frameIndex, targetPresentId);
     }
     #endif
 
     // VK_GOOGLE_DISPLAY_TIMING supported?
+    VkPresentTimesInfoGOOGLE presentTimeInfoG = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE,
+        .swapchainCount = present.swapchainCount,
+        .pTimes = &targetPresentTimeG,
+    };
+
     if (vulkan->hasTiming && (timestampMode > 1)) {
         // Yes: Queue a target time for the present:
-        VkPresentTimesInfoGOOGLE presentTimeInfoG = {
-            .sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE,
-            .pNext = present.pNext,
-            .swapchainCount = 1,
-            .pTimes = &targetPresentTimeG,
-        };
-
+        presentTimeInfoG.pNext = present.pNext;
         present.pNext = &presentTimeInfoG;
 
         #if PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX
