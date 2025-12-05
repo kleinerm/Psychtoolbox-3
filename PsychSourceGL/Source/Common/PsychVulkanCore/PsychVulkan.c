@@ -2934,7 +2934,10 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
             // Wait until target present time is reached - No point checking before.
             // Not needed if we used wait for present complete:
-            if (!vulkan->hasWait)
+            // TODO: Except for macOS, where the present wait extension doesn't work as it should,
+            // and returns almost immediately, instead of waiting for present completion. At least
+            // as of MoltenVK 1.4.1 and on macOS 26.1 Tahoe :(
+            if (!vulkan->hasWait || (PSYCH_SYSTEM == PSYCH_OSX))
                 PsychWaitUntilSeconds(tWhen);
 
             // Poll for arrival of present completion timestamp:
