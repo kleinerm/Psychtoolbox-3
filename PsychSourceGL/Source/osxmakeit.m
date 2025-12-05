@@ -219,8 +219,16 @@ if mode==15
     % Vulkan loader and layers, as of Mid-May 2021.
     %
     % We link to OpenGL to implement OpenGL-Vulkan interop.
+    %
+    %
+    % New style statically links against a MoltenVK static build installed
+    % along the Psychtoolbox-3 folder, ie. in the same parent folder, as
+    % provided from https://github.com/KhronosGroup/MoltenVK releases page.
     try
-        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.13" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.13 -framework AppKit -framework IOKit -framework IOSurface -framework Metal -framework Foundation -framework QuartzCore -framework CoreGraphics -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -I/Library/Frameworks/GStreamer.framework/Headers -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" /Library/Frameworks/GStreamer.framework/Libraries/libMoltenVK.a -lLexActivator
+        % Old style: Build against Headers in GStreamer 1.24+ development framework, link statically against libMoltenVK.a from GStreamer:
+        % mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=10.13" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.13 -framework AppKit -framework IOKit -framework IOSurface -framework Metal -framework Foundation -framework QuartzCore -framework CoreGraphics -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -I/Library/Frameworks/GStreamer.framework/Headers -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" /Library/Frameworks/GStreamer.framework/Libraries/libMoltenVK.a -lLexActivator
+        % Current style: Link statically against MoltenVK release installed side by side to Psychtoolbox-3 folder:
+        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -L../../Psychtoolbox/PsychBasic/PsychPlugins/ CFLAGS="\$CFLAGS -mmacosx-version-min=11.0" LDFLAGS="\$LDFLAGS -mmacosx-version-min=11.0 -framework AppKit -framework IOKit -framework IOSurface -framework Metal -framework Foundation -framework QuartzCore -framework CoreGraphics -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -I../../../MoltenVK/MoltenVK/include -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../../../MoltenVK/MoltenVK/static/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a -lLexActivator
     catch
         disp(psychlasterror);
     end

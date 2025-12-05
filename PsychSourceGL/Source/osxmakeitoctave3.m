@@ -232,10 +232,17 @@ if mode==15
     % installation of the Vulkan SDK and MoltenVK for macOS from
     % https://vulkan.lunarg.com for prebuilt SDK and Vulkan ICD,
     % https://github.com/KhronosGroup/MoltenVK for source code.
+    %
+    % New style statically links against a MoltenVK static build installed
+    % along the Psychtoolbox-3 folder, ie. in the same parent folder, as
+    % provided from https://github.com/KhronosGroup/MoltenVK releases page.
     try
-        %mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.13'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c -lvulkan -lMoltenVK
-        % Build against Headers in GStreamer 1.24+ development framework, link statically against libMoltenVK.a from GStreamer:
-        mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.13'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,AppKit,-framework,IOKit,-framework,IOSurface,-framework,Metal,-framework,Foundation,-framework,QuartzCore,-framework,CoreGraphics,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Headers Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c /Library/Frameworks/GStreamer.framework/Libraries/libMoltenVK.a
+        % Old style: Dynamic linking...
+        % mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.13'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c -lvulkan -lMoltenVK
+        % Old style: Build against Headers in GStreamer 1.24+ development framework, link statically against libMoltenVK.a from GStreamer:
+        % mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.13'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,AppKit,-framework,IOKit,-framework,IOSurface,-framework,Metal,-framework,Foundation,-framework,QuartzCore,-framework,CoreGraphics,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Headers Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c /Library/Frameworks/GStreamer.framework/Libraries/libMoltenVK.a
+        % Current style: Link statically against MoltenVK release installed side by side to Psychtoolbox-3 folder:
+        mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='11.0'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,AppKit,-framework,IOKit,-framework,IOSurface,-framework,Metal,-framework,Foundation,-framework,QuartzCore,-framework,CoreGraphics,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include -I../../../MoltenVK/MoltenVK/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c ../../../MoltenVK/MoltenVK/static/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a
     catch
         disp(psychlasterror);
     end
