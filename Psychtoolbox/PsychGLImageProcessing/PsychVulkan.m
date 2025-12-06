@@ -1064,6 +1064,24 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     varargout{1} = vwin;
 
+    % Set benchmark to a non-zero value to run a benchmark with 'benchmark'
+    % samples, trying to present as fast as possible with minimal overhead:
+    benchmark = 0;
+    if benchmark
+        t = zeros(1, benchmark); %#ok<UNRCH>
+        for i = 1:benchmark
+            t(i) = PsychVulkanCore('Present', vwin, 0, 2);
+        end
+        t = 1000 * diff(t);
+        plot(t);
+        title('Interval between presents in msecs:');
+        tmin = min(t);
+        tmax = max(t);
+        tmedian = median(t);
+        fprintf('PsychVulkan-BENCHMARK: Fastest benchmark possible, with aiming for a present every video refresh cycle: n=%i min=%f ms, max=%f ms, median=%f ms.\n', ...
+                benchmark, tmin, tmax, tmedian);
+    end
+
     return;
 end
 
