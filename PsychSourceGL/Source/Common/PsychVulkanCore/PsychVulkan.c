@@ -2905,9 +2905,10 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         // Wait for present completion supported?
         #ifdef VK_KHR_present_id
         if (vulkan->hasWait) {
-            // Blocking wait with timeout of 1 second for present completion of the just-queued present:
-            tPre = PsychGetAdjustedPrecisionTimerSeconds(NULL);
-            result = fpWaitForPresentKHR(vulkan->device, window->swapChain, targetPresentId, 1e9);
+            // Blocking wait with timeout of at least 1 second past tWhen for present completion of the just-queued present:
+            double tDelta = tWhen - PsychGetAdjustedPrecisionTimerSeconds(&tPre);
+            uint64_t timeout = (uint64_t) ((tDelta > 0) ? (tDelta + 1.0) * 1e9 : 1e9);
+            result = fpWaitForPresentKHR(vulkan->device, window->swapChain, targetPresentId, timeout);
             tPost = PsychGetAdjustedPrecisionTimerSeconds(NULL);
             if ((result != VK_SUCCESS) && (verbosity > 0)) {
                 if (result == VK_TIMEOUT) {
@@ -2934,10 +2935,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
             // Wait until target present time is reached - No point checking before.
             // Not needed if we used wait for present complete:
-            // TODO: Except for macOS, where the present wait extension doesn't work as it should,
-            // and returns almost immediately, instead of waiting for present completion. At least
-            // as of MoltenVK 1.4.1 and on macOS 26.1 Tahoe :(
-            if (!vulkan->hasWait || (PSYCH_SYSTEM == PSYCH_OSX))
+            if (!vulkan->hasWait)
                 PsychWaitUntilSeconds(tWhen);
 
             // Poll for arrival of present completion timestamp:
@@ -2966,7 +2964,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
                 PsychGetAdjustedPrecisionTimerSeconds(&tNow);
                 if ((count < 1) && (tNow < tStart + tQueryTimeout)) {
-                    PsychYieldIntervalSeconds(0.001);
+                    PsychYieldIntervalSeconds(0.000050);
                     if (verbosity > 9)
                         printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for vkGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
                 }
