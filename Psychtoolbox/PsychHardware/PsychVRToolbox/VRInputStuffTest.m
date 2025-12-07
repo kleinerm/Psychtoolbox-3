@@ -102,7 +102,7 @@ if withGazeTracking
 end
 
 if nargin < 6 || isempty(withHandTracking)
-    withHandTracking = 0;
+    withHandTracking = 1;
 end
 
 if withHandTracking
@@ -178,7 +178,7 @@ else
     withHandTracking = 0;
 end
 
-clc;
+%clc;
 
 % Mark our own tracking + rendering loop as stopped for initial section of test/demo:
 PsychVRHMD('Stop', hmd);
@@ -807,6 +807,19 @@ if hmdinfo.handTrackingSupported || withGazeTracking || withHandTracking
               glutSolidCube(state.trackedJointsRadius(hand, joint));
               glPopMatrix;
             end
+          end
+
+          if bitand(state.aimPoseStatus(hand), 2)
+            glPushMatrix;
+            glMultMatrixd(state.globalAimPoseMatrix{hand});
+            glColor3f(1,0,0);
+            glBegin(GL.LINES);
+            glVertex3d(0, 0, 0);
+            glVertex3d(0, 0, -15);
+            glEnd;
+            glPopMatrix;
+            %state.globalAimPoseMatrix{1}
+            %state.pinchStrengths{1}
           end
         end
       end
