@@ -808,6 +808,19 @@ if hmdinfo.handTrackingSupported || withGazeTracking || withHandTracking
               glPopMatrix;
             end
           end
+
+          if bitand(state.aimPoseStatus(hand), 2)
+            glPushMatrix;
+            glMultMatrixd(state.globalAimPoseMatrix{hand});
+            glColor3f(1,0,0);
+            glBegin(GL.LINES);
+            glVertex3d(0, 0, 0);
+            glVertex3d(0, 0, -15);
+            glEnd;
+            glPopMatrix;
+            %state.globalAimPoseMatrix{1}
+            %state.pinchStrengths{1}
+          end
         end
       end
 

@@ -845,6 +845,8 @@ function varargout = PsychOpenXR(cmd, varargin)
 %                                          via the user supplied global 'userTransformMatrix' transformation matrix to
 %                                          the PsychVRHMD('PrepareRender', ...) subfunction.
 %
+%      state.
+%
 %      The following constants allow to index the returned set of 26 hand joints
 %      by symbolic names for the different parts of the fingers and hand, or you
 %      can use the numbers behind each symbolic name:
@@ -1583,6 +1585,12 @@ if strcmpi(cmd, 'PrepareRender')
 
       % Map them into users reference frame by premultiplying with userTransformMatrix, as usual:
       result.globalJointPoseMatrix{hand} = reshape(userTransformMatrix * reshape(hands(hand).JointPosesMatrix, 4, 4 * numjoints), 4, 4, numjoints);
+
+      result.localAimPoseMatrix{hand} = hands(hand).AimPoseMatrix;
+      result.globalAimPoseMatrix{hand} = userTransformMatrix * hands(hand).AimPoseMatrix;
+
+      result.pinchStrengths{hand} = hands(hand).PinchStrengths;
+      result.aimPoseStatus(hand) = hands(hand).AimPoseStatus;
     end
 
     %tHandsMsecs(end+1) = 1000 * toc(handy);
