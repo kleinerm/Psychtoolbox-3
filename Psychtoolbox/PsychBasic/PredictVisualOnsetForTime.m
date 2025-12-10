@@ -46,7 +46,7 @@ if nargin < 2
 end
 
 % Retrieve last known good VBL timestamp for onscreen window 'window':
-wininfo = Screen('GetWindowInfo', window);
+wininfo = Screen('GetWindowInfo', window, 7);
 lastvbl = wininfo.LastVBLTime;
 
 if lastvbl < 0
