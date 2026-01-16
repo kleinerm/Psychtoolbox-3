@@ -605,7 +605,7 @@ int PsychGetOSXMinorVersion(psych_bool* isARM)
 const char* PsychSupportStatus(void)
 {
     // Operating system minor version:
-    int osMinor;
+    int osMinor, osMajor;
     psych_bool isARM, isTested;
 
     // Init flag to -1 aka unknown:
@@ -618,20 +618,33 @@ const char* PsychSupportStatus(void)
         // Query macOS version and machine processor architecture:
         osMinor = PsychGetOSXMinorVersion(&isARM);
 
-        // Only macOS 13 to 15 are officially tested and supported:
-        isSupported = ((osMinor - 5 >= 13) && (osMinor - 5 <= 15)) ? 1 : 0;
-        isTested = (isARM && (osMinor - 5 >= 14) && (osMinor - 5 <= 15)) || (!isARM && (osMinor - 5 == 13));
-
+        // macOS 10 family aka OSX is done, although there's some chance it still works back to 10.13, but who knows?
         if (osMinor <= 15) {
-            // macOS 10 family is done, although there's some chance it still works back to 10.13, but who knows?
             sprintf(statusString, "macOS 10.%i is no longer tested or officially supported for this Psychtoolbox release.", osMinor);
-        } else if (osMinor - 5 <= 12) {
-            // Now unsupported macOS 11 and 12:
-            sprintf(statusString, "macOS %i is no longer tested or officially supported for this Psychtoolbox release.", osMinor - 5);
+            isSupported = 0;
+            return(statusString);
+        }
+
+        // macOS 11+ - Versioning scheme changes with macOS Tahoe v16 -> v26:
+        if (osMinor - 5 < 16) {
+            osMajor = osMinor - 5;
         } else {
-            // Currently supported or too new (== not yet supported) macOS version:
-            sprintf(statusString, "macOS %i %s is %s.", osMinor - 5, isARM ? "Apple Silicon" : "Intel",
-                    isSupported ? (isTested ? "somewhat tested and supported" : "somewhat supported") : "not yet tested or supported at all for this release.");
+            osMajor = osMinor - 5 + 10;
+        }
+
+        // Only macOS 13 to 15 are officially supported:
+        isSupported = ((osMajor >= 13) && (osMajor <= 15)) ? 1 : 0;
+
+        // Only macOS 13 on Intel and macOS 15 on ARM are actively tested:
+        isTested = (isARM && (osMajor >= 15) && (osMajor <= 15)) || (!isARM && (osMajor == 13));
+
+        if (osMajor < 13) {
+            // Now unsupported are macOS 11 and 12:
+            sprintf(statusString, "macOS %i is no longer tested or officially supported for this Psychtoolbox release.", osMajor);
+        } else {
+            // Currently supported, or too new (== not yet supported) macOS version?
+            sprintf(statusString, "macOS %i %s is %s.", osMajor, isARM ? "Apple Silicon" : "Intel",
+                    isSupported ? (isTested ? "somewhat tested and supported" : "supported") : "not yet tested or supported at all for this release.");
         }
     }
 
