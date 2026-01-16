@@ -1068,45 +1068,6 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
     return(0);
-
-    /*
-     * This stuff never returned trustworthy values, as the OS only reports
-     * the bit-width of gamma table entries (if it reports anything non-bogus
-     * at all), but not what effectively ends up at the output connectors.
-     *
-     * Also, Apple deprecated the required functions long ago, so this would
-     * fail soon anyway. Just left for documentation in case i find any use
-     * for it for debugging issues...
-     */
-
-    /*
-    CGDirectDisplayID    displayID;
-    CFMutableDictionaryRef properties;
-    CFNumberRef cfGammaWidth;
-    SInt32 dacbits;
-    io_service_t displayService;
-    kern_return_t kr;
-
-    // Retrieve display handle for screen:
-    PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
-
-    // Retrieve low-level IOKit service port for this display:
-    displayService = CGDisplayIOServicePort(displayID);
-
-    // Obtain the properties from that service
-    kr = IORegistryEntryCreateCFProperties(displayService, &properties, NULL, 0);
-    if((kr == kIOReturnSuccess) && ((cfGammaWidth = (CFNumberRef) CFDictionaryGetValue(properties, CFSTR(kIOFBGammaWidthKey)))!=NULL)) {
-        CFNumberGetValue(cfGammaWidth, kCFNumberSInt32Type, &dacbits);
-        CFRelease(properties);
-        return((int) dacbits);
-    }
-    else {
-        // Failed! Return safe 8 bits...
-        CFRelease(properties);
-        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query resolution of video DAC for screen %i! Will return safe default of 8 bits.\n", screenNumber);
-        return(8);
-    }
-    */
 }
 
 struct macModel {
