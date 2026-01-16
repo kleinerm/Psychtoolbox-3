@@ -41,9 +41,6 @@
 
 #include "Screen.h"
 
-// Need AGL headers for windowed and multi-screen rendering:
-#include <AGL/agl.h>
-
 // Includes for low-level access to IOKit Framebuffer device:
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreVideo/CoreVideo.h>
@@ -497,7 +494,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // Possible to request use of the Apple floating point software renderer:
     if (conserveVRAM & kPsychUseSoftwareRenderer) {
-        attribs[attribcount++]=AGL_RENDERER_ID;
+        attribs[attribcount++]=kCGLPFARendererID;
         attribs[attribcount++]=kCGLRendererGenericFloatID;
     }
 

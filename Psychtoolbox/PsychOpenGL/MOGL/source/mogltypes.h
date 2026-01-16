@@ -59,9 +59,6 @@
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
-#ifdef MATLAB_MEX_FILE 
-#include <AGL/agl.h>
-#endif
 #define CALLCONV
 
 #endif

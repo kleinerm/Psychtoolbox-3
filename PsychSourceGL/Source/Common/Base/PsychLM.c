@@ -1036,7 +1036,9 @@ static psych_bool PsychCheckLicenseStatus(void)
         if (lmdebug)
             printf("PTB-DEBUG: IsTrialGenuine() = %i [%s]\n", hr, LMErrorString(hr));
 
-        if (hr != LA_OK) {
+        // Only try to online activate a trial if none activated yet. Skip on expired trials
+        // or other errors:
+        if (hr == LA_FAIL) {
             hr = ActivateTrial();
             if (lmdebug)
                 printf("PTB-DEBUG: ActivateTrial() = %i [%s]\n", hr, LMErrorString(hr));
