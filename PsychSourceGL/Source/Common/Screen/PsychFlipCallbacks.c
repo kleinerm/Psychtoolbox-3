@@ -131,7 +131,7 @@ void PsychRunFlipCallbacks(PsychWindowIndexType windowIndex, double vbl_timestam
 }
 
 // Execute a single callback node with the provided timing struct.
-void PsychExecuteCallback(FlipCallbackNode* node, const PsychGenericScriptType* timeStruct)
+void PsychExecuteCallback(FlipCallbackNode *node, const PsychGenericScriptType *timeStruct)
 {
     node->args[1] = timeStruct;
     if (Psych_mexCallMATLAB(0, NULL, node->numArgs + 2, (mxArray**)node->args, "feval")) {
