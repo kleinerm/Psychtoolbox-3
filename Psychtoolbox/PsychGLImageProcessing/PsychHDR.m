@@ -699,13 +699,14 @@ if strcmpi(cmd, 'DoExecuteStaticHDRHack')
     %
     % This should trigger direct display mode and sending of HDR metadata to switch
     % HDR monitors into HDR-10 mode:
-    vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, 1, screenId, rect, outputId, vulkanHDRMode, 1, refreshHz, 0, 0, flags);
+    vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, 1, screenId, rect, outputId, vulkanHDRMode, 1, refreshHz, 0, 0, flags, uint64(0));
 
     % Disable of HDR mode requested?
     if ~enable
         % Yes. Simply close the HDR window after opening it in HDR mode. This will
         % not only close the window, but also send the HDR disable command to the
         % Linux kernel, given that we just enabled HDR during the 'OpenWindow':
+        PsychVulkanCore('Present', vwin, 0, 1);
         PsychVulkanCore('CloseWindow', vwin);
 
         % We are done and can return control to the calling process, which will
@@ -719,12 +720,12 @@ if strcmpi(cmd, 'DoExecuteStaticHDRHack')
     if ~isempty(hdrMetadata)
         % Yes: Set custom caller provided static HDR metadata for this session:
         oldHdrMetadata = PsychVulkanCore('HDRMetadata', vwin, hdrMetadata.MetadataType, hdrMetadata.MaxFrameAverageLightLevel, hdrMetadata.MaxContentLightLevel, hdrMetadata.MinLuminance, hdrMetadata.MaxLuminance, hdrMetadata.ColorGamut);
-
-        % Trigger a single present to latch the new HDR metadata to the HDR monitor:
-        PsychVulkanCore('Present', vwin, 0, 1);
     else
         oldHdrMetadata = PsychVulkanCore('HDRMetadata', vwin);
     end
+
+    % Trigger a single present to latch the new HDR metadata to the HDR monitor:
+    PsychVulkanCore('Present', vwin, 0, 1);
 
     % Return old HDR metadata and properties:
     hdrProperties = PsychVulkanCore('GetHDRProperties', vwin);
