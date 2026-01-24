@@ -1443,17 +1443,19 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         return(FALSE);
     }
 
-    // Is this a broken AMDVLK driver of version v2023.Q2.2 or later? These have totally broken 16 bpc and partially broken 10 bpc support, with
-    // no proper fix as of 11th May 2025 and v2025.Q2.1. If we detect such a driver version, we override the returned image format table with our
-    // own hardcoded one, with up to 7 entries, enabling RGB10A2, RGBA16 and RGBA16F in both SDR mode, and on a HDR monitor also in HDR mode.
-    // We only override for fullscreen windows, as these modes are not supported by AMDVLK in windowed mode anyway:
-    if (((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) &&
-        window->isFullscreen && (vulkan->deviceProps.driverVersion >= VK_MAKE_VERSION(2, 0, 267))) {
-        if (window->surfaceFormatCount < 7)
-            window->surfaceFormatCount = 7;
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+        // Is this a broken Linux AMDVLK driver of version v2023.Q2.2 or later? These have totally broken 16 bpc and partially broken 10 bpc support, with
+        // no proper fix as of 11th May 2025 and v2025.Q2.1. If we detect such a driver version, we override the returned image format table with our
+        // own hardcoded one, with up to 7 entries, enabling RGB10A2, RGBA16 and RGBA16F in both SDR mode, and on a HDR monitor also in HDR mode.
+        // We only override for fullscreen windows, as these modes are not supported by AMDVLK in windowed mode anyway:
+        if (((vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR) || (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) &&
+            window->isFullscreen && (vulkan->deviceProps.driverVersion >= VK_MAKE_VERSION(2, 0, 267))) {
+            if (window->surfaceFormatCount < 7)
+                window->surfaceFormatCount = 7;
 
-        amdvlkHackInjectHighBpc = TRUE;
-    }
+            amdvlkHackInjectHighBpc = TRUE;
+        }
+    #endif
 
     window->surfaceFormats = (VkSurfaceFormat2KHR*) malloc(window->surfaceFormatCount * sizeof(VkSurfaceFormat2KHR));
     for (i = 0; i < window->surfaceFormatCount; i++) {
