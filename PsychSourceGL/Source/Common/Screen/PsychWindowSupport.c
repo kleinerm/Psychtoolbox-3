@@ -2441,6 +2441,8 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     // Shutdown non-OpenGL related parts of imaging pipeline for this windowRecord:
     PsychShutdownImagingPipeline(windowRecord, FALSE);
 
+    PsychClearFlipCallbacks(windowRecord->windowIndex);
+
     PsychErrorExit(FreeWindowRecordFromPntr(windowRecord));
 }
 
