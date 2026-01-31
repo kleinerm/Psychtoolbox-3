@@ -49,6 +49,9 @@ jobs:
       - name: Install minimal SR-Research Eyelink SDK for building Eyelink mex files.
         run:  sudo apt install eyelinkcore
 
+      - name: Integrate Cryptlex LexActivator runtime libraries into Psychtoolbox folder and SDK files alongside Psychtoolbox-3 folder.
+        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../managementtools'); downloadlexactivator(1);"
+
       - name: Set up latest MATLAB
         uses: matlab-actions/setup-matlab@v2
 
@@ -74,38 +77,37 @@ jobs:
 
 
   # UNUSED ATM: Run a job called "buildforubuntu22.04", only for some few mex files which are targetted at only easily running on Ubuntu 22.04 and later:
-  buildforubuntu22-04:
-    name: Run commands to build+upload some Matlab+Octave mex files for 64-Bit Ubuntu Linux 22.04-LTS on Intel.
-
-    # The type of runner that the job will run on: Fixed to Ubuntu 22.04-LTS
-    runs-on: ubuntu-22.04
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Check out Psychtoolbox repository to runner.
-        uses: actions/checkout@v4
-
-      - name: Setup additional build and runtime dependencies of Psychtoolbox. Currently only libapriltag
-        run:  sudo apt update ; sudo apt install -y octave-psychtoolbox-3 liboctave-dev freeglut3-dev libapriltag-dev
-
-      - name: Set up latest MATLAB
-        uses: matlab-actions/setup-matlab@v2
-
-      - name: Build all eligible Psychtoolbox Matlab mex files. Currently only PsychCV
-        uses: matlab-actions/run-command@v2
-        with:
-          command: cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); pwd, linuxmakeit64(10, 1);
-
-      - name: Build all eligible Psychtoolbox Octave mex files. Currently only PsychCV
-        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); linuxmakeitoctave3(10, 1);"
-
-      - name: Archive built 64-Bit Matlab and Octave mex files for 64-Bit Intel on Ubuntu 22.04
-        uses: actions/upload-artifact@v4
-        with:
-          name: Linux64BitIntelMexFilesForUbuntu22.04
-          path: |
-                Psychtoolbox/PsychBasic/Octave5LinuxFiles64/*.mex
-                Psychtoolbox/PsychBasic/*.mexa64
-#                Psychtoolbox/PsychBasic/PsychPlugins/libptbdrawtext_ftgl64.so.1
+  #buildforubuntu22-04:
+  #  name: Run commands to build+upload some Matlab+Octave mex files for 64-Bit Ubuntu Linux 22.04-LTS on Intel.
+  #
+  #  # The type of runner that the job will run on: Fixed to Ubuntu 22.04-LTS
+  #  runs-on: ubuntu-22.04
+  #
+  #  # Steps represent a sequence of tasks that will be executed as part of the job
+  #  steps:
+  #    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #    - name: Check out Psychtoolbox repository to runner.
+  #      uses: actions/checkout@v4
+  #
+  #    - name: Setup additional build and runtime dependencies of Psychtoolbox. Currently only libapriltag
+  #      run:  sudo apt update ; sudo apt install -y octave-psychtoolbox-3 liboctave-dev freeglut3-dev libapriltag-dev
+  #
+  #    - name: Set up latest MATLAB
+  #      uses: matlab-actions/setup-matlab@v2
+  #
+  #    - name: Build all eligible Psychtoolbox Matlab mex files. Currently only PsychCV
+  #      uses: matlab-actions/run-command@v2
+  #      with:
+  #        command: cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); pwd, linuxmakeit64(10, 1);
+  #
+  #    - name: Build all eligible Psychtoolbox Octave mex files. Currently only PsychCV
+  #      run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); linuxmakeitoctave3(10, 1);"
+  #
+  #    - name: Archive built 64-Bit Matlab and Octave mex files for 64-Bit Intel on Ubuntu 22.04
+  #      uses: actions/upload-artifact@v4
+  #      with:
+  #        name: Linux64BitIntelMexFilesForUbuntu22.04
+  #        path: |
+  #              Psychtoolbox/PsychBasic/Octave5LinuxFiles64/*.mex
+  #              Psychtoolbox/PsychBasic/*.mexa64
 
