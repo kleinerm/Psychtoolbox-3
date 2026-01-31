@@ -18,6 +18,8 @@ function downloadlexactivator(alsosdk, cleanupafter)
 % 31-Jan-2025   mk  Upgrade to v3.31.2 SDK and runtimes for macOS system-wide activations.
 %                   Switch from Windows/vc16 to vc14, ie. from MSVC 2019 to MSVC 2015, as
 %                   Cryptlex dropped support for MSVC2019 for some reason.
+% 31-Jan-2026   mk  Upgrade to v3.35.1 SDK and runtimes for Linux fingerprinting stability
+%                   improvements and other minor fixes and improvements.
 
     if nargin < 1 || isempty(alsosdk)
         alsosdk = 0;
@@ -92,7 +94,7 @@ function dogetit(lextype, target)
     url = 'https://dl.cryptlex.com/downloads';
 
     % Version of the SDK and runtime to fetch:
-    lexversion = 'v3.31.2';
+    lexversion = 'v3.35.1';
 
     % Assemble zip file name:
     lexzipname = ['LexActivator-' lextype '.zip']
