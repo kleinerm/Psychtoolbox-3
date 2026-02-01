@@ -769,7 +769,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % kPsychExternalDisplayMethod mode. It is stored in SysWindowInteropHandle:
             outputHandle = uint64(winfo.SysWindowInteropHandle);
         else
-            % On Windows, outputHandle is meaningless atm.:
+            % On Windows, outputHandle provides the HWND of the Screen onscreen window:
             outputHandle = uint64(winfo.SysWindowHandle);
         end
 

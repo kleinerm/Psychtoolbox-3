@@ -14,7 +14,7 @@
  * A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API
  * for special purpose display and compute tasks.
  *
- * Copyright (c) 2020 - 2025 Mario Kleiner. Licensed under the MIT license:
+ * Copyright (c) 2020 - 2026 Mario Kleiner. Licensed under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -309,7 +309,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychVulkanCore - A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API\n";
     synopsis[i++] = "This driver allows to utilize the Vulkan graphics API for special purpose display and compute tasks.";
-    synopsis[i++] = "Copyright (c) 2020 - 2025 Mario Kleiner. Licensed to you under the terms of the MIT license.";
+    synopsis[i++] = "Copyright (c) 2020 - 2026 Mario Kleiner. Licensed to you under the terms of the MIT license.";
     synopsis[i++] = "";
     synopsis[i++] = "This driver is used internally by Psychtoolbox. You should not call its functions";
     synopsis[i++] = "directly as a regular end-user from your scripts, as the API may change at any time";
@@ -1713,10 +1713,16 @@ psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVu
 {
     VkResult result;
     psych_bool rc = FALSE;
-
+    HWND screenWin = (HWND) ((psych_uint64) outputHandle);
     window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
     window->display = (VkDisplayKHR) VK_NULL_HANDLE;
     window->win32PrivateWindow = NULL;
+
+    // Hide the regular Psychtoolbox Screen onscreen window:
+    ShowWindow(screenWin, SW_HIDE);
+    PsychProcessWindowEvents(window);
+    PsychYieldIntervalSeconds(0.1);
+    PsychProcessWindowEvents(window);
 
     if (!windowClassRegistered) {
         WNDCLASSEX windowClass;
@@ -1766,8 +1772,13 @@ psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVu
         goto createsurface_out;
     }
 
+    // Show the window, give it foreground priority and focus, so hopefully it
+    // stays topmost and is suitable for fullscreen exclusive mode:
     ShowWindow(window->win32PrivateWindow, SW_SHOW);
-
+    PsychProcessWindowEvents(window);
+    SetForegroundWindow(window->win32PrivateWindow);
+    PsychProcessWindowEvents(window);
+    SetFocus(window->win32PrivateWindow);
     PsychProcessWindowEvents(window);
 
     // Setup fullScreenExclusive struct for use by PsychProbeSurfaceProperties()
