@@ -167,14 +167,21 @@ persistent oldSecs;
 
 % Cache operating system type to speed up the code below:
 persistent macosx;
+persistent linux;
+persistent windows;
+
 % ...and all keyboard indices as well:
 persistent kbs kps touchBar;
 % ...and if we are allowed to use PsychHID:
 persistent allowPsychHID;
+% Cached IsWayland():
+persistent onWayland;
 
 if isempty(macosx)
     % First time invocation: Query and cache type of OS:
     macosx = IsOSX;
+    linux = IsLinux;
+    windows = IsWin;
 
     % Detect deviceIndex of TouchBar Gimmick on some of the iToys, so
     % we may get access to the ESCape key and function keys:
@@ -202,7 +209,9 @@ if isempty(macosx)
     if IsLinux && IsWayland
         % Non-standard display backend, e.g., Wayland. Only use Screen's internal implementation:
         allowPsychHID = 0;
+        onWayland = 1;
     else
+        onWayland = 0;
         allowPsychHID = 1;
         if IsLinux
             % Try PsychHID on Linux:
@@ -244,7 +253,7 @@ end
 % the hacks used to make PsychHID('KbCheck') work do interact with KbQueues in
 % surprising ways, so avoid this path unless it brings real benefit - like the
 % ability to use mouse/trackpad/joystick/gamepad buttons as "keyboard" buttons:
-if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber) && (deviceNumber >= 0) && ~ismember(deviceNumber, kbs)))
+if allowPsychHID && (~windows || (windows && ~isempty(deviceNumber) && (deviceNumber >= 0) && ~ismember(deviceNumber, kbs)))
     if ~isempty(deviceNumber) || ~isempty(touchBar)
         % Select keyboard(s):
         if deviceNumber>=0
@@ -299,9 +308,14 @@ oldSecs = secs;
 % MacBook's without touchBar support, e.g., when
 % running on models, or experimental Linux kernels,
 % where the touchBar driver is not yet available.
-if IsLinux && keyCode(95)
-    keyCode(95) = 0;
-    keyCode(10) = 1;
+if linux
+    if onWayland && keyCode(87)
+        keyCode(87) = 0;
+        keyCode(2) = 1;
+    elseif ~onWayland && keyCode(95)
+        keyCode(95) = 0;
+        keyCode(10) = 1;
+    end
 end
 
 % Only need to apply ptb_kbcheck_enabledKeys manually on non-OS/X systems,

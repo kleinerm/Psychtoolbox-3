@@ -14,6 +14,7 @@ function resultFlag = IsLinux(is64)
 % 6/18/11   mk Handle query if 64 bit runtime as well.
 % 6/13/12   dn Simplified
 % 12/16/23  mk Simplify.
+% 02/04/26  mk Optimize one if statement away.
 
 persistent rc;
 persistent rc64;
@@ -25,9 +26,6 @@ end
 
 if isempty(rc)
      rc= isunix && ~ismac;
-end
-
-if isempty(rc64)
      rc64 = rc && Is64Bit;
 end
 
