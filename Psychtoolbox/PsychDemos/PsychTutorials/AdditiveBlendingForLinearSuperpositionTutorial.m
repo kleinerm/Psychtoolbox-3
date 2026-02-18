@@ -148,6 +148,7 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % 26.06.2014 Also show off Native11Bits framebuffers on AMD (MK).
 % 17.09.2014 Also show off Native16Bits framebuffers on AMD (MK).
 % 10.07.2019 Also show off Native16BitFloat framebuffers (MK).
+% 18.02.2026 Disable Retina scaling for 16 bpc formats under Wayland (MK).
 
 KbName('UnifyKeyNames');
 UpArrow = KbName('UpArrow');
@@ -213,6 +214,20 @@ try
     % about 11 bits when a 16 bpc float buffer must be used instead of a 32
     % bpc float buffer:
     PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
+
+    if IsWayland && strncmp(outputdevice, 'Native16Bit', 11)
+        % Request full Retina resolution by default for native 16 bpc modes, as they
+        % will not work under Retina scaling with any but the latest display hardware.
+        % Trying to use them in scaled mode would cause Wayland compositors to fall
+        % back to desktop composition at reduced color precision, e.g., only 10 bpc.
+        %
+        % As of early 2026, only GNOME Mutter v50+ can do native display of 16 bpc
+        % fullscreen windows under Wayland direct scanout mode on suitable hardware,
+        % and often only without Retina/HiDPI scaling. E.g., AMD gpus older than a
+        % few years can't do it with hardware scaling, but full native resolution works.
+        % So lets play it safe for now.
+        PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+    end
 
     switch outputdevice
         case {'Mono++'}
