@@ -1068,6 +1068,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     varargout{1} = vwin;
 
+    if IsOSX
+        % Another workaround for Apple macOS broken Metal. Do a few "pointless"
+        % presents without scheduling or waiting for present completion, to get
+        % rid of the first few ruined presents where present timestamp and callbacks
+        % are delayed by multiple frames behind, causing timeouts. Reason is as unclear
+        % as ever, but these kind of severe Metal bugs are confirmed by other projects...
+        for i = 1:2
+            PsychVulkanCore('Present', vwin, 0, 0);
+            WaitSecs('YieldSecs', 0.020);
+        end
+    end
+
     % Set benchmark to a non-zero value to run a benchmark with 'benchmark'
     % samples, trying to present as fast as possible with minimal overhead:
     benchmark = 0;
