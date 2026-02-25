@@ -2920,7 +2920,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         if (vulkan->hasWait) {
             // Blocking wait with timeout of at least 1 second past tWhen for present completion of the just-queued present:
             double tDelta = tWhen - PsychGetAdjustedPrecisionTimerSeconds(&tPre);
-            uint64_t timeout = (uint64_t) ((tDelta > 0) ? (tDelta + 1.0) * 1e9 : 1e9);
+            uint64_t timeout = (uint64_t) ((tDelta > 0) ? (tDelta + 0.25) * 1e9 : 0.25 * 1e9);
             result = fpWaitForPresentKHR(vulkan->device, window->swapChain, targetPresentId, timeout);
             tPost = PsychGetAdjustedPrecisionTimerSeconds(NULL);
             if ((result != VK_SUCCESS) && (verbosity > 0)) {
@@ -3663,7 +3663,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Select number of image buffers:
     uint32_t numBuffers = window->surfaceCapabilities.minImageCount;
-    uint32_t optBuffers = (PSYCH_SYSTEM == PSYCH_OSX) ? 3 : 2;
+    uint32_t optBuffers = 2;
 
     if (numBuffers != optBuffers && window->surfaceCapabilities.minImageCount <= optBuffers)
         numBuffers = optBuffers;
