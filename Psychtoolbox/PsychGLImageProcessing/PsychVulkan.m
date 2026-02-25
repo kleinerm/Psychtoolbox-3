@@ -300,7 +300,7 @@ if strcmpi(cmd, 'Supported')
     if isempty(supported)
         try
             if exist('PsychVulkanCore', 'file') && (PsychVulkanCore('GetCount') > 0) && ...
-               (~IsOSX || IsMinimumOSXVersion(10,15,4)) % macOS 10.15.4 is the bare minimum needed.
+               (~IsOSX || IsMinimumOSXVersion(11, 0, 0)) % macOS 11 is the bare minimum needed.
                 supported = 1;
             else
                 supported = 0;
@@ -658,15 +658,17 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % frame of extra latency, but our measurements show that even
             % without it, there is one frame of extra latency, contrary to
             % what the docs wrt. Direct-to-Display mode say.
-            % On macOS 13.3.1, it is still broken, but different: The one
-            % frame latency is gone, but now stimulus onset scheduling is
-            % broken whenever a flip is more than 2 frames in the future!
+            % On macOS 13.7.8 Ventura final update, it is still broken,
+            % but different: The one frame latency is gone, but now
+            % stimulus onset scheduling is broken whenever a flip is more
+            % than 2 frames in the future!
             %
-            % On macOS 14.4+ on Apple M1, it seems to work reasonably well,
-            % apart from the sporadic failure during the first few
-            % presents, so there's some hope. Not yet tested thoroughly
-            % yet, but lets activate this mode on Apple Silicon for now.
-            % Broken stuff all around on the iToys operating system:
+            % On macOS 14.4+ (tested on Apple M1/M2 Pro), it seems to work
+            % reasonably well, apart from the sporadic failure during the
+            % first few presents, so there's some hope. Not yet tested
+            % thoroughly yet, but lets activate this mode on Apple Silicon
+            % for now. Broken stuff all around on the iToys operating
+            % system:
             if ~IsARM(1)
                 flags = mor(flags, 2);
             end
