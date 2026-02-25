@@ -750,7 +750,7 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
     //[pool drain];
 }
 
-psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate)
+psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate, int screenNumber)
 {
     NSRect windowRect = NSMakeRect(0, 0, 1, 1);
     static NSWindow *cocoaGhostWindow = NULL;
@@ -792,6 +792,8 @@ psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate)
 
     // Setup the already created ghost window and show it:
     DISPATCH_SYNC_ON_MAIN({
+        PsychRectType screenRect;
+
         // Assign window title for debugging in view inspector:
         [cocoaWindow setTitle:[NSString stringWithUTF8String:"PTB Ghost Window"]];
 
@@ -813,11 +815,12 @@ psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate)
         // can never interact with this ghost window:
         [cocoaWindow setIgnoresMouseEvents:true];
 
-        // Position the window: TODO: Do we need to make this adaptive for multi-display setups?
-        [cocoaWindow setFrameTopLeftPoint:NSMakePoint(0, 0)];
+        // Position the window on proper screen where the onscreen fullscreen window resides:
+        PsychGetGlobalScreenRect(screenNumber, screenRect);
+        [cocoaWindow setFrameTopLeftPoint:NSMakePoint((int) screenRect[kPsychLeft] + 10, 0)];
 
         // Bring it to front, so it will get keyboard input focus:
-        [cocoaWindow orderFrontRegardless];
+        [cocoaWindow makeKeyAndOrderFront:nil];
 
         // Show window:
         [cocoaWindow display];

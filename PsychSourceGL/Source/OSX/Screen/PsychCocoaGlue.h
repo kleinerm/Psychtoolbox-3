@@ -40,5 +40,5 @@ char* PsychCocoaGetFullUsername(void);
 double PsychCocoaGetBackingStoreScaleFactor(void* window);
 void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord);
 psych_bool PsychCocoaMetalWorkaround(PsychWindowRecordType *windowRecord);
-psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate);
+psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate, int screenNumber);
 #endif
