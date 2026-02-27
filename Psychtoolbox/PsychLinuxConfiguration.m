@@ -767,6 +767,27 @@ if ~IsARM && ~exist('/usr/lib/x86_64-linux-gnu/libglut.so.3', 'file')
   end
 end
 
+% Ditto for RaspberryPi OS 12+ on 32-Bit ARM, based on Debian 12 "Bookworm":
+if IsARM && ~Is64Bit && ~exist('/usr/lib/arm-linux-gnueabihf/libglut.so.3', 'file')
+  fprintf('\nRequired libglut.so.3 symlink is missing on your (RaspberryPi OS 12 or later?) system.\n');
+  fprintf('Creating it. You may have to enter your administrator password if you haven''t done already.\n\n');
+
+  % Try libglut.so as target:
+  if exist('/usr/lib/arm-linux-gnueabihf/libglut.so', 'file')
+    system('sudo -S ln -s /usr/lib/arm-linux-gnueabihf/libglut.so /usr/lib/arm-linux-gnueabihf/libglut.so.3');
+  end
+
+  % Fall back to libglut.so.3.12 if that does not exist or fails:
+  if ~exist('/usr/lib/arm-linux-gnueabihf/libglut.so.3', 'file') && exist('/usr/lib/arm-linux-gnueabihf/libglut.so.3.12', 'file')
+    system('sudo -S ln -s /usr/lib/arm-linux-gnueabihf/libglut.so.3.12 /usr/lib/arm-linux-gnueabihf/libglut.so.3');
+  end
+
+  % No dice? Give up:
+  if ~exist('/usr/lib/arm-linux-gnueabihf/libglut.so.3', 'file')
+    warning('Creating libglut.so.3 symlink FAILED. Various OpenGL and drawing commands may fail until this is fixed.');
+  end
+end
+
 if updateinitramfs
   fprintf('\nNow updating the initramfs for some settings to take effect. This can take some time.\n');
   system('sudo update-initramfs -u -k all');
