@@ -86,6 +86,7 @@ canary = onCleanup(@sca);
 % Color space is BT2020, SMPTE ST-2084 PQ encoding is used to drive the
 % display, output color signals have 10 bpc precision.
 PsychImaging('PrepareConfiguration');
+PsychImaging('AddTask', 'General', 'UseVulkanDisplay', 'DP-2');
 PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
 % Note: This would also work, as above settings are used by default:
 % PsychImaging('AddTask', 'General', 'EnableHDR');
