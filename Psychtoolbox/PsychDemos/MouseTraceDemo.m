@@ -48,7 +48,7 @@ try
     Screen(theWindow,'DrawText','Drag mouse (i.e. hold button down) to draw',50,50,255);
     Screen('Flip', theWindow);
     while (1)
-        [x,y,buttons] = GetMouse(theWindow);
+        [~,~,buttons] = GetMouse(theWindow);
         if buttons(1) || KbCheck
           break;
         end
@@ -57,6 +57,7 @@ try
 
     % Loop and track the mouse, drawing the contour
     [theX,theY] = GetMouse(theWindow);
+    [theX,theY] = RemapMouse(theWindow, 'AllViews', theX, theY);
     thePoints = [theX theY];
     Screen(theWindow,'DrawLine',255,theX,theY,theX,theY);
     Screen('Flip', theWindow);
@@ -65,6 +66,7 @@ try
     nextTime = startTime+sampleTime;
     while 1
         [x,y,buttons] = GetMouse(theWindow);
+        [x,y] = RemapMouse(theWindow, 'AllViews', x, y);
         if ~buttons(1)
             break;
         end
