@@ -31,7 +31,7 @@ try
   for mouse = mice
     theX(mouse+1) = theRect(RectRight)/2;
     theY(mouse+1) = theRect(RectBottom)/2;
-    SetMouse(theX(mouse+1), theY(mouse+1), whichScreen, mouse);
+    SetMouse(theX(mouse+1), theY(mouse+1), theWindow, mouse);
     col(mouse+1, 1:3) = rand(1,3) * 255;
 
     % Hide the system-generated cursors. We do this, because only the
