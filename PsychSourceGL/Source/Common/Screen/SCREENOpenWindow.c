@@ -1052,10 +1052,16 @@ PsychError SCREENOpenWindow(void)
             // CGL:
             if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) {
                 // CGL with Panelfitter enabled:
-                double autoscale = (double) nativewidth / (double) frontendwidth;
+                double autoscale;
+
+                // Query new nativewidth after opening onscreen window and possible video mode switching,
+                // so we operate with accurate values:
+                PsychGetScreenPixelSize(screenNumber, &nativewidth, &nativeheight);
+                autoscale = (double) nativewidth / (double) frontendwidth;
 
                 if (PsychPrefStateGet_Verbosity() > 3)
-                    printf("PTB-INFO: CGL + Retina scaling. Auto scale factor is %fx.\n", autoscale);
+                    printf("PTB-INFO: CGL + Retina scaling. [%i x %i] => [%i x %i] => Auto scale factor is %fx.\n",
+                           frontendwidth, frontendheight, nativewidth, nativeheight, autoscale);
 
                 windowRecord->internalMouseMultFactor = 1 / autoscale;
                 windowRecord->externalMouseMultFactor = autoscale;
