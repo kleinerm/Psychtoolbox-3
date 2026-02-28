@@ -440,8 +440,8 @@ if strcmpi(cmd, 'OpenWindowSetup')
         % Not Linux X11: Linux DRM/KMS VT, Linux Wayland, MS-Windows etc.
         if isempty(winRect)
             % No winRect given: Means fullscreen on a specific monitor, defined by screenId:
-            if ~IsWayland
-                % Must only assign this on non-Wayland, or Retina compatibility will go sideways:
+            if ~IsWayland && ~IsOSX
+                % Must only assign this on non-Wayland and non-macOS, or Retina compatibility will go sideways:
                 winRect = Screen('GlobalRect', screenId);
             end
 
@@ -453,8 +453,8 @@ if strcmpi(cmd, 'OpenWindowSetup')
                 % Yes: Fullscreen display:
                 outputName = 1;
                 outputIndex = 0;
-                % Must clear winRect on Wayland for proper Retina handling:
-                if IsWayland
+                % Must clear winRect on Wayland and macOS for proper Retina handling:
+                if IsWayland || IsOSX
                     winRect = [];
                 end
             else
@@ -464,7 +464,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
             end
         end
 
-        if ~IsWayland && ~isempty(outputName) && ((verbosity >= 4) || (~(IsOSX && IsARM(1)) && (verbosity == 3)))
+        if ~IsWayland && length(winRect) == 4 && ~isempty(outputName) && ((verbosity >= 4) || (~(IsOSX && IsARM(1)) && (verbosity == 3)))
             fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
                     winRect(1), winRect(2), winRect(3), winRect(4), screenId);
         end
