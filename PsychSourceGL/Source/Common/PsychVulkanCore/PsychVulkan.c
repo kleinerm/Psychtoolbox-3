@@ -3043,8 +3043,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
                 for (i = 0; i < count; i++) {
                     if (verbosity > 8)
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i):%i: presentID %i [need %i] returned timestamp %f.\n",
-                               window->index, i, pastTiming[i].presentID, targetPresentTimeG.presentID, (double) pastTiming[i].actualPresentTime / 1e9);
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i):%i: presentID %i [need %i] returned timestamp %f. Earliest %f : Margin %f msecs\n",
+                               window->index, i, pastTiming[i].presentID, targetPresentTimeG.presentID, (double) pastTiming[i].actualPresentTime / 1e9,
+                               (double) pastTiming[i].earliestPresentTime / 1e9, (double) pastTiming[i].presentMargin / 1e6);
                     if (pastTiming[i].presentID == targetPresentTimeG.presentID)
                         break;
                 }
