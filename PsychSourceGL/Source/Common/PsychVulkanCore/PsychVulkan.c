@@ -3608,14 +3608,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         if (memcmp(targetdeviceUUID, allzeros, 16) == 0)
             memcpy(targetdeviceUUID, &vulkan->physDeviceProps.deviceUUID[0], 16);
 
-        if (!PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, flags)) {
-            if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable for requested settings.\n", gpuIndex, vulkan->deviceProps.deviceName);
-
-            goto openwindow_out2;
-        }
-
-        supportsPresent = TRUE;
+        supportsPresent = PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, flags);
+        if (!supportsPresent && (verbosity > 0))
+            printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable for requested settings.\n", gpuIndex, vulkan->deviceProps.deviceName);
     }
     else {
         // No. Try to auto-detect the proper gpuIndex / gpu by probing:
@@ -3631,22 +3626,17 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 break;
         }
 
-        if (!supportsPresent) {
-            if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window for requested settings!\n");
-
-            goto openwindow_out2;
-        }
-
-        if (verbosity > 3)
+        if (!supportsPresent && (verbosity > 0))
+            printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window for requested settings!\n");
+        else if (verbosity > 3)
             printf("PsychVulkanCore-INFO: gpuIndex %i [%s] auto-selected as optimal gpu for presenting to the target surface.\n", gpuIndex, vulkan->deviceProps.deviceName);
     }
 
-    if (!supportsPresent)
-        goto openwindow_out2;
-
     // Assign vulkan device to this window:
     window->vulkan = vulkan;
+
+    if (!supportsPresent)
+        goto openwindow_out2;
 
     // Create a swapchain for the windows surface:
 
