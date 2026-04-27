@@ -1814,7 +1814,7 @@ psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVu
 
     // Got a windowed window for Vulkan stimulus display.
     if (verbosity > 3)
-        printf("PsychVulkanCore-INFO: For gpu [%s] created a window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+        printf("PsychVulkanCore-INFO: For gpu [%s] created a Win32 window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
 
     // Mark success:
     rc = TRUE;
@@ -2079,7 +2079,7 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         rc = TRUE;
 
         if (verbosity > 3)
-            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a direct display surface [%p] for display window %i\n", vulkan->deviceIndex,
+            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a DRM leased direct display surface [%p] for display window %i\n", vulkan->deviceIndex,
                    vulkan->deviceProps.deviceName, window->surface, window->index);
     }
     else {
@@ -2179,8 +2179,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
 
         // Got a windowed window for Vulkan stimulus display.
         if (verbosity > 3 && rc)
-            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a windowing system window display surface [%p] for display window %i\n", vulkan->deviceIndex,
-                   vulkan->deviceProps.deviceName, window->surface, window->index);
+            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a %s windowing system display surface [%p] for display window %i\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, (has_Wayland && displayHandle) ? "Wayland" : "X11", window->surface, window->index);
     }
 
 createsurface_out:
@@ -2245,7 +2245,7 @@ psych_bool PsychCreateMoltenVKDisplaySurface(PsychVulkanWindow* window, PsychVul
 
     // Got a windowed window for Vulkan stimulus display.
     if (verbosity > 3)
-        printf("PsychVulkanCore-INFO: For gpu [%s] created a window Metal display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+        printf("PsychVulkanCore-INFO: For gpu [%s] created a macOS Metal display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
 
     return (TRUE);
 }
@@ -2265,6 +2265,79 @@ psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevic
     #if PSYCH_SYSTEM == PSYCH_OSX
         return(PsychCreateMoltenVKDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
     #endif
+}
+
+void PsychCloseVulkanSurfaceAndWSIDisplay(PsychVulkanWindow* window)
+{
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
+
+    // Idle the device:
+    vkDeviceWaitIdle(window->vulkan->device);
+
+    // Release the display surface - all OS:
+    if (window->surface != VK_NULL_HANDLE) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing Vulkan display surface.\n", window->index);
+            fflush(NULL);
+        }
+
+        vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
+        window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+
+        vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
+        window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+    }
+
+    // Release the direct display and leased outputs on Linux:
+    if (window->display != VK_NULL_HANDLE) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing Linux DRM direct display and DRM leased output.\n", window->index);
+            fflush(NULL);
+        }
+
+        fpReleaseDisplayEXT(window->vulkan->physicalDevice, window->display);
+        window->display = VK_NULL_HANDLE;
+    }
+
+    // On X11, close the X11 private window and release X-Display connection:
+    #if defined(VK_USE_PLATFORM_XLIB_KHR)
+    if (window->connection) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing %sX-Display connection.\n", window->index,
+                   (window->x11PrivateWindow != None) ? "X11 window and " : "");
+            fflush(NULL);
+        }
+
+        if (window->x11PrivateWindow != None) {
+            XUnmapWindow(window->connection, window->x11PrivateWindow);
+            XDestroyWindow(window->connection, window->x11PrivateWindow);
+            XFlush(window->connection);
+            window->x11PrivateWindow = None;
+        }
+
+        XCloseDisplay(window->connection);
+        window->connection = NULL;
+    }
+    #endif
+
+    // On MS-Windows, close private Win32 window:
+    #if defined(VK_USE_PLATFORM_WIN32_KHR)
+    if (window->win32PrivateWindow) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing Win32 private window.\n", window->index);
+            fflush(NULL);
+        }
+
+        DestroyWindow(window->win32PrivateWindow);
+        window->win32PrivateWindow = NULL;
+    }
+    #endif
+
+    if (verbosity > 5) {
+        printf("PsychVulkanCore-INFO: Vulkan window %i: OS+WSI specific window and WSI cleanup done.\n", window->index);
+        fflush(NULL);
+    }
 }
 
 psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_uint8* targetdeviceUUID, psych_bool isFullscreen, int screenId,
@@ -3624,6 +3697,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
             if (supportsPresent)
                 break;
+
+            // Nope, not this one. Release the vulkan surface, direct display, WSI windows, WSI connection before probing the next one:
+            window->vulkan = vulkan;
+            PsychCloseVulkanSurfaceAndWSIDisplay(window);
         }
 
         if (!supportsPresent && (verbosity > 0))
@@ -4110,7 +4187,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         if (!PsychSetHDRMetaData(window)) {
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Failed to enable HDR mode %i for window %i.\n", hdrMode, window->index);
-            
+
             goto openwindow_out1;
         }
     }
@@ -4167,34 +4244,8 @@ openwindow_out1:
 
 openwindow_out2:
 
-    vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
-    window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
-
-    if (window->display != VK_NULL_HANDLE) {
-        fpReleaseDisplayEXT(vulkan->physicalDevice, window->display);
-        window->display = VK_NULL_HANDLE;
-    }
-
-#if defined(VK_USE_PLATFORM_XLIB_KHR)
-    if (window->connection) {
-        if (window->x11PrivateWindow != None) {
-            XUnmapWindow(window->connection, window->x11PrivateWindow);
-            XDestroyWindow(window->connection, window->x11PrivateWindow);
-            XFlush(window->connection);
-            window->x11PrivateWindow = None;
-        }
-
-        XCloseDisplay(window->connection);
-        window->connection = NULL;
-    }
-#endif
-
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-    if (window->win32PrivateWindow) {
-        DestroyWindow(window->win32PrivateWindow);
-        window->win32PrivateWindow = NULL;
-    }
-#endif
+    // Release the vulkan surface, direct display, WSI windows, WSI connection:
+    PsychCloseVulkanSurfaceAndWSIDisplay(window);
 
     return (rc);
 }
@@ -4279,43 +4330,11 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
     vkDeviceWaitIdle(window->vulkan->device);
 
     if (verbosity > 4) {
-        printf("PsychVulkanCore-INFO: Vulkan window %i: swapChain is gone. Releasing display.\n", window->index);
+        printf("PsychVulkanCore-INFO: Vulkan window %i: swapChain is gone. Releasing display surface and display/window/connection.\n", window->index);
         fflush(NULL);
     }
 
-    if (window->display != VK_NULL_HANDLE) {
-        fpReleaseDisplayEXT(window->vulkan->physicalDevice, window->display);
-        window->display = VK_NULL_HANDLE;
-    }
-
-    #if defined(VK_USE_PLATFORM_XLIB_KHR)
-    if (window->connection) {
-        if (window->x11PrivateWindow != None) {
-            XUnmapWindow(window->connection, window->x11PrivateWindow);
-            XDestroyWindow(window->connection, window->x11PrivateWindow);
-            XFlush(window->connection);
-            window->x11PrivateWindow = None;
-        }
-
-        XCloseDisplay(window->connection);
-        window->connection = NULL;
-    }
-    #endif
-
-    #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    if (window->win32PrivateWindow) {
-        DestroyWindow(window->win32PrivateWindow);
-        window->win32PrivateWindow = NULL;
-    }
-    #endif
-
-    if (verbosity > 4) {
-        printf("PsychVulkanCore-INFO: Vulkan window %i: Display or Window is gone. Releasing surface.\n", window->index);
-        fflush(NULL);
-    }
-
-    vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
-    window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+    PsychCloseVulkanSurfaceAndWSIDisplay(window);
 
     vkDeviceWaitIdle(window->vulkan->device);
 
