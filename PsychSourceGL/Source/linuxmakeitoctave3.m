@@ -343,7 +343,7 @@ function mex(varargin)
       pagesize = NaN;
   end
 
-  if Is64Bit && (usewayland || (pagesize ~= 4096))
+  if Is64Bit && usewayland % Old: (usewayland || (pagesize ~= 4096))
     outargs = {outargs{:}, "-lLexActivator"};
   end
 
