@@ -3703,10 +3703,11 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             PsychCloseVulkanSurfaceAndWSIDisplay(window);
         }
 
-        if (!supportsPresent && (verbosity > 0))
+        if (!supportsPresent && (verbosity > 0)) {
             printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window for requested settings!\n");
-        else if (verbosity > 3)
+        } else if (verbosity > 3) {
             printf("PsychVulkanCore-INFO: gpuIndex %i [%s] auto-selected as optimal gpu for presenting to the target surface.\n", gpuIndex, vulkan->deviceProps.deviceName);
+        }
     }
 
     // Assign vulkan device to this window:
