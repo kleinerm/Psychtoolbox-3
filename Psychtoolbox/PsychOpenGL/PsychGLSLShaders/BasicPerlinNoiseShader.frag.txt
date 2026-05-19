@@ -3,7 +3,7 @@
  * and friends to generate procedural noise textures.
  *
  * This is a thin wrapper around the fast procedural perlin noise
- * generation code from https://github.com/ashima/webgl-noise
+ * generation code from https://github.com/stegu/webgl-noise
  *
  * (c) 2011-2012 Mario Kleiner. This is licensed to you under the MIT license.
  *

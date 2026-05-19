@@ -237,7 +237,7 @@
 %
 % GLSL shaders for Perlin noise: - MIT license, Copyright (C) 2011 Ashima Arts and
 %                                  Copyright (c) 2011 Stefan Gustavson.
-%                                  Files from https://github.com/ashima/webgl-noise
+%                                  Files from https://github.com/stegu/webgl-noise
 %                                  With minimal modifications for PTB by Mario Kleiner.
 %
 % All other OpenGL GLSL shaders - MIT license : Mario Kleiner.
