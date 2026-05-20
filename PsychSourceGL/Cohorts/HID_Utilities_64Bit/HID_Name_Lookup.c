@@ -110,7 +110,7 @@ Boolean HIDGetVendorNameFromVendorID(long inVendorID, char *outCStrName) {
 	}
 	
 #if FAKE_MISSING_NAMES
-	sprintf(outCStrName, "#{ V: %ld}#", inVendorID);
+	snprintf(outCStrName, 256, "#{ V: %ld}#", inVendorID);
 	result = TRUE;
 #endif // FAKE_MISSING_NAMES
 	return (result);
@@ -139,7 +139,7 @@ Boolean HIDGetProductNameFromVendorProductID(long inVendorID, long inProductID, 
 	}
 	
 #if FAKE_MISSING_NAMES
-	sprintf(outCStrName, "#{ V: %ld, P: %ld, U: %ld: %ld}#", inVendorID, inProductID, inUsagePage, inUsage);
+	snprintf(outCStrName, 256, "#{ V: %ld, P: %ld, U: %ld: %ld}#", inVendorID, inProductID, inUsagePage, inUsage);
 	result = TRUE;
 #endif // FAKE_MISSING_NAMES
 	return (result);
@@ -168,7 +168,7 @@ Boolean HIDGetElementNameFromVendorProductCookie(int inVendorID, int inProductID
 	}
 	
 #if FAKE_MISSING_NAMES
-	sprintf(outCStrName, "#{ V: %ld, P: %ld, C: %ld}#", inVendorID, inProductID, inCookie);
+	snprintf(outCStrName, 256, "#{ V: %ld, P: %ld, C: %ld}#", inVendorID, inProductID, inCookie);
 #else
 	result = FALSE;
 #endif // FAKE_MISSING_NAMES
@@ -202,7 +202,7 @@ Boolean HIDGetElementNameFromVendorProductUsage(long  inVendorID,
 	}
 	
 #if FAKE_MISSING_NAMES
-	sprintf(outCStrName, "#{ V: %ld, P: %ld, U: %ld: %ld}#", inVendorID, inProductID, inUsagePage, inUsage);
+	snprintf(outCStrName, 256, "#{ V: %ld, P: %ld, U: %ld: %ld}#", inVendorID, inProductID, inUsagePage, inUsage);
 	result = TRUE;
 #endif // FAKE_MISSING_NAMES
 	return (result);
@@ -325,19 +325,19 @@ void HIDGetTypeName(IOHIDElementType inIOHIDElementType, char *outCStrName) {
 	switch ( inIOHIDElementType ) {
 		case kIOHIDElementTypeInput_Misc:
 		{
-			sprintf(outCStrName, "Miscellaneous Input");
+			snprintf(outCStrName, 256, "Miscellaneous Input");
 			break;
 		}
 			
 		case kIOHIDElementTypeInput_Button:
 		{
-			sprintf(outCStrName, "Button Input");
+			snprintf(outCStrName, 256, "Button Input");
 			break;
 		}
 			
 		case kIOHIDElementTypeInput_Axis:
 		{
-			sprintf(outCStrName, "Axis Input");
+			snprintf(outCStrName, 256, "Axis Input");
 			break;
 		}
 			
