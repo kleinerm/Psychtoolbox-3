@@ -3971,8 +3971,24 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     result = vkCreateSwapchainKHR(vulkan->device, &swapChainCreateInfo, NULL, &window->swapChain);
     if (result != VK_SUCCESS) {
-        if (verbosity > 0)
+        if (verbosity > 0) {
             printf("PsychVulkanCore-ERROR: vkCreateSwapchainKHR() failed for window %i: res=%i.\n", window->index, result);
+
+            // Insufficient resources in gpu + display engine, e.g., video image resolution or required color depth
+            // too high for given gpu + display engine + video link + display sink, ie. video bandwidth or memory bandwidth
+            // exceeded?
+            if (result == VK_ERROR_INITIALIZATION_FAILED) {
+                printf("PsychVulkanCore-ERROR: Likely the selected video resolution %i x %i pixels in combination with the selected\n", window->width, window->height);
+                printf("PsychVulkanCore-ERROR: framebuffer %i bpc color depth and video output signal depth ('max bpc' connector / output property)\n",
+                       (window->colorPrecision > 1) ? 16 : (window->colorPrecision > 0) ? 10 : 8);
+                printf("PsychVulkanCore-ERROR: and video refresh rate %f Hz exceeds the available memory bandwidth and video link bandwidth\n", refreshHz);
+                printf("PsychVulkanCore-ERROR: or the capabilities of your graphics card. It is also possible that use of Retina / HiDPI scaling for\n");
+                printf("PsychVulkanCore-ERROR: Retina compatibility mode is requested but not supported at these settings. Try to lower any of these\n");
+                printf("PsychVulkanCore-ERROR: settings if possible for your task and check if it helps.\n");
+                if (window->colorPrecision > 1)
+                    printf("PsychVulkanCore-ERROR: Especially 16 bpc color precision may clash with Retina scaling or high settings on older gpu's.\n");
+            }
+        }
 
         goto openwindow_out1;
     }
