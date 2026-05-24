@@ -2824,7 +2824,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     VkResult result;
     VkPresentTimeGOOGLE targetPresentTimeG;
     uint64_t targetPresentId;
-    double tPre, tPost;
+    double tPre, tPost, tQueue, tMonoSecs;
     PsychVulkanDevice* vulkan = window->vulkan;
     double tPreviousPresent = window->tPresentComplete;
 
@@ -2920,7 +2920,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         #if PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX
         // Linux: Map tWhen GetSecs() CLOCK_REALTIME target time into CLOCK_MONOTONIC time, convert to Nanoseconds:
         // macOS: Map tWhen GetSecs() time into Mach host time (which is a no-op btw.), convert to Nanoseconds:
-        targetPresentTimeG.desiredPresentTime = PsychOSRefTimeToMonotonicTime(tWhen) * 1e9;
+        tMonoSecs = PsychOSRefTimeToMonotonicTime(tWhen);
+        targetPresentTimeG.desiredPresentTime = (tMonoSecs > 0) ? tMonoSecs * 1e9 : 0;
         #else
         targetPresentTimeG.desiredPresentTime = 0; // TODO FIXME IMPLEMENT!
         #endif
@@ -2945,6 +2946,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     }
 
     // Present it asap:
+    tQueue = PsychGetAdjustedPrecisionTimerSeconds(NULL);
     result = vkQueuePresentKHR(vulkan->graphicsQueue, &present);
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
@@ -3169,8 +3171,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming[i].actualPresentTime / 1e9);
 
                 if (verbosity > 7)
-                    printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE for presentID %i returned flip completion timestamp %f secs vs. desired present time %f secs. Delta %f msecs.\n",
-                        window->index, pastTiming[i].presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming[i].desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
+                    printf("PsychVulkanCore-DEBUG: PsychPresent(%i): presentID %i returned present time %f secs vs. desired present time %f secs (%f msecs past queuing). Delta %f msecs.\n",
+                           window->index, pastTiming[i].presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming[i].desiredPresentTime / 1e9),
+                           1000 * (window->tPresentComplete - tQueue), 1000 * (window->tPresentComplete - tWhen));
             }
         }
         else {
