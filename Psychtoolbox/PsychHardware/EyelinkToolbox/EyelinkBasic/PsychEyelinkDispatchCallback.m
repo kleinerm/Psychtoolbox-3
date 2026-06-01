@@ -72,6 +72,8 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %               Silicon Macs!
 % 20. 5.2026    Merged in compatability for SR Research Ltd. Display API /
 %               DevKit v2.2, which includes support for EyeLink 3.
+% 01. 6.2026    Proper camera image scaling by EyelinkDrawCameraImage.
+%
 
 global eyelinkanimationtarget; %#ok<GVMIS>
 
@@ -516,8 +518,11 @@ end
         % we could cash some of the below values....
         wrect=Screen('Rect', eyewin);
         [ width , height ] = Screen( 'WindowSize' , eyewin ) ;
-        dw=round(el.eyeimgsize/100*width);
-        dh=round(dw * eyesubrect(4)/eyesubrect(3));
+        
+        scaling = ( el.eyeimgsize/100 * width ) / el.eyeimgmax ;
+        dw = round( scaling * eyesubrect( 3 ) ) ;
+        dh = round( scaling * eyesubrect( 4 ) ) ;
+        
         drect=[ 0 0 dw dh ];
         drect=CenterRect(drect, wrect);
         ty = drect(4) + el.imgtitlefontsize;
