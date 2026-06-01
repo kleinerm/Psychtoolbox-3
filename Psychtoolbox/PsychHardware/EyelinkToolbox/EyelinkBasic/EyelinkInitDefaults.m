@@ -134,7 +134,7 @@ el.getkeytime=-1; % stores last time eyelinkgetkey was used
 % (font info for ) messages/instructions
 el.msgfont='Helvetica';
 el.msgfontsize=20; % absolute, should perhaps be percentage of screen
-el.eyeimgsize=30; % percentage of screen
+el.eyeimgsize=35; % percentage of screen
 el.helptext='Press RETURN (on either display computer or tracker host computer) to toggle camera image';
 el.helptext=[el.helptext '\n' 'Press Esc/O for Output/Record'];
 el.helptext=[el.helptext '\n' 'Press C to Calibrate'];

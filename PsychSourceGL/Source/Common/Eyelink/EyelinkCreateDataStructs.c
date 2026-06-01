@@ -8,6 +8,7 @@
                 E.Peters@ai.rug.nl              emp
                 f.w.cornelissen@med.rug.nl      fwc
                 e_flister@yahoo.com             edf
+                brian@sr-research.com           br
                 mario.kleiner.de@gmail.com      mk
 
 	PLATFORMS:	All
@@ -18,6 +19,9 @@
                 30/10/06        fwc     added CreateMXFSampleRaw
                 22/03/09        edf     added fields to CreateMXFSampleRaw
                 27/03/09        edf     added FLOAT_TIME (**BACKWARDS INCOMPATIBLE**) and TODO discussion
+                21/10/24    br       removed MXISample & MXIEvent as also removed from API
+                30/10/24    br       replace FSAMPLE with FSAMPLE2 for EL3 support
+                06/11/24    br       replace FEVENT with FEVENT2 for EL3 support
                 04/08/26        mk      removed CreateMXISample and CreateMXIEvent, no longer supported by 2026 SDK
 
      TODO: 
@@ -244,6 +248,230 @@ mxArray *CreateMXFSample(const FSAMPLE *fs)
    return struct_array_ptr;
 }
 
+/*
+ROUTINE: CreateMXFSample2
+PURPOSE:
+   copys a FSAMPLE2 structure to a matlab FSAMPLE structure
+*/
+mxArray *CreateMXFSample2(const FSAMPLE2 *fs2)
+{
+   const char *fieldNames[] = {"time","type","flags","px","py","hx","hy","pa","gx","gy",
+                               "rx","ry","status","input","buttons","htype","hdata",
+                               "eyeInHeadX", "eyeInHeadY",
+                               "headMarkerFlags", "headRotation", "headPosition", "headInSpaceX", "headInSpaceY", 
+                               "unused_headInSpaceX", "unused_headInSpaceY", 
+                               "hrgx", "hrgy", "ergx", "ergy",
+                               "ex", "ey", "emajor", "eminor", "eangle",
+                               "unused"};
+   const int fieldCount=sizeof(fieldNames)/sizeof(*fieldNames);   
+   mxArray *struct_array_ptr, *mx;
+ 
+   if ((*fs2).type != SAMPLE_TYPE){
+     // PrintfExit("CreateMXFSample2: wrong pointer argument\n");
+     printf("CreateMXFSample2: wrong pointer argument\n");
+	 return(NULL);
+}
+
+   /* Create a 1-by-1 structmatrix. */  
+   struct_array_ptr = mxCreateStructMatrix(1,1,fieldCount,fieldNames);   
+   if (struct_array_ptr == NULL)
+      PrintfExit("Could not create struct matrix (probably out of memory)\n");
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = FLOAT_TIME(fs2); //backwards incompatible change from (*fs).time -- with new 2kHz sample rates, time (in ms) can be fractional, this macro checks fs2->flags to see if the uint32 fs2->time needs an extra .5 ms
+   mxSetField(struct_array_ptr,0,"time",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).type;
+   mxSetField(struct_array_ptr,0,"type",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).flags;
+   mxSetField(struct_array_ptr,0,"flags",mx);
+   
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).px[0];
+   mxGetPr(mx)[1] = (*fs2).px[1];
+   mxSetField(struct_array_ptr,0,"px",mx);
+      
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).py[0];
+   mxGetPr(mx)[1] = (*fs2).py[1];
+   mxSetField(struct_array_ptr,0,"py",mx);
+   
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).hx[0];
+   mxGetPr(mx)[1] = (*fs2).hx[1];
+   mxSetField(struct_array_ptr,0,"hx",mx);
+         
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).hy[0];
+   mxGetPr(mx)[1] = (*fs2).hy[1];
+   mxSetField(struct_array_ptr,0,"hy",mx); 
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).pa[0];
+   mxGetPr(mx)[1] = (*fs2).pa[1];
+   mxSetField(struct_array_ptr,0,"pa",mx);    
+   
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).gx[0];
+   mxGetPr(mx)[1] = (*fs2).gx[1];
+   mxSetField(struct_array_ptr,0,"gx",mx);    
+   
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).gy[0];
+   mxGetPr(mx)[1] = (*fs2).gy[1];
+   mxSetField(struct_array_ptr,0,"gy",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).rx;
+   mxSetField(struct_array_ptr,0,"rx",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).ry;
+   mxSetField(struct_array_ptr,0,"ry",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).status;
+   mxSetField(struct_array_ptr,0,"status",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).input;
+   mxSetField(struct_array_ptr,0,"input",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).buttons;
+   mxSetField(struct_array_ptr,0,"buttons",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).htype;
+   mxSetField(struct_array_ptr,0,"htype",mx);
+           
+   mx = mxCreateDoubleMatrix(1,8,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).hdata[0];
+   mxGetPr(mx)[1] = (*fs2).hdata[1];
+   mxGetPr(mx)[2] = (*fs2).hdata[2];
+   mxGetPr(mx)[3] = (*fs2).hdata[3];
+   mxGetPr(mx)[4] = (*fs2).hdata[4];
+   mxGetPr(mx)[5] = (*fs2).hdata[5];
+   mxGetPr(mx)[6] = (*fs2).hdata[6];
+   mxGetPr(mx)[7] = (*fs2).hdata[7];
+   mxSetField(struct_array_ptr,0,"hdata",mx);
+
+   mx = mxCreateDoubleMatrix(1,3,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).eyeInHeadX[0];
+   mxGetPr(mx)[1] = (*fs2).eyeInHeadX[1];
+   mxGetPr(mx)[2] = (*fs2).eyeInHeadX[2];
+   mxSetField(struct_array_ptr,0,"eyeInHeadX",mx);
+
+   mx = mxCreateDoubleMatrix(1,3,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).eyeInHeadY[0];
+   mxGetPr(mx)[1] = (*fs2).eyeInHeadY[1];
+   mxGetPr(mx)[2] = (*fs2).eyeInHeadY[2];
+   mxSetField(struct_array_ptr,0,"eyeInHeadY",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).headMarkerFlags;
+   mxSetField(struct_array_ptr,0,"headMarkerFlags",mx);
+
+   mx = mxCreateDoubleMatrix(1,3,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).headRotation[0];
+   mxGetPr(mx)[1] = (*fs2).headRotation[1];
+   mxGetPr(mx)[2] = (*fs2).headRotation[2];
+   mxSetField(struct_array_ptr,0,"headRotation",mx);
+   
+   mx = mxCreateDoubleMatrix(1,3,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).headPosition[0];
+   mxGetPr(mx)[1] = (*fs2).headPosition[1];
+   mxGetPr(mx)[2] = (*fs2).headPosition[2];
+   mxSetField(struct_array_ptr,0,"headPosition",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).headInSpaceX;
+   mxSetField(struct_array_ptr,0,"headInSpaceX",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).headInSpaceY;
+   mxSetField(struct_array_ptr,0,"headInSpaceY",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).unused_headInSpaceX[0];
+   mxGetPr(mx)[1] = (*fs2).unused_headInSpaceX[1];
+   mxSetField(struct_array_ptr,0,"unused_headInSpaceX",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).unused_headInSpaceY[0];
+   mxGetPr(mx)[1] = (*fs2).unused_headInSpaceY[1];
+   mxSetField(struct_array_ptr,0,"unused_headInSpaceY",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).hrgx;
+   mxSetField(struct_array_ptr,0,"hrgx",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).hrgy;
+   mxSetField(struct_array_ptr,0,"hrgy",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).ergx;
+   mxSetField(struct_array_ptr,0,"ergx",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).ergy;
+   mxSetField(struct_array_ptr,0,"ergy",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).ex[0];
+   mxGetPr(mx)[1] = (*fs2).ex[1];
+   mxSetField(struct_array_ptr,0,"ex",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).ey[0];
+   mxGetPr(mx)[1] = (*fs2).ey[1];
+   mxSetField(struct_array_ptr,0,"ey",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).emajor[0];
+   mxGetPr(mx)[1] = (*fs2).emajor[1];
+   mxSetField(struct_array_ptr,0,"emajor",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).eminor[0];
+   mxGetPr(mx)[1] = (*fs2).eminor[1];
+   mxSetField(struct_array_ptr,0,"eminor",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).eangle[0];
+   mxGetPr(mx)[1] = (*fs2).eangle[1];
+   mxSetField(struct_array_ptr,0,"eangle",mx);
+
+   mx = mxCreateDoubleMatrix(1,20,mxREAL);
+   mxGetPr(mx)[0] = (*fs2).unused[0];
+   mxGetPr(mx)[1] = (*fs2).unused[1];
+   mxGetPr(mx)[2] = (*fs2).unused[2];
+   mxGetPr(mx)[3] = (*fs2).unused[3];
+   mxGetPr(mx)[4] = (*fs2).unused[4];
+   mxGetPr(mx)[5] = (*fs2).unused[5];
+   mxGetPr(mx)[6] = (*fs2).unused[6];
+   mxGetPr(mx)[7] = (*fs2).unused[7];
+   mxGetPr(mx)[8] = (*fs2).unused[8];
+   mxGetPr(mx)[9] = (*fs2).unused[9];
+   mxGetPr(mx)[10] = (*fs2).unused[10];
+   mxGetPr(mx)[11] = (*fs2).unused[11];
+   mxGetPr(mx)[12] = (*fs2).unused[12];
+   mxGetPr(mx)[13] = (*fs2).unused[13];
+   mxGetPr(mx)[14] = (*fs2).unused[14];
+   mxGetPr(mx)[15] = (*fs2).unused[15];
+   mxGetPr(mx)[16] = (*fs2).unused[16];
+   mxGetPr(mx)[17] = (*fs2).unused[17];
+   mxGetPr(mx)[18] = (*fs2).unused[18];
+   mxGetPr(mx)[19] = (*fs2).unused[19];
+   mxSetField(struct_array_ptr,0,"unused",mx);
+
+   return struct_array_ptr;
+}
+
 /* RAW SAMPLE STRUCT */
 
 mxArray *CreateMXFSampleRaw(const FSAMPLE_RAW *fs)
@@ -319,7 +547,9 @@ mxArray *CreateMXFEvent(const FEVENT *fe)
    const char *fieldNames[] = {"time","type","read","eye","sttime","entime","hstx","hsty",
                                "gstx","gsty","sta","henx","heny","genx","geny",
                                "ena","havx","havy","gavx","gavy","ava","avel","pvel",
-                               "svel","evel","supd_x","eupd_x","supd_y","eupd_y","status"};
+                               "svel","evel","supd_x","eupd_x","supd_y","eupd_y","status",
+                               };
+                               
    const int fieldCount=sizeof(fieldNames)/sizeof(*fieldNames);   
    mxArray *struct_array_ptr, *mx; 
    
@@ -451,6 +681,301 @@ mxArray *CreateMXFEvent(const FEVENT *fe)
    mxGetPr(mx)[0] = (*fe).status;
    mxSetField(struct_array_ptr,0,"status",mx);
    
+   return struct_array_ptr;
+}
+
+/*
+ROUTINE: CreateMXFEvent2
+PURPOSE:
+   copys a FEVENT structure to a matlab FEVENT structure
+*/   
+
+		
+mxArray *CreateMXFEvent2(const FEVENT2 *fe2)
+{
+   const char *fieldNames[] = {"time","type","read","eye","sttime","entime","hstx","hsty",
+                               "gstx","gsty","sta","henx","heny","genx","geny",
+                               "ena","havx","havy","gavx","gavy","ava","avel","pvel",
+                               "svel","evel","supd_x","eupd_x","supd_y","eupd_y","status",
+                               "headInSpaceX_start","headInSpaceY_start","headInSpaceX_end","headInSpaceY_end","headInSpaceX_avg","headInSpaceY_avg",
+                               "eyeInHeadX_start","eyeInHeadY_start","eyeInHeadX_end","eyeInHeadY_end","eyeInHeadX_avg","eyeInHeadY_avg",
+                               "headRotationX_start","headRotationY_start","headRotationZ_start",
+                               "headRotationX_end","headRotationY_end","headRotationZ_end",
+                               "headRotationX_avg","headRotationY_avg","headRotationZ_avg",
+                               "headPositionX_start","headPositionY_start","headPositionZ_start",
+                               "headPositionX_end","headPositionY_end","headPositionZ_end",
+                               "headPositionX_avg","headPositionY_avg","headPositionZ_avg",
+                               "unused"};
+   const int fieldCount=sizeof(fieldNames)/sizeof(*fieldNames);   
+   mxArray *struct_array_ptr, *mx; 
+   
+   if ((*fe2).type == SAMPLE_TYPE)
+      PrintfExit("CreateMXFEvent : wrong pointer argument\n");
+ 
+   /* Create a 1-by-1 structmatrix. */  
+   struct_array_ptr = mxCreateStructMatrix(1,1,fieldCount,fieldNames);   
+   if (struct_array_ptr == NULL)
+      PrintfExit("Could not create struct matrix (probably out of memory)\n");
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).time; // FLOAT_TIME currently a noop on events, but may change in future!
+   mxSetField(struct_array_ptr,0,"time",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).type;
+   mxSetField(struct_array_ptr,0,"type",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).read;
+   mxSetField(struct_array_ptr,0,"read",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eye;
+   mxSetField(struct_array_ptr,0,"eye",mx);  
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).sttime;
+   mxSetField(struct_array_ptr,0,"sttime",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).entime;
+   mxSetField(struct_array_ptr,0,"entime",mx);     
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).hstx;
+   mxSetField(struct_array_ptr,0,"hstx",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).hsty;
+   mxSetField(struct_array_ptr,0,"hsty",mx);       
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).gstx;
+   mxSetField(struct_array_ptr,0,"gstx",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).gsty;
+   mxSetField(struct_array_ptr,0,"gsty",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).sta;
+   mxSetField(struct_array_ptr,0,"sta",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).henx;
+   mxSetField(struct_array_ptr,0,"henx",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).heny;
+   mxSetField(struct_array_ptr,0,"heny",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).genx;
+   mxSetField(struct_array_ptr,0,"genx",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).geny;
+   mxSetField(struct_array_ptr,0,"geny",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).ena;
+   mxSetField(struct_array_ptr,0,"ena",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).havx;
+   mxSetField(struct_array_ptr,0,"havx",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).havy;
+   mxSetField(struct_array_ptr,0,"havy",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).gavx;
+   mxSetField(struct_array_ptr,0,"gavx",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).gavy;
+   mxSetField(struct_array_ptr,0,"gavy",mx);   
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).ava;
+   mxSetField(struct_array_ptr,0,"ava",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).avel;
+   mxSetField(struct_array_ptr,0,"avel",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).pvel;
+   mxSetField(struct_array_ptr,0,"pvel",mx); 
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).svel;
+   mxSetField(struct_array_ptr,0,"svel",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).evel;
+   mxSetField(struct_array_ptr,0,"evel",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).supd_x;
+   mxSetField(struct_array_ptr,0,"supd_x",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eupd_x;
+   mxSetField(struct_array_ptr,0,"eupd_x",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).supd_y;
+   mxSetField(struct_array_ptr,0,"supd_y",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eupd_y;
+   mxSetField(struct_array_ptr,0,"eupd_y",mx);
+   
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).status;
+   mxSetField(struct_array_ptr,0,"status",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headInSpaceX_start;
+   mxSetField(struct_array_ptr,0,"headInSpaceX_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headInSpaceY_start;
+   mxSetField(struct_array_ptr,0,"headInSpaceY_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headInSpaceX_end;
+   mxSetField(struct_array_ptr,0,"headInSpaceX_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headInSpaceY_end;
+   mxSetField(struct_array_ptr,0,"headInSpaceY_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headInSpaceX_avg;
+   mxSetField(struct_array_ptr,0,"headInSpaceX_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headInSpaceY_avg;
+   mxSetField(struct_array_ptr,0,"headInSpaceY_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eyeInHeadX_start;
+   mxSetField(struct_array_ptr,0,"eyeInHeadX_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eyeInHeadY_start;
+   mxSetField(struct_array_ptr,0,"eyeInHeadY_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eyeInHeadX_end;
+   mxSetField(struct_array_ptr,0,"eyeInHeadX_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eyeInHeadY_end;
+   mxSetField(struct_array_ptr,0,"eyeInHeadY_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eyeInHeadX_avg;
+   mxSetField(struct_array_ptr,0,"eyeInHeadX_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).eyeInHeadY_avg;
+   mxSetField(struct_array_ptr,0,"eyeInHeadY_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationX_start;
+   mxSetField(struct_array_ptr,0,"headRotationX_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationY_start;
+   mxSetField(struct_array_ptr,0,"headRotationY_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationZ_start;
+   mxSetField(struct_array_ptr,0,"headRotationZ_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationX_end;
+   mxSetField(struct_array_ptr,0,"headRotationX_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationY_end;
+   mxSetField(struct_array_ptr,0,"headRotationY_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationZ_end;
+   mxSetField(struct_array_ptr,0,"headRotationZ_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationX_avg;
+   mxSetField(struct_array_ptr,0,"headRotationX_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationY_avg;
+   mxSetField(struct_array_ptr,0,"headRotationY_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headRotationZ_avg;
+   mxSetField(struct_array_ptr,0,"headRotationZ_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionX_start;
+   mxSetField(struct_array_ptr,0,"headPositionX_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionY_start;
+   mxSetField(struct_array_ptr,0,"headPositionY_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionZ_start;
+   mxSetField(struct_array_ptr,0,"headPositionZ_start",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionX_end;
+   mxSetField(struct_array_ptr,0,"headPositionX_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionY_end;
+   mxSetField(struct_array_ptr,0,"headPositionY_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionZ_end;
+   mxSetField(struct_array_ptr,0,"headPositionZ_end",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionX_avg;
+   mxSetField(struct_array_ptr,0,"headPositionX_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionY_avg;
+   mxSetField(struct_array_ptr,0,"headPositionY_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).headPositionZ_avg;
+   mxSetField(struct_array_ptr,0,"headPositionZ_avg",mx);
+
+   mx = mxCreateDoubleMatrix(1,16,mxREAL);
+   mxGetPr(mx)[0] = (*fe2).unused[0];
+   mxGetPr(mx)[1] = (*fe2).unused[1];
+   mxGetPr(mx)[1] = (*fe2).unused[2];
+   mxGetPr(mx)[1] = (*fe2).unused[3];
+   mxGetPr(mx)[1] = (*fe2).unused[4];
+   mxGetPr(mx)[1] = (*fe2).unused[5];
+   mxGetPr(mx)[1] = (*fe2).unused[6];
+   mxGetPr(mx)[1] = (*fe2).unused[7];
+   mxGetPr(mx)[1] = (*fe2).unused[8];
+   mxGetPr(mx)[1] = (*fe2).unused[9];
+   mxGetPr(mx)[1] = (*fe2).unused[10];
+   mxGetPr(mx)[1] = (*fe2).unused[11];
+   mxGetPr(mx)[1] = (*fe2).unused[12];
+   mxGetPr(mx)[1] = (*fe2).unused[13];
+   mxGetPr(mx)[1] = (*fe2).unused[14];
+   mxGetPr(mx)[1] = (*fe2).unused[15];
+   mxSetField(struct_array_ptr,0,"unused",mx);
+
    return struct_array_ptr;
 }
 

@@ -13,6 +13,7 @@
  
 	29-05-2001	emp 		created it
 	28/06/06	fwc		adapted from alpha version
+	30/10/24	br		adapted <options> in place of <dist_is_path> for EL3 support
  
 	TARGET LOCATION:
  
@@ -25,33 +26,67 @@
  
 #include "PsychEyelink.h"
  
- static char useString[] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['dest_is_path'])";
+ static char useString[] = "[status =] Eyelink('ReceiveFile', ['src'], ['dest'], ['options'])";
  
  static char synopsisString[] = 
- " If <src> is omitted, tracker will send last opened data file.\n"
+ " If <src> filename is omitted or empty, tracker will send last opened data file.\n"
  " If <dest> is omitted, creates local file with source file name.\n"
- " Else, creates file using <dest> as name.  If <dest_is_path> is supplied and non-zero\n" 
- " uses source file name but adds <dest> as directory path.\n"
- " returns: file size if OK, 0 if file transfer was cancelled, negative =  error code";
+ " Else, creates file using <dest> as name.\n"
+ " <options>\n"
+ "  0 files placed at the same folder where it executes\n"
+ "  1 appends file name to <dest> as a directory path.\n"
+ "  2 downlod vFile in addition to edf\n"
+ "  3 download vFile & edf and append file name to <dest> as a directory path.\n"
+ "  4 download only vFile and place it in the same folder\n"
+ "  5 download only vFile and append file name to <dest> as a directory path\n"
+ " Returns:\n"
+ "  0 if file transfer was cancelled.\n"
+ "  Size of file in bytes, if successful.\n"
+ "  -1 if file size is negative.\n"
+ "  -2 if cannot create local file.\n"
+ "  -3 if file transfer was cancelled.\n"
+ "  -4 if file transfer was aborted.\n"
+ "  -5 if error occurred while writing file.\n"
+ "  -6 if link was terminated.";
+
+ 
  
  static char seeAlsoString[] = "";
  
  /*
   ROUTINE: EyelinkReceiveFile
   PURPOSE:
-  uses INT32 receive_data_file(char *src, char *dest, INT16 dest_is_path); 
-  If <src> = "", tracker will send last opened data file.
-  If <dest> is NULL or "", creates local file with source file name.
-  Else, creates file using <dest> as name.  If <dest_is_path> != 0 
-  uses source file name but adds <dest> as directory path.
-  returns: file size if OK, negative =  error code       */
+ " If <src> is omitted, tracker will send last opened data file.\n"
+ " If <dest> is omitted, creates local file with source file name.\n"
+ " Else, creates file using <dest> as name.\n"
+ " <options>"
+ "  0 files placed at the same folder where it executes\n"
+ "  1 appends file name to <dest> as a directory path.\n"
+ "  2 downlod vFile in addition to edf\n"
+ "  3 download vFile & edf and append file name to <dest> as a directory path.\n"
+ "  4 download only vFile and place it in the same folder\n"
+ "  5 download only vFile and append file name to <dest> as a directory path\n"
+ " Returns:\n"
+ "  0 if file transfer was cancelled due to edf file missing at tracker.\n"
+ "  Size of file in bytes, if successful.\n"
+ "  -1 if file size is negative.\n"
+ "  -2 if cannot create local file.\n"
+ "  -3 if file transfer was cancelled.\n"
+ "  -4 if file transfer was aborted.\n"
+ "  -5 if error occurred while writing file.\n"
+ "  -6 if link was terminated."*/
+
+ static short ELCALLTYPE mex_printf_progress(char * fileName, UINT64 size, UINT64 recv)
+ {
+	mexPrintf("Transferring: %s -- %zu/%zu\n", fileName, recv, size);
+ }
  
  PsychError EyelinkReceiveFile(void)
  {
 	 int iStatus = -1;
 	 char *src = "";
 	 char *dest = "";
-	 int dest_is_path = 0;
+	 int options = 0;
 	 
 	 //all sub functions should have these two lines
 	 PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -69,13 +104,12 @@
 	 EyelinkSystemIsConnected();
 	 EyelinkSystemIsInitialized();
 	 
-	 
 	 PsychAllocInCharArg(1, FALSE, &src);
 	 PsychAllocInCharArg(2, FALSE, &dest);
-	 PsychCopyInIntegerArg(3, FALSE, &dest_is_path);
-	 
-	 iStatus = (int) receive_data_file(src, dest, (INT16) dest_is_path);
-	 
+	 PsychCopyInIntegerArg(3, FALSE, &options);
+
+	 iStatus = (int) receive_data_file_feedback64(src, dest, (INT16) options, mex_printf_progress);
+
 	 /* if there is an output variable available, assign result to it.   */			
 	 PsychCopyOutDoubleArg(1, FALSE, iStatus);
 	 

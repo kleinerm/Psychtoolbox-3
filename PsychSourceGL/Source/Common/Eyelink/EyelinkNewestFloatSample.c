@@ -9,16 +9,18 @@
 	E.Peters@ai.rug.nl				emp
 	f.w.cornelissen@med.rug.nl		fwc
 	e_flister@yahoo.com				edf
+	brian@sr-research.com           br
 
 	PLATFORMS:	All
  
 	HISTORY:
  
-	2003	 emp		first version
-	11/23/05  cdb		adapted.
-	31-10-06	fwc		added EyelinkNewestFloatSampleRaw function
-	19-02-09   edf     elaborated doc for EyelinkNewestFloatSampleRaw
-	23-03-09   edf     added eye argument to EyelinkNewestFloatSampleRaw
+	2003        emp     first version
+	11/23/05    cdb     adapted.
+	31-10-06    fwc     added EyelinkNewestFloatSampleRaw function
+	19-02-09    edf     elaborated doc for EyelinkNewestFloatSampleRaw
+	23-03-09    edf     added eye argument to EyelinkNewestFloatSampleRaw
+	30-10-24	br      replace FSAMPLE with FSAMPLE2 for EL3 support
  
 	TARGET LOCATION:
  
@@ -42,13 +44,13 @@ static char seeAlsoString[] = "";
 	PURPOSE:
 	uses INT16 CALLTYPE eyelink_newest_float_sample(void FARTYPE *buf);
 	makes copy of most recent float sample received
-	makes FSAMPLE copy of most recent sample
+	makes FSAMPLE2 copy of most recent sample
 	returns -1 if none or error, 0 if old, 1 if new
 	
 */
 PsychError EyelinkNewestFloatSample(void)
 {
-	FSAMPLE		structFloatSample;
+	FSAMPLE2	structFloatSample2;
 	mxArray		**mxOutArg;
 	int			iSampleType;
 	
@@ -73,7 +75,7 @@ PsychError EyelinkNewestFloatSample(void)
 	//mexPrintf("EyelinkSystemIsInitialized\n");
 	
 	// Grab the sample
-	iSampleType=eyelink_newest_float_sample(&structFloatSample);
+	iSampleType=eyelink_newest_float_sample2(&structFloatSample2);
 	//mexPrintf("iSampleType is %d\n", iSampleType);
 	
 	mxOutArg = PsychGetOutArgMxPtr(1);
@@ -81,7 +83,7 @@ PsychError EyelinkNewestFloatSample(void)
 	if( iSampleType==1 || iSampleType==0 )
 	{
 		//		mexPrintf("old or new sample\n");
-		*mxOutArg = (mxArray *)CreateMXFSample(&structFloatSample);
+		*mxOutArg = (mxArray *)CreateMXFSample2(&structFloatSample2);
 	}
 	else
 	{

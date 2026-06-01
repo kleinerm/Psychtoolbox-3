@@ -45,6 +45,8 @@ static byte* eyeimage = NULL;
 // Width x Height of eye camera image in pixels:
 static int eyewidth  = 0;
 static int eyeheight = 0;
+static int maxwidth = 384;
+static int maxheight = 384;
 
 // Color remapping palette table:
 static unsigned int palmap32[256];
@@ -511,10 +513,10 @@ static INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 heig
 
     // Allocate an internal memory buffer of sufficient size to hold an image
     // of size width x height pixels:
-    eyeimage = (byte*) malloc(sizeof(unsigned char) * 4 * width * height);
+    eyeimage = (byte*) malloc(sizeof(unsigned char) * 4 * maxwidth * maxheight);
     if (eyeimage != NULL) {
-        eyewidth  = width;
-        eyeheight = height;
+        eyewidth  = maxwidth;
+        eyeheight = maxheight;
     }
     else {
         // Failed:
@@ -529,8 +531,8 @@ static INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 heig
     
     if (Verbosity() > 5) printf("Eyelink: Leaving PsychEyelink_setup_image_display()\n");
 
-    // Done.
-    return(0);
+    // Done, return 1 (not 0) to tell graphics API to use dynamic high-res eyeimage sizes
+    return(1);
 }
 
 // PsychEyelink_exit_image_display() shuts down any camera image display:
@@ -584,6 +586,8 @@ void drawSemiCircle(CrossHairInfo *chi, int left, int top, int dia, int side, in
         case PUPIL_BOX_COLOR:             g =255; break;//0,255,0
         case SEARCH_LIMIT_BOX_COLOR: 
         case MOUSE_CURSOR_COLOR:        r = 255; break;//255,0,0
+        case SCREEN_OVERLAY_COLOR_1:  g = 255; break;//0,255,0
+        case SCREEN_OVERLAY_COLOR_2:  r = 255; break;//255,0,0
     }
     
     v0 = (unsigned int*) (eyeimage);
@@ -856,6 +860,8 @@ void drawCircle(CrossHairInfo *chi, int x0, int y0, int width, int height, int c
         case PUPIL_BOX_COLOR:             g = 255; break;//0,255,0
         case SEARCH_LIMIT_BOX_COLOR: 
         case MOUSE_CURSOR_COLOR:         r = 255; break;//255,0,0
+        case SCREEN_OVERLAY_COLOR_1:  g = 255; break;//0,255,0
+        case SCREEN_OVERLAY_COLOR_2:  r = 255; break;//255,0,0
     }
 
     
@@ -936,6 +942,8 @@ void drawLozenge(CrossHairInfo *chi, int x0, int y0, int width, int height, int 
         case PUPIL_BOX_COLOR:             g = 255; break;//0,255,0
         case SEARCH_LIMIT_BOX_COLOR: 
         case MOUSE_CURSOR_COLOR:         r = 255; break;//255,0,0
+        case SCREEN_OVERLAY_COLOR_1:  g = 255; break;//0,255,0
+        case SCREEN_OVERLAY_COLOR_2:  r = 255; break;//255,0,0
     }
     
 if(eyeimage != NULL) {
@@ -1034,6 +1042,8 @@ void drawLine(CrossHairInfo *chi, int x1, int y1, int x2, int y2, int cindex)
         case PUPIL_BOX_COLOR:             g = 255; break;//0,255,0
         case SEARCH_LIMIT_BOX_COLOR: 
         case MOUSE_CURSOR_COLOR:         r = 255; break;//255,0,0
+        case SCREEN_OVERLAY_COLOR_1:  g = 255; break;//0,255,0
+        case SCREEN_OVERLAY_COLOR_2:  r = 255; break;//255,0,0
     }
     // Memory pointer to malloc()'ed image pixel buffer that holds the
     // image data for a RGBA8 texture with the most recent eye camera image:
@@ -1197,6 +1207,15 @@ void getMouseState(CrossHairInfo *chi, int *rx, int *ry, int *rstate)
 }
 
 
+static void PsychEyelink_black_eyeimage()
+{
+    for (int j = 0; j < maxwidth * maxheight * 4; j++)
+    {
+        eyeimage[j] = 0;
+    }
+}
+
+
 // PsychEyelink_draw_image_line() retrieves exactly one scanline worth of eye camera
 // image data. Once a full image has been received, it has to trigger the actual image
 // display:
@@ -1205,6 +1224,7 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
     PsychGenericScriptType            *inputs[1];
     PsychGenericScriptType            *outputs[1];
     double* callargs;
+    static byte* eyeimagedisp;
     double teximage;
     static INT16 lastline = -1;
     static int wrapcount = 0;
@@ -1222,19 +1242,22 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
     if (0 == eyelinkDisplayCallbackFunc[0]) return;
 
     // width, line, totlines within valid range?
-    if (width < 1 || width > eyewidth || line < 1 || line > eyeheight || totlines < 1 || totlines > eyeheight) {
-        printf("EYELINK: WARNING! Eye camera image with invalid parameters received! (width = %i, line = %i, totlines = %i out of sane range %i x %i)!\n",
+    if (width < 1 || width > maxwidth || line < 1 || line > maxheight || totlines < 1 || totlines > maxheight) {
+        printf("EYELINK: WARNING! Eye camera image with invalid parameters received! (width = %i, line = %i, totines = %i out of max range limits, maxwidth: %i, maxheight: %i)!\n",
                 width, line, totlines, eyewidth, eyeheight);
         printf("EYELINK: WARNING! Will try to clamp to valid values, but results may be junk.\n");
         width = eyewidth;
         line = (line < 1) ? 1 : line;
-        line = (line > eyeheight) ? line : eyeheight;
+        line = (line > maxheight) ? line : maxheight;
         totlines = (totlines < 1) ? 1 : totlines;
-        totlines = (totlines > eyeheight) ? totlines : eyeheight;
+        totlines = (totlines > maxheight) ? totlines : maxheight;
     }
 
-    
-    
+    if (line == 1) 
+    {
+        // DEBUG: blackify whole eyeimage
+        PsychEyelink_black_eyeimage();
+    }
 
     // Data structures properly initialized?
     if(eyeimage != NULL) {
@@ -1242,7 +1265,8 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
         p = pixels;
         
         // Retrieve v0 as pointer to pixel row in output buffer:
-        v0 = (unsigned int*) (( eyeimage + ( (totlines - line) * width * 4 ) ));
+        // v0 = (unsigned int*) (( eyeimage + ( (totlines - line) * width * 4 ) ));
+        v0 = (unsigned int*) (( eyeimage + ( (maxheight - line) * maxwidth * 4 ) ));
         
         // Copy one row of pixels from input- to output buffer:
         // This is a bit optimized, but we could do more if we're really bored with life ;-)
@@ -1283,26 +1307,20 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
         // Complete new eye image received?
         if (line == totlines) {
             // Yes. Our eyeimage buffer contains a new image.
-            
             // Reset skip detector:
             lastline  = -1;
-        
-            crossHairInfo.w = eyewidth;
-            crossHairInfo.h = eyeheight;
+
+            crossHairInfo.w = width;
+            crossHairInfo.h = totlines;
             crossHairInfo.drawLozenge = drawLozenge;
             crossHairInfo.drawLine = drawLine;
             crossHairInfo.getMouseState = mouseLoc?mouseLoc:getMouseState;
             crossHairInfo.userdata = eyeimage;
-            
             eyelink_draw_cross_hair(&crossHairInfo);
-            
-            
+
             // Compute double-encoded Matlab/Octave compatible memory pointer to image buffer:
             teximage = PsychPtrToDouble((void*) eyeimage);
 
-            
-            
-            
             // Ok, teximage is a memory pointer to our image buffer, encoded as a double.
             // Now we need to call our Matlab callback function which actually converts
             // the data in our internal image buffer into a PTB texture, then draws that
@@ -1312,13 +1330,15 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
             // Create a Matlab double matrix with 4 elements: 1st is command code '1'
             // 2nd is the double pointer, 3r//d is image width, 4th is image height:
             outputs[0]  = NULL;
-            inputs[0]   = mxCreateDoubleMatrix(1, 4, mxREAL);
+            inputs[0]   = mxCreateDoubleMatrix(1, 6, mxREAL);
             callargs    = mxGetPr(inputs[0]);
 
             callargs[0] = 1; // 1 == Command code for "Show eye image".
             callargs[1] = teximage;
             callargs[2] = eyewidth;
             callargs[3] = eyeheight;
+            callargs[4] = width;
+            callargs[5] = totlines;
 
             rc = Psych_mexCallMATLAB(0, outputs, 1, inputs, eyelinkDisplayCallbackFunc);
             if(rc) {
@@ -1328,6 +1348,7 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
                 printf("EYELINK: WARNING! Auto-Disabling all callbacks to the runtime environment for safety reasons.\n");
                 eyelinkDisplayCallbackFunc[0] = 0;
             }
+            free(eyeimagedisp);
 
             // Release our matrix again:
             mxDestroyArray(inputs[0]);

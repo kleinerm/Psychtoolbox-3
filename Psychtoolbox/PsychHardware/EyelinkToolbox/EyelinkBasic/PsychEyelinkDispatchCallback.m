@@ -70,6 +70,8 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %               the imaging pipeline, especially with external display
 %               backends like Vulkan, and thereby on macOS for Apple
 %               Silicon Macs!
+% 20. 5.2026    Merged in compatability for SR Research Ltd. Display API /
+%               DevKit v2.2, which includes support for EyeLink 3.
 
 global eyelinkanimationtarget; %#ok<GVMIS>
 
@@ -83,6 +85,7 @@ persistent calxy;
 persistent imgtitle;
 persistent eyewidth;
 persistent eyeheight;
+persistent eyesubrect;
 
 % Cached(!) eyelink stucture containing keycodes
 persistent el;
@@ -100,6 +103,7 @@ persistent audio_status;
 persistent audio_devinfo;
 persistent audio_n_chan;
 persistent audio_fs;
+%persistent audio_ppa_isSlave;
 persistent beep_waveforms;
 
 persistent inDrift;
@@ -162,6 +166,8 @@ if ~isempty(el.ppa_pahandle) && isempty(audio_status)
     audio_devinfo = PsychPortAudio('GetDevices', [], audio_status.OutDeviceIndex);
     audio_n_chan = min(2,audio_devinfo.NrOutputChannels);
     audio_fs = audio_status.SampleRate;
+    %if PsychPortAudio('SetOpMode', pamaster) > 
+    %    audio_ppa_isSlave
 elseif isempty(el.ppa_pahandle) && isempty(audio_fs)
     audio_status = NaN;
     audio_devinfo = NaN;
@@ -190,9 +196,9 @@ if isempty(beep_waveforms)
     end
 end
 
-% Not an eyelink struct.  Either a 4 component vector from Eyelink(), or something wrong:
-if length(callArgs) ~= 4
-    error('Invalid "callArgs" received from Eyelink() Not a 4 component double vector as expected!');
+% Not an eyelink struct.  Either a 4 or 6 component vector from Eyelink(), or something wrong:
+if length(callArgs) ~= 4 && length(callArgs) ~= 6
+    error('Invalid "callArgs" received from Eyelink() Not a 4 or 6 component double vector as expected!');
 end
 
 % Extract command code:
@@ -450,13 +456,14 @@ if newcamimage      % New image frame received from EyeLink camera stream
     eyeimgptr = callArgs(2);
     eyewidth  = callArgs(3);
     eyeheight = callArgs(4);
+    eyesubrect = [0, 0, callArgs(5), callArgs(6)];
     
     % Creates a new or reuses an existing PTB texture for the cam image
     eyelinktex = Screen('SetOpenGLTextureFromMemPointer', eyewin, eyelinktex, eyeimgptr, eyewidth, eyeheight, 4, 0, [], GL_RGBA8, GL_RGBA, hostDataFormat);
 end
 
 if ~isempty(eyelinktex) && ineyeimagemodedisplay==1     % Draw cam image and caption
-    [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle);
+    [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, eyesubrect);
 end
 
 if ~isempty(calxy)  % Draw Cal Target
@@ -507,16 +514,17 @@ end
         Screen(eyewin,'TextSize',oldFontSize);
     end
 
-    function [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle)
+    function [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, eyesubrect)
         eyerect=Screen('Rect', eyelinktex);
         % we could cash some of the below values....
         wrect=Screen('Rect', eyewin);
-        width = Screen('WindowSize', eyewin);
+        [ width , height ] = Screen( 'WindowSize' , eyewin ) ;
+        % dw=round(el.eyeimgsize/100*width);
+        % dh=round(dw * eyerect(4)/eyerect(3));
         dw=round(el.eyeimgsize/100*width);
-        dh=round(dw * eyerect(4)/eyerect(3));
+        dh=round(dw * eyesubrect(4)/eyesubrect(3));
         drect=[ 0 0 dw dh ];
         drect=CenterRect(drect, wrect);
-        tx = drect(1);
         ty = drect(4) + el.imgtitlefontsize;
 
         if ~isempty(imgtitle)
@@ -531,7 +539,9 @@ end
         for it = 0:drawScreens
             try
                 Screen('SelectStereoDrawBuffer', eyewin, it); % select current-eye window
-                Screen('DrawTexture', eyewin, eyelinktex, [], drect);
+                Screen('DrawTexture', eyewin, eyelinktex, eyesubrect, drect);
+                offsetBoundsRect = Screen('TextBounds', eyewin, imgtitle);
+                tx = ( width + offsetBoundsRect( 1 ) - offsetBoundsRect( 3 ) ) / 2 ;
                 Screen('DrawText', eyewin, imgtitle, tx, ty, el.imgtitlecolour);
             catch
                 fprintf('EyelinkDrawCameraImage:error \n');
@@ -543,16 +553,21 @@ end
             Screen('TextFont', eyewin, otf);
             Screen('TextSize', eyewin, ots);
         end
+
+        if ~isempty(imgtitle) && contains(imgtitle, 'Marker')
+            x = width / 2 .* [ 1 , 1 , 1 , 1 ] ;
+            y = floor( 0.02 * height ) .* [ 0 , 1 , -1 , 0 ] + [ 0 , 0 , height , height ] ;
+            Screen('DrawLines', eyewin, [ x ; y ], 2, el.msgfontcolour);
+        end
     end
 
     function EyelinkDrawCalibrationTarget(eyewin, el, calxy, eyelinkanimationtarget)
-        width = Screen('WindowSize', eyewin);
+        [ width , height ] = Screen( 'WindowSize' , eyewin ) ;
 
         % Set drawScreens 0 for mono modes, 1 for stereo modes:
         drawScreens = double(el.winInfo.StereoMode ~= 0);
         for it = 0:drawScreens
             Screen('SelectStereoDrawBuffer', eyewin, it); % select eye window
-
             switch el.calTargetType
                 case 'video'
                     if( ~isempty(el.calAnimationTargetFilename) && ~isempty(eyelinkanimationtarget))
