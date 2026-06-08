@@ -103,7 +103,6 @@ persistent audio_status;
 persistent audio_devinfo;
 persistent audio_n_chan;
 persistent audio_fs;
-%persistent audio_ppa_isSlave;
 persistent beep_waveforms;
 
 persistent inDrift;
@@ -166,8 +165,6 @@ if ~isempty(el.ppa_pahandle) && isempty(audio_status)
     audio_devinfo = PsychPortAudio('GetDevices', [], audio_status.OutDeviceIndex);
     audio_n_chan = min(2,audio_devinfo.NrOutputChannels);
     audio_fs = audio_status.SampleRate;
-    %if PsychPortAudio('SetOpMode', pamaster) > 
-    %    audio_ppa_isSlave
 elseif isempty(el.ppa_pahandle) && isempty(audio_fs)
     audio_status = NaN;
     audio_devinfo = NaN;
@@ -519,8 +516,6 @@ end
         % we could cash some of the below values....
         wrect=Screen('Rect', eyewin);
         [ width , height ] = Screen( 'WindowSize' , eyewin ) ;
-        % dw=round(el.eyeimgsize/100*width);
-        % dh=round(dw * eyerect(4)/eyerect(3));
         dw=round(el.eyeimgsize/100*width);
         dh=round(dw * eyesubrect(4)/eyesubrect(3));
         drect=[ 0 0 dw dh ];
