@@ -1,5 +1,5 @@
 function rc = PsychEyelinkDispatchCallback(callArgs, msg)
-% PsychEyelinkDispatchCallback implementes the EyeLink Core Graphics part
+% PsychEyelinkDispatchCallback implements the EyeLink Core Graphics part
 % of the EyeLink API. This "Core Graphics" part of our API is responsible
 % for handling the times when the API and Host PC takes control of the eye
 % tracking procedures. This includes the functionality to stream camera
@@ -10,7 +10,7 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 % implemented herewith also handles the playback of feedback sounds to
 % the experimenter and participant for guiding these interactive
 % procedures. During these modes of operation, this function also
-% implements the forwarding of kepresses to the Host PC that are registered
+% implements the forwarding of key presses to the Host PC that are registered
 % on the computer's keyboard which is running this implementation. The
 % purpose of this is to make sure that bost Host and Display PCs are
 % operating as identically in these modes of operation.
@@ -70,9 +70,14 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %               the imaging pipeline, especially with external display
 %               backends like Vulkan, and thereby on macOS for Apple
 %               Silicon Macs!
-% 20. 5.2026    Merged in compatability for SR Research Ltd. Display API /
+% 20. 5.2026    Merged in compatibility for SR Research Ltd. Display API /
 %               DevKit v2.2, which includes support for EyeLink 3.
 % 01. 6.2026    Proper camera image scaling by EyelinkDrawCameraImage.
+% 23. 6.2026    Call GetMouse on some regular basis so as to pull events from
+%               the MS Windows message queue. Without this, accidental mouse
+%               clicks on the PTB window will be interpreted by Windows as an
+%               unresponsive program, which the OS will then helpfully
+%               eradicate.
 %
 
 global eyelinkanimationtarget; %#ok<GVMIS>
@@ -108,6 +113,9 @@ persistent audio_fs;
 persistent beep_waveforms;
 
 persistent inDrift;
+
+% GetMouse workaround to maintain a responsive PTB window.
+persistent mousetime;
 
 if 0 == Screen('WindowKind', eyelinktex)
     eyelinktex = []; % Previous PTB Screen() window has closed, needs to be recreated.
@@ -206,6 +214,16 @@ eyecmd = callArgs(1);
 if isempty(eyewin) && eyecmd ~= 3
     warning('Got called as callback function from Eyelink() but usercode has not set a valid target onscreen window handle yet! Aborted.'); %#ok<WNTAG>
     return;
+end
+
+% GetMouse workaround to stop MS Windows from thinking that the PTB window is
+% unresponsive. Tap the window at least once per second. GetMouse will clear
+% the event queue.
+thistime = GetSecs ;
+
+if isempty( mousetime ) || eyecmd == 16 || thistime - mousetime >= 1
+    mousetime = thistime ;
+    if eyecmd ~= 16 , GetMouse ; end
 end
 
 % (Re)set Flag for new camera image
