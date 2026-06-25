@@ -357,7 +357,8 @@ try
                 Eyelink('Message', 'KEY_PRESSED');
                 reactionTime = round((RtEnd-RtStart)*1000); % Calculate RT from stimulus onset 
                 break;
-            end            
+            end
+            EyelinkClearMsgQueue ;
         end % End of while loop
         
         % Draw blank screen at end of trial

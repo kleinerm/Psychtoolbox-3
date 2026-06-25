@@ -410,7 +410,8 @@ try
                 Eyelink('Message', 'FIXATION_KEY_PRESSED');
                 fixWinComplete = 'no'; % Update variable: gaze not maintained inside window for duration 'fixateTime'
                 break;
-            end            
+            end
+            EyelinkClearMsgQueue ;
         end % End of gaze-checking while loop
                
         % STEP 5.5: PRESENT STIMULUS; CREATE DATAVIEWER BACKDROP AND INTEREST AREA
@@ -452,7 +453,8 @@ try
                 Eyelink('Message', 'KEY_PRESSED');
                 reactionTime = round((RtEnd - RtStart)*1000); % Calculate RT [ms] from stimulus onset
                 break;
-            end           
+            end
+            EyelinkClearMsgQueue ;
         end % End of while loop
                
         % Draw blank screen at end of trial

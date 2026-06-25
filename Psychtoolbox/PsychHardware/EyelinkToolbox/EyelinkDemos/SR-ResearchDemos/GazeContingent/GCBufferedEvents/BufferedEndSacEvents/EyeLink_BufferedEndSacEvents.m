@@ -428,7 +428,8 @@ try
                 % Write message to EDF file to mark the space bar press time
                 Eyelink('Message', 'KEY_PRESSED');
                 break;
-            end                       
+            end
+            EyelinkClearMsgQueue ;
         end % End of while loop
         
         % Draw blank screen at end of trial

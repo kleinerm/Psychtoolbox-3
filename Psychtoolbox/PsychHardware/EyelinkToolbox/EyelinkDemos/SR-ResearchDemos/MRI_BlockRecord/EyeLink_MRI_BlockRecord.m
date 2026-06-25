@@ -297,6 +297,7 @@ try
                         vbl = Screen('Flip', window); % Present stimulus
                         break;
                     end
+                    EyelinkClearMsgQueue ;
                 end
             else % All subsequent trials in block
                 vbl = Screen('Flip', window, blockOnset + (trialDur*(i-1)) - 0.5*ifi); % Present stimulus. Allow half flip interval for precise flip timing)
@@ -363,6 +364,7 @@ try
                         Eyelink('Message', 'BLOCK_END');
                         break;
                     end
+                    EyelinkClearMsgQueue ;
                 end
             end
             

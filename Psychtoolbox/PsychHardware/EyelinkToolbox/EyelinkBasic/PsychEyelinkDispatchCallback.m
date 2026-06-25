@@ -73,11 +73,9 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 % 20. 5.2026    Merged in compatibility for SR Research Ltd. Display API /
 %               DevKit v2.2, which includes support for EyeLink 3.
 % 01. 6.2026    Proper camera image scaling by EyelinkDrawCameraImage.
-% 23. 6.2026    Call GetMouse on some regular basis so as to pull events from
-%               the MS Windows message queue. Without this, accidental mouse
-%               clicks on the PTB window will be interpreted by Windows as an
-%               unresponsive program, which the OS will then helpfully
-%               eradicate.
+% 24. 6.2026    Regularly clear the MS Windows message queue with
+%               EyelinkClearMsgQueue to prevent the OS from abruptly
+%               terminating the application.
 %
 
 global eyelinkanimationtarget; %#ok<GVMIS>
@@ -113,9 +111,6 @@ persistent audio_fs;
 persistent beep_waveforms;
 
 persistent inDrift;
-
-% GetMouse workaround to maintain a responsive PTB window.
-persistent mousetime;
 
 if 0 == Screen('WindowKind', eyelinktex)
     eyelinktex = []; % Previous PTB Screen() window has closed, needs to be recreated.
@@ -219,12 +214,7 @@ end
 % GetMouse workaround to stop MS Windows from thinking that the PTB window is
 % unresponsive. Tap the window at least once per second. GetMouse will clear
 % the event queue.
-thistime = GetSecs ;
-
-if isempty( mousetime ) || eyecmd == 16 || thistime - mousetime >= 1
-    mousetime = thistime ;
-    if eyecmd ~= 16 , GetMouse ; end
-end
+if eyecmd ~= 16 , EyelinkClearMsgQueue ; end
 
 % (Re)set Flag for new camera image
 newcamimage = 0;

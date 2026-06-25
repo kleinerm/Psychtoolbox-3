@@ -284,6 +284,7 @@ try
                     break; % Exit while loop
                 end
             end
+            EyelinkClearMsgQueue ;
         end % End of while loop
         
         % Draw blank screen at end of trial
