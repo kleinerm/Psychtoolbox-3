@@ -1,11 +1,11 @@
 function EL3_GCFastSamples(screenNumber)
 % A simple EyeLink eye/head-contingent demo showing how to retrieve fast online samples from an EyeLink 3.
-% Each trial shows an image with 3 dots overlaid on top. The dots represent online gaze (red), eye-in-head (blue) 
-% and head-in-space (green) EyeLink 3 data retrieved at each sample. The dots' location is updated online based on 
+% Each trial shows an image with 3 dots overlaid on top. The dots represent online gaze (red), eye-in-head (green) 
+% and head-in-space (blue) EyeLink 3 data retrieved at each sample. The dots' location is updated online based on 
 % the latest sample retrieved online from the EyeLink 3. Each trial ends when the space bar is pressed.
 % 
 % Gaze:
-% Refers the point of regard on a screen (in screen pixel coordinates) that reflects both the head pose (its position and orientation) 
+% Refers to the point of regard on a screen (in screen pixel coordinates) that reflects both the head pose (its position and orientation) 
 % and the eye rotation within the head.
 % 
 % Eye-in-head:
@@ -43,7 +43,9 @@ function EL3_GCFastSamples(screenNumber)
 %       rx (x 'pixel per degree' value)
 %       ry (y 'pixel per degree' value)
 %       buttons (button state and changes)
-
+%
+% Update History:
+% - KD 26/06/26: Modified from GCFastSamples to support EL3 online data access
 
 % Bring the Command Window to the front if it is already open
 if ~IsOctave; commandwindow; end
@@ -101,7 +103,8 @@ try
     if dummymode == 0 % If connected to EyeLink
         % Extract software version number. 
         [~, vnumcell] = regexp(versionstring,'.*?(\d)\.\d*?','Match','Tokens'); % Extract EL version before decimal point
-        ELsoftwareVersion = str2double(vnumcell{1}{1}); % Returns 1 for EyeLink I, 2 for EyeLink II, 3/4 for EyeLink 1K, 5 for EyeLink 1KPlus, 6 for Portable Duo         
+         % ELsoftwareVersion returns 1 for EyeLink I, 2 for EyeLink II, 3/4 for EyeLink 1K, 5 for EyeLink 1KPlus, 6 for Portable Duo, 7 for EyeLink 3
+        ELsoftwareVersion = str2double(vnumcell{1}{1});      
         % Print some text in Matlab's Command Window
         fprintf('Running experiment on %s version %d\n', versionstring, ver );
     end
@@ -345,11 +348,13 @@ try
                 
                 % Superimpose a gaze-contingent (red), eye-in-head (green) and head-in-space (blue) dot
                 Screen('DrawTexture', window, stimTexture); % Prepare stimulus texture on backbuffer
-                xy = [x, x_eh, x_hs; y, y_eh, y_hs]; % Setup coordinates for the three targets                
-                Screen('DrawDots', window, xy, dotSize, colours, [], 2); % Draw all dots
-                Screen('Flip', window); % Present stimulus
-                
-            end            
+                xy = [x, x_eh, x_hs; y, y_eh, y_hs]; % Setup coordinates for 3 targets       
+                r = dotSize / 2; % Calculate target radius       
+                rects = [xy(1,:) - r; xy(2,:) - r; xy(1,:) + r; xy(2,:) + r]; % Create bounding boxes for 3 targets (ovals)
+                Screen('FillOval', window, colours, rects); % Draw the targets
+                Screen('Flip', window); % Present stimulus                           
+            end 
+            
             % End trial if space bar is pressed
             [~, RtEnd, keyCode] = KbCheck;
             if keyCode(spaceBar)
@@ -358,7 +363,7 @@ try
                 reactionTime = round((RtEnd-RtStart)*1000); % Calculate RT from stimulus onset 
                 break;
             end
-            EyelinkClearMsgQueue ;
+            EyelinkClearMsgQueue;            
         end % End of while loop
         
         % Draw blank screen at end of trial
