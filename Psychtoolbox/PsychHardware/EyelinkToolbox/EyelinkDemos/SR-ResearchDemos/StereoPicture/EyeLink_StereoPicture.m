@@ -145,7 +145,7 @@ try
         else
             slaveScreen = 1;
         end
-        Screen('PsychImaging', slaveScreen, [128 128 128], [], [], [], stereoMode);
+        Screen('OpenWindow', slaveScreen, [128 128 128], [], [], [], stereoMode);
     end
     Screen('Flip', window);
     
