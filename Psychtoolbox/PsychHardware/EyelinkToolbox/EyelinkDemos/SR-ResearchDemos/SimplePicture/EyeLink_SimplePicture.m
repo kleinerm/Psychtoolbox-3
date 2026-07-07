@@ -332,6 +332,7 @@ try
     EyelinkTransferFileHelper(el, edfFile);
     EyelinkCleanupHelper;
 catch % If syntax error is detected
+    EyelinkCleanupHelper;
     % Print error message and line number in Matlab's Command Window
     psychrethrow(psychlasterror);
 end

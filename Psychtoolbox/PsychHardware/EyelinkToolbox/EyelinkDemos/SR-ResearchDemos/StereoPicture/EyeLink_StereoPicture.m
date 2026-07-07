@@ -377,6 +377,7 @@ try
     Eyelink('CloseFile'); % Close EDF file on Host PC       
     % Transfer a copy of the EDF file to Display PC
     EyelinkTransferFileHelper(el, edfFile);  
+    EyelinkCleanupHelper;
 catch % If syntax error is detected
     EyelinkCleanupHelper;
     % Print error message and line number in Matlab's Command Window
