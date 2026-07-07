@@ -32,7 +32,11 @@ try
     
     % Initialize EyeLink connection (dummymode = 0) or run in "Dummy Mode" without an EyeLink connection (dummymode = 1);
     dummymode = 0;
-    EyelinkInit(dummymode); % Initialize EyeLink connection
+    if 0 == EyelinkInit(dummymode)  % Initialize EyeLink connection
+        fprintf( 'Failed to connect with EyeLink' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     status = Eyelink('IsConnected');
     if status < 1 % If EyeLink not connected
         dummymode = 1; 

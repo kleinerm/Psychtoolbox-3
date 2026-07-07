@@ -31,7 +31,9 @@ try
     % Call this before initializing an EyeLink connection if you want to use a non-default IP address for the Host PC.
     %Eyelink('SetAddress', '10.10.10.240');
     
-    EyelinkInit(dummymode); % Initialize EyeLink connection
+    if 0 == EyelinkInit(dummymode)  % Initialize EyeLink connection
+        error( 'Failed to connect with EyeLink' )
+    end
     status = Eyelink('IsConnected');
     if status < 1 % If EyeLink not connected
         dummymode = 1; 
