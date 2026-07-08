@@ -575,6 +575,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         flags = mor(flags, 4);
     end
 
+    % Need to hide the cursor on our Vulkan window on X11 + Apple Silicon, as it
+    % would trigger rendering of a software emulated cursor, which would prevent
+    % page-flipping, which would doom us on X-Server, especially as Apple Silicon
+    % is a vblank-less system:
+    if IsLinux(1) && IsARM(1) && ~IsWayland && isFullscreen
+        flags = mor(flags, 8);
+    end
+
     % On Linux with Wayland, always use "windowed" mode setup, even for fullscreen windows,
     % as all the wl_surface setup, also for fullscreen mode, was already done by Screen(),
     % and we currently do not use Wayland / DRM-KMS output leasing:

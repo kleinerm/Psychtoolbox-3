@@ -2122,6 +2122,33 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
                     windowMapEventCount++;
             }
 
+            // Do we need to hide the mouse pointer / cursor while on top of this window?
+            // Needed, e.g., as a workaround to allow fullscreen unredirected kms-pageflipping for presenting
+            // on a system that doesn't support hardware cursor planes, and would fall back to software cursors
+            // and "copy presents" otherwise, e.g., Asahi on Apple Silicon Macs as of July 2026.
+            if (window->createFlags & 0x8) {
+                // Create an invisible cursor:
+                Cursor nullCursor;
+                Pixmap cursormask;
+                XGCValues xgc;
+                GC gc;
+                XColor dummycolour;
+                cursormask = XCreatePixmap(connection, RootWindow(connection, screenId), 1, 1, 1);
+                xgc.function = GXclear;
+                gc = XCreateGC(connection, cursormask, GCFunction, &xgc);
+                XFillRectangle(connection, cursormask, gc, 0, 0, 1, 1);
+                dummycolour.pixel = 0;
+                dummycolour.red   = 0;
+                dummycolour.flags = 4;
+                nullCursor = XCreatePixmapCursor(connection, cursormask, cursormask, &dummycolour, &dummycolour, 0, 0);
+                XFreePixmap(connection, cursormask);
+                XFreeGC(connection, gc);
+
+                // "Show" it, thereby hiding the cursor on top of our window:
+                XDefineCursor(connection, window->x11PrivateWindow, nullCursor);
+                XFlush(connection);
+            }
+
             VkXlibSurfaceCreateInfoKHR createInfoX11 = {
                 .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
                 .pNext = NULL,
@@ -4599,6 +4626,7 @@ PsychError PSYCHVULKANOpenWindow(void)
         "for most basic Vulkan testing and driver bringup if the given gpu does not have graphics drivers with OpenGL+Vulkan interop capabilities yet.\n"
         "+2 = Do not switch to fullscreen-exclusive mode on MS-Windows, even for fullscreen windows. This is useful as workaround for some buggy Vulkan drivers.\n"
         "+4 = Do not use a tiled format for the OpenGL-Vulkan interop image, use linear instead.\n"
+        "+8 = Try to keep mouse pointer hidden over the Vulkan window, typically used as workaround. Linux/X11 only, so far.\n"
         "'displayHandle' Handle defining the display server connection to use, if any, in an operating system dependent manner. "
         "This is currently unused on all systems except Linux with Wayland display backend, where it encodes the wl_display handle.\n"
         "\n\n"
@@ -4676,6 +4704,8 @@ PsychError PSYCHVULKANOpenWindow(void)
 
     // Get mandatory flags:
     PsychCopyInIntegerArg(12, kPsychArgRequired, &flags);
+    if ((flags & ~(1 | 2 | 4 | 8)) != 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'flags' argument specified.");
 
     // Get mandatory displayHandle:
     PsychCopyInPointerArg(13, kPsychArgRequired, &displayHandle);
