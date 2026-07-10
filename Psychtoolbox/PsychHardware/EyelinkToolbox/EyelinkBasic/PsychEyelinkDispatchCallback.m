@@ -251,7 +251,7 @@ switch eyecmd
         else
             imgtitle = msg;
         end
-        needsupdate = 1;
+        needsupdate = 0;
         
     case 5  % Draw Cal Target
         if Eyelink('Verbosity') >= 5
