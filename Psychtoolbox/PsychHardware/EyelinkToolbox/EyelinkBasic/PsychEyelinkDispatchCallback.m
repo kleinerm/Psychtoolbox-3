@@ -76,6 +76,7 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 % 24. 6.2026    Regularly clear the MS Windows message queue with
 %               EyelinkClearMsgQueue to prevent the OS from abruptly
 %               terminating the application.
+% 10. 7.2026    Simplify the creation of 'rc' in response to 'eyecmd' 16.
 %
 
 global eyelinkanimationtarget; %#ok<GVMIS>
@@ -403,11 +404,9 @@ switch eyecmd
         [width, height]=Screen('WindowSize', eyewin);
         [x,y, buttons] = GetMouse(eyewin);
         HideCursor(eyewin);
-        if find(buttons)
-            rc = [width , height, x , y,  dw , dh , 1];
-        else
-            rc = [width , height, x , y , dw , dh , 0];
-        end
+        
+        rc = [ width , height , x , y , dw , dh , any( buttons ) ] ;
+        
         % add by NJ to prevent flashing of text in drift correct
     case 17 % Non-native callback, from PsychEyelink_setup_cal_display()
         if Eyelink('Verbosity') >= 5

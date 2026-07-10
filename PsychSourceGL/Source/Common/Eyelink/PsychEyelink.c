@@ -21,7 +21,7 @@
         15/03/09  mk         Added experimental support for eye camera image display.
         12/20/13  lj         Fixed PsychEyelinkParseToString to allow space between % ;
                              modified  getMouseState to limit mouse cursor inside of camera image.
-
+        07/10/26  js         PTB mouse position is scaled to size of camera image.
 */
 
 #include "PsychEyelink.h"
@@ -1122,7 +1122,6 @@ void getMouseState(CrossHairInfo *chi, int *rx, int *ry, int *rstate)
     double* callargs;
     double* outputargs;
     float ar[7];
-    float w,h;
     int i;
     
     inputs[0]   = mxCreateDoubleMatrix(1, 4, mxREAL);
@@ -1141,10 +1140,8 @@ void getMouseState(CrossHairInfo *chi, int *rx, int *ry, int *rstate)
     mxDestroyArray(inputs[0]);
     mxDestroyArray(outputs[0]);
     
-    w = ar[0];
-    h = ar[1];
-    x = floor((ar[2] - ((w/2) - ar[4]/2)) * ((float)eyewidth/ar[4]));
-    y = floor((ar[3] - ((h/2) - ar[5]/2)) * ((float)eyeheight/ar[5]));
+    x = floor( ar[ 2 ] / ar[ 0 ] * chi->w ) ; /*  mouse-x / screen-w * img-w  */
+    y = floor( ar[ 3 ] / ar[ 1 ] * chi->h ) ; /*  mouse-y / screen-h * img-h  */
 
     if(x>0 && y >0 && x <= eyewidth && y <= eyeheight)
     {
