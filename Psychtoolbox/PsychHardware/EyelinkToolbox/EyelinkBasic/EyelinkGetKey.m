@@ -25,6 +25,7 @@ function [key, el]=EyelinkGetKey(el)
 %               characters
 % 270309    edf added function and modifier keys
 % 201213    lj  added parameters for function modifyKey, for octave to get key responses from display side
+% 130726    js  Refactored nested functions into local functions.
 
 
 
@@ -61,7 +62,7 @@ function [key, el]=EyelinkGetKey(el)
 
   [keyIsDown,secs,keyCodes] = KbCheck(el.devicenumber);
 
-  if 1==isequal(keyCodes, el.lastKeyCodes)
+  if isequal(keyCodes, el.lastKeyCodes)
     return;
   end
   el.lastKeyCodes=keyCodes;
@@ -88,17 +89,17 @@ function [key, el]=EyelinkGetKey(el)
 
   %     key=find(keyCodes);
 
-  if any(keyCodes(el.uparrow))==1
+  if any(keyCodes(el.uparrow))
     key=el.CURS_UP;
-  elseif any(keyCodes(el.downarrow))==1
+  elseif any(keyCodes(el.downarrow))
     key=el.CURS_DOWN;
-  elseif any(keyCodes(el.leftarrow))==1
+  elseif any(keyCodes(el.leftarrow))
     key=el.CURS_LEFT;
-  elseif any(keyCodes(el.rightarrow))==1
+  elseif any(keyCodes(el.rightarrow))
     key=el.CURS_RIGHT;
-  elseif any(keyCodes(el.return))==1
+  elseif any(keyCodes(el.return))
     key=el.ENTER_KEY;
-  elseif any(keyCodes(el.enter))==1
+  elseif any(keyCodes(el.enter))
     key=el.ENTER_KEY;
   elseif keyCodes(158)==1 % Return
     key=el.ENTER_KEY;
@@ -106,15 +107,15 @@ function [key, el]=EyelinkGetKey(el)
     key=el.ENTER_KEY;
   elseif keyCodes(187)==1 % KeypadBackspace
     key=el.ENTER_KEY;
-  elseif any(keyCodes(el.backspace))==1
+  elseif any(keyCodes(el.backspace))
     key=el.BACKSPACE;
-  elseif any(keyCodes(el.escape))==1
+  elseif any(keyCodes(el.escape))
     key=el.ESC_KEY;
-  elseif any(keyCodes(el.pageup))==1
+  elseif any(keyCodes(el.pageup))
     key=el.PAGE_UP;
-  elseif any(keyCodes(el.pagedown))==1
+  elseif any(keyCodes(el.pagedown))
     key=el.PAGE_DOWN;
-  elseif any(keyCodes(el.space))==1
+  elseif any(keyCodes(el.space))
     key=el.SPACE_BAR; % returns 32
   elseif any(keyCodes(el.f1))
     key=el.F1_KEY;
@@ -138,36 +139,9 @@ function [key, el]=EyelinkGetKey(el)
     key=el.F10_KEY;
   end
 
-  function modifyKey(el, keyCodes, key)
-    if any(keyCodes(el.left_shift))
-      key=bitand(key,el.ELKMOD_LSHIFT); 
-    end
-    if any(keyCodes(el.right_shift)) 
-      key=bitand(key,el.ELKMOD_RSHIFT); 
-    end
-    if any(keyCodes(el.left_control)) 
-      key=bitand(key,el.ELKMOD_LCTRL); 
-    end
-    if any(keyCodes(el.right_control)) 
-      key=bitand(key,el.ELKMOD_RCTRL); 
-    end
-    if any(keyCodes(el.lalt))
-      key=bitand(key,el.ELKMOD_LALT); 
-    end
-    if any(keyCodes(el.ralt))
-      key=bitand(key,el.ELKMOD_RALT); 
-    end
-    if any(keyCodes(el.num))
-      key=bitand(key,el.ELKMOD_NUM); 
-    end
-    if any(keyCodes(el.caps)) 
-      key=bitand(key,el.ELKMOD_CAPS); 
-    end
-  end
-
   % already found a key response,
   if key~=0
-    modifyKey(el, keyCodes, key);
+    key = modifyKey(el, keyCodes, key);
     return;
   end
 
@@ -179,10 +153,41 @@ function [key, el]=EyelinkGetKey(el)
   key=KbName(key(1)); % convert to a character, potential problem: KbName does not translate all keys to actual ascii characters.
   key=double(key(1)); % some keyNames have two characters (e.g. 8*);
   if key >=hex2dec('20') && key < hex2dec('7F') % only return  printable chars (0x20..0x7F)
-    modifyKey(el, keyCodes, key);
+    key = modifyKey(el, keyCodes, key);
     return;
   end
 
   key=el.JUNK_KEY; % return code for untranslatable key
   return;
-end
+
+end  % EyelinkGetKey
+
+
+function key = modifyKey(el, keyCodes, key)
+
+    if any(keyCodes(el.left_shift))
+        key=bitand(key,el.ELKMOD_LSHIFT); 
+    end
+    if any(keyCodes(el.right_shift)) 
+        key=bitand(key,el.ELKMOD_RSHIFT); 
+    end
+    if any(keyCodes(el.left_control)) 
+        key=bitand(key,el.ELKMOD_LCTRL); 
+    end
+    if any(keyCodes(el.right_control)) 
+        key=bitand(key,el.ELKMOD_RCTRL); 
+    end
+    if any(keyCodes(el.lalt))
+        key=bitand(key,el.ELKMOD_LALT); 
+    end
+    if any(keyCodes(el.ralt))
+        key=bitand(key,el.ELKMOD_RALT); 
+    end
+    if any(keyCodes(el.num))
+        key=bitand(key,el.ELKMOD_NUM); 
+    end
+    if any(keyCodes(el.caps)) 
+        key=bitand(key,el.ELKMOD_CAPS); 
+    end
+
+end  % modifyKey
