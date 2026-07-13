@@ -183,7 +183,11 @@ try
     % Clear Host PC display from any previus drawing
     Eyelink('Command', 'clear_screen 0');
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
+    if EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     
     
     %% STEP 5: TRIAL LOOP.
@@ -203,7 +207,11 @@ try
         % STEP 5.0 DRIFT-CHECK/CORRECTION
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf( 'Abort drift correction.\n' )
+            EyelinkCleanupHelper; % Abort experiment
+            return
+        end
         
         % STEP 5.1: START TRIAL; SHOW TRIAL INFO ON HOST PC; SHOW BACKDROP IMAGE AND/OR DRAW FEEDBACK GRAPHICS ON HOST PC
         % Open movie file:
@@ -293,6 +301,10 @@ try
                 % Release texture:
                 Screen('Close', tex);
                 break;
+            elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf( 'Abort trial.\n' )
+                EyelinkCleanupHelper; % Abort experiment
+                return
             end
             Screen('Close', tex); % Release texture if no key is pressed
         end  % End while loop

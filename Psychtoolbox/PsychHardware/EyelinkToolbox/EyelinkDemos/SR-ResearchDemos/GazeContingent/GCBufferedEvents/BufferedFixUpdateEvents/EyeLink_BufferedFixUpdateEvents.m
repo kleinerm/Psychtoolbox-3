@@ -244,7 +244,11 @@ try
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
+    if EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     
     
     %% STEP 5: TRIAL LOOP.
@@ -316,7 +320,11 @@ try
         
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf( 'Abort trial.\n' )
+            EyelinkCleanupHelper; % Abort experiment
+            return
+        end
                 
         %STEP 5.3: START RECORDING
         
@@ -425,6 +433,10 @@ try
                 % Write message to EDF file to mark the space bar press time
                 Eyelink('Message', 'KEY_PRESSED');
                 break;
+            elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf( 'Abort trial.\n' )
+                EyelinkCleanupHelper; % Abort experiment
+                return
             end
             EyelinkClearMsgQueue ;
         end % End of while loop

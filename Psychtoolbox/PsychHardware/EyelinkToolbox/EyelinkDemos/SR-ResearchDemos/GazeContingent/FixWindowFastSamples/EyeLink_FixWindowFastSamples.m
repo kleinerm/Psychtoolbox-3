@@ -184,7 +184,11 @@ try
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
+    if EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     
     
     %% STEP 5: TRIAL LOOP.
@@ -259,7 +263,11 @@ try
         
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf( 'Abort drift correction.\n' )
+            EyelinkCleanupHelper; % Abort experiment
+            return
+        end
                 
         %STEP 5.3: START RECORDING
         
@@ -335,6 +343,10 @@ try
                 Eyelink('Message', 'FIXATION_KEY_PRESSED');
                 fixWinComplete = 'no'; % Update variable for gaze not maintained inside window
                 break; % break while loop to show stimulus
+            elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf( 'Abort trial.\n' )
+                EyelinkCleanupHelper; % Abort experiment
+                return
             end
             EyelinkClearMsgQueue ;
         end % End of gaze-checking while loop
@@ -378,6 +390,10 @@ try
                 Eyelink('Message', 'KEY_PRESSED');
                 reactionTime = round((RtEnd - RtStart)*1000); % Calculate RT [ms] from stimulus onset
                 break;
+            elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf( 'Abort trial.\n' )
+                EyelinkCleanupHelper; % Abort experiment
+                return
             end
             EyelinkClearMsgQueue ;
         end % End of while loop               

@@ -170,7 +170,11 @@ try
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
+    if EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     
     
     %% STEP 5: TRIAL LOOP.
@@ -227,7 +231,11 @@ try
         
         % Perform a drift check/correction.
         % Present the drift-check/correction target at each trial's start x y pursuit target location
-        EyelinkDoDriftCorrection(el, round(x), round(y));
+        if ~EyelinkDoDriftCorrection(el, round(x), round(y))
+            fprintf( 'Abort drift correction.\n' )
+            EyelinkCleanupHelper; % Abort experiment
+            return
+        end
         
         %STEP 5.3: START RECORDING
         
@@ -304,6 +312,14 @@ try
             % Break loop when target duration reached
             if GetSecs-stStart >= targetDuration/1000
                 break
+            end
+
+            % Abort trial if termination keys are pressed
+            [~, ~, keyCode] = KbCheck;
+            if keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf( 'Abort trial.\n' )
+                EyelinkCleanupHelper; % Abort experiment
+                return
             end
         end
         

@@ -195,7 +195,11 @@ try
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
+    if EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     
     
     %% STEP 6: START BLOCK LOOP; DRAW FEEDBACK GRAPHICS/TEXT ON HOST PC; DRIFT-CHECK; START RECORDING; DRAW CROSSHAIRS ON SCREEN 
@@ -220,7 +224,11 @@ try
         
         % Perform a drift check/correction. EyeLink 1000 and 1000 Plus perform a drift-check by default
         % Optionally provide x y target location, otherwise target is presented at screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf( 'Abort drift correction.\n' )
+            EyelinkCleanupHelper; % Abort experiment
+            return
+        end
         
         % Write TRIALID message to EDF file: marks the start of first trial for DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Defining the Start and End of a Trial.
@@ -300,6 +308,10 @@ try
                         blockOnset = GetSecs; % Block onset time
                         vbl = Screen('Flip', window); % Present stimulus
                         break;
+                    elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                        fprintf( 'Abort trial.\n' )
+                        EyelinkCleanupHelper; % Abort experiment
+                        return
                     end
                     EyelinkClearMsgQueue ;
                 end

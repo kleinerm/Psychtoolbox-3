@@ -190,7 +190,10 @@ try
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
 
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);    
+    if  EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        error( 'Abort tracker setup.' )
+    end
     
     %% STEP 5: TRIAL LOOP.
     spaceBar = KbName('space');% Identify keyboard key code for spacebar to end each trial later on
@@ -237,7 +240,10 @@ try
 
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf( 'Abort drift correction.\n' )
+            error( 'Abort drift correction.' )
+        end
 
         %STEP 5.2: START RECORDING
         
@@ -300,6 +306,9 @@ try
                 Eyelink('Message', 'KEY_PRESSED');
                 reactionTime = round((RtEnd-RtStart)*1000); % Calculate RT from stimulus onset
                 break; % Exit while loop
+            elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf( 'Abort trial.\n' )
+                error( 'Abort trial.' )
             end
             % End trial if button 5 on a supported Host PC button box is pressed
             % Use (button number * -1) + 1 to determine bitshift value
