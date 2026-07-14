@@ -38,7 +38,7 @@ function  time = EyelinkClearMsgQueue( period , thistime )
     % This is the first call to EyelinkClearMsgQueue.
     %
     if  isempty( isWindows )
-        isWindows = strcmp( 'Windows' , OSName ) ;
+        isWindows = IsWin ;
         cleartime = 0 ;
     end
 
