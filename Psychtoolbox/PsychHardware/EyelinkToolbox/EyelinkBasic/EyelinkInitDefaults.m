@@ -138,7 +138,7 @@ el.msgfontsize=20; % absolute, should perhaps be percentage of screen
 el.eyeimgsize=35; % percentage of screen
 el.eyeimgmax = 384; % Max width or height of raw camera image, in pixels.
 
-if  IsOSX , modnam = 'Command' ; else modnam = 'Windows' ; end
+if  IsOSX , modnam = 'Left Command' ; else modnam = 'Windows' ; end
 
 el.helptext = ...
 [ 'Press RETURN (on either display computer or tracker host computer) to toggle camera image\n', ...
