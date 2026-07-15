@@ -77,6 +77,8 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %               EyelinkClearMsgQueue to prevent the OS from abruptly
 %               terminating the application.
 % 10. 7.2026    Simplify the creation of 'rc' in response to 'eyecmd' 16.
+% 15. 7.2026    Disable draw instructions when switching between camera
+%               view and calibration modes.
 %
 
 global eyelinkanimationtarget; %#ok<GVMIS>
@@ -282,7 +284,7 @@ switch eyecmd
         if inDrift
             drawInstructions = 0;
         else
-            drawInstructions = 1;
+            drawInstructions = any( [ 1 , 2 ] == Eyelink( 'CurrentMode' ) ) ;
         end
         clearScreen=1;
         needsupdate = 1;
@@ -294,7 +296,7 @@ switch eyecmd
         eyewidth  = callArgs(2);
         eyeheight = callArgs(3);
         ineyeimagemodedisplay=1;
-        drawInstructions=1;
+        drawInstructions= 0 ;
         needsupdate = 1;
         
     case 9  % Exit Image Display
@@ -303,7 +305,7 @@ switch eyecmd
         end
         clearScreen=1;
         ineyeimagemodedisplay=0;
-        drawInstructions=1;
+        drawInstructions= 0 ;
         needsupdate = 1;
         
     case 10 % Erase Cal Target
@@ -338,7 +340,7 @@ switch eyecmd
             inDrift = 0;
             drawInstructions = 0;
         else
-            drawInstructions = 1;
+            drawInstructions = any( [ 1 , 2 ] == Eyelink( 'CurrentMode' ) ) ;
         end
         
         clearScreen=1;
