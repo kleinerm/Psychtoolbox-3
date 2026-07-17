@@ -39,6 +39,8 @@ persistent supported;
 persistent vulkan;
 persistent usedOutputs;
 persistent outputMappings;
+persistent nrOutputs;
+persistent outputInfos;
 persistent noglfinish;
 persistent ovrFlags;
 
@@ -336,17 +338,30 @@ if strcmpi(cmd, 'OpenWindowSetup')
 
     % On Linux X11 one can select a single video output via outputName parameter or winRect:
     if IsLinux && ~IsWayland
+        % Did we build up our cache of all screen->outputs->outputinfos already?
+        if isempty(nrOutputs)
+            % No. Do a full scan over all outputs of all X-Screens and cache their
+            % properties:
+            for screenId = Screen('Screens')
+                nrOutputs(screenId+1) = Screen('ConfigureDisplay', 'NumberOutputs', screenId);
+
+                for i = 0:nrOutputs(screenId+1)-1
+                    outputInfos{screenId+1, i+1} = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                end
+            end
+        end
+
         if ~isempty(outputName)
             % Try to find the output with the requested name on requested X-Screen screenId:
             output = [];
-            for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+            for i = 0:nrOutputs(screenId+1)-1
                 % Skip this output i if it is in the set of outputs used on this
                 % screenId in direct display mode already, ie. RandR leased:
                 if ismember(i, usedOutputs{screenId + 1})
                     continue;
                 end
 
-                output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                output = outputInfos{screenId+1, i+1};
                 if strcmp(output.name, outputName)
                     % This output i is the right output.
                     % Position our onscreen window accordingly:
@@ -375,14 +390,14 @@ if strcmpi(cmd, 'OpenWindowSetup')
             if ~isempty(winRect)
                 % Yes. Does it match an attached RandR output exactly?
                 output = [];
-                for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+                for i = 0:nrOutputs(screenId+1)-1
                     % Skip this output i if it is in the set of outputs used on this
                     % screenId in direct display mode already, ie. RandR leased:
                     if ismember(i, usedOutputs{screenId + 1})
                         continue;
                     end
 
-                    output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                    output = outputInfos{screenId+1, i+1};
                     outputRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
                     if isequal(winRect, outputRect)
                         % This output i is the right output.
@@ -416,7 +431,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
                 while ismember(i, usedOutputs{screenId + 1})
                     % Try next available output on the screenId:
                     i = i + 1;
-                    if i == Screen('ConfigureDisplay', 'NumberOutputs', screenId)
+                    if i == nrOutputs(screenId+1)
                         % No more outputs available - All are already leased in
                         % direct display mode:
                         sca;
@@ -424,7 +439,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
                     end
                 end
 
-                output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                output = outputInfos{screenId+1, i+1};
                 outputName = output.name;
                 outputIndex = i;
 
@@ -698,12 +713,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             if ~isempty(outputName)
                 % Try to find the output with the requested name:
                 output = [];
-                for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+                for i = 0:nrOutputs(screenId+1)-1
                     if ismember(i, usedOutputs{screenId + 1})
                         continue;
                     end
 
-                    output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                    output = outputInfos{screenId+1, i+1};
                     if strcmp(output.name, outputName)
                         % This output i is the right output.
                         usedOutput = i;
@@ -716,7 +731,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                 % Choose primary output for screenId:
                 if ~ismember(0, usedOutputs{screenId + 1})
                     usedOutput = 0;
-                    output = Screen('ConfigureDisplay', 'Scanout', screenId, 0);
+                    output = outputInfos{screenId+1, 0+1};;
                 else
                     output = [];
                 end
