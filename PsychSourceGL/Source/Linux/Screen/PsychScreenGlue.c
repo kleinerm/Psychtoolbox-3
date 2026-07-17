@@ -1593,7 +1593,7 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, psych_bool return
             if (0 == strcmp(output_info->name, leaseOutputName)) {
                 *rrOutputPrimary = (unsigned long) res->outputs[o];
                 if (PsychPrefStateGet_Verbosity() > 3)
-                    printf("PTB-INFO: Found leasable RandR sibling output %s - Returning its XID.\n",
+                    printf("PTB-INFO: Found leasable RandR sibling output %s - Returning its XID %lu.\n",
                            leaseOutputName, *rrOutputPrimary);
             }
 
