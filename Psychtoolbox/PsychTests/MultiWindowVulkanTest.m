@@ -25,6 +25,7 @@ function MultiWindowVulkanTest(nmax, reverse, screenId)
 
 % History:
 % 16-Oct-2021  mk  Written.
+% 16-Jul-2026  mk  Adapted for use also with XWayland on suitable compositors.
 
     PsychDefaultSetup(2);
 
@@ -51,7 +52,10 @@ function MultiWindowVulkanTest(nmax, reverse, screenId)
 
     for i = 1:n
         output = Screen('ConfigureDisplay', 'Scanout', screenId, i-1);
+        names{i} = output.name;
+    end
 
+    for i = 1:n
         PsychImaging('PrepareConfiguration');
         if i > 1
             % As of Mesa 21, Mesa drivers do not support more than 1 exclusive
@@ -61,9 +65,10 @@ function MultiWindowVulkanTest(nmax, reverse, screenId)
             % by Mesa feature - 10 bpc framebuffers:
             PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
         end
-        PsychImaging('AddTask', 'General', 'UseVulkanDisplay', output.name);
+
+        PsychImaging('AddTask', 'General', 'UseVulkanDisplay', names{i});
         win(i) = PsychImaging('OpenWindow', screenId, [1 0 0]);
-        DrawFormattedText(win(i), sprintf('Window %i : %s', i, output.name), 'center', 'center');
+        DrawFormattedText(win(i), sprintf('Window %i : %s', i, names{i}), 'center', 'center');
         Screen('Flip', win(i));
     end
 
