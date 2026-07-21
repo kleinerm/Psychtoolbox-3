@@ -79,6 +79,10 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 % 10. 7.2026    Simplify the creation of 'rc' in response to 'eyecmd' 16.
 % 15. 7.2026    Disable draw instructions when switching between camera
 %               view and calibration modes.
+% 21. 7.2026    Move non-native callback for Eyelink('Shutdown') out of switch
+%               statement & close to the start of master function. This avoids
+%               false EYELINK: WARNING! messages if shutdown preceeds full
+%               PTB initialisation.
 %
 
 global eyelinkanimationtarget; %#ok<GVMIS>
@@ -148,6 +152,33 @@ end
 if ~isnumeric(callArgs) && ~isstruct(callArgs)
     error('"callArgs" argument must be a EyelinkInitDefaults struct or double vector!');
 end
+
+% Non-native callback, from Eyelink('Shutdown') for runtime cleanup
+%
+if isnumeric(callArgs) && -1 == callArgs(1)
+
+    if Eyelink('Verbosity') >= 5
+        fprintf('PsychEyelinkDispatchCallback: eyecmd == -1; Runtime cleanup\n');
+    end
+
+    % Using the Snd() path for audio output?
+    if ~isempty(el) && isfield(el, 'ppa_sndhandle') && ~isempty(el.ppa_sndhandle)
+        % Let Snd() fully detach from the sound device:
+        Snd('Close', 1);
+
+        % Close sound device:
+        PsychPortAudio('Close', el.ppa_sndhandle);
+        el.ppa_sndhandle = [];
+    end
+
+    % Clear all persistent and local variables, effectively resetting all:
+    clear variables;
+
+    % Done with cleanup / shutdown:
+    rc = 0;
+    return;
+
+end  % Non-native callback from Eyelink('Shutdown').
 
 % Eyelink el struct provided?
 if isstruct(callArgs) && isfield(callArgs,'window')
@@ -415,28 +446,6 @@ switch eyecmd
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 17; Flag in drift check/correction mode\n');
         end
         inDrift = 1;
-    
-    case -1 % Non-native callback, from Eyelink('Shutdown') for runtime cleanup
-        if Eyelink('Verbosity') >= 5
-            fprintf('PsychEyelinkDispatchCallback: eyecmd == -1; Runtime cleanup\n');
-        end
-
-        % Using the Snd() path for audio output?
-        if isfield(el, 'ppa_sndhandle') && ~isempty(el.ppa_sndhandle)
-            % Let Snd() fully detach from the sound device:
-            Snd('Close', 1);
-
-            % Close sound device:
-            PsychPortAudio('Close', el.ppa_sndhandle);
-            el.ppa_sndhandle = [];
-        end
-
-        % Clear all persistent and local variables, effectively resetting all:
-        clear variables;
-
-        % Done with cleanup / shutdown:
-        rc = 0;
-        return;
 
     otherwise % Unknown Command
         fprintf('PsychEyelinkDispatchCallback: Unknown eyelink command (%i)\n', eyecmd);
