@@ -2939,7 +2939,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         .pTimes = &targetPresentTimeG,
     };
 
-    if (vulkan->hasTiming && (timestampMode > 1)) {
+    if (vulkan->hasTiming && (timestampMode >= 0)) {
         // Yes: Queue a target time for the present:
         presentTimeInfoG.pNext = present.pNext;
         present.pNext = &presentTimeInfoG;
@@ -5389,9 +5389,11 @@ PsychError PSYCHVULKANPresent(void)
         "will call it automatically for you at the appropriate moment.\n\n"
         "'doTimestamp' If set to 1 or 2, performs timestamping of stimulus onset, or at least "
         "tries to estimate such onset time. If set to 0, do nothing timestamping-wise. "
-        "A value of 1 always uses a home-made method of scheduling and timestamping. "
+        "A value of 1 always uses a home-made method of timestamping. "
         "A value of 2 tries to use a Vulkan-provided high-precision method if available "
-        "and possible, and falls back to method 1 otherwise. Value 2 is the default.\n\n"
+        "and possible, and falls back to method 1 otherwise. Value 2 is the default.\n"
+        "A value of -1 will not timestamp or wait (like 0), but also not use Vulkan "
+        "high precision stimulus onset scheduling.\n\n"
         "'tWhen' If provided, defines the target presentation time, as provided by "
         "Screen('Flip', win, tWhen); a value of zero, or omission, means to present as "
         "soon as possible.\n\n"
@@ -5437,8 +5439,8 @@ PsychError PSYCHVULKANPresent(void)
 
     // Get optional timestamping flag:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &doTimestamp);
-    if (doTimestamp < 0 || doTimestamp > 2)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be 0, 1 or 2.");
+    if (doTimestamp < -1 || doTimestamp > 2)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be -1, 0, 1 or 2.");
 
     // Present:
     if (!PsychPresent(window, tWhen, doTimestamp)) {
