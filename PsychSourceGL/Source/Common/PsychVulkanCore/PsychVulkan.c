@@ -3018,7 +3018,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Always wait for flipDoneFence:
     // Makes fence handling more robust and we can't prevent being throttled anyway, given
     // that we can't change sync-to-vblank settings on the fly, only at swapChain creation time:
-    if (!PsychWaitForPresentCompletion(window))
+    if ((timestampMode > 0) && !vulkan->hasWait && !PsychWaitForPresentCompletion(window))
         return(FALSE);
 
     tPost = PsychGetAdjustedPrecisionTimerSeconds(NULL);
@@ -3780,7 +3780,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Select number of image buffers:
     uint32_t numBuffers = window->surfaceCapabilities.minImageCount;
-    uint32_t optBuffers = 2;
+    uint32_t optBuffers = (vulkan->hasWait && (PSYCH_SYSTEM == PSYCH_LINUX)) ? 3 : 2;
 
     if (numBuffers != optBuffers && window->surfaceCapabilities.minImageCount <= optBuffers)
         numBuffers = optBuffers;
