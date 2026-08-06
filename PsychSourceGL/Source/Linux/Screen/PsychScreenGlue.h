@@ -106,6 +106,9 @@ void PsychOSDefineWaylandCursor(int screenNumber, int deviceId, const char* curs
 // Is X-Screen primary gpu driver the modesetting ddx?
 psych_bool PsychOSX11ScreenUsesModesettingDDX(int screenId);
 
+// Trigger a reset and requery of X-Screen related resources:
+psych_bool PsychOSX11GetRandRScreenConfig(CGDirectDisplayID dpy, int idx);
+
 // Special fine-grained, fast, seamless refresh rate setting on an X11 output, utilizing FreeSync:
 double PsychOSRandRCreateAndSetFRRVRRMode(int screenNumber, int outputId, double requestedHz);
 
