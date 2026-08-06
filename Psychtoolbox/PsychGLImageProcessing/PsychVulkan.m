@@ -144,13 +144,19 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
 
         PsychVulkanCore('CloseWindow', vulkan{win}.vwin);
 
+        % Reset Screen/X11's internal X11 resources - only executes on XWayland:
+        if IsLinux && ~IsWayland && ~isempty(usedOutputs{screenId + 1}) && (length(usedOutputs{screenId + 1}) == 1) && ~isempty(strfind(getenv('XDG_SESSION_TYPE'), 'wayland'))
+            Screen('ConfigureDisplay', 'ResetX11ScreenResources', win);
+            nrOutputs = [];
+        end
+
         % Remove windows display output from set of used outputs for windows screenId:
         usedOutputs{screenId + 1} = setdiff(usedOutputs{screenId + 1}, vulkan{win}.usedOutput);
 
         % TODO: Restore gamma lut on individual outputs or screens?
 
-        % Restore rank 0 output setting in Screen:
-        if ~isempty(vulkan{win}.usedOutput)
+        % Restore rank 0 output setting in Screen, unless this is Linux/X11 on top of XWayland:
+        if ~isempty(vulkan{win}.usedOutput) && (~IsLinux || IsWayland || isempty(strfind(getenv('XDG_SESSION_TYPE'), 'wayland')))
             Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
         end
 
