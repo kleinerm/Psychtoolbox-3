@@ -47,6 +47,8 @@ function MultiWindowVulkanTest(nmax, reverse, screenId)
         screenId = max(Screen('Screens'));
     end
 
+    oldsynclevel = Screen('Preference', 'SkipSyncTests', 2);
+
     % At most nmax outputs:
     n = min(nmax, Screen('ConfigureDisplay', 'NumberOutputs', screenId));
 
@@ -55,37 +57,47 @@ function MultiWindowVulkanTest(nmax, reverse, screenId)
         names{i} = output.name;
     end
 
-    for i = 1:n
-        PsychImaging('PrepareConfiguration');
-        if i > 1
-            % As of Mesa 21, Mesa drivers do not support more than 1 exclusive
-            % display per session, so if we want to test more simultaneous displays,
-            % we need to enforce use of non-Mesa drivers, e.g., amdvlk, which we
-            % trick the system into using by requesting another not-yet-supported
-            % by Mesa feature - 10 bpc framebuffers:
-            PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
-        end
+    for j = 1:3
+      tt = GetSecs + 5;
 
-        PsychImaging('AddTask', 'General', 'UseVulkanDisplay', names{i});
-        win(i) = PsychImaging('OpenWindow', screenId, [1 0 0]);
-        DrawFormattedText(win(i), sprintf('Window %i : %s', i, names{i}), 'center', 'center');
-        Screen('Flip', win(i));
-    end
+      for i = 1:n
+          PsychImaging('PrepareConfiguration');
+          if i > 1
+              % As of Mesa 21, Mesa drivers do not support more than 1 exclusive
+              % display per session, so if we want to test more simultaneous displays,
+              % we need to enforce use of non-Mesa drivers, e.g., amdvlk, which we
+              % trick the system into using by requesting another not-yet-supported
+              % by Mesa feature - 10 bpc framebuffers:
+              PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+          end
 
-    % Give user some time to appreciate the view:
-    KbStrokeWait(-1);
+          PsychImaging('AddTask', 'General', 'UseVulkanDisplay', names{i});
+          win(i) = PsychImaging('OpenWindow', screenId, [1 0 0]);
+          DrawFormattedText(win(i), sprintf('Window %i : %s', i, names{i}), 'center', 'center');
+      end
 
-    % Can close windows in creation order, or reverse order:
-    if reverse
-        for i = n:-1:1
-            Screen('Close', win(i));
-        end
-    else
-        for i = 1:n
-            Screen('Close', win(i));
-        end
+      for i = 1:n
+          Screen('Flip', win(i), tt, 0, 1);
+      end
+
+      % Give user some time to appreciate the view:
+      %KbStrokeWait(-1);
+      WaitSecs(5);
+
+      % Can close windows in creation order, or reverse order:
+      if reverse
+          for i = n:-1:1
+              Screen('Close', win(i));
+          end
+      else
+          for i = 1:n
+              Screen('Close', win(i));
+          end
+      end
     end
 
     % Just to be safe and extra tidy:
     sca;
+
+    Screen('Preference', 'SkipSyncTests', oldsynclevel);
 end
