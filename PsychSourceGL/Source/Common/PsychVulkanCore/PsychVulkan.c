@@ -955,8 +955,8 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                     GET_INSTANCE_PROC_ADDR(vulkanInstance, SetHdrMetadataEXT);
                 }
                 else if (!hasHDR && (driverprops.driverID == VK_DRIVER_ID_MESA_V3DV) &&
-                         (pdevprops2.properties.driverVersion >= VK_MAKE_VERSION(26, 0, 0))) {
-                    // Special case: Mesa V3DV as of Mesa 26.0 does support HDR, just not vkSetHdrMetaDataEXT due to
+                         (pdevprops2.properties.driverVersion >= VK_MAKE_VERSION(25, 3, 0))) {
+                    // Special case: Mesa V3DV as of Mesa 25.3 does support HDR, just not vkSetHdrMetaDataEXT due to
                     // an omission in code. Force hasHDR true for HDR support without ability to set our own metadata:
                     hasHDR = TRUE;
                 }
