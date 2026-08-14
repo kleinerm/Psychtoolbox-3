@@ -1709,7 +1709,7 @@ GstElement* CreateGStreamerElementFromString(const char* codecSpec, const char* 
 
     if (strstr(codecSpec, typeSpec)) {
         // Find start of codec spec string:
-        codecPipelineSpec = strstr(codecSpec, typeSpec);
+        codecPipelineSpec = strstr((char*) codecSpec, typeSpec);
 
         // Cut off the prefix:
         codecPipelineSpec += strlen(typeSpec);
@@ -1992,7 +1992,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
         if (!capdev->videoenc && use_profiles) capdev->videoenc = (GstElement*) 0x1;
 
         // Need to extract the actual name of the codec from the codecSpec string:
-        codecName = strstr(codecSpec, "VideoCodec=");
+        codecName = strstr((char*) codecSpec, "VideoCodec=");
         codecName+= strlen("VideoCodec=");
         codecName = strdup(codecName);
         codecSep = codecName;
@@ -2611,14 +2611,14 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
         // unless none specified. In that case audioProfile will already contain the auto-setup MIME string from
         // video codec setup above.
         if (use_profiles && strstr(codecSpec, "AudioProfile=")) {
-            poption = strstr(codecSpec, "AudioProfile=");
+            poption = strstr((char*) codecSpec, "AudioProfile=");
             poption+= strlen("AudioProfile=");
 
             // Store audiocodec name in 'audiocodec':
             sprintf(audioProfile, "%s", poption);
 
             // Terminate audiocodec string if a ::: marker is encountered:
-            poption = strstr(audioProfile, ":::");
+            poption = strstr((char*) audioProfile, ":::");
             if (poption) *poption = 0;
 
             // audioProfile now contains audio profile MIME spec.
@@ -2706,14 +2706,14 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
         // Must create it without help of CreateGStreamerElementFromString() as the muxer has
         // 2 sink pads, but our method can only handle 1 sink pad. Therefore just create a
         // muxer by name, setting it to its default settings:
-        poption = strstr(codecSpec, "Muxer=");
+        poption = strstr((char*) codecSpec, "Muxer=");
         poption+= strlen("Muxer=");
 
         // Store muxer name in 'muxer':
         sprintf(muxer, "%s", poption);
 
         // Terminate muxer string if a ::: marker is encountered:
-        poption = strstr(muxer, ":::");
+        poption = strstr((char*) muxer, ":::");
         if (poption) *poption = 0;
 
         // muxer now contains muxer spec.
@@ -2721,14 +2721,14 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 
     // Muxer MIME profile specified?
     if (strstr(codecSpec, "MuxerProfile=")) {
-        poption = strstr(codecSpec, "MuxerProfile=");
+        poption = strstr((char*) codecSpec, "MuxerProfile=");
         poption+= strlen("MuxerProfile=");
 
         // Store muxer name in 'muxer':
         sprintf(muxerProfile, "%s", poption);
 
         // Terminate muxer string if a ::: marker is encountered:
-        poption = strstr(muxerProfile, ":::");
+        poption = strstr((char*) muxerProfile, ":::");
         if (poption) *poption = 0;
 
         // muxerProfile now contains container spec.
@@ -2864,7 +2864,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
         // Build gst-launch style GStreamer pipeline spec string:
 
         // Special keyword for audio tracks in written movies?
-        if ((poption=strstr(codecSpec, "AddAudioTrack"))) {
+        if ((poption=strstr((char*) codecSpec, "AddAudioTrack"))) {
             // Audio and Video:
             poption+=strlen("AddAudioTrack");
             if (sscanf(poption, "=%i@%i", &nrAudioChannels, &audioFreq) != 2) {
@@ -5187,7 +5187,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // video source like the default source zero, or others, we parse the string assigned
         // here and create a GStreamer bin which acts as video source:
         // Find start of movie namestring and assign to pname:
-        pname = strstr(pname, "=");
+        pname = strstr((char*) pname, "=");
         pname++;
 
         // Assign to our gstlaunchbinsrc string:
@@ -5207,7 +5207,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Set a new target movie name for video recordings:
     if (strstr(pname, "SetNewMoviename=")) {
         // Find start of movie namestring and assign to pname:
-        pname = strstr(pname, "=");
+        pname = strstr((char*) pname, "=");
         pname++;
 
         // Child protection:
@@ -5220,7 +5220,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
         // Can't reassign new codec without reopening the device:
         if (strstr(pname, ":CodecType")) {
-            *(strstr(pname, ":CodecType")) = 0;
+            *(strstr((char*) pname, ":CodecType")) = 0;
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: Tried to change recording codec on device %i, but this isn't possible without reopening the device. Ignored.\n", capturehandle);
             }
@@ -5255,7 +5255,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Load a 2D marker tracking plugin and initialize it:
     if (strstr(pname, "LoadMarkerTrackingPlugin=")) {
         // Find start of string and assign to pname:
-        pname = strstr(pname, "=");
+        pname = strstr((char*) pname, "=");
         pname++;
 
         // Load shared library which implements the marker tracker plugin from given filename:
@@ -5310,7 +5310,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         unsigned long buffer[1024];
 
         // Find start of string and assign to pname:
-        pname = strstr(pname, "=");
+        pname = strstr((char*) pname, "=");
         pname++;
 
         if (capdev->markerTrackerPlugin) {

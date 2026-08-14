@@ -32,6 +32,8 @@
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #define GLUTESSCBCASTER (_GLUfuncptr)
+#elif PSYCH_SYSTEM == PSYCH_OSX
+#define GLUTESSCBCASTER (void (*)())
 #else
 #define GLUTESSCBCASTER
 #endif

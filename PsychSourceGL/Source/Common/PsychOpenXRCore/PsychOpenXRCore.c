@@ -224,6 +224,7 @@ static psych_bool has_XR_HTC_vive_focus3_controller_interaction = FALSE;
 static psych_bool has_XR_EXT_eye_gaze_interaction = FALSE;
 static psych_bool has_XR_EXT_dpad_binding = FALSE;
 static psych_bool has_XR_EXT_hand_tracking = FALSE;
+static psych_bool has_XR_FB_hand_tracking_aim = FALSE;
 
 // Shared debug messenger for the whole process:
 XrDebugUtilsMessengerEXT debugMessenger = XR_NULL_HANDLE;
@@ -2227,6 +2228,9 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     // Enable basic hand tracking extension:
     has_XR_EXT_hand_tracking = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_HAND_TRACKING_EXTENSION_NAME);
 
+    // Enable FB extension for pinch gesture and aim direction reporting:
+    has_XR_FB_hand_tracking_aim = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME);
+
     // XR_KHR_binding_modification supported? If so, try to enable extensions which depend on it:
     if (addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_BINDING_MODIFICATION_EXTENSION_NAME)) {
         has_XR_EXT_dpad_binding = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_EXT_DPAD_BINDING_EXTENSION_NAME);
@@ -3303,14 +3307,14 @@ PsychError PSYCHOPENXRStop(void)
 
 static PsychError PsychOpenXRTrackHands(PsychOpenXRDevice* openxr, int outArgPos, XrTime xrPredictionTime)
 {
-    const char *FieldNamesHand[] = { "Tracked", "Joints", "JointPosesMatrix" };
-    const int FieldCountHand = 3;
+    const char *FieldNamesHand[] = { "Tracked", "Joints", "JointPosesMatrix", "AimPoseStatus", "AimPoseMatrix", "PinchStrengths" };
+    const int FieldCountHand = 6;
 
     double MP[XR_HAND_JOINT_COUNT_EXT][4][4];
     PsychGenericScriptType *status;
     PsychGenericScriptType *outMat;
     int StatusFlags;
-    double *v;
+    double *v, *v2;
 
     if (openxr->hasHandTracking) {
         int hand, joint;
@@ -3348,9 +3352,14 @@ static PsychError PsychOpenXRTrackHands(PsychOpenXRDevice* openxr, int outArgPos
         // Array for storing all hand joints location and state:
         XrHandJointLocationEXT jointLocations[XR_HAND_JOINT_COUNT_EXT];
 
+        // Optional hand tracking aim state struct for basic gesture recognition:
+        XrHandTrackingAimStateFB handTrackingAimState = { 0 };
+        handTrackingAimState.type = XR_TYPE_HAND_TRACKING_AIM_STATE_FB;
+        handTrackingAimState.next = NULL;
+
         XrHandJointLocationsEXT handJointLocations;
         handJointLocations.type = XR_TYPE_HAND_JOINT_LOCATIONS_EXT;
-        handJointLocations.next = NULL;
+        handJointLocations.next = (has_XR_FB_hand_tracking_aim) ? &handTrackingAimState : NULL;
         handJointLocations.jointCount = XR_HAND_JOINT_COUNT_EXT;
         handJointLocations.jointLocations = jointLocations;
 
@@ -3440,6 +3449,42 @@ static PsychError PsychOpenXRTrackHands(PsychOpenXRDevice* openxr, int outArgPos
 
             // Copy MP into v output matrix stack:
             memcpy(v, MP, sizeof(MP));
+
+            // Create and assign aim pose matrix for this hand:
+            PsychAllocateNativeDoubleMat(4, 4, 1, &v, &outMat);
+            PsychSetStructArrayNativeElement("AimPoseMatrix", hand, outMat, status);
+            memset(v, 0, 4 * 4 * sizeof(double));
+
+            // Create and assign PinchStrengths vector for this hand:
+            PsychAllocateNativeDoubleMat(4, 1, 1, &v2, &outMat);
+            PsychSetStructArrayNativeElement("PinchStrengths", hand, outMat, status);
+            v2[0] = v2[1] = v2[2] = v2[3] = -1.0;
+
+            if (has_XR_FB_hand_tracking_aim) {
+                // Assign status flags for aim / pinch gestures:
+                PsychSetStructArrayDoubleElement("AimPoseStatus", hand, (double) handTrackingAimState.status, status);
+
+                // Create and assign aim pose matrix, if aim pose is reported as valid:
+                if (handTrackingAimState.status & XR_HAND_TRACKING_AIM_VALID_BIT_FB) {
+                    poseVectorToMatrix(handTrackingAimState.aimPose.position.x, handTrackingAimState.aimPose.position.y, handTrackingAimState.aimPose.position.z, handTrackingAimState.aimPose.orientation.x,
+                                       handTrackingAimState.aimPose.orientation.y, handTrackingAimState.aimPose.orientation.z, handTrackingAimState.aimPose.orientation.w, MP[0]);
+                }
+                else {
+                    memset(MP, 0, sizeof(MP[0]));
+                    MP[0][0][0] = 1;
+                    MP[0][1][1] = 1;
+                    MP[0][2][2] = 1;
+                    MP[0][3][3] = 1;
+                }
+
+                memcpy(v, MP, sizeof(MP[0]));
+
+                // Assign pinch gesture strengths values:
+                v2[0] = handTrackingAimState.pinchStrengthIndex;
+                v2[1] = handTrackingAimState.pinchStrengthMiddle;
+                v2[2] = handTrackingAimState.pinchStrengthRing;
+                v2[3] = handTrackingAimState.pinchStrengthLittle;
+            }
 
             // Done with this hand. On to next hand...
         }
@@ -3540,6 +3585,14 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "Rows 3-5 encode the 3D [x; y; z] position in meters of the joint in the tracking reference space.\n"
         "Rows 6-9 define the [rx; ry; rz; rw] quaternion, encoding the relative orientation of the joint with respect to the tracking reference space.\n"
         "'JointPosesMatrix' A OpenGL style RHS transformation matrix which encodes all joints poses: 4-by-4-by-26 matrix, ie. one 4x4 matrix per joint.\n"
+        " \n"
+        "On some systems, the following fields are returned with valid values for each tracked hand:\n"
+        "'AimPoseStatus' Binary status flags, as defined in XrHandTrackingAimFlagsFB of the OpenXR specification. 1 = Aim pose computed, 2 = Aim pose "
+        "valid, 4 = Index finger -Thumb pinch, 8 = Middle finger -Thumb pinch, 16 = Ring finger - Thumb pinch, 32 = Little finger - Thumb pinch.\n"
+        "'AimPoseMatrix' A OpenGL style RHS transformation matrix which encodes an aim pose of the tracked hand. An all-zeros matrix if unsupported.\n"
+        "'PinchStrengths' A 4-element vector with pinch strengths values, classifying the likelyhood and strenght of a pinch gesture between a finger "
+        "and the thumb. PinchStrengths(1) = Index-to-Thumb pinch strenghts, PinchStrengths(2) = Middle-to-Thumb, PinchStrengths(3) = Ring--to-Thumb, "
+        "PinchStrengths(4) = Little--to-Thumb. The values are between 0.0 for no such gesture recognized to 1.0 for fingers pinching each other tightly.\n"
         "\n";
     static char seeAlsoString[] = "Start Stop GetTrackersState GetInputState";
 

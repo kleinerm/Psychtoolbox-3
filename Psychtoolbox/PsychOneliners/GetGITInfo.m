@@ -28,7 +28,7 @@ function gitInfo = GetGITInfo(directory)
 %               The change did not break anything obvious on my machine.
 % 12/8/18  dhb  Same edit, line 99
 
-tempFile = 'GetGITInfo_gitTemp.log';
+tempFile = tempname;
 
 if nargin ~= 1
     error('Usage: gitInfo = GetGITInfo(directory)');
@@ -51,10 +51,7 @@ if IsWin
 end
 
 % Get the git describe info of the specified directory.
-curDir = pwd;
-cd(directory);
-[status, result] = system([gitPath 'git describe --always']);
-cd(curDir);
+[status, result] = callGit(gitPath, directory, 'describe --always');
 if status == 0
     gitInfo.Path = directory;
     gitInfo.Describe = result(1:end-1);
@@ -63,17 +60,14 @@ else
 end
 
 % get revision number
-cd(directory);
-[status, result] = system([gitPath 'git rev-parse HEAD']);
-cd(curDir);
+[status, result] = callGit(gitPath, directory, 'rev-parse HEAD');
 if status == 0
     gitInfo.Revision = getStringLines(result);
 end
 
 % get recent commit
 %   send to file, because terminal is shell is non-interactive
-cd(directory);
-[status] = system([gitPath 'git log --max-count=1 > ' tempFile]);
+[status] = callGit(gitPath, directory, ['log --max-count=1 > ' tempFile]);
 if status == 0
     fid = fopen(tempFile);
     result = char(fread(fid))';
@@ -81,32 +75,29 @@ if status == 0
     fclose(fid);
 end
 delete(tempFile);
-cd(curDir);
 
 % get remote repository urls
-cd(directory);
-[status, result] = system([gitPath 'git remote -v']);
-cd(curDir);
+[status, result] = callGit(gitPath, directory, 'remote -v');
 if status == 0
     gitInfo.RemoteRepository = getStringLines(result);
 end
 
 % get remote branches
-cd(directory);
-[status, result] = system([gitPath 'git --no-pager branch -r']);
-cd(curDir);
+[status, result] = callGit(gitPath, directory, '--no-pager branch -r');
 if status == 0
     gitInfo.RemoteBranch = getStringLines(result);
 end
 
 % get local branches
-cd(directory);
-[status, result] = system([gitPath 'git --no-pager branch']);
-cd(curDir);
+[status, result] = callGit(gitPath, directory, '--no-pager branch');
 if status == 0
     gitInfo.LocalBranch = getStringLines(result);
 end
 
+end
+
+function [status, result] = callGit(gitPath, ptbPath, cmd)
+    [status, result] = system([gitPath 'git -C ' ptbPath ' ' cmd]);
 end
 
 %% Break a multi-line string into a cell array of lines.

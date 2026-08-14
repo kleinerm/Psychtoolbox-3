@@ -1361,7 +1361,8 @@ if strcmpi(cmd, 'Open')
       end
 
       pause(2);
-      clear Screen;
+      % Requery output layout and state of screens RandR outputs after change:
+      Screen('ConfigureDisplay', 'ResetX11ScreenResources', screenid, 1);
     end
   end
 

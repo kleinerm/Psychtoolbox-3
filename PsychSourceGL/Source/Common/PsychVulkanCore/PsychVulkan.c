@@ -79,6 +79,10 @@
 #define VK_DRIVER_ID_NVIDIA_PROPRIETARY VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR
 #endif
 
+#ifndef VK_DRIVER_ID_MESA_V3DV
+#define VK_DRIVER_ID_MESA_V3DV 19
+#endif
+
 // Defines from Screen, replicated here for simplicity:
 #define kPsychLeft      0
 #define kPsychTop       1
@@ -947,8 +951,15 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                     printf("IMPLEMENTATION BUG: Reached code in pass 0 which should only be reachable in pass 1 !!!\n");
 
                 // Basic HDR support:
-                if (hasHDR && !fpSetHdrMetadataEXT)
+                if (hasHDR && !fpSetHdrMetadataEXT) {
                     GET_INSTANCE_PROC_ADDR(vulkanInstance, SetHdrMetadataEXT);
+                }
+                else if (!hasHDR && (driverprops.driverID == VK_DRIVER_ID_MESA_V3DV) &&
+                         (pdevprops2.properties.driverVersion >= VK_MAKE_VERSION(25, 3, 0))) {
+                    // Special case: Mesa V3DV as of Mesa 25.3 does support HDR, just not vkSetHdrMetaDataEXT due to
+                    // an omission in code. Force hasHDR true for HDR support without ability to set our own metadata:
+                    hasHDR = TRUE;
+                }
 
                 // AMD specific local backlight dimming control suppport on FreeSync2:
                 if (hasHDRLocalDimming && !fpSetLocalDimmingAMD)
@@ -1803,7 +1814,7 @@ psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVu
 
     // Got a windowed window for Vulkan stimulus display.
     if (verbosity > 3)
-        printf("PsychVulkanCore-INFO: For gpu [%s] created a window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+        printf("PsychVulkanCore-INFO: For gpu [%s] created a Win32 window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
 
     // Mark success:
     rc = TRUE;
@@ -2068,7 +2079,7 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
         rc = TRUE;
 
         if (verbosity > 3)
-            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a direct display surface [%p] for display window %i\n", vulkan->deviceIndex,
+            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a DRM leased direct display surface [%p] for display window %i\n", vulkan->deviceIndex,
                    vulkan->deviceProps.deviceName, window->surface, window->index);
     }
     else {
@@ -2109,6 +2120,33 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
                 XNextEvent(connection, &ev);
                 if (ev.type == MapNotify || ev.type == ConfigureNotify)
                     windowMapEventCount++;
+            }
+
+            // Do we need to hide the mouse pointer / cursor while on top of this window?
+            // Needed, e.g., as a workaround to allow fullscreen unredirected kms-pageflipping for presenting
+            // on a system that doesn't support hardware cursor planes, and would fall back to software cursors
+            // and "copy presents" otherwise, e.g., Asahi on Apple Silicon Macs as of July 2026.
+            if (window->createFlags & 0x8) {
+                // Create an invisible cursor:
+                Cursor nullCursor;
+                Pixmap cursormask;
+                XGCValues xgc;
+                GC gc;
+                XColor dummycolour;
+                cursormask = XCreatePixmap(connection, RootWindow(connection, screenId), 1, 1, 1);
+                xgc.function = GXclear;
+                gc = XCreateGC(connection, cursormask, GCFunction, &xgc);
+                XFillRectangle(connection, cursormask, gc, 0, 0, 1, 1);
+                dummycolour.pixel = 0;
+                dummycolour.red   = 0;
+                dummycolour.flags = 4;
+                nullCursor = XCreatePixmapCursor(connection, cursormask, cursormask, &dummycolour, &dummycolour, 0, 0);
+                XFreePixmap(connection, cursormask);
+                XFreeGC(connection, gc);
+
+                // "Show" it, thereby hiding the cursor on top of our window:
+                XDefineCursor(connection, window->x11PrivateWindow, nullCursor);
+                XFlush(connection);
             }
 
             VkXlibSurfaceCreateInfoKHR createInfoX11 = {
@@ -2168,8 +2206,8 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
 
         // Got a windowed window for Vulkan stimulus display.
         if (verbosity > 3 && rc)
-            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a windowing system window display surface [%p] for display window %i\n", vulkan->deviceIndex,
-                   vulkan->deviceProps.deviceName, window->surface, window->index);
+            printf("PsychVulkanCore-INFO: For gpu %i [%s] created a %s windowing system display surface [%p] for display window %i\n", vulkan->deviceIndex,
+                   vulkan->deviceProps.deviceName, (has_Wayland && displayHandle) ? "Wayland" : "X11", window->surface, window->index);
     }
 
 createsurface_out:
@@ -2234,7 +2272,7 @@ psych_bool PsychCreateMoltenVKDisplaySurface(PsychVulkanWindow* window, PsychVul
 
     // Got a windowed window for Vulkan stimulus display.
     if (verbosity > 3)
-        printf("PsychVulkanCore-INFO: For gpu [%s] created a window Metal display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+        printf("PsychVulkanCore-INFO: For gpu [%s] created a macOS Metal display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
 
     return (TRUE);
 }
@@ -2254,6 +2292,79 @@ psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevic
     #if PSYCH_SYSTEM == PSYCH_OSX
         return(PsychCreateMoltenVKDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
     #endif
+}
+
+void PsychCloseVulkanSurfaceAndWSIDisplay(PsychVulkanWindow* window)
+{
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
+
+    // Idle the device:
+    vkDeviceWaitIdle(window->vulkan->device);
+
+    // Release the display surface - all OS:
+    if (window->surface != VK_NULL_HANDLE) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing Vulkan display surface.\n", window->index);
+            fflush(NULL);
+        }
+
+        vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
+        window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+
+        vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
+        window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+    }
+
+    // Release the direct display and leased outputs on Linux:
+    if (window->display != VK_NULL_HANDLE) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing Linux DRM direct display and DRM leased output.\n", window->index);
+            fflush(NULL);
+        }
+
+        fpReleaseDisplayEXT(window->vulkan->physicalDevice, window->display);
+        window->display = VK_NULL_HANDLE;
+    }
+
+    // On X11, close the X11 private window and release X-Display connection:
+    #if defined(VK_USE_PLATFORM_XLIB_KHR)
+    if (window->connection) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing %sX-Display connection.\n", window->index,
+                   (window->x11PrivateWindow != None) ? "X11 window and " : "");
+            fflush(NULL);
+        }
+
+        if (window->x11PrivateWindow != None) {
+            XUnmapWindow(window->connection, window->x11PrivateWindow);
+            XDestroyWindow(window->connection, window->x11PrivateWindow);
+            XFlush(window->connection);
+            window->x11PrivateWindow = None;
+        }
+
+        XCloseDisplay(window->connection);
+        window->connection = NULL;
+    }
+    #endif
+
+    // On MS-Windows, close private Win32 window:
+    #if defined(VK_USE_PLATFORM_WIN32_KHR)
+    if (window->win32PrivateWindow) {
+        if (verbosity > 5) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing Win32 private window.\n", window->index);
+            fflush(NULL);
+        }
+
+        DestroyWindow(window->win32PrivateWindow);
+        window->win32PrivateWindow = NULL;
+    }
+    #endif
+
+    if (verbosity > 5) {
+        printf("PsychVulkanCore-INFO: Vulkan window %i: OS+WSI specific window and WSI cleanup done.\n", window->index);
+        fflush(NULL);
+    }
 }
 
 psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_uint8* targetdeviceUUID, psych_bool isFullscreen, int screenId,
@@ -2740,7 +2851,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     VkResult result;
     VkPresentTimeGOOGLE targetPresentTimeG;
     uint64_t targetPresentId;
-    double tPre, tPost;
+    double tPre, tPost, tQueue, tMonoSecs;
     PsychVulkanDevice* vulkan = window->vulkan;
     double tPreviousPresent = window->tPresentComplete;
 
@@ -2828,7 +2939,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         .pTimes = &targetPresentTimeG,
     };
 
-    if (vulkan->hasTiming && (timestampMode > 1)) {
+    if (vulkan->hasTiming && (timestampMode >= 0)) {
         // Yes: Queue a target time for the present:
         presentTimeInfoG.pNext = present.pNext;
         present.pNext = &presentTimeInfoG;
@@ -2836,7 +2947,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         #if PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX
         // Linux: Map tWhen GetSecs() CLOCK_REALTIME target time into CLOCK_MONOTONIC time, convert to Nanoseconds:
         // macOS: Map tWhen GetSecs() time into Mach host time (which is a no-op btw.), convert to Nanoseconds:
-        targetPresentTimeG.desiredPresentTime = PsychOSRefTimeToMonotonicTime(tWhen) * 1e9;
+        tMonoSecs = PsychOSRefTimeToMonotonicTime(tWhen);
+        targetPresentTimeG.desiredPresentTime = (tMonoSecs > 0) ? tMonoSecs * 1e9 : 0;
         #else
         targetPresentTimeG.desiredPresentTime = 0; // TODO FIXME IMPLEMENT!
         #endif
@@ -2861,6 +2973,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     }
 
     // Present it asap:
+    tQueue = PsychGetAdjustedPrecisionTimerSeconds(NULL);
     result = vkQueuePresentKHR(vulkan->graphicsQueue, &present);
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
@@ -2905,7 +3018,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Always wait for flipDoneFence:
     // Makes fence handling more robust and we can't prevent being throttled anyway, given
     // that we can't change sync-to-vblank settings on the fly, only at swapChain creation time:
-    if (!PsychWaitForPresentCompletion(window))
+    if ((timestampMode > 0) && !vulkan->hasWait && !PsychWaitForPresentCompletion(window))
         return(FALSE);
 
     tPost = PsychGetAdjustedPrecisionTimerSeconds(NULL);
@@ -3032,8 +3145,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
                 for (i = 0; i < count; i++) {
                     if (verbosity > 8)
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i):%i: presentID %i [need %i] returned timestamp %f.\n",
-                               window->index, i, pastTiming[i].presentID, targetPresentTimeG.presentID, (double) pastTiming[i].actualPresentTime / 1e9);
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i):%i: presentID %i [need %i] returned timestamp %f. Earliest %f : Margin %f msecs\n",
+                               window->index, i, pastTiming[i].presentID, targetPresentTimeG.presentID, (double) pastTiming[i].actualPresentTime / 1e9,
+                               (double) pastTiming[i].earliestPresentTime / 1e9, (double) pastTiming[i].presentMargin / 1e6);
                     if (pastTiming[i].presentID == targetPresentTimeG.presentID)
                         break;
                 }
@@ -3084,8 +3198,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming[i].actualPresentTime / 1e9);
 
                 if (verbosity > 7)
-                    printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE for presentID %i returned flip completion timestamp %f secs vs. desired present time %f secs. Delta %f msecs.\n",
-                        window->index, pastTiming[i].presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming[i].desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
+                    printf("PsychVulkanCore-DEBUG: PsychPresent(%i): presentID %i returned present time %f secs vs. desired present time %f secs (%f msecs past queuing). Delta %f msecs.\n",
+                           window->index, pastTiming[i].presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming[i].desiredPresentTime / 1e9),
+                           1000 * (window->tPresentComplete - tQueue), 1000 * (window->tPresentComplete - tWhen));
             }
         }
         else {
@@ -3497,6 +3612,13 @@ psych_bool PsychSetHDRMetaData(PsychVulkanWindow* window)
         return(FALSE);
     }
 
+    if (fpSetHdrMetadataEXT == NULL) {
+        if (verbosity > 1)
+            printf("PsychVulkanCore-WARNING: Tried to call PsychSetHDRMetaData() on a window attached to a gpu without HDR metadata setting support! Ignored.\n");
+
+        return(FALSE);
+    }
+
     // Commit to swapChain. The update is supposed to happen atomically at next Present. This function
     // sadly doesn't return a result status code:
     fpSetHdrMetadataEXT(window->vulkan->device, 1, &window->swapChain, &window->currentDisplayHDRMetadata);
@@ -3589,14 +3711,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         if (memcmp(targetdeviceUUID, allzeros, 16) == 0)
             memcpy(targetdeviceUUID, &vulkan->physDeviceProps.deviceUUID[0], 16);
 
-        if (!PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, flags)) {
-            if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable for requested settings.\n", gpuIndex, vulkan->deviceProps.deviceName);
-
-            goto openwindow_out2;
-        }
-
-        supportsPresent = TRUE;
+        supportsPresent = PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, displayHandle, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, flags);
+        if (!supportsPresent && (verbosity > 0))
+            printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable for requested settings.\n", gpuIndex, vulkan->deviceProps.deviceName);
     }
     else {
         // No. Try to auto-detect the proper gpuIndex / gpu by probing:
@@ -3610,24 +3727,24 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
             if (supportsPresent)
                 break;
+
+            // Nope, not this one. Release the vulkan surface, direct display, WSI windows, WSI connection before probing the next one:
+            window->vulkan = vulkan;
+            PsychCloseVulkanSurfaceAndWSIDisplay(window);
         }
 
-        if (!supportsPresent) {
-            if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window for requested settings!\n");
-
-            goto openwindow_out2;
-        }
-
-        if (verbosity > 3)
+        if (!supportsPresent && (verbosity > 0)) {
+            printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window for requested settings!\n");
+        } else if (verbosity > 3) {
             printf("PsychVulkanCore-INFO: gpuIndex %i [%s] auto-selected as optimal gpu for presenting to the target surface.\n", gpuIndex, vulkan->deviceProps.deviceName);
+        }
     }
-
-    if (!supportsPresent)
-        goto openwindow_out2;
 
     // Assign vulkan device to this window:
     window->vulkan = vulkan;
+
+    if (!supportsPresent)
+        goto openwindow_out2;
 
     // Create a swapchain for the windows surface:
 
@@ -3663,7 +3780,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Select number of image buffers:
     uint32_t numBuffers = window->surfaceCapabilities.minImageCount;
-    uint32_t optBuffers = 2;
+    uint32_t optBuffers = (vulkan->hasWait && (PSYCH_SYSTEM == PSYCH_LINUX)) ? 3 : 2;
 
     if (numBuffers != optBuffers && window->surfaceCapabilities.minImageCount <= optBuffers)
         numBuffers = optBuffers;
@@ -3884,8 +4001,24 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     result = vkCreateSwapchainKHR(vulkan->device, &swapChainCreateInfo, NULL, &window->swapChain);
     if (result != VK_SUCCESS) {
-        if (verbosity > 0)
+        if (verbosity > 0) {
             printf("PsychVulkanCore-ERROR: vkCreateSwapchainKHR() failed for window %i: res=%i.\n", window->index, result);
+
+            // Insufficient resources in gpu + display engine, e.g., video image resolution or required color depth
+            // too high for given gpu + display engine + video link + display sink, ie. video bandwidth or memory bandwidth
+            // exceeded?
+            if (result == VK_ERROR_INITIALIZATION_FAILED) {
+                printf("PsychVulkanCore-ERROR: Likely the selected video resolution %i x %i pixels in combination with the selected\n", window->width, window->height);
+                printf("PsychVulkanCore-ERROR: framebuffer %i bpc color depth and video output signal depth ('max bpc' connector / output property)\n",
+                       (window->colorPrecision > 1) ? 16 : (window->colorPrecision > 0) ? 10 : 8);
+                printf("PsychVulkanCore-ERROR: and video refresh rate %f Hz exceeds the available memory bandwidth and video link bandwidth\n", refreshHz);
+                printf("PsychVulkanCore-ERROR: or the capabilities of your graphics card. It is also possible that use of Retina / HiDPI scaling for\n");
+                printf("PsychVulkanCore-ERROR: Retina compatibility mode is requested but not supported at these settings. Try to lower any of these\n");
+                printf("PsychVulkanCore-ERROR: settings if possible for your task and check if it helps.\n");
+                if (window->colorPrecision > 1)
+                    printf("PsychVulkanCore-ERROR: Especially 16 bpc color precision may clash with Retina scaling or high settings on older gpu's.\n");
+            }
+        }
 
         goto openwindow_out1;
     }
@@ -4101,7 +4234,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         if (!PsychSetHDRMetaData(window)) {
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Failed to enable HDR mode %i for window %i.\n", hdrMode, window->index);
-            
+
             goto openwindow_out1;
         }
     }
@@ -4158,34 +4291,8 @@ openwindow_out1:
 
 openwindow_out2:
 
-    vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
-    window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
-
-    if (window->display != VK_NULL_HANDLE) {
-        fpReleaseDisplayEXT(vulkan->physicalDevice, window->display);
-        window->display = VK_NULL_HANDLE;
-    }
-
-#if defined(VK_USE_PLATFORM_XLIB_KHR)
-    if (window->connection) {
-        if (window->x11PrivateWindow != None) {
-            XUnmapWindow(window->connection, window->x11PrivateWindow);
-            XDestroyWindow(window->connection, window->x11PrivateWindow);
-            XFlush(window->connection);
-            window->x11PrivateWindow = None;
-        }
-
-        XCloseDisplay(window->connection);
-        window->connection = NULL;
-    }
-#endif
-
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-    if (window->win32PrivateWindow) {
-        DestroyWindow(window->win32PrivateWindow);
-        window->win32PrivateWindow = NULL;
-    }
-#endif
+    // Release the vulkan surface, direct display, WSI windows, WSI connection:
+    PsychCloseVulkanSurfaceAndWSIDisplay(window);
 
     return (rc);
 }
@@ -4270,43 +4377,11 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
     vkDeviceWaitIdle(window->vulkan->device);
 
     if (verbosity > 4) {
-        printf("PsychVulkanCore-INFO: Vulkan window %i: swapChain is gone. Releasing display.\n", window->index);
+        printf("PsychVulkanCore-INFO: Vulkan window %i: swapChain is gone. Releasing display surface and display/window/connection.\n", window->index);
         fflush(NULL);
     }
 
-    if (window->display != VK_NULL_HANDLE) {
-        fpReleaseDisplayEXT(window->vulkan->physicalDevice, window->display);
-        window->display = VK_NULL_HANDLE;
-    }
-
-    #if defined(VK_USE_PLATFORM_XLIB_KHR)
-    if (window->connection) {
-        if (window->x11PrivateWindow != None) {
-            XUnmapWindow(window->connection, window->x11PrivateWindow);
-            XDestroyWindow(window->connection, window->x11PrivateWindow);
-            XFlush(window->connection);
-            window->x11PrivateWindow = None;
-        }
-
-        XCloseDisplay(window->connection);
-        window->connection = NULL;
-    }
-    #endif
-
-    #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    if (window->win32PrivateWindow) {
-        DestroyWindow(window->win32PrivateWindow);
-        window->win32PrivateWindow = NULL;
-    }
-    #endif
-
-    if (verbosity > 4) {
-        printf("PsychVulkanCore-INFO: Vulkan window %i: Display or Window is gone. Releasing surface.\n", window->index);
-        fflush(NULL);
-    }
-
-    vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
-    window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+    PsychCloseVulkanSurfaceAndWSIDisplay(window);
 
     vkDeviceWaitIdle(window->vulkan->device);
 
@@ -4551,6 +4626,7 @@ PsychError PSYCHVULKANOpenWindow(void)
         "for most basic Vulkan testing and driver bringup if the given gpu does not have graphics drivers with OpenGL+Vulkan interop capabilities yet.\n"
         "+2 = Do not switch to fullscreen-exclusive mode on MS-Windows, even for fullscreen windows. This is useful as workaround for some buggy Vulkan drivers.\n"
         "+4 = Do not use a tiled format for the OpenGL-Vulkan interop image, use linear instead.\n"
+        "+8 = Try to keep mouse pointer hidden over the Vulkan window, typically used as workaround. Linux/X11 only, so far.\n"
         "'displayHandle' Handle defining the display server connection to use, if any, in an operating system dependent manner. "
         "This is currently unused on all systems except Linux with Wayland display backend, where it encodes the wl_display handle.\n"
         "\n\n"
@@ -4628,6 +4704,8 @@ PsychError PSYCHVULKANOpenWindow(void)
 
     // Get mandatory flags:
     PsychCopyInIntegerArg(12, kPsychArgRequired, &flags);
+    if ((flags & ~(1 | 2 | 4 | 8)) != 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'flags' argument specified.");
 
     // Get mandatory displayHandle:
     PsychCopyInPointerArg(13, kPsychArgRequired, &displayHandle);
@@ -5311,9 +5389,11 @@ PsychError PSYCHVULKANPresent(void)
         "will call it automatically for you at the appropriate moment.\n\n"
         "'doTimestamp' If set to 1 or 2, performs timestamping of stimulus onset, or at least "
         "tries to estimate such onset time. If set to 0, do nothing timestamping-wise. "
-        "A value of 1 always uses a home-made method of scheduling and timestamping. "
+        "A value of 1 always uses a home-made method of timestamping. "
         "A value of 2 tries to use a Vulkan-provided high-precision method if available "
-        "and possible, and falls back to method 1 otherwise. Value 2 is the default.\n\n"
+        "and possible, and falls back to method 1 otherwise. Value 2 is the default.\n"
+        "A value of -1 will not timestamp or wait (like 0), but also not use Vulkan "
+        "high precision stimulus onset scheduling.\n\n"
         "'tWhen' If provided, defines the target presentation time, as provided by "
         "Screen('Flip', win, tWhen); a value of zero, or omission, means to present as "
         "soon as possible.\n\n"
@@ -5359,8 +5439,8 @@ PsychError PSYCHVULKANPresent(void)
 
     // Get optional timestamping flag:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &doTimestamp);
-    if (doTimestamp < 0 || doTimestamp > 2)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be 0, 1 or 2.");
+    if (doTimestamp < -1 || doTimestamp > 2)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be -1, 0, 1 or 2.");
 
     // Present:
     if (!PsychPresent(window, tWhen, doTimestamp)) {

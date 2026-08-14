@@ -589,13 +589,7 @@ try
     hold off
     
     % Figure 2 shows the recorded beam positions:
-    if winfo.VBLEndline > -1
-        hasbeampos = 1;
-    else
-        hasbeampos = 0;
-    end
-
-    if hasbeampos
+    if winfo.VBLEndline > -1 && any(beampos ~= -1)
         figure
         plot(beampos);
         title('Rasterbeam position when timestamp was taken (in scanlines):');

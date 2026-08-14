@@ -25,6 +25,7 @@ function MultiWindowVulkanTest(nmax, reverse, screenId)
 
 % History:
 % 16-Oct-2021  mk  Written.
+% 16-Jul-2026  mk  Adapted for use also with XWayland on suitable compositors.
 
     PsychDefaultSetup(2);
 
@@ -46,41 +47,57 @@ function MultiWindowVulkanTest(nmax, reverse, screenId)
         screenId = max(Screen('Screens'));
     end
 
+    oldsynclevel = Screen('Preference', 'SkipSyncTests', 2);
+
     % At most nmax outputs:
     n = min(nmax, Screen('ConfigureDisplay', 'NumberOutputs', screenId));
 
     for i = 1:n
         output = Screen('ConfigureDisplay', 'Scanout', screenId, i-1);
-
-        PsychImaging('PrepareConfiguration');
-        if i > 1
-            % As of Mesa 21, Mesa drivers do not support more than 1 exclusive
-            % display per session, so if we want to test more simultaneous displays,
-            % we need to enforce use of non-Mesa drivers, e.g., amdvlk, which we
-            % trick the system into using by requesting another not-yet-supported
-            % by Mesa feature - 10 bpc framebuffers:
-            PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
-        end
-        PsychImaging('AddTask', 'General', 'UseVulkanDisplay', output.name);
-        win(i) = PsychImaging('OpenWindow', screenId, [1 0 0]);
-        DrawFormattedText(win(i), sprintf('Window %i : %s', i, output.name), 'center', 'center');
-        Screen('Flip', win(i));
+        names{i} = output.name;
     end
 
-    % Give user some time to appreciate the view:
-    KbStrokeWait(-1);
+    for j = 1:3
+      tt = GetSecs + 5;
 
-    % Can close windows in creation order, or reverse order:
-    if reverse
-        for i = n:-1:1
-            Screen('Close', win(i));
-        end
-    else
-        for i = 1:n
-            Screen('Close', win(i));
-        end
+      for i = 1:n
+          PsychImaging('PrepareConfiguration');
+          if i > 1
+              % As of Mesa 21, Mesa drivers do not support more than 1 exclusive
+              % display per session, so if we want to test more simultaneous displays,
+              % we need to enforce use of non-Mesa drivers, e.g., amdvlk, which we
+              % trick the system into using by requesting another not-yet-supported
+              % by Mesa feature - 10 bpc framebuffers:
+              PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+          end
+
+          PsychImaging('AddTask', 'General', 'UseVulkanDisplay', names{i});
+          win(i) = PsychImaging('OpenWindow', screenId, [1 0 0]);
+          DrawFormattedText(win(i), sprintf('Window %i : %s', i, names{i}), 'center', 'center');
+      end
+
+      for i = 1:n
+          Screen('Flip', win(i), tt, 0, 1);
+      end
+
+      % Give user some time to appreciate the view:
+      %KbStrokeWait(-1);
+      WaitSecs(5);
+
+      % Can close windows in creation order, or reverse order:
+      if reverse
+          for i = n:-1:1
+              Screen('Close', win(i));
+          end
+      else
+          for i = 1:n
+              Screen('Close', win(i));
+          end
+      end
     end
 
     % Just to be safe and extra tidy:
     sca;
+
+    Screen('Preference', 'SkipSyncTests', oldsynclevel);
 end

@@ -39,6 +39,8 @@ persistent supported;
 persistent vulkan;
 persistent usedOutputs;
 persistent outputMappings;
+persistent nrOutputs;
+persistent outputInfos;
 persistent noglfinish;
 persistent ovrFlags;
 
@@ -142,13 +144,19 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
 
         PsychVulkanCore('CloseWindow', vulkan{win}.vwin);
 
+        % Reset Screen/X11's internal X11 resources - only executes on XWayland:
+        if IsLinux && ~IsWayland && ~isempty(usedOutputs{screenId + 1}) && (length(usedOutputs{screenId + 1}) == 1) && ~isempty(strfind(getenv('XDG_SESSION_TYPE'), 'wayland'))
+            Screen('ConfigureDisplay', 'ResetX11ScreenResources', win);
+            nrOutputs = [];
+        end
+
         % Remove windows display output from set of used outputs for windows screenId:
         usedOutputs{screenId + 1} = setdiff(usedOutputs{screenId + 1}, vulkan{win}.usedOutput);
 
         % TODO: Restore gamma lut on individual outputs or screens?
 
-        % Restore rank 0 output setting in Screen:
-        if ~isempty(vulkan{win}.usedOutput)
+        % Restore rank 0 output setting in Screen, unless this is Linux/X11 on top of XWayland:
+        if ~isempty(vulkan{win}.usedOutput) && (~IsLinux || IsWayland || isempty(strfind(getenv('XDG_SESSION_TYPE'), 'wayland')))
             Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
         end
 
@@ -336,17 +344,30 @@ if strcmpi(cmd, 'OpenWindowSetup')
 
     % On Linux X11 one can select a single video output via outputName parameter or winRect:
     if IsLinux && ~IsWayland
+        % Did we build up our cache of all screen->outputs->outputinfos already?
+        if isempty(nrOutputs)
+            % No. Do a full scan over all outputs of all X-Screens and cache their
+            % properties:
+            for screenId = Screen('Screens')
+                nrOutputs(screenId+1) = Screen('ConfigureDisplay', 'NumberOutputs', screenId);
+
+                for i = 0:nrOutputs(screenId+1)-1
+                    outputInfos{screenId+1, i+1} = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                end
+            end
+        end
+
         if ~isempty(outputName)
             % Try to find the output with the requested name on requested X-Screen screenId:
             output = [];
-            for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+            for i = 0:nrOutputs(screenId+1)-1
                 % Skip this output i if it is in the set of outputs used on this
                 % screenId in direct display mode already, ie. RandR leased:
                 if ismember(i, usedOutputs{screenId + 1})
                     continue;
                 end
 
-                output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                output = outputInfos{screenId+1, i+1};
                 if strcmp(output.name, outputName)
                     % This output i is the right output.
                     % Position our onscreen window accordingly:
@@ -375,14 +396,14 @@ if strcmpi(cmd, 'OpenWindowSetup')
             if ~isempty(winRect)
                 % Yes. Does it match an attached RandR output exactly?
                 output = [];
-                for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+                for i = 0:nrOutputs(screenId+1)-1
                     % Skip this output i if it is in the set of outputs used on this
                     % screenId in direct display mode already, ie. RandR leased:
                     if ismember(i, usedOutputs{screenId + 1})
                         continue;
                     end
 
-                    output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                    output = outputInfos{screenId+1, i+1};
                     outputRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
                     if isequal(winRect, outputRect)
                         % This output i is the right output.
@@ -416,7 +437,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
                 while ismember(i, usedOutputs{screenId + 1})
                     % Try next available output on the screenId:
                     i = i + 1;
-                    if i == Screen('ConfigureDisplay', 'NumberOutputs', screenId)
+                    if i == nrOutputs(screenId+1)
                         % No more outputs available - All are already leased in
                         % direct display mode:
                         sca;
@@ -424,7 +445,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
                     end
                 end
 
-                output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                output = outputInfos{screenId+1, i+1};
                 outputName = output.name;
                 outputIndex = i;
 
@@ -569,10 +590,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
 
     % Mesa zink OpenGL driver in use on Linux? zink does not support OpenGL-Vulkan
-    % interop images with a tiled layout, so we must force-disable tiling and instead
-    % use a linear layout:
-    if IsLinux && ~isempty(strfind(winfo.GLRenderer, 'zink'))
+    % interop images with a tiled layout on Apple Silicon, so we must force-disable tiling and instead
+    % use a linear layout. zink on some other gpu's, e.g., RaspberryPi Broadcom VideoCore 6 is happy with tiled:
+    if IsLinux && ~isempty(strfind(winfo.GLRenderer, 'zink')) && ~isempty(strfind(winfo.GLRenderer, 'HONEYKRISP'))
         flags = mor(flags, 4);
+    end
+
+    % Need to hide the cursor on our Vulkan window on X11 + Apple Silicon, as it
+    % would trigger rendering of a software emulated cursor, which would prevent
+    % page-flipping, which would doom us on X-Server, especially as Apple Silicon
+    % is a vblank-less system:
+    if IsLinux(1) && IsARM(1) && ~IsWayland && isFullscreen
+        flags = mor(flags, 8);
     end
 
     % On Linux with Wayland, always use "windowed" mode setup, even for fullscreen windows,
@@ -690,12 +719,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             if ~isempty(outputName)
                 % Try to find the output with the requested name:
                 output = [];
-                for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+                for i = 0:nrOutputs(screenId+1)-1
                     if ismember(i, usedOutputs{screenId + 1})
                         continue;
                     end
 
-                    output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
+                    output = outputInfos{screenId+1, i+1};
                     if strcmp(output.name, outputName)
                         % This output i is the right output.
                         usedOutput = i;
@@ -708,7 +737,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                 % Choose primary output for screenId:
                 if ~ismember(0, usedOutputs{screenId + 1})
                     usedOutput = 0;
-                    output = Screen('ConfigureDisplay', 'Scanout', screenId, 0);
+                    output = outputInfos{screenId+1, 0+1};;
                 else
                     output = [];
                 end

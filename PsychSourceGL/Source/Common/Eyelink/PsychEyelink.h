@@ -8,6 +8,7 @@
     cburns@berkeley.edu                 cdb
     E.Peters@ai.rug.nl                  emp
     f.w.cornelissen@med.rug.nl          fwc
+    mario.kleiner.de@gmail.com           mk
 
     PLATFORMS:    All.
 
@@ -38,9 +39,7 @@ extern int        giSystemInitialized;
 // Defined in EyelinkCreateDataStructs.c
 mxArray *CreateMXFSample(const FSAMPLE *fs);
 mxArray *CreateMXFSampleRaw(const FSAMPLE_RAW *fs);
-mxArray *CreateMXISample(const ISAMPLE *is);
 mxArray *CreateMXFEvent(const FEVENT *fe);
-mxArray *CreateMXIEvent(const IEVENT *ie);
 
 // Defined in PsychEyelink.c
 int Verbosity(void);
