@@ -29,6 +29,7 @@ function PsychStartup
 % 20.09.2023  mk  Remove all 32-Bit support on MS-Windows.
 % 04.11.2024  mk  Add support for PsychPlugins subfolder as runtime dll search path.
 % 11.07.2025  mk  Add priority fallback probe sequence for GStreamer 1.26+ default install location on Windows.
+% 18.05.2026  mk  Use fullfile for building sdkroot final path: Fix proposed by GitHub user @HuwSwan thanks! 
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -117,7 +118,9 @@ try
             fprintf('PsychStartup: this! Read ''help GStreamer'' for instructions.\n\n');
             sdkroot = [];
         else
-            sdkroot = [sdkroot 'bin'];
+            % Need fullfile, to take into account that Windows getenv() sometimes
+            % returns a sdkroot without trailing backslash, sometimes with!
+            sdkroot = fullfile(sdkroot, 'bin');
         end
 
         % Get current path:

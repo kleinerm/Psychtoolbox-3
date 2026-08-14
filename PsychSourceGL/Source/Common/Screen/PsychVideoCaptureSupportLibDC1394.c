@@ -2920,7 +2920,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
         // Can't reassign new codec without reopening the device:
         if (strstr(pname, ":CodecType")) {
-            *(strstr(pname, ":CodecType")) = 0;
+            *(strstr((char*) pname, ":CodecType")) = 0;
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: Tried to change recording codec on device %i, but this isn't possible without reopening the device. Ignored.\n", capturehandle);
             }
@@ -2928,7 +2928,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
         // Can't reassign new codec without reopening the device:
         if (strstr(pname, ":CodecSettings=")) {
-            *(strstr(pname, ":CodecSettings=")) = 0;
+            *(strstr((char*) pname, ":CodecSettings=")) = 0;
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: Tried to change recording codec settings on device %i, but this isn't possible without reopening the device. Ignored.\n", capturehandle);
             }

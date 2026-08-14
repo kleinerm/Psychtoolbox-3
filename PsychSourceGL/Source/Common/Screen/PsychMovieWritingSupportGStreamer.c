@@ -615,7 +615,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     if (strlen(movieoptions) == 0) {
         // No options provided. Select default encoder with default settings:
         movieoptions = strdup("DEFAULTenc");
-    } else if ((poption = strstr(movieoptions, ":CodecSettings="))) {
+    } else if ((poption = strstr((char*) movieoptions, ":CodecSettings="))) {
         // Replace ':' with a zero in movieoptions, so it gets null-terminated:
         movieoptions = poption;
         *movieoptions = 0;
@@ -629,7 +629,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         strncpy(movieoptions, "DEFAULTenc    ", strlen("DEFAULTenc    "));
 
         if (strlen(movieoptions) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
-    } else if ((poption = strstr(movieoptions, ":CodecType="))) {
+    } else if ((poption = strstr((char*) movieoptions, ":CodecType="))) {
         // Replace ':' with a zero in movieoptions, so it gets null-terminated
         // and only points to the actual movie filename:
         movieoptions = poption;
@@ -643,7 +643,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 
     // Assign numeric 32-bit FOURCC equivalent code to select codec:
     // This is optional. We default to kH264CodecType:
-    if ((poption = strstr(movieoptions, "CodecFOURCCId="))) {
+    if ((poption = strstr((char*) movieoptions, "CodecFOURCCId="))) {
         if (sscanf(poption, "CodecFOURCCId=%i", &dummyInt) == 1) {
             pwriterRec->CodecType = dummyInt;
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Codec with FOURCC numeric id %i [%" GST_FOURCC_FORMAT "] requested for encoding of movie %i [%s].\n", dummyInt, GST_FOURCC_ARGS(dummyInt), moviehandle, moviefile);
@@ -653,7 +653,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     }
 
     // Assign 4 character string FOURCC code to select codec:
-    if ((poption = strstr(movieoptions, "CodecFOURCC="))) {
+    if ((poption = strstr((char*) movieoptions, "CodecFOURCC="))) {
         if (sscanf(poption, "CodecFOURCC=%c%c%c%c", &myfourcc[0], &myfourcc[1], &myfourcc[2], &myfourcc[3]) == 4) {
             myfourcc[4] = 0;
             dummyInt = (int) GST_STR_FOURCC (myfourcc);
@@ -666,7 +666,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 
     // Assign numeric encoding quality level:
     // This is optional. We default to "normal quality":
-    if ((poption = strstr(movieoptions, "EncodingQuality="))) {
+    if ((poption = strstr((char*) movieoptions, "EncodingQuality="))) {
         if ((sscanf(poption, "EncodingQuality=%f", &dummyFloat) == 1) && (dummyFloat >= 0) && (dummyFloat <= 1)) {
             // Map floating point quality level between 0.0 and 1.0 to 10 discrete levels:
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Encoding quality level %f selected for encoding of movie %i [%s].\n", dummyFloat, moviehandle, moviefile);
@@ -702,7 +702,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     // Full GStreamer launch line a la gst-launch command provided?
     if (strstr(movieoptions, "gst-launch")) {
         // Yes: We use movieoptions directly as launch line:
-        movieoptions = strstr(movieoptions, "gst-launch");
+        movieoptions = strstr((char*) movieoptions, "gst-launch");
 
         // Move string pointer behind the "gst-launch" word (plus a blank):
         movieoptions+= strlen("gst-launch ");

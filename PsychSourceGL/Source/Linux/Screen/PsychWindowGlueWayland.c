@@ -221,7 +221,7 @@ wayland_feedback_presented(void *data,
         t2p = 0;
     }
 
-    if (PsychPrefStateGet_Verbosity() > 4) {
+    if (PsychPrefStateGet_Verbosity() > 10) {
         printf("PTB-DEBUG: SBC = %6lu: c2p %4u ms, p2p %5d us (refresh %6u us), t2p %6d us, [%s] MSC %" PRIu64 "\n",
                wayland_feedback->sbc, c2p, p2p, refresh_nsec / 1000, t2p, wayland_pflags_to_str(flags, flagstr, sizeof(flagstr)), msc);
     }

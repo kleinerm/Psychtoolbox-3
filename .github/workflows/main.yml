@@ -35,8 +35,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Add SR-Research Eyelink repositories.
-        run:  sudo apt-key adv --fetch-keys https://apt.sr-research.com/SRResearch_key ; sudo add-apt-repository 'deb [arch=amd64] https://apt.sr-research.com SRResearch main'
-
+        #run:  sudo apt-key adv --fetch-keys https://apt.sr-research.com/SRResearch_key.gpg ; sudo add-apt-repository 'deb [arch=amd64] https://apt.sr-research.com SRResearch main'
+        run:  wget -qO- https://apt.sr-research.com/SRResearch_key.gpg | gpg --dearmor | sudo tee /etc/apt/keyrings/SRResearch_key.gpg >/dev/null ; wget -qO- https://apt.sr-research.com/SR_Research_repo.sources | sudo tee /etc/apt/sources.list.d/SR_Research_repo.sources
       - name: Setup additional build and runtime dependencies of Psychtoolbox.
         run:  sudo apt update ; sudo apt install -y octave-psychtoolbox-3 liboctave-dev libfontconfig1-dev libopenhmd-dev libusb-1.0-0-dev xorg-dev libx11-xcb-dev libxcb*-dev libglu1-mesa-dev freeglut3-dev libgstreamer*-dev libasound2-dev portaudio19-dev libfreenect-dev libopenal-dev libopenxr-dev libapriltag-dev ; sudo apt remove -y libgamemode0; sudo apt install -y libdc1394-dev
 

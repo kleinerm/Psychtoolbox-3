@@ -1304,14 +1304,15 @@ static void ProcessRandREvents(int screenNumber)
     }
 }
 
-// GetRandRScreenConfig: Must be called called under display lock protection!
-static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
+// PsychOSX11GetRandRScreenConfig: Must be called under display lock protection!
+psych_bool PsychOSX11GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 {
     int major, minor;
     int o, isPrimary, crtcid, crtccount;
     int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
     int crtcs[100] = { 0 };
     XRRProviderResources *providerResources;
+    psych_bool rc = true;
 
     // Preinit to "undefined":
     displayX11ScreenResources[idx] = NULL;
@@ -1320,7 +1321,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     if (!XRRQueryExtension(dpy, &xr_event, &xr_error) ||
         !XRRQueryVersion(dpy, &major, &minor)) {
         if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: XRandR extension unsupported. Display infos and configuration functions will be very limited!\n");
-        return;
+        return(rc);
     }
 
     // Detect version of XRandR:
@@ -1336,7 +1337,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
         if (PsychPrefStateGet_Verbosity() > 1)
             printf("PTB-WARNING: XRandR version 1.3 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
                    displayX11Screens[idx], DisplayString(dpy));
-        return;
+        return(rc);
     }
 
     // Fetch current screen configuration info for this screen and display:
@@ -1346,7 +1347,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
         if (PsychPrefStateGet_Verbosity() > 1)
             printf("PTB-WARNING: Could not query configuration of x-screen %i on display %s. Display infos and configuration will be very limited.\n",
                    displayX11Screens[idx], DisplayString(dpy));
-        return;
+        return(rc);
     }
 
     // Total number of assigned crtc's for this screen:
@@ -1442,6 +1443,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
         if (primaryOutput == -1) {
             primaryOutput = 0;
             primaryCRTC = (crtcs[0] >= 0) ? crtcs[0] : 0;
+            rc = false;
         }
     }
 
@@ -1478,7 +1480,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
                DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx, displayX11ScreenUsesModesettingDDX[idx]);
     }
 
-    return;
+    return(rc);
 }
 
 // Linux only: Retrieve modeline and crtc_info for a specific output on a specific screen:
@@ -1519,7 +1521,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
 
 const char* PsychOSGetOutputProps(int screenId, int outputIdx, psych_bool returnDisabledOutputs, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
 {
-    static char outputName[100];
+    static char outputName[100] = { 0 };
     int o;
     XRROutputInfo *output_info = NULL;
     RRCrtc crtc;
@@ -1561,7 +1563,7 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, psych_bool return
     if (o == res->noutput) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
 
     // Store output name to return:
-    sprintf(outputName, "%s", output_info->name);
+    snprintf(outputName, 100, "%s", output_info->name);
 
     // And width / height in mm:
     if (mm_width) *mm_width = output_info->mm_width;
@@ -1569,6 +1571,38 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, psych_bool return
     if (rrOutputPrimary) *rrOutputPrimary = (unsigned long) res->outputs[o];
 
     XRRFreeOutputInfo(output_info);
+
+    // Are we running under a fake X11 XWayland server on top of Wayland?
+    if (rrOutputPrimary && getenv("XDG_SESSION_TYPE") && strstr(getenv("XDG_SESSION_TYPE"), "wayland")) {
+        // Seems so. Try to find out if there is a X11 RandR leasable output associated
+        // with the chosen output under XWayland. Leasable outputs under XWayland differ
+        // from leasable outputs under native XOrg: They are always marked non-desktop,
+        // inactive under X11, and have a name of the form "lease-NAME", with NAME being
+        // the name of the output under X11. Iow. each leasable X11 output gets a sibling
+        // which is inactive, connected, marked non-desktop, leasable, and the prefix
+        // "lease-" to the original name.
+        //
+        // Search the list of outputs again for a leasable variant of this output:
+        char leaseOutputName[110] = { 0 };
+        snprintf(leaseOutputName, 110, "lease-%s", outputName);
+
+        PsychLockDisplay();
+        for (o = 0; o < res->noutput; o++) {
+            output_info = XRRGetOutputInfo(displayCGIDs[screenId], res, res->outputs[o]);
+
+            // Matching sibling? Then return the XID of the leasable RandR output, instead
+            // of the XID of the non-leasable X11 connector we are asked for.
+            if (0 == strcmp(output_info->name, leaseOutputName)) {
+                *rrOutputPrimary = (unsigned long) res->outputs[o];
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-INFO: Found leasable RandR sibling output %s - Returning its XID %lu.\n",
+                           leaseOutputName, *rrOutputPrimary);
+            }
+
+            XRRFreeOutputInfo(output_info);
+        }
+        PsychUnlockDisplay();
+    }
 
     // Return output name:
     return(&outputName[0]);
@@ -1635,7 +1669,7 @@ void InitCGDisplayIDList(void)
                         displayX11Screens[k]=scrnid++;
 
                         // Get all relevant screen config info and cache it internally:
-                        GetRandRScreenConfig(x11_dpy, k);
+                        PsychOSX11GetRandRScreenConfig(x11_dpy, k);
                     }
 
                     if (PsychPrefStateGet_Verbosity() > 2)
@@ -1690,7 +1724,7 @@ void InitCGDisplayIDList(void)
             xinput_ndevices[i] = xinput_ndevices[0];
 
             // Get all relevant screen config info and cache it internally:
-            GetRandRScreenConfig(x11_dpy, i);
+            PsychOSX11GetRandRScreenConfig(x11_dpy, i);
         }
         numDisplays=i;
     }
@@ -1707,7 +1741,7 @@ void InitCGDisplayIDList(void)
     PsychResetCrtcIdUserOverride();
 
     // Did user provide an override for the screenid --> pipeline mapping? Need to reapply it as it
-    // may have gotten clobbered by GetRandRScreenConfig() above:
+    // may have gotten clobbered by PsychOSX11GetRandRScreenConfig() above:
     ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
     if (ptbpipelines) {
         // The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n

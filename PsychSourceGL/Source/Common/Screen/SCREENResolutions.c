@@ -90,6 +90,10 @@ extern int DisplayServicesGetBrightness(CGDirectDisplayID id, float *brightness)
 extern int DisplayServicesSetBrightness(CGDirectDisplayID id, float brightness) __attribute__((weak_import));
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+void InitCGDisplayIDList(void);
+#endif
+
 const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
 
 PsychError SCREENConfigureDisplay(void)
@@ -154,6 +158,11 @@ PsychError SCREENConfigureDisplay(void)
                     "As of the year 2025 this works with FreeSync capable AMD graphics cards and display devices connected via DisplayPort. "
                     "Other graphics cards or display devices (even HDMI VRR!) may not allow fast seamless switching. Example call:\n"
                     "actualHz = Screen('ConfigureDisplay', 'FineGrainedSwitchRefreshRate', screenNumber, outputId, requestedHz); "
+                    "\n\n"
+                    "'ResetX11ScreenResources': Reset and requery Screen internal resource data structures related to the X-Screen "
+                    "associated with the 'screenNumber'. By default this is only done when running under XWayland, unless the option "
+                    "'outputId' is set to 1. A setting of 2 will trigger a full redetection of all display resources, not just partial "
+                    "updates for the given 'screenNumber' - here be even more dragons!\n"
                     "\n\n"
                     "'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
                     "Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
@@ -529,6 +538,49 @@ PsychError SCREENConfigureDisplay(void)
         #else
         // Nope: Report failure back:
         PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
+        #endif
+
+        return(PsychError_none);
+    }
+
+    if (PsychMatch(settingName, "ResetX11ScreenResources")) {
+        // Get the screen number from the windowPtrOrScreenNumber. This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if (screenNumber == -1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
+
+        // Only executed under X11 on top of a XWayland server, or on a native X-Server if forced via flag:
+        #if !defined(PTB_USE_WAFFLE)
+        int flag1 = 0;
+        if (PsychCopyInIntegerArg(3, FALSE, &flag1) && (flag1 != 0) && (flag1 != 1) && (flag1 != 2)) {
+            printf("PTB-WARNING: Invalid flag specified in ConfigureDisplay call 'ResetX11ScreenResources'. Must be 0, 1 or 2. Ignoring...\n");
+            flag1 = 0;
+        }
+
+        if (flag1 || (getenv("XDG_SESSION_TYPE") && strstr(getenv("XDG_SESSION_TYPE"), "wayland"))) {
+            if (flag1 == 2) {
+                // The big hammer: Full reset of screen's display enumeration and probing:
+                InitCGDisplayIDList();
+            }
+            else {
+                CGDirectDisplayID dpy;
+                int repeats = 0;
+
+                PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+                PsychInitScreenToHeadMappings(0);
+                PsychLockDisplay();
+                while ((repeats++ < 40) && !PsychOSX11GetRandRScreenConfig(dpy, screenNumber)) {
+                    PsychYieldIntervalSeconds(0.25);
+                }
+                PsychUnlockDisplay();
+
+                if (repeats >= 40)
+                    printf("PTB-ERROR: Hookfunction call 'ResetX11ScreenResources' timed out!\n");
+
+                // Restore some mappings:
+                PsychSetScreenToCrtcId(screenNumber, screenNumber, 0);
+                PsychResetCrtcIdUserOverride();
+            }
+        }
         #endif
 
         return(PsychError_none);

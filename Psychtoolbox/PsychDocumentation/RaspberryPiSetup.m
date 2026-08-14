@@ -10,16 +10,18 @@
 %
 % Only the 32-Bit RPi OS versions are supported by Psychtoolbox at the moment,
 % as provided directly by us via DownloadPsychtoolbox et al., even on 64-Bit
-% processors! Currently only the legacy/older stable RPi OS versions 11 and 12
+% processors! Currently only the legacy/older stable RPi OS versions 11 and 13
 % with GNU/Octave are what PTB supports well. While PTB runs in principle on the
-% latest stable RPi OS 13 "Trixie", performance is seriously degraded, so RPi OS
-% 13 is currently not recommended at all! RPi OS itself also provides bundled
-% versions of Psychtoolbox, installable via "sudo apt install
-% octave-psychtoolbox-3", and 64-Bit versions of RPi OS would ship such
+% RPi OS 12, performance is seriously degraded due to known bugs without fixes,
+% so RPi OS 12 is not recommended at all! Note that we will soon remove support
+% for RPi OS versions older than v13 "Trixie", and you must run the latest RPi
+% OS 13 version with all updates applied for a good experience. RPi OS itself
+% also provides bundled versions of Psychtoolbox, installable via "sudo apt
+% install octave-psychtoolbox-3", and 64-Bit versions of RPi OS would ship such
 % packages as 64-Bit packages. Other Linux distributions for RaspberryPi,
 % like Ubuntu for RaspberryPi, will also ship Psychtoolbox packages as
 % 32-Bit or 64-Bit variants via the sudo apt install octave-psychtoolbox-3
-% method. While these packages will likely work just fine, these are
+% method. While these packages will probably work just fine, these are
 % currently not tested by the Psychtoolbox developers, or supported in case
 % of questions or problems. These packages are maintained by Debian upstream or
 % the NeuroDebian maintainers, and they are usually quite a bit out of date
@@ -112,7 +114,8 @@
 %   can achieve 10 bpc output (via the usual XOrgConfCreator setup), if you
 %   manually install Mesa version 23.3.1 or later, e.g., by compiling it
 %   yourself, or by getting it via PiKISS or similar tools from a 3rd party
-%   source.
+%   source. RPi OS 13 already ships a modern enough Mesa for this to work
+%   out of the box.
 %
 %   Movie playback of full HD video at 24 fps - 30 fps, and up to 50 fps
 %   stable and almost 60 fps without sound is possible on the RaspberryPi

@@ -7380,7 +7380,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
     }
 
-    if (strstr((char*) glGetString(GL_VENDOR), "Broadcom") || strstr((char*) glGetString(GL_RENDERER), "VC4")) {
+    if (strstr((char*) glGetString(GL_VENDOR), "Broadcom") || strstr((char*) glGetString(GL_RENDERER), "VC4") || strstr((char*) glGetString(GL_RENDERER), "V3D")) {
         vc4 = TRUE; sprintf(windowRecord->gpuCoreId, "VC4");
     }
 

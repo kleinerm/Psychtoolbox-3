@@ -780,6 +780,7 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
 
     // Do we already have a planar HDR decode texture shader?
     if (movie->texturePlanarHDRDecodeShader == 0) {
+        int major, minor;
         double Kr, Kb;
         int offset[GST_VIDEO_MAX_COMPONENTS], scale[GST_VIDEO_MAX_COMPONENTS];
         float outUnitMultiplier;
@@ -789,8 +790,21 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
         // not always provide accurate info. Don't know if this is a bug in GStreamer 1.18.0 or somehow intended behaviour.
         int eotfType = movie->codecVideoInfo.colorimetry.transfer;
 
-        // Nope. Need to create one:
-        movie->texturePlanarHDRDecodeShader = PsychCreateGLSLProgram((PSYCH_SYSTEM == PSYCH_OSX) ? movieTexturePlanarFragmentShaderOSXSrc : movieTexturePlanarFragmentShaderSrc,
+        // Get supported GLSL version, map to use of efficient shader or fallback shader, depending if GLSL 3.30+ is available:
+        psych_bool useEfficientShader = FALSE;
+        const char* glslVersion = (const char*) glGetString(GL_SHADING_LANGUAGE_VERSION);
+        if (glslVersion && (2 == sscanf(glslVersion, "%i.%i", &major, &minor))) {
+            useEfficientShader = ((major > 3) || (major == 3 && minor >= 30)) ? TRUE : FALSE;
+
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-DEBUG: GLSL Version string: %s -> %i.%i -> Using efficient shader = %i.\n", glslVersion, major, minor, useEfficientShader);
+        }
+        else if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING:PsychAssignMovieTextureConversionShader() could not determine GLSL shading language version! Using inefficient fallback shader.\n");
+        }
+
+        // Nope. Need to create one, either the more efficent one for GLSL 3.30+, or the less efficient fallback shader for older GLSL, e.g., on macOS or RaspberryPi:
+        movie->texturePlanarHDRDecodeShader = PsychCreateGLSLProgram((!useEfficientShader) ? movieTexturePlanarFragmentShaderOSXSrc : movieTexturePlanarFragmentShaderSrc,
                                                                      movieTexturePlanarVertexShaderSrc, NULL);
 
         if (movie->texturePlanarHDRDecodeShader == 0) {
@@ -2146,10 +2160,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), FALSE);
 
     // Attach custom made audio sink?
-    if ((pstring = strstr(movieOptions, "AudioSink="))) {
+    if ((pstring = strstr((char*) movieOptions, "AudioSink="))) {
         pstring += strlen("AudioSink=");
         pstring = strdup(pstring);
-        if (strstr(pstring, ":::") != NULL) *(strstr(pstring, ":::")) = 0;
+        if (strstr(pstring, ":::") != NULL) *(strstr((char*) pstring, ":::")) = 0;
         audiosink = gst_parse_bin_from_description((const gchar *) pstring, TRUE, NULL);
         if (audiosink) {
             g_object_set(G_OBJECT(theMovie), "audio-sink", audiosink, NULL);
@@ -2370,7 +2384,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             }
 
             // Optional 'movieOptions' parameter 'OverrideEOTF=x' specified to override detected EOTF to type x?
-            if ((pstring = strstr(movieOptions, "OverrideEOTF="))) {
+            if ((pstring = strstr((char*) movieOptions, "OverrideEOTF="))) {
                 // Yes. Make it so, as long as pixelFormat 11 playback is requested:
                 if ((pixelFormat == 11) && (1 == sscanf(pstring, "OverrideEOTF=%i", (int *) &movieRecordBANK[slotid].codecVideoInfo.colorimetry.transfer))) {
                     if (PsychPrefStateGet_Verbosity() > 3)
