@@ -809,6 +809,9 @@ if hmdinfo.handTrackingSupported || withGazeTracking || withHandTracking
             end
           end
 
+          % Visualize aim-pose vector, if reported. Aim pose is expressed as a
+          % transformation matrix, with the z-axis pointing into the aiming
+          % direction:
           if bitand(state.aimPoseStatus(hand), 2)
             glPushMatrix;
             glMultMatrixd(state.globalAimPoseMatrix{hand});

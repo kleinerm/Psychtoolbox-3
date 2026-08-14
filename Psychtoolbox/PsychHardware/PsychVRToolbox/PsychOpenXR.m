@@ -845,7 +845,32 @@ function varargout = PsychOpenXR(cmd, varargin)
 %                                          via the user supplied global 'userTransformMatrix' transformation matrix to
 %                                          the PsychVRHMD('PrepareRender', ...) subfunction.
 %
-%      state.
+%      If the hand tracker in use supports reporting of pointing movements (e.g., with the extended index finger),
+%      or detection of pinch gestures, ie. another finger touching the thumb, then the following 3 fields will be
+%      defined with meaningful values. Otherwise, aimPoseStatus is 0, pinchStrengths is [-1,-1,-1,-1] and the
+%      aim pose matrices are all-zero matrices.
+%
+%      state.aimPoseStatus(hand) = Bitfield of flags: Is aim pose reported for the given 'hand', and what is its state
+%                                  with respect to reliability? Are any finger pinch gestures detected?
+%                                  +1 = Aim pose computed, +2 = Aim pose valid, +4 = Index finger - Thumb pinch,
+%                                  +8 = Middle finger - Thumb pinch, +16 = Ring finger - Thumb pinch,
+%                                  +32 = Little finger - Thumb pinch.
+%
+%      state.pinchStrengths{hand} = 4-element vector providing an estimate of how strong the pinches are, if any,
+%                                   ie. how much the pinch gesture between a finger and the thumb is completed, and
+%                                   how likely it really is that gesture. The values are normalized to the 0-1 range,
+%                                   for 0 = "no pinch" detected to 1 = "fully executed pinch" detected.
+%                                   Element 1 = Index-to-thumb, 2 = Middle-to-thumb, 3 = Ring-to-thumb,
+%                                   4 = Little-finger-to-thumb.
+%
+%      state.localAimPoseMatrix{hand} = A 4x4 OpenGL style matrix encoding the aim direction vector for a pointing
+%                                       gesture. The z-axis of the returned transformation matrix points into the
+%                                       measured or computed pointing direction.
+%
+%      state.globalAimPoseMatrix{hand} = A 4x4 OpenGL style matrix encoding the aim direction vector for a pointing
+%                                        gesture, but transformed via the user supplied global 'userTransformMatrix'
+%                                        transformation matrix to the PsychVRHMD('PrepareRender', ...) subfunction.
+%
 %
 %      The following constants allow to index the returned set of 26 hand joints
 %      by symbolic names for the different parts of the fingers and hand, or you
@@ -1288,7 +1313,7 @@ if strcmpi(cmd, 'PrepareRender')
       srLastSample(26) = -srLastSample(26);
     else
       % Normal assignment for left and right eye:
-      gaze(1).GazePose = [srLastSample(6:8) / 1000, srLastSample(3:5)]; %#ok<UNRCH> 
+      gaze(1).GazePose = [srLastSample(6:8) / 1000, srLastSample(3:5)]; %#ok<UNRCH>
       gaze(2).GazePose = [srLastSample(16:18) / 1000, srLastSample(13:15)];
     end
 
@@ -1590,7 +1615,11 @@ if strcmpi(cmd, 'PrepareRender')
       result.globalAimPoseMatrix{hand} = userTransformMatrix * hands(hand).AimPoseMatrix;
 
       result.pinchStrengths{hand} = hands(hand).PinchStrengths;
-      result.aimPoseStatus(hand) = hands(hand).AimPoseStatus;
+      if ~isempty(hands(hand).AimPoseStatus)
+        result.aimPoseStatus(hand) = hands(hand).AimPoseStatus;
+      else
+        result.aimPoseStatus(hand) = 0;
+      end
     end
 
     %tHandsMsecs(end+1) = 1000 * toc(handy);
