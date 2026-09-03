@@ -1052,6 +1052,10 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     CGLError cglerr;
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
 
+    // Need GUI event processing, so visual stimulation under OpenGL works under non-GUI
+    // processes like "octave-cli":
+    PsychOSProcessEvents(NULL, 0);
+
     // Execute OS neutral bufferswap code first:
     PsychExecuteBufferSwapPrefix(windowRecord);
 
@@ -1172,7 +1176,8 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 // Perform OS specific processing of Window events:
 void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
-    Rect globalBounds;
+    // Trigger Cocoa event processing:
+    PsychCocoaProcessEvents();
 
     // Trigger event queue dispatch processing for GUI windows:
     if (windowRecord == NULL) {

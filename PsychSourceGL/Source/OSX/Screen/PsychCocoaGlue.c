@@ -31,6 +31,7 @@
 #include <Cocoa/Cocoa.h>
 #include <objc/message.h>
 #include <QuartzCore/CAMetalLayer.h>
+#include <QuartzCore/QuartzCore.h>
 
 // Suppress deprecation warnings:
 #pragma clang diagnostic push
@@ -56,12 +57,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     // Allocate auto release pool:
     //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
 
-    // Initialize the Cocoa application object, connect to CoreGraphics-Server:
-    // Can be called many times, as redundant calls are ignored.
-    DISPATCH_SYNC_ON_MAIN({
-        NSApplicationLoad();
-    });
-
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
     NSString *winTitle = [NSString stringWithUTF8String:windowTitle];
@@ -86,7 +81,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         printf("PTB-DEBUG: PsychCocoaCreateWindow(): On %s thread.\n", ([NSThread isMainThread]) ? "MAIN APPLICATION" : "other");
 
     DISPATCH_SYNC_ON_MAIN({
-        cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle    backing:NSBackingStoreBuffered defer:YES];
+        cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle backing:NSBackingStoreBuffered defer:YES];
     });
 
     if (cocoaWindow == nil) {
@@ -455,6 +450,11 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
 
         // Close window. This will also release the associated contentView:
         [cocoaWindow close];
+
+        // Need this extra flush to manually kick window close on non-GUI (pure command line)
+        // applications like octave-cli, which do not have a GUI event processing thread running.
+        // Not needed for GUI apps with active event processing loops, like octave or octave --gui :
+        [CATransaction flush];
     });
 
     // Drain the pool:
@@ -624,6 +624,16 @@ void PsychCocoaPreventAppNap(psych_bool preventAppNap)
     // Can be called many times, as redundant calls are ignored.
     DISPATCH_SYNC_ON_MAIN({
         NSApplicationLoad();
+
+        // Make sure that our hosting app is classified as a regular GUI app, so it
+        // can actually open onscreen windows for display of stimuli. This is needed
+        // to make us work with Octave if it was launched as "octave-cli" ie. as a
+        // single-threaded command-line non-graphical application only:
+        NSApplication *app = [NSApplication sharedApplication];
+        if (preventAppNap && (app.activationPolicy != NSApplicationActivationPolicyRegular)) {
+            [app setActivationPolicy:NSApplicationActivationPolicyRegular];
+            [app activateIgnoringOtherApps:YES];
+        }
     });
 
     // Check if AppNap stuff is supported on this OS, ie., 10.9+. No-Op if unsupported:
@@ -833,4 +843,8 @@ psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate, int screenNumber)
     return(TRUE);
 }
 
+void PsychCocoaProcessEvents(void)
+{
+    DISPATCH_SYNC_ON_MAIN({[CATransaction flush];});
+}
 #pragma clang diagnostic pop
