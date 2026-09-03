@@ -5828,13 +5828,10 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // We stop processing here if window is a texture, aka offscreen window...
     if (windowRecord->windowType==kPsychTexture) return;
 
-    #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
-        // make MS-Windows GUI event processing happy. Not strictly related to preflip operations, but couldn't
-        // think of a better place to guarantee periodic execution of this function without screwing too much with
-        // timing:
-        PsychGetMouseButtonState(NULL);
-    #endif
+    // Enforce a one-shot GUI event queue processing. Not strictly related to preflip operations, but couldn't
+    // think of a better place to guarantee periodic execution of this function without screwing too much with
+    // timing:
+    PsychOSProcessEvents(NULL, 0);
 
     // Make sure we don't execute on an onscreen window with pending async flip, as this would interfere
     // by touching the system backbuffer -> Corruption of the flip-pending stimulus image by the new stimulus!

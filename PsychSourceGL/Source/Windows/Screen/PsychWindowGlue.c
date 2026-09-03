@@ -1689,9 +1689,8 @@ dwmdontcare:
     // If the DWM is enabled, try to optimize its presentation parameters for our purpose:
     OptimizeDWMParameters(windowRecord);
 
-    // Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
-    // make windows GUI event processing happy:
-    PsychGetMouseButtonState(NULL);
+    // Enforce a one-shot GUI event queue dispatch to make windows GUI event processing happy:
+    PsychOSProcessEvents(NULL, 0);
 
     // Fullscreen window for which we expect proper timing?
     if (fullscreen && (windowLevel >= 2000)) {
