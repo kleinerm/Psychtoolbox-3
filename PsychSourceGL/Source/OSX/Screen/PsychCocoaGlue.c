@@ -90,19 +90,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         return(PsychError_system);
     }
 
-    // External display method in use? Atm. this is only Vulkan via MoltenVK ICD
-    // on top of Metal. We need to back our Cocoa NSWindow with a CAMetalLayer for
-    // this to work:
-    if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
-        CAMetalLayer* hostedLayer = [CAMetalLayer layer];
-        windowRecord->targetSpecific.deviceContext = hostedLayer;
-        [hostedLayer setOpaque:true];
-
-        if (PsychPrefStateGet_Verbosity() > 3)
-            printf("PTB-INFO: External display method is in use for this NSWindow. Creating a backing layer as CAMetalLayer %p.\n",
-                   hostedLayer);
-    }
-
     DISPATCH_SYNC_ON_MAIN({
         [cocoaWindow setTitle:winTitle];
 
@@ -159,18 +146,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
 
         // Tell Cocoa/NSOpenGL to render to Retina displays at native resolution:
         [[cocoaWindow contentView] setWantsBestResolutionOpenGLSurface:YES];
-
-        // Initial CAMetalLayer attach: Needed here, before window is shown 1st time,
-        // or it won't work at all later on -- it would turn into a no-op:
-        if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
-            if (PsychPrefStateGet_Verbosity() > 4)
-                printf("PTB-INFO: External display method is in use for this window. Attaching CAMetalLayer...\n");
-
-            [[cocoaWindow contentView] setWantsLayer:YES];
-            [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
-        }
-
-        //[cocoaWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
     });
 
     PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
@@ -183,46 +158,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
 
     // Return success:
     return(PsychError_none);
-}
-
-psych_bool PsychCocoaMetalWorkaround(PsychWindowRecordType *windowRecord)
-{
-    __block NSWindow *cocoaWindow;
-
-    // Allocate auto release pool:
-    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
-
-    // Define size of client area - the actual stimulus display area:
-    NSRect windowRect = NSMakeRect(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-
-    DISPATCH_SYNC_ON_MAIN({
-        cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:YES];
-    });
-
-    if (cocoaWindow == nil) {
-        printf("PTB-ERROR: PsychCocoaMetalWorkaround(): Could not create Metal workaround temporary Cocoa-Window!\n");
-        return(FALSE);
-    }
-
-    DISPATCH_SYNC_ON_MAIN({
-        // Initial CAMetalLayer attach: Needed before window is shown 1st time:
-        [[cocoaWindow contentView] setWantsLayer:YES];
-        [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
-
-        // Show window:
-        [cocoaWindow orderFrontRegardless];
-        [cocoaWindow display];
-
-        // Then immediately close it:
-        [[cocoaWindow contentView] setWantsLayer:NO];
-        [[cocoaWindow contentView] setLayer:NULL];
-        [cocoaWindow close];
-    });
-
-    // Drain the pool:
-    //[pool drain];
-
-    return(TRUE);
 }
 
 void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRectType windowpixelRect)
@@ -733,31 +668,48 @@ double PsychCocoaGetBackingStoreScaleFactor(void* window)
 
 void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
 {
-    //NSAutoreleasePool *pool = [[//NSAutoreleasePool alloc] init];
+    // If an external display backend is in use, specifically the only currently supported
+    // backend on macOS, which is Vulkan on Metal, then this function does the setup and
+    // transition from pure OpenGL to "OpenGL for rendering, Vulkan/WSI for display".
+    // Does nothing otherwise:
+    if (!(windowRecord->specialflags & kPsychExternalDisplayMethod))
+        return;
 
-    // Second time CAMetalLayer reattach: Called from SCREENOpenWindow() after initial
-    // OpenGL setup, display of the welcome splash screen, startup tests and timing
-    // calibrations etc. are finished. We need OpenGL for all that, and attaching an
-    // OpenGL context to the drawable detached "our" CAMetalLayer and attached some
-    // OpenGL suitable layer instead. Now that we are done with OpenGL display, we can
-    // reattach the CAMetalLayer for rendering/display via Metal, as needed for MoltenVK's
-    // Vulkan-on-top-of-Metal ICD implementation:
-    if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
-        NSWindow* cocoaWindow = (NSWindow*) windowRecord->targetSpecific.windowHandle;
+    // CAMetalLayer creation and attachment: Called from SCREENOpenWindow() after initial
+    // OpenGL setup, display of the welcome splash screen, all startup tests and timing
+    // calibrations etc. are finished. We needed OpenGL for all that, but now that we are
+    // done with OpenGL WSI display for this window in this work session, we can attach a
+    // CAMetalLayer for rendering/display via Metal + CoreAnimation, as needed for the
+    // Vulkan-on-top-of-Metal ICD implementation, e.g., MoltenVK or Mesa KosmickKrisp:
+    __block CAMetalLayer* hostedLayer;
+    NSWindow* cocoaWindow = (NSWindow*) windowRecord->targetSpecific.windowHandle;
 
-        if (PsychPrefStateGet_Verbosity() > 3)
-            printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer at scaling factor %f.\n",
-                   [cocoaWindow backingScaleFactor]);
+    DISPATCH_SYNC_ON_MAIN({
+        // Create the CAMetalLayer for Vulkan/Metal rendering, set its backing Retina scale factor:
+        hostedLayer = [CAMetalLayer layer];
+        hostedLayer.contentsScale = cocoaWindow.backingScaleFactor;
 
-        DISPATCH_SYNC_ON_MAIN({
-            [((CAMetalLayer*) windowRecord->targetSpecific.deviceContext) setContentsScale:[cocoaWindow backingScaleFactor]];
-            [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
-            [[[cocoaWindow contentView] layer] setDelegate:[cocoaWindow contentView]];
-        });
+        // Create a new view for hosting the layer, same size as the onscreen window:
+        NSView *metalView = [[NSView alloc] initWithFrame:cocoaWindow.contentView.bounds];
+
+        // Enable its layer hosting mode and assign our new CAMetalLayer:
+        metalView.wantsLayer = YES;
+        metalView.layer = hostedLayer;
+
+        // Assign it as new contentView for our onscreen window, replacing the OpenGL content view:
+        cocoaWindow.contentView = metalView;
+
+        // Assign the windows contentView as layer delegate for updating:
+        [[[cocoaWindow contentView] layer] setDelegate:[cocoaWindow contentView]];
+    });
+
+    // Needed for passing CAMetalLayer to our external consumer, ie. Vulkan driver:
+    windowRecord->targetSpecific.deviceContext = hostedLayer;
+
+    if (PsychPrefStateGet_Verbosity() > 3) {
+        printf("PTB-INFO: External display method is in use for this window. Creating and attaching a backing layer as \n");
+        printf("PTB-INFO: CAMetalLayer %p with Retina scaling factor %f.\n", hostedLayer, [cocoaWindow backingScaleFactor]);
     }
-
-    // Drain the pool:
-    //[pool drain];
 }
 
 psych_bool PsychCocoaCreateGhostWindow(psych_bool doCreate, int screenNumber)

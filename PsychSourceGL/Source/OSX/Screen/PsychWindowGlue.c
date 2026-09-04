@@ -871,12 +871,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         windowRecord->vrrMode = kPsychVRRSimple;
     }
 
-    // Execute workaround for the latest macOS 12 bugs wrt. CoreAnimation/Metal/Vulkan interop:
-    if ((windowRecord->specialflags & kPsychExternalDisplayMethod) && !PsychCocoaMetalWorkaround(windowRecord)) {
-        printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to execute PsychCocoaMetalWorkaround() for Vulkan/Metal interop macOS bugs.\n");
-        return(FALSE);
-    }
-
     // Done.
     return(TRUE);
 }
