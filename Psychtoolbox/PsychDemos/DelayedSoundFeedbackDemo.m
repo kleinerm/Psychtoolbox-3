@@ -197,7 +197,7 @@ if (reqlatency == 0) && duplex
     % See "PsychPortAudio DirectInputMonitoring?" for more info and details
     % on further parameters. Please note that the following commented out
     % call...
-    % diResult = PsychPortAudio('DirectInputMonitoring', pa, 1);    
+    % diResult = PsychPortAudio('DirectInputMonitoring', pa, 1);
     % ...would do the same, the extended call is just to illustrate some
     % available optional parameters and their default settings.
     %
@@ -213,7 +213,7 @@ if (reqlatency == 0) && duplex
     % full-duplex monitoring mode instead, which is the 2nd best
     % alternative, although certainly not zero latency:
     if diResult > 0
-        % Failed! Need to use our fallback implementation:    
+        % Failed! Need to use our fallback implementation:
         fprintf('Full-duplex monitoring mode active.\n');
         PsychPortAudio('Start', pa, 0, 0, 1);
         while ~KbCheck
@@ -364,7 +364,7 @@ reqtimeoffset = reqonsettime - playbackstart;
 reqsampleoffset = round(reqtimeoffset * s.SampleRate);
 
 if reqsampleoffset < 0
-    fprintf('If sound feedback works at all, then extra latency will be at least %f msecs, probably more!\n', 1000 * abs(reqtimeoffset));    
+    fprintf('If sound feedback works at all, then extra latency will be at least %f msecs, probably more!\n', 1000 * abs(reqtimeoffset));
 end
 
 % Make sure the offset is positive, ie at least zero:
@@ -509,14 +509,6 @@ tstats(1,:) = tstats(1,:) - tstats(1,1);
 [tout(1,:), idx] = unique(tstats(1,:));
 tout(2:4,:) = tstats(2:4,idx);
 tstats = tout;
-
-% Workaround broken qt plotting on some Octave setups:
-if IsOctave && exist('graphics_toolkit')
-    try
-        graphics_toolkit ('fltk');
-    catch
-    end
-end
 
 % Plot it:
 plot(tstats(1,:), tstats(2,:) * 1000, '.', tstats(1,:), tstats(3,:) * 1000, '-', tstats(1,:), tstats(4,:) * 1000, '-');

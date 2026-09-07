@@ -40,17 +40,7 @@ function MorphDemo(textureon, dotson, normalson, stereomode)
 % Dr. Quoc C. Vuong, MPI for Biological Cybernetics, Tuebingen, Germany.
 
 morphnormals = 1;
-global win; %#ok<*GVMIS> 
-
-% Octave's new plotting backend 'fltk' interferes with Screen(),
-% due to internal use of OpenGL. Problem is it changes the
-% bound OpenGL rendering context behind our back and we
-% don't protect ourselves against this yet. Switch plotting backend
-% to good'ol gnuplot to work around this issue until we fix it properly
-% inside Screen():
-if IsOctave && exist('graphics_toolkit') %#ok<EXIST> 
-    graphics_toolkit ('gnuplot');
-end
+global win; %#ok<*GVMIS>
 
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
@@ -168,7 +158,7 @@ for i=1:size(objs,2)
     if ( textureon==1 )
         objs{i}.texcoords = texcoords; % Add modified texture coords.
     end
-    
+
     %objs{i}.colors = rand(4, size(objs{i}.vertices, 2));
     %objs{i}.colors(1:3,:) = 0.8;
 
@@ -219,7 +209,7 @@ glEnable(GL.LIGHTING);
 glEnable(GL.COLOR_MATERIAL);
 
 % Enable the first local light source GL.LIGHT_0. Each OpenGL
-% implementation is guaranteed to support at least 8 light sources. 
+% implementation is guaranteed to support at least 8 light sources.
 glEnable(GL.LIGHT0);
 
 % Enable proper occlusion handling via depth tests:
@@ -376,7 +366,7 @@ while ((GetSecs - t) < 60)
 
     % Call our subfunction that does the actual drawing of the shape (see below):
     drawShape(ang, theta, rotatev, dotson, normalson);
-    
+
     % Stereo rendering requested?
     if stereomode > 0
         % Yes! We need to render the same object again, just with a different
@@ -398,14 +388,14 @@ while ((GetSecs - t) < 60)
         Screen('EndOpenGL', win);
         Screen('SelectStereoDrawBuffer', win, 1);
         Screen('BeginOpenGL', win);
-    
+
         % Clear out the depth-buffer for proper occlusion handling:
         glClear(GL.DEPTH_BUFFER_BIT);
-        
+
         % Call subfunction that does the actual drawing of the shape (see below):
         drawShape(ang, theta, rotatev, dotson, normalson)
     end
-    
+
     % Finish OpenGL rendering into Psychtoolbox - window and check for OpenGL errors.
     Screen('EndOpenGL', win);
 
@@ -415,12 +405,12 @@ while ((GetSecs - t) < 60)
 
     % Now that all drawing commands are submitted, we can do the other stuff before
     % the Flip:
-    
+
     % Calculate rotation angle of object for next frame:
     theta=mod(theta+0.1, 360);
     rotatev=rotatev+0.0001*[ sin((pi/180)*theta) sin((pi/180)*2*theta) sin((pi/180)*theta/5) ];
     rotatev=rotatev/sqrt(sum(rotatev.^2));
-    
+
     % Compute simple morph weight vector for next frame:
     w(1)=(sin(framecount / 100 * 3.1415 * 2) + 1)/2;
     w(2)=1-w(1);
@@ -430,7 +420,7 @@ while ((GetSecs - t) < 60)
 
     if 0
         % Test morphed geometry readback:
-        mverts = moglmorpher('getGeometry'); %#ok<UNRCH> 
+        mverts = moglmorpher('getGeometry'); %#ok<UNRCH>
         scatter3(mverts(1,:), mverts(2,:), mverts(3,:));
         drawnow;
     end
@@ -530,7 +520,7 @@ if (dotson == 1 || dotson == 3)
     moglmorpher('render');
 
     % Reset settings for shape rendering:
-    glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);        
+    glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);
     glEnable(GL.LIGHTING);
 end
 
@@ -546,7 +536,7 @@ if (dotson == 2)
     moglmorpher('render');
 
     % Reset settings for shape rendering:
-    glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);        
+    glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);
     glEnable(GL.LIGHTING);
 end
 
@@ -567,7 +557,7 @@ end
 if (dotson == 3 || dotson == 4)
    % Compute and retrieve projected screen-space vertex positions:
    vpos = moglmorpher('getVertexPositions', win);
-   
+
    % Plot the projected 2D points into a Matlab figure window:
    vpos(:,2)=RectHeight(Screen('Rect', win)) - vpos(:,2);
    plot(vpos(:,1), vpos(:,2), '.');

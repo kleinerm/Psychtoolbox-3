@@ -204,16 +204,6 @@ close all;
 drivername = mfilename;
 maybeSamplerbug = 0;
 
-% Octave's new plotting backend 'fltk' interferes with Screen(),
-% due to internal use of OpenGL. Problem is it changes the
-% bound OpenGL rendering context behind our back and we
-% don't protect ourselves against this yet. Switch plotting backend
-% to good'ol gnuplot to work around this issue until we fix it properly
-% inside Screen():
-if IsOctave && exist('graphics_toolkit')
-    graphics_toolkit ('gnuplot');
-end
-
 if nargin < 1 || isempty(testconfig)
     % Empty 'testconfig' or missing: Do all tests.
     testconfig = [0 2 2 1 1]
@@ -398,26 +388,26 @@ if ismember(2, testblocks)
 
         % FrameOval test:
         Screen('FrameOval', win, tc, [20 20 35 41], 4);
-        
+
         % FillArc test: Don't need extra tests for FrameArc or DrawArc as internal codepath
         % in Screen is nearly identical...
         Screen('FillArc', win, tc, [40 0 55 21], 0, 320);
-        
+
         % DrawLine test:
         Screen('DrawLine', win, tc, 0, 24, 10, 24, 2);
 
         % FramePoly test:
         Screen('FramePoly', win, tc, [0 28 ; 5 28 ; 10 28], 2);
-        
+
         % FillPoly test:
         Screen('FillPoly', win, tc, [0 32 ; 10 32 ; 5 35 ]);
-        
-        % glPoint test: 
+
+        % glPoint test:
         Screen('glPoint', win, tc, 58, 5, 3);
-        
+
         % gluDisk test:
         Screen('gluDisk', win, tc, 58, 15, 3);
-        
+
         % Flip the buffers - We don't sync to retrace to speed things up a
         % bit. We also don't clear the drawbuffer, as we're overwriting it in
         % next loop iteration at the same location anyway -- saves some time.
@@ -427,7 +417,7 @@ if ismember(2, testblocks)
             % Ok, only do it every 1000th trial to visualize...
             Screen('Flip', win, 0, 2, 2);
         end
-        
+
         % Readback drawbuffer with float precision, only
         % the red/luminance channel:
         patch = Screen('GetImage', win, [0 0 60 40], 'drawBuffer', 1, 1);
@@ -449,7 +439,7 @@ if ismember(2, testblocks)
 
         % DrawLine:
         drawncolors(6,i) = patch(24, 5);
-        
+
         % FramePoly:
         drawncolors(7,i) = patch(28, 5);
 
@@ -529,10 +519,10 @@ if ismember(3, testblocks)
 
     % Compute corresponding 'xy' matrix of output positions:
     [outx , outy] = meshgrid(0:2^floor(maxdepth/2)-1, 0:2^floor(maxdepth/2)-1);
-    
+
     % Build 2-row matrix of (x,y) pixel positions:
     xy = [outx(:)' ; outy(:)'];
-        
+
     % Compute reference patch:
     refpatch = reshape(rgbacolors(1,:), length(outy), length(outx));
 
@@ -559,7 +549,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-    
+
     % DrawLines test: All pixels in a rectangular block in top-left corner,
     % each with a different color:
 
@@ -568,13 +558,13 @@ if ismember(3, testblocks)
     % we need to add a horizontal x offset of 1 to the end-point, as using
     % exactly the same start- and endpoint would create a line of zero
     % length -- ie. no line at all.
-    lxy(:, 1:2:(2*size(xy,2))-1) = xy;    
+    lxy(:, 1:2:(2*size(xy,2))-1) = xy;
     lxy(:, 2:2:(2*size(xy,2))-0) = xy + repmat([1;0], 1, size(xy, 2));
 
     % Same replication for color values:
     cxy(:, 1:2:(2*size(xy,2))-1) = rgbacolors;
     cxy(:, 2:2:(2*size(xy,2))-0) = rgbacolors;
-    
+
     % We draw the lines without line-smoothing (=0), as it only works with
     % alpha-blending and we do not want to use alpha-blending in this test
     % block:
@@ -704,7 +694,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-    
+
     Screen('CloseAll');
 
 end % Test 3.
@@ -736,15 +726,15 @@ if ismember(4, testblocks)
 
     % Compute corresponding 'xy' matrix of output positions:
     [outx , outy] = meshgrid(0:2^floor(maxdepth/2)-1, 0:2^floor(maxdepth/2)-1);
-    
+
     % Build 2-row matrix of (x,y) pixel positions:
     xy = [outx(:)' ; outy(:)'];
-        
+
     % Compute color patch:
     colpatch = reshape(rgbacolors(1,:), length(outy), length(outx));
     colpatch = [colpatch , -colpatch];
-    
-    
+
+
     % Readout region of framebuffer:
     fbrect = [0, 0, max(xy(1,:))+1, max(xy(2,:))+1];
 
@@ -757,13 +747,13 @@ if ismember(4, testblocks)
         % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
         teximg = uint8(colpatch * 255);
     end
-    
+
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
     fbrect = Screen('Rect', tex);
 
     % Now we test modulation of drawn texture pixels with the
     % 'modulateColor' argument:
-    
+
     i=0;
     mingoodbits = inf;
     % Step through range 1 down to -1, in 1/1000th decrements:
@@ -832,7 +822,7 @@ if ismember(5, testblocks)
     % Enable alpha blending in additive mode: Let's see how precise
     % addition is carried out:
     Screen('Blendfunction', win, GL_ONE, GL_ONE);
-    
+
     % Convert testcolors to matrix of RGBA quadruples -- Most batch drawing
     % commands only accept RGB or RGBA, not pure Luminance:
     rgbacolors = [ repmat(testcolors, 3, 1) ; ones(1, length(testcolors)) ];
@@ -887,12 +877,12 @@ if ismember(5, testblocks)
         for odc=1:nroverdraws
             Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], [mc mc mc alpha]);
         end
-        
+
         % While the GPU does its thing, we compute the Matlab reference
         % patch:
-        
+
         refpatch = zeros(size(colpatch));
-        
+
         for odc=1:nroverdraws
             % MK: This is needed for ATI X1600 under Tiger to emulate the known color clamping bug: refpatch = max(0, min(1, (refpatch + colpatch * mc * alpha)));
             refpatch = (refpatch + colpatch * mc * alpha);
@@ -903,7 +893,7 @@ if ismember(5, testblocks)
         % Evaluate and log:
         [dummy, minv, maxv(i), goodbits] = comparePatches(plotit, [], testname, maxdepth, refpatch, fbrect);
         mingoodbits = min([mingoodbits, goodbits]);
-        
+
         % Visualize and clear buffer back to zero aka black:
         Screen('Flip', win, 0, 0, 2);
     end
@@ -916,7 +906,7 @@ if ismember(5, testblocks)
     end
 
     Screen('Close', tex);
-        
+
     Screen('CloseAll');
 end % Test 5.
 

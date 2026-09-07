@@ -32,7 +32,7 @@ function ProceduralGaborDemo(benchmark, nonsymmetric)
 %
 % Typical results on a MacBookPro with Radeon X1600 under OS/X 10.4.11 are:
 % Accuracy: Error wrt. Matlab reference code is 0.0005536900, i.e., about
-% 1 part in 2000, equivalent to a perfect display on a gfx-system with 11 bit 
+% 1 part in 2000, equivalent to a perfect display on a gfx-system with 11 bit
 % DAC resolution. Note that errors scale with spatial frequency and
 % absolute magnitude, so real-world errors are usually smaller for typical
 % stimuli. This is just the error, given the settings hardcoded in this script.
@@ -94,16 +94,6 @@ end
 
 % Close previous figure plots:
 close all;
-
-% Octave's new plotting backend 'fltk' interferes with Screen(),
-% due to internal use of OpenGL. Problem is it changes the
-% bound OpenGL rendering context behind our back and we
-% don't protect ourselves against this yet. Switch plotting backend
-% to good'ol gnuplot to work around this issue until we fix it properly
-% inside Screen():
-if IsOctave && exist('graphics_toolkit')
-    graphics_toolkit ('gnuplot');
-end
 
 % Default settings, and unit color range:
 PsychDefaultSetup(2);

@@ -19,7 +19,7 @@ function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device, reqlate
 %
 % wavfilename = Name of a .wav sound file to store the recorded sound to.
 %               If left out, sound won't be stored to filesystem.
-% 
+%
 % voicetrigger = If set to a non-zero threshold value, the driver will wait
 %                for the sound signal to exceed the specified voicetrigger threshold
 %                level before it starts capturing audio data.
@@ -81,14 +81,6 @@ end
 
 if nargin < 6 || isempty(channels)
     channels = 2;
-end
-
-% Workaround broken qt plotting on some Octave setups:
-if IsOctave && exist('graphics_toolkit') %#ok<EXIST>
-    try
-        graphics_toolkit ('fltk');
-    catch
-    end
 end
 
 % Wait for release of all keys on keyboard:
