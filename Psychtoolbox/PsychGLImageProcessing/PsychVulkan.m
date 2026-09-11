@@ -175,9 +175,63 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         return;
     end
 
-    % Special present code for macOS, to work around Apple's broken Metal
+    % Special present code for macOS Apple Silicon, to work around Apple's broken Metal
     % implementation and other macOS bugs:
     if cmd == 2
+        % Execute flip operation via a Vulkan Present operation at the appropriately
+        % scheduled requested visual stimulus onset time:
+        win = varargin{1};
+        vwin = varargin{2};
+        tWhen = varargin{3};
+
+        if varargin{4} == 0
+            doTimestamp = 2; % High precision system-provided scheduling/timestamping if possible.
+        else
+            doTimestamp = 0;
+        end
+
+        % Present and maybe get an ok precision and not too unreliable timestamp from Vulkan driver:
+        predictedOnset = PsychVulkanCore('Present', vwin, tWhen, doTimestamp);
+        vblTime = GetSecs;
+
+        % If predictedOnset is valid, use it. Otherwise fall back to vblTime:
+        if predictedOnset > 0
+            % Valid timestamp from Vulkan? Validate a bit and warn if not:
+            if verbosity > 6
+                fprintf('PsychVulkan-DEBUG: Delta between Vulkan and reference timestamps is %f usecs.\n', 1e6 * (predictedOnset - vblTime));
+            end
+        elseif predictedOnset == 0
+            % Vulkan timestamping returned bogus timestamp zero, but no diagnosed failure.
+            % Use what we got from Screen() or GetSecs():
+            predictedOnset = vblTime;
+
+            if verbosity > 1
+                fprintf('PsychVulkan-WARNING: Vulkan timestamping failed. Falling back to reference timestamp %f secs. Timing or visual stimulation might be broken.\n', vblTime);
+            end
+        else
+            % Error code timestamp -1 returned.
+            if doTimestamp
+                % We can't recover in a meaningful way from that, just pass it through...
+                if verbosity > 1
+                    fprintf('PsychVulkan-WARNING: Vulkan timestamping failed completely. Returning invalid timestamp -1.\n');
+                end
+            else
+                % No timestamp requested, so return the "no timestamp"
+                % timestamps == zero:
+                predictedOnset = 0;
+            end
+        end
+
+        % Inject vblTime and visual stimulus onset time into Screen(), for usual handling
+        % and reporting back to usercode via Screen('Flip'), also current beamposition:
+        Screen('Hookfunction', win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
+
+        return;
+    end % Of macOS Apple Silicon special code.
+
+    % Special present code for macOS for IntelMac, to work around Apple's broken Metal
+    % implementation and other macOS bugs:
+    if cmd == 3
         % Execute flip operation via a Vulkan Present operation at the appropriately
         % scheduled requested visual stimulus onset time:
         win = varargin{1};
@@ -241,7 +295,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         Screen('Hookfunction', win, 'SetOneshotFlipResults', '', vblTime, predictedOnset, [], winfo.Beamposition);
 
         return;
-    end % Of macOS special code.
+    end % Of macOS IntelMac special code.
 end % Of fast-path dispatch.
 
 % Slow path dispatch:
@@ -1071,7 +1125,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             error('PsychVulkan-ERROR: macOS Vulkan does not provide builtin timing support. Game over!');
         end
 
-        cmdString = sprintf('PsychVulkan(2, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
+        if IsARM(1)
+            % Apple Silicon - No PsychtoolboxKernelDriver, cut out pointless code for that:
+            cmdString = sprintf('PsychVulkan(2, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
+        else
+            % Intel Macs:
+            cmdString = sprintf('PsychVulkan(3, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
+        end
     else
         % Well working operating systems:
         cmdString = sprintf('PsychVulkan(0, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
