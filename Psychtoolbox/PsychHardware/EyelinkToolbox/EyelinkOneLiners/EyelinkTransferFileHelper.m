@@ -10,6 +10,8 @@ function EyelinkTransferFileHelper(el, edfFile)
 
 % History:
 % 12-Nov-2025   mk  Written. Based on SR-Research nested function transfer().
+% 16-Jun-2026   js  Add EyeLink 3 support. Transfer EDF and vFiles (if any) to
+%                   the current working directory.
 
 try
     % If really connected to EyeLink, not just dummy connected:
@@ -31,7 +33,7 @@ try
         % status = Eyelink('ReceiveFile', [], newName, 0);
 
         % [status =] Eyelink('ReceiveFile',['src'], ['dest'], ['dest_is_path'])
-        status = Eyelink('ReceiveFile');
+        status = Eyelink('ReceiveFile', edfFile, '', 2);
 
         % Check if EDF file has been transferred successfully and print file size in Matlab's Command Window
         if status > 0

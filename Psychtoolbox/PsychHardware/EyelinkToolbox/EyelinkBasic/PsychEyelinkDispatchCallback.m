@@ -1,5 +1,5 @@
 function rc = PsychEyelinkDispatchCallback(callArgs, msg)
-% PsychEyelinkDispatchCallback implementes the EyeLink Core Graphics part
+% PsychEyelinkDispatchCallback implements the EyeLink Core Graphics part
 % of the EyeLink API. This "Core Graphics" part of our API is responsible
 % for handling the times when the API and Host PC takes control of the eye
 % tracking procedures. This includes the functionality to stream camera
@@ -10,7 +10,7 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 % implemented herewith also handles the playback of feedback sounds to
 % the experimenter and participant for guiding these interactive
 % procedures. During these modes of operation, this function also
-% implements the forwarding of kepresses to the Host PC that are registered
+% implements the forwarding of key presses to the Host PC that are registered
 % on the computer's keyboard which is running this implementation. The
 % purpose of this is to make sure that bost Host and Display PCs are
 % operating as identically in these modes of operation.
@@ -70,6 +70,20 @@ function rc = PsychEyelinkDispatchCallback(callArgs, msg)
 %               the imaging pipeline, especially with external display
 %               backends like Vulkan, and thereby on macOS for Apple
 %               Silicon Macs!
+% 20. 5.2026    Merged in compatibility for SR Research Ltd. Display API /
+%               DevKit v2.2, which includes support for EyeLink 3.
+% 01. 6.2026    Proper camera image scaling by EyelinkDrawCameraImage.
+% 24. 6.2026    Regularly clear the MS Windows message queue with
+%               EyelinkClearMsgQueue to prevent the OS from abruptly
+%               terminating the application.
+% 10. 7.2026    Simplify the creation of 'rc' in response to 'eyecmd' 16.
+% 15. 7.2026    Disable draw instructions when switching between camera
+%               view and calibration modes.
+% 21. 7.2026    Move non-native callback for Eyelink('Shutdown') out of switch
+%               statement & close to the start of master function. This avoids
+%               false EYELINK: WARNING! messages if shutdown preceeds full
+%               PTB initialisation.
+%
 
 global eyelinkanimationtarget; %#ok<GVMIS>
 
@@ -83,6 +97,7 @@ persistent calxy;
 persistent imgtitle;
 persistent eyewidth;
 persistent eyeheight;
+persistent eyesubrect;
 
 % Cached(!) eyelink stucture containing keycodes
 persistent el;
@@ -138,6 +153,33 @@ if ~isnumeric(callArgs) && ~isstruct(callArgs)
     error('"callArgs" argument must be a EyelinkInitDefaults struct or double vector!');
 end
 
+% Non-native callback, from Eyelink('Shutdown') for runtime cleanup
+%
+if isnumeric(callArgs) && -1 == callArgs(1)
+
+    if Eyelink('Verbosity') >= 5
+        fprintf('PsychEyelinkDispatchCallback: eyecmd == -1; Runtime cleanup\n');
+    end
+
+    % Using the Snd() path for audio output?
+    if ~isempty(el) && isfield(el, 'ppa_sndhandle') && ~isempty(el.ppa_sndhandle)
+        % Let Snd() fully detach from the sound device:
+        Snd('Close', 1);
+
+        % Close sound device:
+        PsychPortAudio('Close', el.ppa_sndhandle);
+        el.ppa_sndhandle = [];
+    end
+
+    % Clear all persistent and local variables, effectively resetting all:
+    clear variables;
+
+    % Done with cleanup / shutdown:
+    rc = 0;
+    return;
+
+end  % Non-native callback from Eyelink('Shutdown').
+
 % Eyelink el struct provided?
 if isstruct(callArgs) && isfield(callArgs,'window')
     % Check if el.window subfield references a valid window:
@@ -190,9 +232,9 @@ if isempty(beep_waveforms)
     end
 end
 
-% Not an eyelink struct.  Either a 4 component vector from Eyelink(), or something wrong:
-if length(callArgs) ~= 4
-    error('Invalid "callArgs" received from Eyelink() Not a 4 component double vector as expected!');
+% Not an eyelink struct.  Either a 4 or 6 component vector from Eyelink(), or something wrong:
+if length(callArgs) ~= 4 && length(callArgs) ~= 6
+    error('Invalid "callArgs" received from Eyelink() Not a 4 or 6 component double vector as expected!');
 end
 
 % Extract command code:
@@ -202,6 +244,11 @@ if isempty(eyewin) && eyecmd ~= 3
     warning('Got called as callback function from Eyelink() but usercode has not set a valid target onscreen window handle yet! Aborted.'); %#ok<WNTAG>
     return;
 end
+
+% GetMouse workaround to stop MS Windows from thinking that the PTB window is
+% unresponsive. Tap the window at least once per second. GetMouse will clear
+% the event queue.
+if eyecmd ~= 16 , EyelinkClearMsgQueue ; end
 
 % (Re)set Flag for new camera image
 newcamimage = 0;
@@ -237,7 +284,7 @@ switch eyecmd
         else
             imgtitle = msg;
         end
-        needsupdate = 1;
+        needsupdate = 0;
         
     case 5  % Draw Cal Target
         if Eyelink('Verbosity') >= 5
@@ -268,7 +315,7 @@ switch eyecmd
         if inDrift
             drawInstructions = 0;
         else
-            drawInstructions = 1;
+            drawInstructions = any( [ 1 , 2 ] == Eyelink( 'CurrentMode' ) ) ;
         end
         clearScreen=1;
         needsupdate = 1;
@@ -280,7 +327,7 @@ switch eyecmd
         eyewidth  = callArgs(2);
         eyeheight = callArgs(3);
         ineyeimagemodedisplay=1;
-        drawInstructions=1;
+        drawInstructions= 0 ;
         needsupdate = 1;
         
     case 9  % Exit Image Display
@@ -289,7 +336,7 @@ switch eyecmd
         end
         clearScreen=1;
         ineyeimagemodedisplay=0;
-        drawInstructions=1;
+        drawInstructions= 0 ;
         needsupdate = 1;
         
     case 10 % Erase Cal Target
@@ -324,7 +371,7 @@ switch eyecmd
             inDrift = 0;
             drawInstructions = 0;
         else
-            drawInstructions = 1;
+            drawInstructions = any( [ 1 , 2 ] == Eyelink( 'CurrentMode' ) ) ;
         end
         
         clearScreen=1;
@@ -390,39 +437,15 @@ switch eyecmd
         [width, height]=Screen('WindowSize', eyewin);
         [x,y, buttons] = GetMouse(eyewin);
         HideCursor(eyewin);
-        if find(buttons)
-            rc = [width , height, x , y,  dw , dh , 1];
-        else
-            rc = [width , height, x , y , dw , dh , 0];
-        end
+        
+        rc = [ width , height , x , y , dw , dh , any( buttons ) ] ;
+        
         % add by NJ to prevent flashing of text in drift correct
     case 17 % Non-native callback, from PsychEyelink_setup_cal_display()
         if Eyelink('Verbosity') >= 5
             fprintf('PsychEyelinkDispatchCallback: eyecmd == 17; Flag in drift check/correction mode\n');
         end
         inDrift = 1;
-    
-    case -1 % Non-native callback, from Eyelink('Shutdown') for runtime cleanup
-        if Eyelink('Verbosity') >= 5
-            fprintf('PsychEyelinkDispatchCallback: eyecmd == -1; Runtime cleanup\n');
-        end
-
-        % Using the Snd() path for audio output?
-        if isfield(el, 'ppa_sndhandle') && ~isempty(el.ppa_sndhandle)
-            % Let Snd() fully detach from the sound device:
-            Snd('Close', 1);
-
-            % Close sound device:
-            PsychPortAudio('Close', el.ppa_sndhandle);
-            el.ppa_sndhandle = [];
-        end
-
-        % Clear all persistent and local variables, effectively resetting all:
-        clear variables;
-
-        % Done with cleanup / shutdown:
-        rc = 0;
-        return;
 
     otherwise % Unknown Command
         fprintf('PsychEyelinkDispatchCallback: Unknown eyelink command (%i)\n', eyecmd);
@@ -450,13 +473,14 @@ if newcamimage      % New image frame received from EyeLink camera stream
     eyeimgptr = callArgs(2);
     eyewidth  = callArgs(3);
     eyeheight = callArgs(4);
+    eyesubrect = [0, 0, callArgs(5), callArgs(6)];
     
     % Creates a new or reuses an existing PTB texture for the cam image
     eyelinktex = Screen('SetOpenGLTextureFromMemPointer', eyewin, eyelinktex, eyeimgptr, eyewidth, eyeheight, 4, 0, [], GL_RGBA8, GL_RGBA, hostDataFormat);
 end
 
 if ~isempty(eyelinktex) && ineyeimagemodedisplay==1     % Draw cam image and caption
-    [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle);
+    [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, eyesubrect);
 end
 
 if ~isempty(calxy)  % Draw Cal Target
@@ -507,16 +531,18 @@ end
         Screen(eyewin,'TextSize',oldFontSize);
     end
 
-    function [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle)
+    function [imgtitle, dw, dh] = EyelinkDrawCameraImage(eyewin, el, eyelinktex, imgtitle, eyesubrect)
         eyerect=Screen('Rect', eyelinktex);
         % we could cash some of the below values....
         wrect=Screen('Rect', eyewin);
-        width = Screen('WindowSize', eyewin);
-        dw=round(el.eyeimgsize/100*width);
-        dh=round(dw * eyerect(4)/eyerect(3));
+        [ width , height ] = Screen( 'WindowSize' , eyewin ) ;
+        
+        scaling = ( el.eyeimgsize/100 * width ) / el.eyeimgmax ;
+        dw = round( scaling * eyesubrect( 3 ) ) ;
+        dh = round( scaling * eyesubrect( 4 ) ) ;
+        
         drect=[ 0 0 dw dh ];
         drect=CenterRect(drect, wrect);
-        tx = drect(1);
         ty = drect(4) + el.imgtitlefontsize;
 
         if ~isempty(imgtitle)
@@ -531,7 +557,9 @@ end
         for it = 0:drawScreens
             try
                 Screen('SelectStereoDrawBuffer', eyewin, it); % select current-eye window
-                Screen('DrawTexture', eyewin, eyelinktex, [], drect);
+                Screen('DrawTexture', eyewin, eyelinktex, eyesubrect, drect);
+                offsetBoundsRect = Screen('TextBounds', eyewin, imgtitle);
+                tx = ( width + offsetBoundsRect( 1 ) - offsetBoundsRect( 3 ) ) / 2 ;
                 Screen('DrawText', eyewin, imgtitle, tx, ty, el.imgtitlecolour);
             catch
                 fprintf('EyelinkDrawCameraImage:error \n');
@@ -543,16 +571,21 @@ end
             Screen('TextFont', eyewin, otf);
             Screen('TextSize', eyewin, ots);
         end
+
+        if ~isempty(imgtitle) && contains(imgtitle, 'Marker')
+            x = width / 2 .* [ 1 , 1 , 1 , 1 ] ;
+            y = floor( 0.02 * height ) .* [ 0 , 1 , -1 , 0 ] + [ 0 , 0 , height , height ] ;
+            Screen('DrawLines', eyewin, [ x ; y ], 2, el.msgfontcolour);
+        end
     end
 
     function EyelinkDrawCalibrationTarget(eyewin, el, calxy, eyelinkanimationtarget)
-        width = Screen('WindowSize', eyewin);
+        [ width , height ] = Screen( 'WindowSize' , eyewin ) ;
 
         % Set drawScreens 0 for mono modes, 1 for stereo modes:
         drawScreens = double(el.winInfo.StereoMode ~= 0);
         for it = 0:drawScreens
             Screen('SelectStereoDrawBuffer', eyewin, it); % select eye window
-
             switch el.calTargetType
                 case 'video'
                     if( ~isempty(el.calAnimationTargetFilename) && ~isempty(eyelinkanimationtarget))

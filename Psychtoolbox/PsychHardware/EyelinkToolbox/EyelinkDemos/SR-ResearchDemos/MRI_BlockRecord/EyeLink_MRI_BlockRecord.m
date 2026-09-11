@@ -38,7 +38,11 @@ try
     
     % Initialize EyeLink connection (dummymode = 0) or run in "Dummy Mode" without an EyeLink connection (dummymode = 1);
     dummymode = 0;
-    EyelinkInit(dummymode); % Initialize EyeLink connection
+    if 0 == EyelinkInit(dummymode)  % Initialize EyeLink connection
+        fprintf( 'Failed to connect with EyeLink' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     status = Eyelink('IsConnected');
     if status < 1 % If EyeLink not connected
         dummymode = 1; 
@@ -99,10 +103,10 @@ try
     Eyelink('Command', 'link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,BUTTON,FIXUPDATE,INPUT');
     % Select which sample data is saved in EDF file or available online. Include everything just in case
     if ELsoftwareVersion > 3  % Check tracker version and include 'HTARGET' to save head target sticker data for supported eye trackers
-        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,RAW,AREA,HTARGET,GAZERES,BUTTON,STATUS,INPUT');
+        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,PUPIL,AREA,HTARGET,GAZERES,BUTTON,STATUS,INPUT');
         Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,HTARGET,STATUS,INPUT');
     else
-        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,RAW,AREA,GAZERES,BUTTON,STATUS,INPUT');
+        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,PUPIL,AREA,GAZERES,BUTTON,STATUS,INPUT');
         Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,INPUT');
     end
     
@@ -191,7 +195,11 @@ try
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
+    if EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     
     
     %% STEP 6: START BLOCK LOOP; DRAW FEEDBACK GRAPHICS/TEXT ON HOST PC; DRIFT-CHECK; START RECORDING; DRAW CROSSHAIRS ON SCREEN 
@@ -216,7 +224,11 @@ try
         
         % Perform a drift check/correction. EyeLink 1000 and 1000 Plus perform a drift-check by default
         % Optionally provide x y target location, otherwise target is presented at screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf( 'Abort drift correction.\n' )
+            EyelinkCleanupHelper; % Abort experiment
+            return
+        end
         
         % Write TRIALID message to EDF file: marks the start of first trial for DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Defining the Start and End of a Trial.
@@ -296,7 +308,12 @@ try
                         blockOnset = GetSecs; % Block onset time
                         vbl = Screen('Flip', window); % Present stimulus
                         break;
+                    elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                        fprintf( 'Abort trial.\n' )
+                        EyelinkCleanupHelper; % Abort experiment
+                        return
                     end
+                    EyelinkClearMsgQueue ;
                 end
             else % All subsequent trials in block
                 vbl = Screen('Flip', window, blockOnset + (trialDur*(i-1)) - 0.5*ifi); % Present stimulus. Allow half flip interval for precise flip timing)
@@ -363,6 +380,7 @@ try
                         Eyelink('Message', 'BLOCK_END');
                         break;
                     end
+                    EyelinkClearMsgQueue ;
                 end
             end
             

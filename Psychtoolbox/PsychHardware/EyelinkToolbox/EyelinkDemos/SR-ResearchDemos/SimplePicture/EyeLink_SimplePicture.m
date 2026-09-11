@@ -31,7 +31,9 @@ try
     % Call this before initializing an EyeLink connection if you want to use a non-default IP address for the Host PC.
     %Eyelink('SetAddress', '10.10.10.240');
     
-    EyelinkInit(dummymode); % Initialize EyeLink connection
+    if 0 == EyelinkInit(dummymode)  % Initialize EyeLink connection
+        error( 'Failed to connect with EyeLink' )
+    end
     status = Eyelink('IsConnected');
     if status < 1 % If EyeLink not connected
         dummymode = 1; 
@@ -89,10 +91,10 @@ try
     Eyelink('Command', 'link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,BUTTON,FIXUPDATE,INPUT');
     % Select which sample data is saved in EDF file or available online. Include everything just in case
     if ELsoftwareVersion > 3  % Check tracker version and include 'HTARGET' to save head target sticker data for supported eye trackers
-        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,RAW,AREA,HTARGET,GAZERES,BUTTON,STATUS,INPUT');
+        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,PUPIL,AREA,HTARGET,GAZERES,BUTTON,STATUS,INPUT');
         Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,HTARGET,STATUS,INPUT');
     else
-        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,RAW,AREA,GAZERES,BUTTON,STATUS,INPUT');
+        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,PUPIL,AREA,GAZERES,BUTTON,STATUS,INPUT');
         Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,INPUT');
     end
     
@@ -170,7 +172,10 @@ try
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
 
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);    
+    if EyelinkDoTrackerSetup(el)
+        fprintf('Abort tracker setup.\n')
+        error('Abort tracker setup.')
+    end
     
     %% STEP 5: TRIAL LOOP.
     spaceBar = KbName('space');% Identify keyboard key code for spacebar to end each trial later on
@@ -217,7 +222,10 @@ try
 
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf('Abort drift correction.\n')
+            error('Abort drift correction.')
+        end
 
         %STEP 5.2: START RECORDING
         
@@ -271,6 +279,9 @@ try
                 Eyelink('Message', 'KEY_PRESSED');
                 reactionTime = round((RtEnd-RtStart)*1000); % Calculate RT from stimulus onset
                 break; % Exit while loop
+            elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf('Abort trial.\n')
+                error('Abort trial.')
             end
             % End trial if button 5 on a supported Host PC button box is pressed
             % Use (button number * -1) + 1 to determine bitshift value
@@ -284,6 +295,7 @@ try
                     break; % Exit while loop
                 end
             end
+            EyelinkClearMsgQueue ;
         end % End of while loop
         
         % Draw blank screen at end of trial
@@ -331,6 +343,7 @@ try
     EyelinkTransferFileHelper(el, edfFile);
     EyelinkCleanupHelper;
 catch % If syntax error is detected
+    EyelinkCleanupHelper;
     % Print error message and line number in Matlab's Command Window
     psychrethrow(psychlasterror);
 end

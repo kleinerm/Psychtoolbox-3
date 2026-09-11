@@ -8,6 +8,7 @@
         cburns@berkeley.edu         cdb
         E.Peters@ai.rug.nl          emp
         f.w.cornelissen@rug.nl      fwc
+        brian@sr-research.com       br
 
     PLATFORMS:    All.
 
@@ -15,6 +16,7 @@
 
         11/21/05  cdb        Created based on old EyeMex.c and ScreenSynopsis.c.
         15/06/06  fwc        Added few functions and small changes to synopsis.
+        19/11/24  br         Added ClockBase, SetOptions, revised ReceiveFile, GetQueuedData.
 
 */
 
@@ -43,6 +45,7 @@ void InitializeSynopsis()
 
     // Init or close eyelink
     synopsis[i++] = "\n% Initialize or shutdown Eyelink connection:";
+    synopsis[i++] = "[old_clock_base =] Eyelink('ClockBase' [, clock_base])";
     synopsis[i++] = "[status =] Eyelink('Initialize' [, displayCallbackFunction])";
     synopsis[i++] = "[status =] Eyelink('InitializeDummy' [, displayCallbackFunction])";
     synopsis[i++] = "[status =] Eyelink('IsConnected')";
@@ -50,9 +53,10 @@ void InitializeSynopsis()
     synopsis[i++] = "Eyelink('Shutdown')";
     synopsis[i++] = "oldlevel = Eyelink('Verbosity' [,level]);";
     synopsis[i++] = "Eyelink('TestSuite')";
+    synopsis[i++] = "[status =] Eyelink('SetOptions', 'options')";
     synopsis[i++] = "[status =] Eyelink('OpenFile', filename [, dontOpenExisting=0])";
     synopsis[i++] = "[status =] Eyelink('CloseFile')";
-    synopsis[i++] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['dest_is_path'])";
+    synopsis[i++] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['options'])";
     synopsis[i++] = "[status =] Eyelink('SendFile', src, dest, dest_is_path)";
 
     // Calibration
@@ -76,7 +80,7 @@ void InitializeSynopsis()
     synopsis[i++] = "type = Eyelink('GetNextDataType')";
     synopsis[i++] = "item = Eyelink('GetFloatData', type)";
     synopsis[i++] = "[item, raw] = Eyelink('GetFloatDataRaw', type [, eye])";
-    synopsis[i++] = "[samples, events, drained] = Eyelink('GetQueuedData'[, eye])";
+    synopsis[i++] = "[samples, events, drained, el3Samples] = Eyelink('GetQueuedData'[, eye])";
 
     // Misc eyelink communication:
     synopsis[i++] = "\n% Miscellaneous functions to communicate with Eyelink:";
@@ -88,6 +92,7 @@ void InitializeSynopsis()
     synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
     synopsis[i++] = "[status =] Eyelink('RequestTime')";
     synopsis[i++] = "[time =] Eyelink('ReadTime')";
+    synopsis[i++] = "[current_time_usec] = Eyelink('CurrentTime_uSec')";
     synopsis[i++] = "[mode =] Eyelink('TrackerMode')";
     synopsis[i++] = "[result, reply =] Eyelink('ReadFromTracker', VariableName)";
 

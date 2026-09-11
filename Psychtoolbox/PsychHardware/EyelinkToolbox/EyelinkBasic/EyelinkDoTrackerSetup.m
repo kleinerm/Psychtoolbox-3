@@ -30,6 +30,7 @@ function result=EyelinkDoTrackerSetup(el, sendkey)
 % 15-10-02  fwc added sendkey variable that allows to go directly into a particular mode
 % 22-06-06  fwc OSX-ed
 % 15-06-10  fwc added code for new callback version
+% 13-07-26  js  Refactored nested functions into local functions.
 global eyelinkanimationtarget
 
 if nargin < 1
@@ -72,35 +73,35 @@ else
     return
 end
 
+end  % EyelinkDoTrackerSetup
 
-    function eyelinkanimationtarget = initmoviestruct()
-        eyelinkanimationtarget.init = false;
-        eyelinkanimationtarget.movie = [];
-        eyelinkanimationtarget.movieduration = [];
-        eyelinkanimationtarget.fps = [];
-        eyelinkanimationtarget.imgw = [];
-        eyelinkanimationtarget.imgh = [];
-        eyelinkanimationtarget.calxy = [];
+
+function eyelinkanimationtarget = initmoviestruct()
+    eyelinkanimationtarget.init = false;
+    eyelinkanimationtarget.movie = [];
+    eyelinkanimationtarget.movieduration = [];
+    eyelinkanimationtarget.fps = [];
+    eyelinkanimationtarget.imgw = [];
+    eyelinkanimationtarget.imgh = [];
+    eyelinkanimationtarget.calxy = [];
+end
+
+function eyelinkanimationtarget = loadanimationmovie(el, eyelinkanimationtarget)
+    [movie, movieduration, fps, imgw, imgh] = Screen('OpenMovie', el.window, el.calAnimationTargetFilename, el.calAnimationOpenAsync, el.calAnimationOpenPreloadSecs, el.calAnimationOpenSpecialFlags1);
+    eyelinkanimationtarget.init = true;
+    eyelinkanimationtarget.movie = movie;
+    eyelinkanimationtarget.movieduration = movieduration;
+    eyelinkanimationtarget.fps = fps;
+    eyelinkanimationtarget.imgw = imgw;
+    eyelinkanimationtarget.imgh = imgh;
+end
+
+function eyelinkanimationtarget = cleanupmovie(el, eyelinkanimationtarget)
+    texkill = Screen('GetMovieImage', el.window, eyelinkanimationtarget.movie, el.calAnimationWaitTexClose);
+    Screen('PlayMovie', eyelinkanimationtarget.movie, 0, el.calAnimationLoopParam);
+    if texkill > 0
+        Screen('Close', texkill);
     end
-
-    function eyelinkanimationtarget = loadanimationmovie(el, eyelinkanimationtarget)
-        [movie, movieduration, fps, imgw, imgh] = Screen('OpenMovie', el.window, el.calAnimationTargetFilename, el.calAnimationOpenAsync, el.calAnimationOpenPreloadSecs, el.calAnimationOpenSpecialFlags1);
-        eyelinkanimationtarget.init = true;
-        eyelinkanimationtarget.movie = movie;
-        eyelinkanimationtarget.movieduration = movieduration;
-        eyelinkanimationtarget.fps = fps;
-        eyelinkanimationtarget.imgw = imgw;
-        eyelinkanimationtarget.imgh = imgh;
-    end
-
-    function eyelinkanimationtarget = cleanupmovie(el, eyelinkanimationtarget)
-        texkill = Screen('GetMovieImage', el.window, eyelinkanimationtarget.movie, el.calAnimationWaitTexClose);
-        Screen('PlayMovie', eyelinkanimationtarget.movie, 0, el.calAnimationLoopParam);
-        if texkill > 0
-            Screen('Close', texkill);
-        end
-        Screen('CloseMovie', eyelinkanimationtarget.movie);
-        eyelinkanimationtarget = initmoviestruct();
-    end
-
+    Screen('CloseMovie', eyelinkanimationtarget.movie);
+    eyelinkanimationtarget = initmoviestruct();
 end

@@ -101,7 +101,11 @@ try
     
     % Initialize EyeLink connection (dummymode = 0) or run in "Dummy Mode" without an EyeLink connection (dummymode = 1);
     dummymode = 0;
-    EyelinkInit(dummymode); % Initialize EyeLink connection
+    if 0 == EyelinkInit(dummymode)  % Initialize EyeLink connection
+        fprintf( 'Failed to connect with EyeLink' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     status = Eyelink('IsConnected');
     if status < 1 % If EyeLink not connected
         dummymode = 1; 
@@ -162,10 +166,10 @@ try
     Eyelink('Command', 'link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,BUTTON,FIXUPDATE,INPUT');
     % Select which sample data is saved in EDF file or available online. Include everything just in case
     if ELsoftwareVersion > 3  % Check tracker version and include 'HTARGET' to save head target sticker data for supported eye trackers
-        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,RAW,AREA,HTARGET,GAZERES,BUTTON,STATUS,INPUT');
+        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,PUPIL,AREA,HTARGET,GAZERES,BUTTON,STATUS,INPUT');
         Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,HTARGET,STATUS,INPUT');
     else
-        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,RAW,AREA,GAZERES,BUTTON,STATUS,INPUT');
+        Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,PUPIL,AREA,GAZERES,BUTTON,STATUS,INPUT');
         Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,INPUT');
     end
     
@@ -235,7 +239,11 @@ try
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    EyelinkDoTrackerSetup(el);
+    if EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        EyelinkCleanupHelper; % Abort experiment
+        return
+    end
     
     
     %% STEP 5: TRIAL LOOP.
@@ -311,7 +319,11 @@ try
         
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
-        EyelinkDoDriftCorrection(el, round(width/2), round(height/2));
+        if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
+            fprintf( 'Abort drift correction.\n' )
+            EyelinkCleanupHelper; % Abort experiment
+            return
+        end
                 
         %STEP 5.3: START RECORDING
         
@@ -428,7 +440,12 @@ try
                 % Write message to EDF file to mark the space bar press time
                 Eyelink('Message', 'KEY_PRESSED');
                 break;
-            end                       
+            elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
+                fprintf( 'Abort trial.\n' )
+                EyelinkCleanupHelper; % Abort experiment
+                return
+            end
+            EyelinkClearMsgQueue ;
         end % End of while loop
         
         % Draw blank screen at end of trial

@@ -5,18 +5,20 @@
 
     AUTHORS:
         e_flister@yahoo.com         edf
+        brian@sr-research.com       br
 
     PLATFORMS: all
 
     HISTORY:
 
         21/03/2009  edf             created it
+        06/11/2024  br              added support for FSAMPLE2 and FEVENT2 data from EyeLink 3
 
 */
 
 #include "PsychEyelink.h"
 
-static char useString[] = "[samples, events, drained] = Eyelink('GetQueuedData' [, eye])";
+static char useString[] = "[samples, events, drained, el3Samples] = Eyelink('GetQueuedData' [, eye])";
 
 static char synopsisString[] =
 "dequeues all samples and events from the link.\n"
@@ -90,6 +92,7 @@ static char synopsisString[] =
 "\t   HMARKER (originally for Eyelink2's infrared head tracking markers) and INPUT (originally for the TTL lines) are jury-rigged to hold the extra data.\n"
 "\t   You can also set file_sample_data to collect raw samples in the .edf file.\n"
 "CAUTION: It may or may not work on your setup with your tracker.\n\n"
+
 " event rows are as follows: \n"
 "\t 1: effective time of event\n"
 "\t 2: event type\n"
@@ -120,7 +123,28 @@ static char synopsisString[] =
 "\t 27: ending angular resolution x in screen pixels per visual degree\n"
 "\t 28: starting angular resolution y in screen pixels per visual degree\n"
 "\t 29: ending angular resolution y in screen pixels per visual degree\n"
-"\t 30: status (collected error and status flags from all samples in the event (only useful for EyeLink II and EyeLink1000, report CR status and tracking error). see eye_data.h.)\n\n";
+"\t 30: status (collected error and status flags from all samples in the event (only useful for EyeLink II and EyeLink1000, report CR status and tracking error). see eye_data.h.)\n\n"
+
+"EyeLink 3 sample rows are as follows:\n"
+"\t 1: eyeInHeadX[3]\n"
+"\t 2: eyeInHeadY[3]\n"
+"\t 3: headMarkerFlags\n"
+"\t 4: headRotation[3]\n"
+"\t 5: headPosition[3]\n"
+"\t 6 :headInSpaceX\n"
+"\t 7: headInSpaceY\n"
+"\t 8: unused_headInSpaceX[2]\n"
+"\t 9: unused_headInSpaceY[2]\n"
+"\t 10: hrgx\n"
+"\t 11: hrgy\n"
+"\t 12: ergx\n"
+"\t 13: ergy\n"
+"\t 14: ex[2]\n"
+"\t 15: ey[2]\n"
+"\t 16: emajor[2]\n"
+"\t 27: eminor[2]\n"
+"\t 28: eangle[2]\n"
+"\t 29: unused[20]\n\n";
 
 static char seeAlsoString[] = "";
 
@@ -150,10 +174,12 @@ static char seeAlsoString[] = "";
 PsychError EyelinkGetQueuedData(void)
 {
     FSAMPLE      fs;
+    FSAMPLE2     fs2;
     FSAMPLE_RAW  fr;
-    FEVENT       fe;
+    FEVENT2      fe2;
     int numSamples = 0, numEvents = 0, maxSamples, maxEvents, type, eye, fieldNum, index, numSampleFields, err;
     double *samples, *events;
+    double *el3Samples;
     psych_bool useEye=FALSE;
     PsychNativeBooleanType drained=(PsychNativeBooleanType)FALSE;
     char errmsg[ERR_BUFF_LEN]="";
@@ -165,7 +191,7 @@ PsychError EyelinkGetQueuedData(void)
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(0));
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
 
     // Verify eyelink is up and running
     EyelinkSystemIsConnected();
@@ -194,6 +220,8 @@ PsychError EyelinkGetQueuedData(void)
 
     samples = (double *)PsychMallocTemp(maxSamples*numSampleFields*sizeof(double)); // according to mario if OOM, ultimately calls to mxCreateNumericArray/mxMalloc will error inside matlab rather than return NULL
     events = (double *)PsychMallocTemp(maxEvents*NUM_EVENT_FIELDS*sizeof(double));
+    el3Samples = (double *)PsychMallocTemp(maxSamples*numSampleFields*sizeof(double));
+    
 
     if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: memory allocated for %d samples and %d events\n",maxSamples,maxEvents);
 
@@ -202,54 +230,54 @@ PsychError EyelinkGetQueuedData(void)
         if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: doing item of type %d\n",type);
         switch(type) {
             case SAMPLE_TYPE:
-                if (eyelink_get_float_data((ALLF_DATA*) &fs) != type) {
+                if (eyelink_get_float_data((ALLF_DATA*) &fs2) != type) {
                     PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same sample type as eyelink_get_next_data.");
                 }
                 if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on sample\n");
                 if (useEye) {
                     if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: calling get_raw\n");
                     memset(&fr, 0, sizeof(fr));
-                    if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
-                        if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: raw value error\n");
-                        snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s",
-                                 err, eyelink_get_error(err, "eyelink_get_extra_raw_values_v2"));
-                        PsychErrorExitMsg(PsychError_internal, errmsg);
-                    }
+                    // if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
+                    //     if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: raw value error\n");
+                    //     snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s",
+                    //              err, eyelink_get_error(err, "eyelink_get_extra_raw_values_v2"));
+                    //     PsychErrorExitMsg(PsychError_internal, errmsg);
+                    // }
                 }
 
                 index=PsychIndexElementFrom2DArray(numSampleFields, maxSamples, 0, numSamples++);
                 samples[index++]=(double)(FLOAT_TIME(&fs)); // 1
-                samples[index++]=(double)(fs.type); // 2
-                samples[index++]=(double)(fs.flags); // 3
-                samples[index++]=(double)(fs.px[0]); // 4
-                samples[index++]=(double)(fs.px[1]); // 5
-                samples[index++]=(double)(fs.py[0]); // 6
-                samples[index++]=(double)(fs.py[1]); // 7
-                samples[index++]=(double)(fs.hx[0]); // 8
-                samples[index++]=(double)(fs.hx[1]); // 9
-                samples[index++]=(double)(fs.hy[0]); // 10
-                samples[index++]=(double)(fs.hy[1]); // 11
-                samples[index++]=(double)(fs.pa[0]); // 12
-                samples[index++]=(double)(fs.pa[1]); // 13
-                samples[index++]=(double)(fs.gx[0]); // 14
-                samples[index++]=(double)(fs.gx[1]); // 15
-                samples[index++]=(double)(fs.gy[0]); // 16
-                samples[index++]=(double)(fs.gy[1]); // 17
-                samples[index++]=(double)(fs.rx); // 18
-                samples[index++]=(double)(fs.ry); // 19
-                samples[index++]=(double)(fs.status); // 20
-                samples[index++]=(double)(fs.input); // 21
-                samples[index++]=(double)(fs.buttons); // 22
-                samples[index++]=(double)(fs.htype); // 23
-                samples[index++]=(double)(fs.hdata[0]); // 24
-                samples[index++]=(double)(fs.hdata[1]); // 25
-                samples[index++]=(double)(fs.hdata[2]); // 26
-                samples[index++]=(double)(fs.hdata[3]); // 27
-                samples[index++]=(double)(fs.hdata[4]); // 28
-                samples[index++]=(double)(fs.hdata[5]); // 29
-                samples[index++]=(double)(fs.hdata[6]); // 30
-                samples[index++]=(double)(fs.hdata[7]); // 31
-
+                samples[index++]=(double)(fs2.type); // 2
+                samples[index++]=(double)(fs2.flags); // 3
+                samples[index++]=(double)(fs2.px[0]); // 4
+                samples[index++]=(double)(fs2.px[1]); // 5
+                samples[index++]=(double)(fs2.py[0]); // 6
+                samples[index++]=(double)(fs2.py[1]); // 7
+                samples[index++]=(double)(fs2.hx[0]); // 8
+                samples[index++]=(double)(fs2.hx[1]); // 9
+                samples[index++]=(double)(fs2.hy[0]); // 10
+                samples[index++]=(double)(fs2.hy[1]); // 11
+                samples[index++]=(double)(fs2.pa[0]); // 12
+                samples[index++]=(double)(fs2.pa[1]); // 13
+                samples[index++]=(double)(fs2.gx[0]); // 14
+                samples[index++]=(double)(fs2.gx[1]); // 15
+                samples[index++]=(double)(fs2.gy[0]); // 16
+                samples[index++]=(double)(fs2.gy[1]); // 17
+                samples[index++]=(double)(fs2.rx); // 18
+                samples[index++]=(double)(fs2.ry); // 19
+                samples[index++]=(double)(fs2.status); // 20
+                samples[index++]=(double)(fs2.input); // 21
+                samples[index++]=(double)(fs2.buttons); // 22
+                samples[index++]=(double)(fs2.htype); // 23
+                samples[index++]=(double)(fs2.hdata[0]); // 24
+                samples[index++]=(double)(fs2.hdata[1]); // 25
+                samples[index++]=(double)(fs2.hdata[2]); // 26
+                samples[index++]=(double)(fs2.hdata[3]); // 27
+                samples[index++]=(double)(fs2.hdata[4]); // 28
+                samples[index++]=(double)(fs2.hdata[5]); // 29
+                samples[index++]=(double)(fs2.hdata[6]); // 30
+                samples[index++]=(double)(fs2.hdata[7]); // 31
+                
                 if (useEye) {
                     samples[index++]=(double)(fr.raw_pupil[0]); // 32
                     samples[index++]=(double)(fr.raw_pupil[1]); // 33
@@ -270,6 +298,60 @@ PsychError EyelinkGetQueuedData(void)
                     samples[index++]=(double)(fr.raw_cr2[1]); // 48
                 }
 
+                el3Samples[index++]=(double)(fs2.eyeInHeadX[0]); // 1
+                el3Samples[index++]=(double)(fs2.eyeInHeadX[1]); // 2
+                el3Samples[index++]=(double)(fs2.eyeInHeadX[2]); // 3
+                el3Samples[index++]=(double)(fs2.eyeInHeadY[0]); // 4
+                el3Samples[index++]=(double)(fs2.eyeInHeadY[1]); // 5
+                el3Samples[index++]=(double)(fs2.eyeInHeadY[2]); // 6
+                el3Samples[index++]=(double)(fs2.headMarkerFlags); // 7
+                el3Samples[index++]=(double)(fs2.headRotation[0]); // 8
+                el3Samples[index++]=(double)(fs2.headRotation[1]); // 9
+                el3Samples[index++]=(double)(fs2.headRotation[2]); // 10
+                el3Samples[index++]=(double)(fs2.headPosition[0]); // 11
+                el3Samples[index++]=(double)(fs2.headPosition[1]); // 12
+                el3Samples[index++]=(double)(fs2.headPosition[2]); // 13
+                el3Samples[index++]=(double)(fs2.headInSpaceX); // 14
+                el3Samples[index++]=(double)(fs2.headInSpaceY); // 15
+                el3Samples[index++]=(double)(fs2.unused_headInSpaceX[0]); // 16
+                el3Samples[index++]=(double)(fs2.unused_headInSpaceX[1]); // 17
+                el3Samples[index++]=(double)(fs2.unused_headInSpaceY[0]); // 18
+                el3Samples[index++]=(double)(fs2.unused_headInSpaceY[1]); // 19
+                el3Samples[index++]=(double)(fs2.hrgx); // 20
+                el3Samples[index++]=(double)(fs2.hrgy); // 21
+                el3Samples[index++]=(double)(fs2.ergx); // 22
+                el3Samples[index++]=(double)(fs2.ergy); // 23
+                el3Samples[index++]=(double)(fs2.ex[0]); // 24
+                el3Samples[index++]=(double)(fs2.ex[1]); // 25
+                el3Samples[index++]=(double)(fs2.ey[0]); // 26
+                el3Samples[index++]=(double)(fs2.ey[1]); // 27
+                el3Samples[index++]=(double)(fs2.eminor[0]); // 28
+                el3Samples[index++]=(double)(fs2.eminor[1]); // 29
+                el3Samples[index++]=(double)(fs2.emajor[0]); // 30
+                el3Samples[index++]=(double)(fs2.emajor[1]); // 31
+                el3Samples[index++]=(double)(fs2.eangle[0]); // 32
+                el3Samples[index++]=(double)(fs2.eangle[1]); // 33
+                el3Samples[index++]=(double)(fs2.unused[0]); // 34
+                el3Samples[index++]=(double)(fs2.unused[1]); // 35
+                el3Samples[index++]=(double)(fs2.unused[2]); // 36
+                el3Samples[index++]=(double)(fs2.unused[3]); // 37
+                el3Samples[index++]=(double)(fs2.unused[4]); // 38
+                el3Samples[index++]=(double)(fs2.unused[5]); // 39
+                el3Samples[index++]=(double)(fs2.unused[6]); // 40
+                el3Samples[index++]=(double)(fs2.unused[7]); // 41
+                el3Samples[index++]=(double)(fs2.unused[8]); // 42
+                el3Samples[index++]=(double)(fs2.unused[9]); // 43
+                el3Samples[index++]=(double)(fs2.unused[10]); // 44
+                el3Samples[index++]=(double)(fs2.unused[11]); // 45
+                el3Samples[index++]=(double)(fs2.unused[12]); // 46
+                el3Samples[index++]=(double)(fs2.unused[13]); // 47
+                el3Samples[index++]=(double)(fs2.unused[14]); // 48
+                el3Samples[index++]=(double)(fs2.unused[15]); // 49
+                el3Samples[index++]=(double)(fs2.unused[16]); // 50
+                el3Samples[index++]=(double)(fs2.unused[17]); // 51
+                el3Samples[index++]=(double)(fs2.unused[18]); // 52
+                el3Samples[index++]=(double)(fs2.unused[19]); // 53
+
                 if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: sample copied\n");
                 break;
 
@@ -277,6 +359,7 @@ PsychError EyelinkGetQueuedData(void)
                 index=PsychIndexElementFrom2DArray(numSampleFields, maxSamples, 0, numSamples++);
                 for(fieldNum=0; fieldNum<numSampleFields; fieldNum++){
                     samples[index++]= (double)((fieldNum==1) ? LOST_DATA_EVENT : MISSING_DATA);
+                    el3Samples[index++]= (double)((fieldNum==1) ? LOST_DATA_EVENT : MISSING_DATA);
                 }
                 if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: did lost_data\n");
                 break;
@@ -287,41 +370,88 @@ PsychError EyelinkGetQueuedData(void)
                 break;
 
             default: // it is an event
-                if (eyelink_get_float_data((ALLF_DATA*) &fe) != type) {
+                if (eyelink_get_float_data((ALLF_DATA*) &fe2) != type) {
                     PsychErrorExitMsg(PsychError_internal, "Eyelink: GetQueuedData: eyelink_get_float_data did not return same event type as eyelink_get_next_data.");
                 }
                 if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on event\n");
                 index=PsychIndexElementFrom2DArray(NUM_EVENT_FIELDS, maxEvents, 0, numEvents++);
-                events[index++]=(double)(fe.time); // 1 %FLOAT_TIME currently a noop on events
-                events[index++]=(double)(fe.type); // 2
-                events[index++]=(double)(fe.read); // 3
-                events[index++]=(double)(fe.eye); // 4
-                events[index++]=(double)(fe.sttime); // 5
-                events[index++]=(double)(fe.entime); // 6
-                events[index++]=(double)(fe.hstx); // 7
-                events[index++]=(double)(fe.hsty); // 8
-                events[index++]=(double)(fe.gstx); // 9
-                events[index++]=(double)(fe.gsty); // 10
-                events[index++]=(double)(fe.sta); // 11
-                events[index++]=(double)(fe.henx); // 12
-                events[index++]=(double)(fe.heny); // 13
-                events[index++]=(double)(fe.genx); // 14
-                events[index++]=(double)(fe.geny); // 15
-                events[index++]=(double)(fe.ena); // 16
-                events[index++]=(double)(fe.havx); // 17
-                events[index++]=(double)(fe.havy); // 18
-                events[index++]=(double)(fe.gavx); // 19
-                events[index++]=(double)(fe.gavy); // 20
-                events[index++]=(double)(fe.ava); // 21
-                events[index++]=(double)(fe.avel); // 22
-                events[index++]=(double)(fe.pvel); // 23
-                events[index++]=(double)(fe.svel); // 24
-                events[index++]=(double)(fe.evel); // 25
-                events[index++]=(double)(fe.supd_x); // 26
-                events[index++]=(double)(fe.eupd_x); // 27
-                events[index++]=(double)(fe.supd_y); // 28
-                events[index++]=(double)(fe.eupd_y); // 29
-                events[index++]=(double)(fe.status); // 30
+                events[index++]=(double)(fe2.time); // 1 %FLOAT_TIME currently a noop on events
+                events[index++]=(double)(fe2.type); // 2
+                events[index++]=(double)(fe2.read); // 3
+                events[index++]=(double)(fe2.eye); // 4
+                events[index++]=(double)(fe2.sttime); // 5
+                events[index++]=(double)(fe2.entime); // 6
+                events[index++]=(double)(fe2.hstx); // 7
+                events[index++]=(double)(fe2.hsty); // 8
+                events[index++]=(double)(fe2.gstx); // 9
+                events[index++]=(double)(fe2.gsty); // 10
+                events[index++]=(double)(fe2.sta); // 11
+                events[index++]=(double)(fe2.henx); // 12
+                events[index++]=(double)(fe2.heny); // 13
+                events[index++]=(double)(fe2.genx); // 14
+                events[index++]=(double)(fe2.geny); // 15
+                events[index++]=(double)(fe2.ena); // 16
+                events[index++]=(double)(fe2.havx); // 17
+                events[index++]=(double)(fe2.havy); // 18
+                events[index++]=(double)(fe2.gavx); // 19
+                events[index++]=(double)(fe2.gavy); // 20
+                events[index++]=(double)(fe2.ava); // 21
+                events[index++]=(double)(fe2.avel); // 22
+                events[index++]=(double)(fe2.pvel); // 23
+                events[index++]=(double)(fe2.svel); // 24
+                events[index++]=(double)(fe2.evel); // 25
+                events[index++]=(double)(fe2.supd_x); // 26
+                events[index++]=(double)(fe2.eupd_x); // 27
+                events[index++]=(double)(fe2.supd_y); // 28
+                events[index++]=(double)(fe2.eupd_y); // 29
+                events[index++]=(double)(fe2.status); // 30
+
+                events[index++]=(double)(fe2.headInSpaceX_start); // 31
+                events[index++]=(double)(fe2.headInSpaceY_start); // 32
+                events[index++]=(double)(fe2.headInSpaceX_end); // 33
+                events[index++]=(double)(fe2.headInSpaceY_end); // 34
+                events[index++]=(double)(fe2.headInSpaceX_avg); // 35
+                events[index++]=(double)(fe2.headInSpaceY_avg); // 36
+                events[index++]=(double)(fe2.eyeInHeadX_start); // 37
+                events[index++]=(double)(fe2.eyeInHeadY_start); // 38
+                events[index++]=(double)(fe2.eyeInHeadX_end); // 39
+                events[index++]=(double)(fe2.eyeInHeadY_end); // 40
+                events[index++]=(double)(fe2.eyeInHeadX_avg); // 41
+                events[index++]=(double)(fe2.eyeInHeadY_avg); // 42
+                events[index++]=(double)(fe2.headRotationX_start); // 43
+                events[index++]=(double)(fe2.headRotationY_start); // 44
+                events[index++]=(double)(fe2.headRotationZ_start); // 45
+                events[index++]=(double)(fe2.headRotationX_end); // 46
+                events[index++]=(double)(fe2.headRotationY_end); // 47
+                events[index++]=(double)(fe2.headRotationZ_end); // 48
+                events[index++]=(double)(fe2.headRotationX_avg); // 49
+                events[index++]=(double)(fe2.headRotationY_avg); // 50
+                events[index++]=(double)(fe2.headRotationZ_avg); // 51
+                events[index++]=(double)(fe2.headPositionX_start); // 52
+                events[index++]=(double)(fe2.headPositionY_start); // 53
+                events[index++]=(double)(fe2.headPositionZ_start); // 54
+                events[index++]=(double)(fe2.headPositionX_end); // 55
+                events[index++]=(double)(fe2.headPositionY_end); // 56
+                events[index++]=(double)(fe2.headPositionZ_end); // 57
+                events[index++]=(double)(fe2.headPositionX_avg); // 58
+                events[index++]=(double)(fe2.headPositionY_avg); // 59
+                events[index++]=(double)(fe2.headPositionZ_avg); // 60
+                events[index++]=(double)(fe2.unused[0]); // 61
+                events[index++]=(double)(fe2.unused[1]); // 62
+                events[index++]=(double)(fe2.unused[2]); // 63
+                events[index++]=(double)(fe2.unused[3]); // 64
+                events[index++]=(double)(fe2.unused[4]); // 65
+                events[index++]=(double)(fe2.unused[5]); // 66
+                events[index++]=(double)(fe2.unused[6]); // 67
+                events[index++]=(double)(fe2.unused[7]); // 68
+                events[index++]=(double)(fe2.unused[8]); // 69
+                events[index++]=(double)(fe2.unused[9]); // 70
+                events[index++]=(double)(fe2.unused[10]); // 71
+                events[index++]=(double)(fe2.unused[11]); // 72
+                events[index++]=(double)(fe2.unused[12]); // 73
+                events[index++]=(double)(fe2.unused[13]); // 74
+                events[index++]=(double)(fe2.unused[14]); // 75
+                events[index++]=(double)(fe2.unused[15]); // 76
         }
     }
 
@@ -338,6 +468,8 @@ PsychError EyelinkGetQueuedData(void)
     PsychCopyOutDoubleMatArg(2, kPsychArgOptional, NUM_EVENT_FIELDS, numEvents, 1, events);
 
     PsychCopyOutBooleanArg(3, kPsychArgOptional, drained);
+
+    PsychCopyOutDoubleMatArg(4, kPsychArgOptional, numSampleFields, numSamples, 1, el3Samples);
 
     if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: done with outputs\n");
 

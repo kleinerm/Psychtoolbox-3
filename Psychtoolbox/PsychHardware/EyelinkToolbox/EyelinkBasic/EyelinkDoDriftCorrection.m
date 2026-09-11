@@ -83,35 +83,35 @@ end
 
 return
 
+end  % EyelinkDoDriftCorrection
 
-    function eyelinkanimationtarget = initmoviestruct()
-        eyelinkanimationtarget.init = false;
-        eyelinkanimationtarget.movie = [];
-        eyelinkanimationtarget.movieduration = [];
-        eyelinkanimationtarget.fps = [];
-        eyelinkanimationtarget.imgw = [];
-        eyelinkanimationtarget.imgh = [];
-        eyelinkanimationtarget.calxy = [];
+
+function eyelinkanimationtarget = initmoviestruct()
+    eyelinkanimationtarget.init = false;
+    eyelinkanimationtarget.movie = [];
+    eyelinkanimationtarget.movieduration = [];
+    eyelinkanimationtarget.fps = [];
+    eyelinkanimationtarget.imgw = [];
+    eyelinkanimationtarget.imgh = [];
+    eyelinkanimationtarget.calxy = [];
+end
+
+function eyelinkanimationtarget = loadanimationmovie(el, eyelinkanimationtarget)
+    [movie, movieduration, fps, imgw, imgh] = Screen('OpenMovie', el.window, el.calAnimationTargetFilename, el.calAnimationOpenAsync, el.calAnimationOpenPreloadSecs, el.calAnimationOpenSpecialFlags1);
+    eyelinkanimationtarget.init = true;
+    eyelinkanimationtarget.movie = movie;
+    eyelinkanimationtarget.movieduration = movieduration;
+    eyelinkanimationtarget.fps = fps;
+    eyelinkanimationtarget.imgw = imgw;
+    eyelinkanimationtarget.imgh = imgh;
+end
+
+function eyelinkanimationtarget = cleanupmovie(el, eyelinkanimationtarget)
+    texkill = Screen('GetMovieImage', el.window, eyelinkanimationtarget.movie, el.calAnimationWaitTexClose);
+    Screen('PlayMovie', eyelinkanimationtarget.movie, 0, el.calAnimationLoopParam);
+    if texkill > 0
+        Screen('Close', texkill);
     end
-
-    function eyelinkanimationtarget = loadanimationmovie(el, eyelinkanimationtarget)
-        [movie, movieduration, fps, imgw, imgh] = Screen('OpenMovie', el.window, el.calAnimationTargetFilename, el.calAnimationOpenAsync, el.calAnimationOpenPreloadSecs, el.calAnimationOpenSpecialFlags1);
-        eyelinkanimationtarget.init = true;
-        eyelinkanimationtarget.movie = movie;
-        eyelinkanimationtarget.movieduration = movieduration;
-        eyelinkanimationtarget.fps = fps;
-        eyelinkanimationtarget.imgw = imgw;
-        eyelinkanimationtarget.imgh = imgh;
-    end
-
-    function eyelinkanimationtarget = cleanupmovie(el, eyelinkanimationtarget)
-        texkill = Screen('GetMovieImage', el.window, eyelinkanimationtarget.movie, el.calAnimationWaitTexClose);
-        Screen('PlayMovie', eyelinkanimationtarget.movie, 0, el.calAnimationLoopParam);
-        if texkill > 0
-            Screen('Close', texkill);
-        end
-        Screen('CloseMovie', eyelinkanimationtarget.movie);
-        eyelinkanimationtarget = initmoviestruct();
-    end
-
+    Screen('CloseMovie', eyelinkanimationtarget.movie);
+    eyelinkanimationtarget = initmoviestruct();
 end

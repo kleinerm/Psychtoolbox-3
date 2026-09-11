@@ -7,6 +7,7 @@
         f.w.cornelissen@rug.nl          fwc
         E.Peters@ai.rug.nl              emp
         e_flister@yahoo.com             edf
+        brian@sr-research.com           br
 
     PLATFORMS:    All
 
@@ -16,7 +17,8 @@
         30/10/06    fwc         Adapted from early alpha version.
         19/02/09    edf         added GetFloatDataRaw
         23/03/09    edf         adapted to handle LOST_DATA_EVENT and added eye argument to GetFloatDataRaw
-
+        30-10-24	br          replace FSAMPLE with FSAMPLE2 for EL3 support
+        6-11-24	    br          replace FEVENT with FEVENT2 for EL3 support
 */
 
 #include "PsychEyelink.h"
@@ -43,8 +45,8 @@ static char seeAlsoString[] = "";
 
 PsychError EyelinkGetFloatData(void)
 {
-    FSAMPLE   fs;
-    FEVENT    fe;
+    FSAMPLE2   fs2;
+    FEVENT2    fe2;
     int type = 0;
     mxArray **mxpp;
 
@@ -67,10 +69,10 @@ PsychError EyelinkGetFloatData(void)
 
     switch(type) {
         case SAMPLE_TYPE:
-            if (eyelink_get_float_data((ALLF_DATA*) &fs) != type) {
+            if (eyelink_get_float_data((ALLF_DATA*) &fs2) != type) {
                 PsychErrorExitMsg(PsychError_user, "Eyelink: GetFloatData: eyelink_get_float_data did not return sample type as user said it would.");
             }
-            (*mxpp) = CreateMXFSample(&fs);
+            (*mxpp) = CreateMXFSample2(&fs2);
             break;
         case LOST_DATA_EVENT: // queue overflowed, we are not supposed to call eyelink_get_float_data on this
             (*mxpp) = (mxArray*) mxCreateDoubleMatrix(1,1,mxREAL); //no data
@@ -81,10 +83,10 @@ PsychError EyelinkGetFloatData(void)
             mxGetPr((*mxpp))[0] = 0;
             break;
         default: // else it is an event
-            if (eyelink_get_float_data((ALLF_DATA*) &fe) != type) {
+            if (eyelink_get_float_data((ALLF_DATA*) &fe2) != type) {
                 PsychErrorExitMsg(PsychError_user, "Eyelink: GetFloatDataRaw: eyelink_get_float_data did not return event type as user said it would.");
             }
-            (*mxpp) = CreateMXFEvent(&fe);
+            (*mxpp) = CreateMXFEvent2(&fe2);
     }
 
     return(PsychError_none);

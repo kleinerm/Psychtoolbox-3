@@ -111,6 +111,11 @@ PsychError PsychModuleInit(void)
     // BR: Added as of EyeLink Developers Kit 2.1 maintenance release
     PsychErrorExit(PsychRegister("SendFile", &EyelinkSendFile));
 
+    // BR: Added as of EyeLink Developers Kit 2.2 release for EyeLink 3 support
+    PsychErrorExit(PsychRegister("ClockBase", &EyelinkClockBase));
+    PsychErrorExit(PsychRegister("SetOptions", &EyelinkSetOptions));
+    PsychErrorExit(PsychRegister("CurrentTime_uSec", &EyelinkCurrentTimeuSec));
+
     // Register synopsis and named subfunctions:
     InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
     PsychSetModuleAuthorByInitials("emp");

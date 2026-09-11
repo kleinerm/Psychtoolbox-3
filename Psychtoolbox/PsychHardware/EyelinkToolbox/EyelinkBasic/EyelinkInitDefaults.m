@@ -28,6 +28,7 @@ function el=EyelinkInitDefaults(window)
 %               and driftcorrection.
 % 15-01-13    ia    Added el.devicenumber to allow better control of multiple
 %                input devices
+% 01-06-26  js Added el.eyeimgmax for proper camera image scaling.
 
 el=[];
 
@@ -134,11 +135,17 @@ el.getkeytime=-1; % stores last time eyelinkgetkey was used
 % (font info for ) messages/instructions
 el.msgfont='Helvetica';
 el.msgfontsize=20; % absolute, should perhaps be percentage of screen
-el.eyeimgsize=30; % percentage of screen
-el.helptext='Press RETURN (on either display computer or tracker host computer) to toggle camera image';
-el.helptext=[el.helptext '\n' 'Press Esc/O for Output/Record'];
-el.helptext=[el.helptext '\n' 'Press C to Calibrate'];
-el.helptext=[el.helptext '\n' 'Press V to Validate'];
+el.eyeimgsize=35; % percentage of screen
+el.eyeimgmax = 384; % Max width or height of raw camera image, in pixels.
+
+if  IsOSX , modnam = 'Left Command' ; else modnam = 'Windows' ; end
+
+el.helptext = ...
+[ 'Press RETURN (on either display computer or tracker host computer) to toggle camera image\n', ...
+  'Press Esc/O for Output/Record\n' , ...
+  'Press C to Calibrate\n' , ...
+  'Press V to Validate\n' , ...
+  'Press ' , modnam , '-Key+Escape to Abort' ] ;
 
 % font info for camera image title
 el.imgtitlefont='Helvetica';

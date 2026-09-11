@@ -1,31 +1,20 @@
-function EyeLink_GCFastSamples(screenNumber)
-% A simple EyeLink gaze-contingent demo showing how to retrieve fast online samples.
-% In each trial an image is presented with a red gaze-contingent dot overlaid on top.
-% The dot's location is updated online based on the x y coordinates of the latest gaze sample retrieved online.
-% Each trial ends when the space bar is pressed.
+function EL3RecordEyeVideo(screenNumber)
+% A simple EyeLink 3 demo that records eye movements passively and records EyeLink 3 eye video
+% while an image is presented on the screen. Each trial ends when the space bar or a button is
+% pressed. The task enables manual EyeLink 3 eye video recording in STEP 2 below. Then starts/stops
+% eye video recording via two 'save_eye_video' commands in STEP 5 to save a separate EyeLink 3 eye
+% video file per trial. The resulting eye video .evf file can be played back by Data Viewer.
 %
 % Usage:
-% Eyelink_GCfastSamples(screenNumber)
+% Eyelink_SimplePicture(screenNumber)
 %
 % screenNumber is an optional parameter which can be used to pass a specific value to PsychImaging('OpenWindow', ...)
 % If screenNumber is not specified, or if isempty(screenNumber) then the default:
 % screenNumber = max(Screen('Screens'));
 % will be used.
-%
-% The demo checks if a new sample is available online via the link. This is the most recent sample, which is faster than buffered data.
-% This is equivalent to eyeLink_newest_float_sample() in C API. See EyeLink Programmers Guide manual > Function Lists > Message and Command Sending/Receiving > Functions
-% It allows access to the following sample properties:
-%
-%       time (sample time)
-%       type (SAMPLE=200)
-%       gx ([left gaze x, right gaze x])
-%       gy ([left gaze y, right gaze y])
-%       pa ([lef eye pupil size, right eye pupil size])
-%       rx (x 'pixel per degree' value)
-%       ry (y 'pixel per degree' value)
-%       buttons (button state and changes)
-%       hdata (contains a list of 8 fields. Only the first 4 values are important:
-%             [uncalibrated target sticker x, uncalibrated target sticker y, target sticker distance in mm, target flags)
+
+% Update History:
+% - KD 29/06/26: Modified from SimplePicture to support EL3 eye video recording
 
 % Bring the Command Window to the front if it is already open
 if ~IsOctave; commandwindow; end
@@ -42,16 +31,19 @@ try
     
     % Initialize EyeLink connection (dummymode = 0) or run in "Dummy Mode" without an EyeLink connection (dummymode = 1);
     dummymode = 0;
+    
+    % Optional: Set IP address of eyelink tracker computer to connect to.
+    % Call this before initializing an EyeLink connection if you want to use a non-default IP address for the Host PC.
+    %Eyelink('SetAddress', '10.10.10.240');
+    
     if 0 == EyelinkInit(dummymode)  % Initialize EyeLink connection
-        fprintf( 'Failed to connect with EyeLink' )
-        EyelinkCleanupHelper; % Abort experiment
-        return
+        error( 'Failed to connect with EyeLink' )
     end
     status = Eyelink('IsConnected');
     if status < 1 % If EyeLink not connected
         dummymode = 1; 
     end
-    
+       
     % Open dialog box for EyeLink Data file name entry. File name up to 8 characters
     prompt = {'Enter EDF file name (up to 8 characters)'};
     dlg_title = 'Create EDF file';
@@ -60,23 +52,20 @@ try
     % Print some text in Matlab's Command Window if a file name has not been entered
     if  isempty(answer)
         fprintf('Session cancelled by user\n')
-        EyelinkCleanupHelper; % Abort experiment
-        return
+        error('Session cancelled by user'); % Abort experiment (triggers EyelinkCleanupHelper function below)
     end    
     edfFile = answer{1}; % Save file name to a variable    
     % Print some text in Matlab's Command Window if file name is longer than 8 characters
     if length(edfFile) > 8
         fprintf('Filename needs to be no more than 8 characters long (letters, numbers and underscores only)\n');
-        EyelinkCleanupHelper; % Abort experiment
-        return
+        error('Filename needs to be no more than 8 characters long (letters, numbers and underscores only)');
     end
-    
+ 
     % Open an EDF file and name it
     failOpen = Eyelink('OpenFile', edfFile);
     if failOpen ~= 0 % Abort if it fails to open
         fprintf('Cannot create EDF file %s', edfFile); % Print some text in Matlab's Command Window
-        EyelinkCleanupHelper;
-        return
+        error('Cannot create EDF file %s', edfFile); % Print some text in Matlab's Command Window
     end
     
     % Get EyeLink tracker and software version
@@ -113,8 +102,20 @@ try
         Eyelink('Command', 'file_sample_data  = LEFT,RIGHT,GAZE,HREF,PUPIL,AREA,GAZERES,BUTTON,STATUS,INPUT');
         Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,INPUT');
     end
-    
-    
+
+    if ELsoftwareVersion == 7 % Check EyeLink 3 tracker version
+        % Enable (1) or disable (0) automatic recording of eye video while entering record mode. 
+        % If enabled, entering record mode will automatically start a video recording of eye video 
+        % and leaving record mode will automatically stop the eye video recording.    
+        Eyelink('Command', 'enable_eye_video_stream 1');
+
+        % Enable (1) or disable (0) automatic recording of eye video while entering record mode. 
+        % If enabled, entering record mode will automatically start a video recording of eye video 
+        % and leaving record mode will automatically stop the eye video recording.
+        Eyelink('Command', 'auto_record_eye_video 0');
+    end
+
+
     %% STEP 3: OPEN GRAPHICS WINDOW
     
     % Open experiment graphics on the specified screen
@@ -131,7 +132,7 @@ try
     [width, height] = Screen('WindowSize', window);
     
     
-    %% STEP 4: SET CALIBRATION SCREEN COLOURS; PROVIDE WINDOW SIZE TO EYELINK HOST & DATAVIEWER; SET CALIBRATION PARAMETERS; CALIBRATE
+    %% STEP 4: SET CALIBRATION SCREEN COLOURS/SOUNDS; PROVIDE WINDOW SIZE TO EYELINK HOST & DATAVIEWER; SET CALIBRATION PARAMETERS; CALIBRATE
     
     % Provide EyeLink with some defaults, which are returned in the structure "el".
     el = EyelinkInitDefaults(window);
@@ -140,11 +141,20 @@ try
     % pupil size changes (which can cause a drift in the eye movement data)
     el.calibrationtargetsize = 3;% Outer target size as percentage of the screen
     el.calibrationtargetwidth = 0.7;% Inner target size as percentage of the screen
-    el.backgroundcolour = repmat(GrayIndex(screenNumber),1,3);
-    el.calibrationtargetcolour = repmat(BlackIndex(screenNumber),1,3);
+    el.backgroundcolour = repmat(GrayIndex(window),1,3); 
+    el.calibrationtargetcolour = repmat(BlackIndex(window),1,3);
     % set "Camera Setup" instructions text colour so it is different from background colour
-    el.msgfontcolour = repmat(BlackIndex(screenNumber),1,3);
-
+    el.msgfontcolour = repmat(BlackIndex(window),1,3);
+        
+    % Use an image file instead of the default calibration bull's eye targets. 
+    % Commenting out the following two lines will use default targets:
+    el.calTargetType = 'image';
+    el.calImageTargetFilename = [pwd '/' 'fixTarget.jpg'];
+    
+    % Set calibration beeps (0 = sound off, 1 = sound on)
+    el.targetbeep = 1;  % sound a beep when a target is presented
+    el.feedbackbeep = 1;  % sound a beep after calibration or drift check/correction
+    
     % Initialize PsychSound for calibration/validation audio feedback
     % EyeLink Toolbox now supports PsychPortAudio integration and interop
     % with legacy Snd() wrapping. Below we open the default audio device in
@@ -178,45 +188,19 @@ try
     % Suppress keypress output to command window.
     ListenChar(-1);
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
+
     % Put EyeLink Host PC in Camera Setup mode for participant setup/calibration
-    if EyelinkDoTrackerSetup(el)
-        fprintf( 'Abort tracker.\n' )
-        EyelinkCleanupHelper; % Abort experiment
-        return
+    if  EyelinkDoTrackerSetup(el)
+        fprintf( 'Abort tracker setup.\n' )
+        error( 'Abort tracker setup.' )
     end
     
-    
     %% STEP 5: TRIAL LOOP.
-    
-    spaceBar = KbName('space');% Identify keyboard key code for space bar to end each trial later on
+    spaceBar = KbName('space');% Identify keyboard key code for spacebar to end each trial later on
     imgList = {'img1.jpg' 'img2.jpg'};% Provide image list for 2 trials
     for i = 1:length(imgList)
-               
-        % STEP 5.1: PREBUILD STIMULUS (GREY BACKGROUND + IMAGE + TEXT)
         
-        % Prepare grey background on backbuffer
-        Screen('FillRect', window, el.backgroundcolour);
-        % Use 'drawBuffer' to copy unprocessed backbuffer images without additional processing. Prevents image size info issues on Retina displays
-        backgroundArray = Screen('GetImage', window, [], 'drawBuffer'); % Copy unprocessed backbuffer
-        backgroundTexture = Screen('MakeTexture', window, backgroundArray); % Convert background to texture so it is ready for drawing later on        
-        % Prepare image on backbuffer
-        imgName = char(imgList(i)); % Get image file name for current trial
-        imgInfo = imfinfo(imgName); % Get image file info
-        imgData = imread(imgName); % Read image from file
-        imgTexture = Screen('MakeTexture',window, imgData); % Convert image file to texture
-        Screen('DrawTexture', window, imgTexture); % Prepare image texture on backbuffer        
-        % Prepare text on backbuffer
-        Screen('TextSize', window, 30); % Specify text size
-        Screen('DrawText', window, 'Press space bar to end trial', 5, height-35, 0); % Prepare text on backbuffer        
-        % Save complete backbuffer as trial*.bmp to be used as stimulus and as Host PC & DataViewer backdrop
-        stimName = ['trial' num2str(i) '.bmp']; % Prepare stimulus file name
-        stimArray = Screen('GetImage', window, [], 'drawBuffer'); % Copy backbuffer to be used as stimulus
-        imwrite(stimArray, stimName); % Save .bmp stimulus file in experment folder        
-        % Convert stimulus to texture so it is ready for drawing later on
-        stimInfo = imfinfo(stimName); % Get stimulus info
-        stimTexture = Screen('MakeTexture', window, stimArray); % Convert to texture
-                
-        % STEP 5.2: START TRIAL; SHOW TRIAL INFO ON HOST PC; SHOW BACKDROP IMAGE AND/OR DRAW FEEDBACK GRAPHICS ON HOST PC; DRIFT-CHECK/CORRECTION
+        % STEP 5.1: START TRIAL; SHOW TRIAL INFO ON HOST PC; SHOW BACKDROP IMAGE AND/OR DRAW FEEDBACK GRAPHICS ON HOST PC; DRIFT-CHECK/CORRECTION
         
         % Write TRIALID message to EDF file: marks the start of a trial for DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Defining the Start and End of a Trial
@@ -228,8 +212,7 @@ try
         Eyelink('Command', 'record_status_message "TRIAL %d/%d"', i, length(imgList));
         
         % Draw graphics on the EyeLink Host PC display. See COMMANDS.INI in the Host PC's exe folder for a list of commands
-        Eyelink('SetOfflineMode'); % Put tracker in idle/offline mode before drawing Host PC graphics and before recording        
-        Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
+        Eyelink('SetOfflineMode');% Put tracker in idle/offline mode before drawing Host PC graphics and before recording        
         Eyelink('Command', 'clear_screen 0'); % Clear Host PC display from any previus drawing
         % Optional: Send an image to the Host PC to be displayed as the backdrop image over which 
         % the gaze-cursor is overlayed during trial recordings.
@@ -242,7 +225,11 @@ try
         % xd, yd: location (top-left) where image region to be transferred will be presented on the Host PC
         % This image transfer function works for non-resized image presentation only. If you need to resize images and use this function please resize
         % the original image files beforehand
-        transferStatus = Eyelink('ImageTransfer', stimArray, 0, 0, 0, 0, 0, 0);
+        imgName = char(imgList(i)); % Get image file name for current trial
+        imgInfo = imfinfo(imgName); % Get image file info
+        imgData = imread(imgName); % Get image file data
+        transferStatus = Eyelink('ImageTransfer', imgData, 0, 0, 0, 0, round(width/2-imgInfo.Width/2), round(height/2-imgInfo.Height/2));
+
         if dummymode == 0 && transferStatus ~= 0 % If connected to EyeLink and image transfer fails
             fprintf('Image transfer Failed\n'); % Print some text in Matlab's Command Window
         end
@@ -250,117 +237,111 @@ try
         % Optional: draw feedback box and lines on Host PC interface instead of (or on top of) backdrop image.
         % See section 25.7 'Drawing Commands' in the EyeLink Programmers Guide manual
         Eyelink('Command', 'draw_box %d %d %d %d 15', round(width/2-imgInfo.Width/2), round(height/2-imgInfo.Height/2), round(width/2+imgInfo.Width/2), round(height/2+imgInfo.Height/2));
-        
+
         % Perform a drift check/correction.
         % Optionally provide x y target location, otherwise target is presented on screen centre
         if ~EyelinkDoDriftCorrection(el, round(width/2), round(height/2))
             fprintf( 'Abort drift correction.\n' )
-            EyelinkCleanupHelper; % Abort experiment
-            return
+            error( 'Abort drift correction.' )
         end
-                
-        %STEP 5.3: START RECORDING
+
+        %STEP 5.2: START RECORDING
         
         % Put tracker in idle/offline mode before recording. Eyelink('SetOfflineMode') is recommended 
         % however if Eyelink('Command', 'set_idle_mode') is used allow 50ms before recording as shown in the commented code:        
         % Eyelink('Command', 'set_idle_mode');% Put tracker in idle/offline mode before recording
-        % WaitSecs(0.05); % Allow some time for transition          
+        % WaitSecs(0.05); % Allow some time for transition        
         Eyelink('SetOfflineMode');% Put tracker in idle/offline mode before recording
         Eyelink('StartRecording'); % Start tracker recording
         WaitSecs(0.1); % Allow some time to record a few samples before presenting first stimulus
+
+        % save_eye_video. This command provides manual control over when to start and stop eye video recordings.
+        % - <0: Start recording eye video and continue recording indefinitely, requiring another save_eye_video command to stop.
+        % - 0: Stop recording eye video.
+        % - >0: Start recording eye video and the int value specifies the duration of the video to record in seconds. 
+        % The eye video recording will automatically stop after the specified number of seconds has elapsed. 
+        % Note: Sending this command will disable auto_record_eye_video as it implies that the user wants to have manual
+        %  control over when the eye video recording is enabled and disabled.
+        Eyelink('Command', 'save_eye_video -1');
+
+        % STEP 5.3: PRESENT STIMULUS; CREATE DATAVIEWER BACKDROP AND INTEREST AREA
         
-        % Check which eye is available for gaze-contingent drawing. Returns 0 (left), 1 (right) or 2 (binocular)
-        eyeUsed = Eyelink('EyeAvailable');
-        % Get samples from right eye if binocular
-        if eyeUsed == 2
-            eyeUsed = 1;
-        end
-                
-        % STEP 5.4: PRESENT STIMULUS; CREATE DATAVIEWER BACKDROP AND INTEREST AREA
-        
-        % Present initial trial image without gaze-contingent dot
-        Screen('DrawTexture', window, stimTexture); % Prepare stimulus texture on backbuffer
+        % Prepare and present stimulus                       
+        Screen('FillRect', window, el.backgroundcolour);% Prepare grey background on backbuffer
+        imgTexture = Screen('MakeTexture',window, imgData); % Convert image file to texture
+        Screen('DrawTexture', window, imgTexture); % Prepare image texture on backbuffer        
+        Screen('TextSize', window, 30); % Specify text size
+        Screen('DrawText', window, 'Press space or button to end trial', 5, height-35, 0); % Prepare text on backbuffer  
         [~, RtStart] = Screen('Flip', window); % Present stimulus
         % Write message to EDF file to mark the start time of stimulus presentation.
         Eyelink('Message', 'STIM_ONSET');        
-        % Write !V IMGLOAD message to EDF file: creates backdrop image for DataViewer
+        % Write !V IMGLOAD message to EDF file: provides instructions for DataViewer so it will show trial stimulus as backdrop
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Image Commands
-        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', stimName, width/2, height/2);        
+        Eyelink('Message', '!V IMGLOAD CENTER %s %d %d', imgName, width/2, height/2);        
         % Write !V IAREA message to EDF file: creates interest area around image in DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Interest Area Commands
         Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 1, round(width/2-imgInfo.Width/2), round(height/2-imgInfo.Height/2), round(width/2+imgInfo.Width/2), round(height/2+imgInfo.Height/2),'IMAGE_IA');
         
-        % STEP 5.5: DRAW GAZE-CONTINGENT DOT; WAIT FOR KEYPRESS; SHOW BLANK SCREEN; STOP RECORDING
+        % STEP 5.4: WAIT FOR KEYPRESS/BUTTON; SHOW BLANK SCREEN; STOP RECORDING
         
-        while 1 % loop until error, space bar press            
+        while 1 % loop until error, space bar or button press
             % Check that eye tracker is  still recording. Otherwise close and transfer copy of EDF file to Display PC
             err = Eyelink('CheckRecording');
             if(err ~= 0)
                 fprintf('EyeLink Recording stopped!\n');
                 % Transfer a copy of the EDF file to Display PC
-                Eyelink('SetOfflineMode'); % Put tracker in idle/offline mode
+                Eyelink('SetOfflineMode');% Put tracker in idle/offline mode
                 Eyelink('CloseFile'); % Close EDF file on Host PC
                 Eyelink('Command', 'clear_screen 0'); % Clear trial image on Host PC at the end of the experiment
                 WaitSecs(0.1); % Allow some time for screen drawing
                 % Transfer a copy of the EDF file to Display PC
                 EyelinkTransferFileHelper(el, edfFile);
-                EyelinkCleanupHelper; % Abort experiment
-                return
-            end            
-            % Check if a new sample is available online via the link. This is the most recent sample, which is faster than buffered data
-            % This is equivalent to eyeLink_newest_float_sample() in C API. See EyeLink Programmers Guide manual > Function Lists > Message and Command Sending/Receiving > Functions
-            if Eyelink('NewFloatSampleAvailable') > 0
-                % Get sample data in a Matlab structure
-                % This is equivalent to eyeLink_newest_float_sample() in C API. See EyeLink Programmers Guide manual > Function Lists > Message and Command Sending/Receiving > Functions
-                evt = Eyelink('NewestFloatSample');
-                
-                % Save sample properties as variables. See EyeLink Programmers Guide manual > Data Structures > FSAMPLE
-                x = evt.gx(eyeUsed+1); % [left eye gaze x, right eye gaze x] +1 as we're accessing a Matlab array
-                y = evt.gy(eyeUsed+1); % [left eye gaze y, right eye gaze y]
-                
-                % The following sample properties are also available online but are not used in this demo:
-                % evt.time; % Sample EDF time
-                % evt.type; % Event type (SAMPLE =200)
-                % evt.pa; %[left eye pupil size, right eye pupil size]
-                % evt.rx; % Gaze x 'pixel per deggree' value
-                % evt.ry; % Gaze y 'pixel per degree' value
-                % evt.hdata; % [uncalibrated target sticker x, uncalibrated target sticker y, target sticker distance in mm, target flags ...]
-                
-                % Draw gaze-contingent dot
-                Screen('DrawTexture', window, stimTexture); % Prepare stimulus texture on backbuffer
-                % Superimpose a red gaze-contingent dot using gaze coordinates
-                Screen('FillOval', window, [255,0,0], [x-20, y-20, x+20, y+20]);
-                Screen('Flip', window); % Present stimulus
-            end            
-            % End trial if space bar is pressed
+                EyelinkCleanupHelper;
+                error('EyeLink is not in record mode when it should be. Unknown error. EDF transferred from Host PC to Display PC, please check its integrity.');
+            end
+            % End trial if spacebar is pressed
             [~, RtEnd, keyCode] = KbCheck;
             if keyCode(spaceBar)
                 % Write message to EDF file to mark the spacebar press time
                 Eyelink('Message', 'KEY_PRESSED');
-                reactionTime = round((RtEnd-RtStart)*1000); % Calculate RT from stimulus onset 
-                break;
+                reactionTime = round((RtEnd-RtStart)*1000); % Calculate RT from stimulus onset
+                break; % Exit while loop
             elseif keyCode(el.modifierkey) && keyCode( el.quitkey )
                 fprintf( 'Abort trial.\n' )
-                EyelinkCleanupHelper; % Abort experiment
-                return
+                error( 'Abort trial.' )
+            end
+            % End trial if button 5 on a supported Host PC button box is pressed
+            % Use (button number * -1) + 1 to determine bitshift value
+            % (e.g., button 5 should use bitshift value of -4)
+            buttonResult = Eyelink('ButtonStates');
+            if buttonResult
+                if bitshift(buttonResult, -4) == 1
+                    % Write message to EDF file to mark the button press time
+                    Eyelink('Message', 'BUTTON_PRESSED');
+                    reactionTime = round((GetSecs-RtStart)*1000); % Calculate RT from stimulus onset
+                    break; % Exit while loop
+                end
             end
             EyelinkClearMsgQueue ;
         end % End of while loop
         
         % Draw blank screen at end of trial
-        Screen('DrawTexture', window, backgroundTexture); % Prepare background texture on backbuffer
+        Screen('FillRect', window, el.backgroundcolour); % Prepare grey background on backbuffer
         Screen('Flip', window); % Present blank screen
         % Write message to EDF file to mark time when blank screen is presented
         Eyelink('Message', 'BLANK_SCREEN');
         % Write !V CLEAR message to EDF file: creates blank backdrop for DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Simple Drawing
         Eyelink('Message', '!V CLEAR %d %d %d', round(el.backgroundcolour(1)/colorMaxVal*255), round(el.backgroundcolour(2)/colorMaxVal*255), round(el.backgroundcolour(3)/colorMaxVal*255));
-        
+
+        % Stop recording EyeLink 3 eye video. 
+        Eyelink('Command', 'save_eye_video 0');
+
         % Stop recording eye movements at the end of each trial
         WaitSecs(0.1); % Add 100 msec of data to catch final events before stopping
         Eyelink('StopRecording'); % Stop tracker recording
-                
-        % STEP 5.6: CREATE VARIABLES FOR DATAVIEWER; END TRIAL
+        
+        % STEP 5.5: CREATE VARIABLES FOR DATAVIEWER; END TRIAL
         
         % Write !V TRIAL_VAR messages to EDF file: creates trial variables in DataViewer
         % See DataViewer manual section: Protocol for EyeLink Data to Viewer Integration > Trial Message Commands
@@ -374,9 +355,7 @@ try
         WaitSecs(0.01); % Allow some time before ending the trial
         
         % Clear Screen() textures that were initialized for each trial iteration
-        Screen('Close', backgroundTexture);
         Screen('Close', imgTexture);
-        Screen('Close', stimTexture);
     end % End trial loop
     
     
@@ -385,11 +364,11 @@ try
     % Put tracker in idle/offline mode before closing file. Eyelink('SetOfflineMode') is recommended.
     % However if Eyelink('Command', 'set_idle_mode') is used, allow 50ms before closing the file as shown in the commented code:
     % Eyelink('Command', 'set_idle_mode');% Put tracker in idle/offline mode
-    % WaitSecs(0.05); % Allow some time for transition 
+    % WaitSecs(0.05); % Allow some time for transition    
     Eyelink('SetOfflineMode'); % Put tracker in idle/offline mode
     Eyelink('Command', 'clear_screen 0'); % Clear Host PC backdrop graphics at the end of the experiment
-    WaitSecs(0.5); % Allow some time before closing and transferring file    
-    Eyelink('CloseFile'); % Close EDF file on Host PC       
+    WaitSecs(0.5); % Allow some time before closing and transferring file
+    Eyelink('CloseFile'); % Close EDF file on Host PC
     % Transfer a copy of the EDF file to Display PC
     EyelinkTransferFileHelper(el, edfFile);
     EyelinkCleanupHelper;
@@ -398,6 +377,6 @@ catch % If syntax error is detected
     % Print error message and line number in Matlab's Command Window
     psychrethrow(psychlasterror);
 end
-
 PsychPortAudio('Close', pahandle);
 PsychPortAudio('Close', pamaster);
+EyelinkCleanupHelper;
