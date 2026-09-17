@@ -2859,6 +2859,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Mark presentation timestamp as so far "invalid"/"unknown":
     window->tPresentComplete = -1;
 
+macos_requeue_present: // A tribute to Apples trainwreck, see workaround below...
+
     // Some time granted to GUI event dispatch:
     PsychProcessWindowEvents(window);
 
@@ -3029,6 +3031,50 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        // Repeat the just finished present with same content - a redundant content present - if
+        // we are running on a macOS with broken Windowserver, and the workaround is requested via
+        // flags 16 == 0x10.
+        //
+        // Right now this is needed for at least all macOS versions from macOS 10.15 to macOS 27.0,
+        // possibly later versions as well, depending on if and when Apple fixes the macOS bug.
+        // The bug has been reported to Apple as FB 24682787 against macOS 27 beta 8, unfixed as of
+        // macOS 27.0 release candidate.
+        //
+        // Bug: If more than 1 second of time elapses between successive present requests, macOS
+        // presumably enables some kind of "graphics idle -> suspend display" optimizations, and
+        // then, after a processing a new present request, does not call the Metal drawable presented
+        // handler, causing hangs and timeouts and broken timestamping in applications that wait for
+        // and depend on that handlers proper and timely execution. The stuck handler is only called
+        // long after present completion if the application calls [CAMetalDrawable release] or similar
+        // Metal internal cleanup paths, with invalid timestamp and no correlation to actual present!
+        //
+        // Detect the potential for such a 1 sec idle bug during current pending present, and if this
+        // is likely to happen, immediately repeat a present of the same frame content at the next
+        // refresh cycle. This should "unjam" the stuck present handler and bring things back in order
+        // after completion of the "redundant" present. Downside: At least (=usually) one video refresh
+        // cycle delay, and a onset timestamp that might be 1 cycle later than actual stimulus onset.
+        // Upside: We avoid an over 750 msecs stall/hang, broken/not trustworthy at all timestamp, error
+        // message clutter, and possible followup cascading error if the 1 sec timeout is hit again due
+        // to the stall. We trigger already at 990 msecs for some jiggle room, not at 1000 msecs.
+        if ((window->createFlags & 0x10) && (tPreviousPresent > 0) && (tQueue - tPreviousPresent > 0.990)) {
+            if (verbosity > 6)
+                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i is extra re-present of frame %i to work around macOS idle %f msec > 1 sec bug.\n",
+                       window->index, window->frameIndex, window->frameIndex - 1, 1000 * (tQueue - tPreviousPresent));
+
+            // Keep track so we don't call ourselves again in a cascade:
+            tPreviousPresent = tQueue;
+
+            // Bump tWhen by one refresh cycle duration to avoid compositor dropping the original
+            // frame and just turning or to-be-requeued replacement frame into the new victim:
+            tWhen = ((tWhen > 0) && (tWhen > tQueue)) ? tWhen : tQueue;
+            tWhen += window->frameDurationSecs;
+
+            // Requeue present:
+            goto macos_requeue_present;
+        }
+        #endif
+
         // Wait for present completion supported?
         #if defined(VK_KHR_present_id) && defined(VK_KHR_present_wait)
         if (vulkan->hasWait) {
@@ -3777,7 +3823,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Select number of image buffers:
     uint32_t numBuffers = window->surfaceCapabilities.minImageCount;
-    uint32_t optBuffers = (vulkan->hasWait && (PSYCH_SYSTEM == PSYCH_LINUX)) ? 3 : 2;
+    uint32_t optBuffers = (vulkan->hasWait && (PSYCH_SYSTEM != PSYCH_WINDOWS)) ? 3 : 2;
 
     if (numBuffers != optBuffers && window->surfaceCapabilities.minImageCount <= optBuffers)
         numBuffers = optBuffers;
@@ -4628,6 +4674,7 @@ PsychError PSYCHVULKANOpenWindow(void)
         "+2 = Do not switch to fullscreen-exclusive mode on MS-Windows, even for fullscreen windows. This is useful as workaround for some buggy Vulkan drivers.\n"
         "+4 = Do not use a tiled format for the OpenGL-Vulkan interop image, use linear instead.\n"
         "+8 = Try to keep mouse pointer hidden over the Vulkan window, typically used as workaround. Linux/X11 only, so far.\n"
+        "+16 = Try to work around macOS bugs: Requeue presents as needed to avoid compositor timeout/idle bugs. macOS only.\n"
         "'displayHandle' Handle defining the display server connection to use, if any, in an operating system dependent manner. "
         "This is currently unused on all systems except Linux with Wayland display backend, where it encodes the wl_display handle.\n"
         "\n\n"
@@ -4705,7 +4752,7 @@ PsychError PSYCHVULKANOpenWindow(void)
 
     // Get mandatory flags:
     PsychCopyInIntegerArg(12, kPsychArgRequired, &flags);
-    if ((flags & ~(1 | 2 | 4 | 8)) != 0)
+    if ((flags & ~(1 | 2 | 4 | 8 | 16)) != 0)
         PsychErrorExitMsg(PsychError_user, "Invalid 'flags' argument specified.");
 
     // Get mandatory displayHandle:

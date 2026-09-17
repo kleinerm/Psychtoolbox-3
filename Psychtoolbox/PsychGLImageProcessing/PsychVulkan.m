@@ -755,6 +755,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             if ~IsARM(1)
                 flags = mor(flags, 2);
             end
+
+            % Activate workaround for macOS WindowServer "broken idle optimization
+            % bug": Whenever more than 1 second between present requests passed,
+            % the Metal drawable presented handler will get stuck. The bug exists
+            % on all macOS versions up to at least macOS 27.0, as verified by
+            % testing on macOS 13, 15, 26 and 27.0-RC. Setting this flag triggers
+            % a workaround:
+            flags = mor(flags, 16);
         else
             flags = mor(flags, 1);
             noInterop = 1;
