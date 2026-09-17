@@ -190,6 +190,7 @@ typedef struct PsychVulkanWindow {
     unsigned int                        frameIndex;
     VkFence                             flipDoneFence;
     double                              tPresentComplete;
+    double                              frameDurationSecs;
     VkSwapchainKHR                      swapChain;
     VkImage*                            swapChainImages;
     uint32_t                            currentSwapChainBuffer;
@@ -2973,14 +2974,14 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     }
 
     // Present it asap:
-    tQueue = PsychGetAdjustedPrecisionTimerSeconds(NULL);
     result = vkQueuePresentKHR(vulkan->graphicsQueue, &present);
+    tQueue = PsychGetAdjustedPrecisionTimerSeconds(NULL);
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
         if ((verbosity > 5) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
             printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i - ScImage index %i queued for present at tWhen %f secs. %f msecs since last one.\n",
                    window->index, window->frameIndex, window->currentSwapChainBuffer, tWhen,
-                   (window->frameIndex > 0) ? (1000 * (PsychGetAdjustedPrecisionTimerSeconds(NULL) - tPreviousPresent)) : NAN);
+                   (window->frameIndex > 0) ? (1000 * (tQueue - tPreviousPresent)) : NAN);
 
         // Suboptimal present? This may tear or have reduced performance / increased latency, and also
         // potentially screwed up timing:
@@ -3029,7 +3030,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
         // Wait for present completion supported?
-        #ifdef VK_KHR_present_id
+        #if defined(VK_KHR_present_id) && defined(VK_KHR_present_wait)
         if (vulkan->hasWait) {
             // Blocking wait with timeout of at least 1 second past tWhen for present completion of the just-queued present:
             double tDelta = tWhen - PsychGetAdjustedPrecisionTimerSeconds(&tPre);
@@ -3046,7 +3047,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             else if (verbosity > 8) {
                 double tNow;
                 PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i with presentID %lli signalled by vkWaitForPresentKHR as complete at %f seconds [blocked %f msecs].\n", window->index, window->frameIndex - 1, targetPresentId, tNow, 1000 * (tPost - tPre));
+                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i with presentID %lli signalled by vkWaitForPresentKHR as complete at %f seconds [blocked %f msecs].\n",
+                       window->index, window->frameIndex - 1, targetPresentId, tNow, 1000 * (tPost - tPre));
             }
         }
         #endif
@@ -4235,12 +4237,16 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     }
 
     // Report nominal refresh rate of display if this is supported:
-    if ((verbosity > 3) && vulkan->hasTiming && fpGetRefreshCycleDurationGOOGLE) {
+    window->frameDurationSecs = (refreshHz > 0) ? 1.0 / refreshHz : 1.0 / 60.0;
+    if (vulkan->hasTiming && fpGetRefreshCycleDurationGOOGLE) {
         VkRefreshCycleDurationGOOGLE refreshDur;
         if (VK_SUCCESS == fpGetRefreshCycleDurationGOOGLE(vulkan->device, window->swapChain, &refreshDur)) {
-            printf("PsychVulkanCore-INFO: Vulkan reports nominal refresh rate %f Hz for display associated with window %i.\n", 1.0e9 / (double) refreshDur.refreshDuration, window->index);
-        } else {
-            printf("PsychVulkanCore-INFO: vkGetRefreshCycleDurationGOOGLE() for window %i failed.\n", window->index);
+            window->frameDurationSecs = (double) refreshDur.refreshDuration / 1e9;
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: Vulkan reports nominal refresh rate %f Hz for display associated with window %i.\n", 1 / window->frameDurationSecs,
+                       window->index);
+        } else if (verbosity > 3) {
+            printf("PsychVulkanCore-INFO: vkGetRefreshCycleDurationGOOGLE() for window %i failed. Assuming %f Hz refresh as fallback.\n", window->index, refreshHz);
         }
     }
 
