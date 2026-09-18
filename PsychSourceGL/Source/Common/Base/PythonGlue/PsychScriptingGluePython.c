@@ -329,6 +329,11 @@ int mxIsInt64(const PyObject* a)
     return(PyArray_TYPE((PyArrayObject*) a) == NPY_INT64);
 }
 
+int mxIsFunctionHandle(const PyObject* a)
+{
+    return PyCallable_Check(a);
+}
+
 int PsychGetNumTypeFromArgType(PsychArgFormatType type)
 {
     switch(type) {
@@ -372,6 +377,9 @@ int PsychGetNumTypeFromArgType(PsychArgFormatType type)
             return(NPY_OBJECT);
 
         case PsychArgType_structArray:
+            return(NPY_OBJECT);
+
+        case PsychArgType_functionHandle:
             return(NPY_OBJECT);
 
         default:
@@ -1696,6 +1704,8 @@ static PsychArgFormatType PsychGetTypeFromPyPtr(const PyObject *ppyPtr)
         format = PsychArgType_cellArray;
     else if (mxIsLogical(ppyPtr))
         format = PsychArgType_boolean;
+    else if (mxIsFunctionHandle(ppyPtr))
+        format = PsychArgType_functionHandle;
     else
         format = PsychArgType_unclassified;
 
@@ -3420,6 +3430,19 @@ void PsychSetCellVectorStringElement(int index,
     // reference and we don't leak.
     mxFieldValue = mxCreateString(text);
     PyTuple_SetItem(cellVector, index, mxFieldValue);
+}
+
+PsychGenericScriptType* PsychPersist(const PsychGenericScriptType* pcontent)
+{
+    if (!pcontent) return NULL;
+    Py_INCREF((PyObject*) pcontent);
+    return(pcontent);
+}
+
+void PsychUnpersist(const PsychGenericScriptType* pcontent)
+{
+    if (!pcontent) return;
+    Py_DECREF((PyObject*) pcontent);
 }
 
 // End of Python only stuff.

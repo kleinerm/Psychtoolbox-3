@@ -56,6 +56,10 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
 // Try to retrieve filesystem path to Psychtoolbox root or per user configfolder (the result from PsychtoolboxRoot() in Matlab/Octave) from runtime:
 const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir);
 
+// Keep a native PsychGenericScriptType alive until use
+PsychGenericScriptType* PsychPersist(const PsychGenericScriptType* pcontent);
+void PsychUnpersist(const PsychGenericScriptType* pcontent);
+
 // Tell scripting glue to use/assume a C programming language memory layout for exchanging
 // multi-dimensional (== 2D, 3D, n-D) matrices with the scripting environment if that layout
 // promises higher efficiency and performance in data exchange. This is an opt-in, requesting
@@ -78,7 +82,7 @@ psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequire
 psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequired, psych_int64 *value);
 psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array);
 
-//for float's aka singles:
+//for floats aka singles:
 psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, float **array);
 psych_bool PsychAllocInFloatMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, float **array);
 psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, float **array);
