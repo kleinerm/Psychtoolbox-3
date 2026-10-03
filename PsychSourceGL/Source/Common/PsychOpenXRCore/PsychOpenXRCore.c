@@ -2262,7 +2262,7 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
         goto instance_init_out;
     }
 
-    // On Linux at least with Valve's SteamVR OpenXR runtime we must do without XR_KHR_convert_timespec_time, so make this optional and have fallbacks:
+    // On Linux at least with older versions of Valve's SteamVR OpenXR runtime we must do without XR_KHR_convert_timespec_time, so make this optional and have fallbacks:
     #if defined(XR_USE_PLATFORM_XLIB)
     has_XR_KHR_convert_timespec_time = addInstanceExtension(instanceExtensions, instanceExtensionsCount, XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME);
     #endif
@@ -2544,7 +2544,9 @@ void PsychOpenXRClose(int handle)
         // least January 2021 and unfixed by Valve as of December 2022 - Strong work!
         // See: https://github.com/ValveSoftware/SteamVR-for-Linux/issues/422 for the bug report, and
         // https://github.com/cmbruns/pyopenxr/pull/60 for a similar workaround in pyopenxr:
-        if ((PSYCH_SYSTEM != PSYCH_LINUX) || !hasHadSession || strcmp(instanceProperties.runtimeName, "SteamVR/OpenXR")) {
+        // Update: The bug is finally confirmed to be fixed in SteamVR version 2.11.2, as of June 2025, yay!
+        if ((PSYCH_SYSTEM != PSYCH_LINUX) || !hasHadSession || strcmp(instanceProperties.runtimeName, "SteamVR/OpenXR") ||
+            (instanceProperties.runtimeVersion >= XR_MAKE_VERSION(2, 11, 2))) {
             // Sane runtime: Perform full shutdown:
             if (debugMessenger)
                 pxrDestroyDebugUtilsMessengerEXT(debugMessenger);
@@ -2565,8 +2567,9 @@ void PsychOpenXRClose(int handle)
             if (!calledFromPsychOpenXRCoreShutDown) {
                 // First call, ie. first regular work session close-down/driver shutdown/"clear" attempt:
                 if (verbosity >= 2) {
-                    printf("PsychOpenXRCore-WARNING: Skipping driver shutdown, to work around xrDestroyInstance() \"hang-bug\" in proprietary SteamVR OpenXR runtime.\n");
+                    printf("PsychOpenXRCore-WARNING: Skipping driver shutdown, to work around xrDestroyInstance() \"hang-bug\" in your proprietary SteamVR OpenXR runtime.\n");
                     printf("PsychOpenXRCore-WARNING: See https://github.com/ValveSoftware/SteamVR-for-Linux/issues/422 for associated unresolved SteamVR issue, as of v1.24.7.\n");
+                    printf("PsychOpenXRCore-WARNING: Please UPGRADE to at least SteamVR version 2.11.2 for a proper fix for this problem.\n");
                     printf("PsychOpenXRCore-WARNING: " PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME " might malfunction when you quit it, although usually it is fine.\n");
                 }
 
@@ -5242,7 +5245,7 @@ static XrResult releaseTextureHandles(PsychOpenXRDevice *openxr)
             if ((myglCopyImageSubData == NULL) || (glGetError() == GL_INVALID_OPERATION)) {
                 // Fallback: Can only do non-MSAA textures, and has higher overhead. It gets also triggered
                 // if Screen's texture formats and OpenXR swapchains texture formats are incompatible. One
-                // culprit is SteamVR on Linux, at least with OculusVR backend, which often uses highly
+                // culprit is SteamVR on Windows, at least with OculusVR backend, which often uses highly
                 // incompatible formats.
                 myglBindFramebuffer(GL_READ_FRAMEBUFFER, openxr->srcFboIds[eyeIndex]);
                 glBindTexture(GL_TEXTURE_2D, openxr->currentTextures[eyeIndex]);
