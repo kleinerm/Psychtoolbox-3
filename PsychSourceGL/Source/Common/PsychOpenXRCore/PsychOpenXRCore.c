@@ -524,10 +524,64 @@ static psych_bool resultOK(XrResult result)
     if (XR_SUCCEEDED(result))
         return(TRUE);
 
-    if (xrInstance != XR_NULL_HANDLE)
+    if (xrInstance != XR_NULL_HANDLE) {
         xrResultToString(xrInstance, result, errorString);
-    else
-        sprintf(errorString, "Unknown error.");
+    } else {
+        // Failed, but need to map manually in this case:
+        switch (result) {
+            case XR_ERROR_SIZE_INSUFFICIENT:
+                sprintf(errorString, "XR_ERROR_SIZE_INSUFFICIENT");
+                break;
+
+            case XR_ERROR_API_LAYER_NOT_PRESENT:
+                sprintf(errorString, "XR_ERROR_API_LAYER_NOT_PRESENT");
+                break;
+
+            case XR_ERROR_API_VERSION_UNSUPPORTED:
+                sprintf(errorString, "XR_ERROR_API_VERSION_UNSUPPORTED");
+                break;
+
+            case XR_ERROR_EXTENSION_DEPENDENCY_NOT_ENABLED:
+                sprintf(errorString, "XR_ERROR_EXTENSION_DEPENDENCY_NOT_ENABLED");
+                break;
+
+            case XR_ERROR_EXTENSION_NOT_PRESENT:
+                sprintf(errorString, "XR_ERROR_EXTENSION_NOT_PRESENT");
+                break;
+
+            case XR_ERROR_INITIALIZATION_FAILED:
+                sprintf(errorString, "XR_ERROR_INITIALIZATION_FAILED");
+                break;
+
+            case XR_ERROR_LIMIT_REACHED:
+                sprintf(errorString, "XR_ERROR_LIMIT_REACHED");
+                break;
+
+            case XR_ERROR_NAME_INVALID:
+                sprintf(errorString, "XR_ERROR_NAME_INVALID");
+                break;
+
+            case XR_ERROR_OUT_OF_MEMORY:
+                sprintf(errorString, "XR_ERROR_OUT_OF_MEMORY");
+                break;
+
+            case XR_ERROR_RUNTIME_FAILURE:
+                sprintf(errorString, "XR_ERROR_RUNTIME_FAILURE");
+                break;
+
+            case XR_ERROR_RUNTIME_UNAVAILABLE:
+                sprintf(errorString, "XR_ERROR_RUNTIME_UNAVAILABLE");
+                break;
+
+            case XR_ERROR_VALIDATION_FAILURE:
+                sprintf(errorString, "XR_ERROR_VALIDATION_FAILURE");
+                break;
+
+            default:
+                sprintf(errorString, "Unknown error: UNKNOWN_XR_RESULT_code_%d", (int) result);
+                break;
+        }
+    }
 
     return(FALSE);
 }
