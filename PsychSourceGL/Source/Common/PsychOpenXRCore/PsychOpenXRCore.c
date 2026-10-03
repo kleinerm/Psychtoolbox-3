@@ -3960,7 +3960,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         PsychAllocOutStructArray(3, kPsychArgOptional, 1, FieldCount3, FieldNames3, &status);
 
         // Timestamp for when this tracking info is valid:
-        PsychSetStructArrayDoubleElement("Time", 0, eyeGazeSampleTime.time ? XrTimeToPsychTime(eyeGazeSampleTime.time) : 0, status);
+        PsychSetStructArrayDoubleElement("Time", 0, eyeGazeSampleTime.time ? XrTimeToPsychTime(eyeGazeSampleTime.time) : NAN, status);
 
         // Eye tracking state:
         StatusFlags = 0;

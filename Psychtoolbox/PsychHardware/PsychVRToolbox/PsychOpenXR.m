@@ -1418,8 +1418,8 @@ if strcmpi(cmd, 'PrepareRender')
       % Process each entry:
       for i = 1:length(gaze)
         result.gazeStatus(i) = gaze(i).Status;
-        % TODO FIXME: Replacing 0 by NaN should be done in PsychOpenXRCore. Fix
-        % after initial release in PTB 3.0.19.5!
+        % TODO FIXME: Replacing 0 by NaN can be done in PsychOpenXRCore, starting
+        % with PTB 3.0.22.4 or later. The 0 works for both older and new drivers.
         if gaze(i).Time > 0
           result.gazeTime(i) = gaze(i).Time;
         else
