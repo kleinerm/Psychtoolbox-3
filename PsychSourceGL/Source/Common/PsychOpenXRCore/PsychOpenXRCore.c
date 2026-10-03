@@ -2310,7 +2310,7 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
         .applicationVersion = 3,
         .engineName = "PsychOpenXRCore",
         .engineVersion = (PSYCHTOOLBOX_MAJOR_VERSION << 24 | PSYCHTOOLBOX_MINOR_VERSION << 16 | PSYCHTOOLBOX_POINT_VERSION),
-        .apiVersion = XR_CURRENT_API_VERSION
+        .apiVersion = XR_API_VERSION_1_0
     };
 
     XrInstanceCreateInfo instanceCreateInfo = {
