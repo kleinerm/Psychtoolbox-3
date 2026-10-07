@@ -519,6 +519,11 @@ static psych_bool PsychOpenXRStartPresenterThread(PsychOpenXRDevice *openxr)
     return(TRUE);
 }
 
+// Only in OpenXR 1.1+ SDK, so define if missing:
+#ifndef XR_ERROR_EXTENSION_DEPENDENCY_NOT_ENABLED
+#define XR_ERROR_EXTENSION_DEPENDENCY_NOT_ENABLED -1000710001
+#endif
+
 static psych_bool resultOK(XrResult result)
 {
     if (XR_SUCCEEDED(result))
@@ -2310,7 +2315,7 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
         .applicationVersion = 3,
         .engineName = "PsychOpenXRCore",
         .engineVersion = (PSYCHTOOLBOX_MAJOR_VERSION << 24 | PSYCHTOOLBOX_MINOR_VERSION << 16 | PSYCHTOOLBOX_POINT_VERSION),
-        .apiVersion = XR_API_VERSION_1_0
+        .apiVersion = XR_MAKE_VERSION(1, 0, 0)
     };
 
     XrInstanceCreateInfo instanceCreateInfo = {
