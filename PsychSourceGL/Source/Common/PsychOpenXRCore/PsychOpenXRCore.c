@@ -2747,6 +2747,17 @@ PsychError PSYCHOPENXROpen(void)
     // Record if basic eye gaze tracking is available:
     openxr->hasEyeTracking = eyeGazeAvailable[deviceIndex].supportsEyeGazeInteraction ? 1 : 0;
 
+    // Apparently latest combos of SteamVR OpenXR + HTC Vive drivers misreport gaze tracking as always
+    // unsupported / disabled, even when fully supported / enabled. If we deal with such a specimen,
+    // force gaze tracking on (Bug introduced sometimes around SteamVR 2.11 in summer 2025, not resolved
+    // as of October 2026):
+    if (has_XR_EXT_eye_gaze_interaction && strstr(availableSystems[deviceIndex].systemName, "SRanipal")) {
+        openxr->hasEyeTracking = TRUE;
+
+        if (verbosity >= 3)
+            printf("PsychOpenXRCore-INFO: HTC VR HMD with broken gaze tracking status reporting detected. Force-Enabling gaze tracking.\n");
+    }
+
     // Record if basic hand tracking is available:
     openxr->hasHandTracking = handTrackingAvailable[deviceIndex].supportsHandTracking ? 1 : 0;
 
