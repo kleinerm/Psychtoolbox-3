@@ -17,7 +17,7 @@
  * The runtime must support OpenGL as rendering backend for XR content.
  *
  * The driver was initially derived from PsychOculusVRCore1.
- * Copyright (c) 2022-2025 Mario Kleiner. Licensed to you under the MIT license:
+ * Copyright (c) 2022-2026 Mario Kleiner. Licensed to you under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -319,7 +319,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychOpenXRCore - A Psychtoolbox driver for OpenXR compatible VR/AR/MR/XR hardware.";
     synopsis[i++] = "This driver allows to use XR devices supported by a suitable OpenXR runtime of version 1.x.\n";
-    synopsis[i++] = "Copyright (c) 2022-2025 Mario Kleiner.";
+    synopsis[i++] = "Copyright (c) 2022-2026 Mario Kleiner.";
     synopsis[i++] = "The PsychOpenXRCore driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "";
     synopsis[i++] = "For some experimental Monado specific timestamping implementation, the driver currently";
@@ -2766,9 +2766,9 @@ PsychError PSYCHOPENXROpen(void)
 
     // Stats for nerds:
     if (verbosity >= 3) {
-        printf("PsychOpenXRCore-INFO: Opened OpenXR device with deviceIndex %i as handle %i.\n", deviceIndex, handle + 1);
-        printf("PsychOpenXRCore-INFO: Product: \"%s\" - [VendorId: 0x%x eyeTracking: %i handJointsTracking: %i]\n", availableSystems[deviceIndex].systemName, availableSystems[deviceIndex].vendorId, openxr->hasEyeTracking, openxr->hasHandTracking);
-        printf("PsychOpenXRCore-INFO: -----------------------------------------------------------------------------------------------\n");
+        //printf("PsychOpenXRCore-INFO: Opened OpenXR device with deviceIndex %i as handle %i.\n", deviceIndex, handle + 1);
+        printf("PsychOpenXRCore-INFO: Opened Product: \"%s\" - [VendorId: 0x%x eyeTracking: %i handJointsTracking: %i]\n", availableSystems[deviceIndex].systemName, availableSystems[deviceIndex].vendorId, openxr->hasEyeTracking, openxr->hasHandTracking);
+        printf("PsychOpenXRCore-INFO: ------------------------------------------------------------------------------------------------------\n");
     }
 
     // Assign multi-threading mode as "off" by default:
@@ -3639,7 +3639,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         " 0 = No gaze tracking info available.\n"
         "+1 = Some gaze info available, but not based on measurements. Consider this not trustworthy at all!\n"
         "+2 = Tracked gaze position available. This is possibly subject to interpolation or extrapolation.\n"
-        "'GazePose' = Position and orientation of the eye, expressing a gaze vector in its usual [x,y,z,rx,ry,rz,rw] form.\n"
+        "'GazePose' = Position and orientation of the eye, expressing a gaze vector in its usual [x,y,z,rx,ry,rz,rw] form, "
+        "relative to the head / HMD reference frame.\n"
         " \n"
         "Articulated hand tracking on supported hardware:\n"
         " \n"
@@ -3963,7 +3964,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
             if (verbosity > 1)
                 printf("PsychOpenXRCore-WARNING: In eye tracking - xrGetActionStatePose() failed: %s\n", errorString);
         }
-        else if (gazeStatePose.isActive && !resultOK(xrLocateSpace(openxr->gazePoseSpace, openxr->worldSpace, xrPredictionTime, &gazeLocation))) {
+        else if (gazeStatePose.isActive && !resultOK(xrLocateSpace(openxr->gazePoseSpace, openxr->viewSpace, xrPredictionTime, &gazeLocation))) {
             if (verbosity > 1)
                 printf("PsychOpenXRCore-WARNING: In eye tracking - xrLocateSpace() failed: %s\n", errorString);
         }
@@ -4813,7 +4814,7 @@ PsychError PSYCHOPENXRTimingSupport(void)
     "Return available level of precise timing and timestamping support for OpenXR device 'openxrPtr'. "
     "If 'openxrPtr' is omitted, a more basic, general assessment of the OpenXR runtimes capabilities "
     "is returned.\n"
-    "Standard unextended OpenXR-1 runtimes, as of March 2025, do not support reliable visual onset "
+    "Standard unextended OpenXR-1 runtimes, as of October 2026, do not support reliable visual onset "
     "timestamping, and most tested runtimes don't support reliable onset timing either. These runtimes "
     "will return zero, hinting at the need for multi-threading tricks for bearable precision.\n"
     "The open-source Monado runtime does support precise onset timing, and may support some better "
