@@ -3634,7 +3634,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "a time for which the users gaze location was interpolated or extrapolated, given 'predictionTime'. "
         "The behaviour wrt. sample acquisition time, returned vs. requested time, and gaze inter- / extrapolation "
         "is system dependent and may vary from device to device, runtime to runtime and across operating systems. "
-        "If the gaze sample time can not be determined by the given system, a value of zero is returned.\n"
+        "If the gaze sample time can not be determined by the given system, a value of NaN is returned.\n"
         "'Status' = Tracking status flags:\n"
         " 0 = No gaze tracking info available.\n"
         "+1 = Some gaze info available, but not based on measurements. Consider this not trustworthy at all!\n"
