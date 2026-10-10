@@ -1448,9 +1448,6 @@ if strcmpi(cmd, 'PrepareRender')
             % Only columns 3 and 4 for z-axis and position are valid, just enough:
             gazeM(1:3, 4) = gaze(i).GazePose(1:3);
             gazeM(1:3, 3) = gaze(i).GazePose(4:6);
-
-            % Mysterious negation hack needed with SRAnipal:
-            gazeM(1:3, 3) = -gazeM(1:3, 3);
           end
 
           % Store estimated eye opening and pupil diameter:
@@ -1467,6 +1464,10 @@ if strcmpi(cmd, 'PrepareRender')
         if myhmd.needEyeTrackingYSwitch
           gazeM(2, 1:3) = -gazeM(2, 1:3);
         end
+
+        % Negate z-Axis, as looking direction (gaze direction vector) is the
+        % negative z-Axis, not the positive axis:
+        gazeM(1:3, 3) = -gazeM(1:3, 3);
 
         % Disabled, as impossible to make compatible with other implementations:
         % result.gazeLocalMatNonPortable{i} = gazeM;
