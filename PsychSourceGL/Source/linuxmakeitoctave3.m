@@ -286,11 +286,6 @@ if mode==16 && exist('/usr/include/openxr', 'dir')
     unix(['cp ../Projects/Linux/build/PsychOpenXRCore.mex ' PsychtoolboxRoot target]);
 end
 
-if str2num(version()(1)) < 5
-    % Remove stale object files from current dir on Octave 4 and earlier:
-    delete('*.o');
-end
-
 return;
 end
 
