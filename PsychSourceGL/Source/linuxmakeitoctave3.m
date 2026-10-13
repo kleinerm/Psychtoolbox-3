@@ -1,11 +1,7 @@
 function linuxmakeitoctave3(mode, neurodebianbuild)
 % linuxmakeitoctave3([mode=0][, neurodebianbuild=0])
 % This is the GNU/Linux version of makeit to build the Linux
-% mex files for Octave on Linux. It also creates copies of
-% the mex files build against Octave-3 and modifies them to
-% also work on Octave-4.0 - 4.2. Files for Octave 4.4 - 7.3 are
-% built and stored into a different target folder.
-%
+% mex files for Octave on Linux.
 %
 % mode: Optional, which mex file to build. Defaults to zero for Screen.mex,
 %       -1 builds all supported files.
@@ -25,6 +21,9 @@ end
 if nargin < 2 || isempty(neurodebianbuild)
     neurodebianbuild = 0;
 end
+
+% Is this Debian GNU/Linux or a Debian derived system like Ubuntu or RPi OS?
+isDebianlike = ~system ('grep debian /etc/os-release', 1);
 
 % Rebuild all request?
 if mode == -1
@@ -142,8 +141,8 @@ if mode==3
     unix(['cp ../Projects/Linux/build/PsychPortAudio.mex ' PsychtoolboxRoot target]);
 end
 
-if mode==4 && ~neurodebianbuild
-    % Build Eyelink.mex: Needs Eyelink SDK (eyelink_core component) from SR-Research.
+if mode==4 && ~IsARM && ~neurodebianbuild
+    % Build Eyelink.mex: Needs Eyelink SDK for Intel (eyelink_core component) from SR-Research.
     % See https://www.sr-research.com/support/docs.php?topic=linuxsoftware for install instructions.
     mex --output ../Projects/Linux/build/Eyelink.mex -Wno-date-time -Wno-deprecated-declarations -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I/usr/include/EyeLink -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target]);
@@ -198,7 +197,7 @@ if mode==9
     curdir = pwd;
     cd('../../Psychtoolbox/PsychSound/MOAL/source/')
     try
-       mex --output moalcore.mex -Wno-address -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c
+        mex --output moalcore.mex -Wno-address -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c
     catch
     end
     unix(['cp moalcore.mex ' PsychtoolboxRoot target]);
@@ -208,7 +207,14 @@ end
 
 if mode == 10 && exist('/usr/include/apriltag', 'dir')
     % Build PsychCV
-    mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils
+    if isDebianlike
+        % Debian/Ubuntu/RPi-OS systems split up libapriltag into libapriltag.so and libapriltag-utils.so for some weird reason:
+        mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils
+    else
+        % Same as above, but without libapriltag-utils.so dependency:
+        mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag
+    end
+
     %mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -DPSYCHCV_USE_ARTOOLKIT -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a
     %mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_APRILTAGS -DPSYCHCV_USE_ARTOOLKIT -DPSYCHCV_USE_OPENCV -I/usr/include/apriltag -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include -I/usr/include/opencv Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c Common/PsychCV/OpenEyesCVEyeTracker/*.cc -lc -lrt -ldl -lglut -lapriltag -lapriltag-utils -lopencv_core -lopencv_imgproc -lopencv_highgui /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a
     unix(['cp ../Projects/Linux/build/PsychCV.mex ' PsychtoolboxRoot target]);
@@ -227,7 +233,7 @@ if mode == 11
     cd(curdir);
 end
 
-if mode==12 && ~neurodebianbuild
+if mode==12 && ~IsARM && Is64Bit && ~neurodebianbuild
     % Build PsychOculusVRCore.mex:
     try
         % Pure C compile:
