@@ -2602,6 +2602,9 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % interop, so the thread can't use them concurrently.
   ovrSpecialFlags = mor(ovrSpecialFlags, kPsychDontUseFlipperThread);
 
+  % Mark this window as using an external display method:
+  ovrSpecialFlags = mor(ovrSpecialFlags, kPsychExternalDisplayMethod);
+
   % Did usercode not request a specific MSAA level?
   if isempty(ovrMultiSample)
     % No, dealers choice. Assign recommended MSAA setting from OpenXR runtime:
