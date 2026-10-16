@@ -5361,7 +5361,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         if (PsychPrefStateGet_Verbosity() > 4) {
             // Allocate a sample logbuffer for maxsecs duration at 1000 hz refresh:
             maxlogsamples =  (int) (ceil(*maxsecs) * 1000);
-            samples = calloc(sizeof(double), maxlogsamples);
+            samples = calloc(maxlogsamples, sizeof(double));
         }
 
         // Switch to RT scheduling for timing tests:
