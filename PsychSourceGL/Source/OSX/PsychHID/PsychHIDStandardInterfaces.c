@@ -178,28 +178,28 @@ psych_bool PsychHIDWarnAccessDenied(const char* callerName)
         return(FALSE);
 
     printf("\n\nPsychHID-ERROR: During %s: macOS is preventing access to HID input devices like keyboard, keypad and mouse!\n", (callerName) ? callerName : "PsychHID invocation");
-    printf("PsychHID-ERROR: This is because permission for 'Input Monitoring' is denied to %s, or to Terminal.app, if you started %s from a Terminal.\n",
+    printf("PsychHID-ERROR: This is because permission for 'Input Monitoring' is denied to %s, or to the Terminal.app, if you started %s from a Terminal.\n",
            PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
     printf("PsychHID-ERROR: Please rectify this manually now:\n");
     printf("PsychHID-ERROR: \n");
     printf("PsychHID-ERROR: 1. Quit %s, and also Terminal if it was used to launch %s.\n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
-    printf("PsychHID-ERROR: 2. Open 'System Preferences', then go to the 'Security & Privacy' control panel.\n");
-    printf("PsychHID-ERROR: 3. Select the 'Privacy' tab, and then in the list on the left, the item 'Input Monitoring'.\n");
+    printf("PsychHID-ERROR: 2. Open 'System Preferences', then go to the 'Privacy & Security' control panel.\n");
+    printf("PsychHID-ERROR: 3. Select the item 'Input Monitoring'.\n");
     printf("PsychHID-ERROR: 4. Make sure that %s, or similar, or maybe Terminal instead, is listed in the list on the right.\n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
-    printf("PsychHID-ERROR:    E.g., names could be 'Terminal' or 'Octave' something, or 'MATLAB_R2020b.app' or similar for Matlab.\n");
-    printf("PsychHID-ERROR: 5. Make sure that the checkbox next to the name of the item is checked.\n");
+    printf("PsychHID-ERROR:    E.g., names could be 'Terminal' or 'Octave' something, or 'MATLAB_R2026b.app' or similar for Matlab.\n");
+    printf("PsychHID-ERROR:    Also make sure that an additional item named 'MATLAB' is there in the list for Matlab R2026a or later versions.\n");
+    printf("PsychHID-ERROR: 5. Make sure that the checkbox next to the name of the items is checked.\n");
     printf("PsychHID-ERROR: 6. Restart %s.\n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
     printf("PsychHID-ERROR: 7. Execute the 'KbCheck' command as a simple test, which should hopefully work now without errors.\n");
     printf("PsychHID-ERROR: 8. If it doesn't work, go back to step 5, but *uncheck* the checkbox, close the GUI,\n");
     printf("PsychHID-ERROR:    then reopen the GUI, go back to step 5 and *check* the checkbox again. Unchecking\n");
     printf("PsychHID-ERROR:    and then checking the checkbox again, and closing and reopening the security GUI and\n");
     printf("PsychHID-ERROR:    Matlab/Octave/Terminal inbetween usually fixes these issues caused by Apple macOS GUI bugs.\n");
-    printf("PsychHID-ERROR:    It may also be neccessary to delete the item from the list by marking it and then using the\n");
-    printf("PsychHID-ERROR:    - (Minus) button at the bottom of the list view. Closing the GUI, reopening and readding the\n");
-    printf("PsychHID-ERROR:    Matlab/Octave/Terminal item to the list by clicking the + (Plus) button.\n");
+    printf("PsychHID-ERROR:    It may also be neccessary to delete the items from the list by marking them and then using the\n");
+    printf("PsychHID-ERROR:    - (Minus) button at the bottom of the list view. Closing the GUI, reopening and re-adding the\n");
+    printf("PsychHID-ERROR:    Matlab/Octave/Terminal items to the list by clicking the + (Plus) button.\n");
     printf("PsychHID-ERROR: 9. If it still doesn't work, retry the procedure - rinse, wash, repeat.\n");
-    printf("PsychHID-ERROR: 10. If it works without errors, retry if your own scripts or our demos now work again.\n");
-    printf("PsychHID-ERROR: 11. If none of this works, you may be able to buy paid support from us: 'help PsychPaidSupportAndServices'.\n\n\n");
+    printf("PsychHID-ERROR: 10. If it works without errors, retry if your own scripts or our demos now work again.\n\n\n");
 
     // Try to bind and call IOHIDRequestAccess() to bring up the security prompt, which
     // should guide the user into fixing this Apple security bullshit:
