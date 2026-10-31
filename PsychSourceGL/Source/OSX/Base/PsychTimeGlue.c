@@ -627,13 +627,20 @@ const char* PsychSupportStatus(void)
 
         // macOS 11+ - Versioning scheme changes with macOS Tahoe v16 -> v26:
         if (osMinor - 5 < 16) {
+            // macOS 11 - 15:
             osMajor = osMinor - 5;
         } else {
-            osMajor = osMinor - 5 + 10;
+            if (osMinor == 21) {
+                // macOS 26:
+                osMajor = 26;
+            } else {
+                // macOS 27+
+                osMajor = osMinor + 4;
+            }
         }
 
-        // Only macOS 13 to 15 are officially supported:
-        isSupported = ((osMajor >= 13) && (osMajor <= 15)) ? 1 : 0;
+        // Only macOS 13 to 27 are officially supported:
+        isSupported = ((osMajor >= 13) && (osMajor <= 27)) ? 1 : 0;
 
         // Only macOS 13 on Intel and macOS 15 on ARM are actively tested:
         isTested = (isARM && (osMajor >= 15) && (osMajor <= 15)) || (!isARM && (osMajor == 13));
@@ -644,7 +651,7 @@ const char* PsychSupportStatus(void)
         } else {
             // Currently supported, or too new (== not yet supported) macOS version?
             sprintf(statusString, "macOS %i %s is %s.", osMajor, isARM ? "Apple Silicon" : "Intel",
-                    isSupported ? (isTested ? "somewhat tested and supported" : "supported") : "not yet tested or supported at all for this release.");
+                    isSupported ? (isTested ? "tested and supported" : "somewhat supported") : "not yet tested or supported at all for this release.");
         }
     }
 
