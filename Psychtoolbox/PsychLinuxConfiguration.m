@@ -812,21 +812,30 @@ fprintf('\n\n\n');
 
 % Matlab with broken libvulkan.so.1?
 if ~IsOctave
-  % Latest Matlabs bundle a totally crippled libvulkan.so.1 Vulkan loader
+  % Latest Matlab releases bundle a totally broken libvulkan.so.1 Vulkan loader
   % that overrides the good system installed Vulkan loader and sabotages
   % our PsychVulkan support. Apparently competent people are hard to hire...
-  % Try to detect this and and rename the file:
+  % Try to detect this and and rename the file to disable it, then set a
+  % symlink to the good system file:
   libvulkan = ([matlabroot '/bin/glnxa64/libvulkan.so.1']);
-  if exist(libvulkan, 'file')
-    cmd = ['sudo mv "' libvulkan '" "' libvulkan '.DISABLED"'];
-    fprintf('\nThis Matlab version ships a broken libvulkan.so.1 library. Renaming it to disable it...\n');
-    fprintf('You may have to enter your administrator password to execute the following command:\n%s\n\n', cmd);
-    system(cmd);
+  newlibvulkan = '/usr/lib/x86_64-linux-gnu/libvulkan.so.1';
+  if exist(libvulkan, 'file') && (system(['diff "' newlibvulkan '" "' libvulkan '"']) == 1)
+    cmd1 = ['sudo mv "' libvulkan '" "' libvulkan '.BACKUPORIGINAL"'];
+    cmd2 = ['sudo ln -s "' newlibvulkan '" "' libvulkan '"'];
+    fprintf('\nThis Matlab version ships a broken libvulkan.so.1 library. Renaming it to disable it,\n');
+    fprintf('then replacing it by a symbolic link to the proper system provided library.\n\n');
+    fprintf('You may have to enter your administrator password to execute the following commands:\n%s\n%s\n\n', cmd1, cmd2);
+    system(cmd1);
 
     if exist(libvulkan, 'file')
       warning('Failed to rename Matlabs broken libvulkan.so.1. PsychVulkan will not work!');
     else
-      fprintf('Success. Vulkan should work now.\n');
+      system(cmd2);
+      if ~exist(libvulkan, 'file')
+        warning('Failed to replace Matlabs broken libvulkan.so.1 with symlink. PsychVulkan will work, but Matlabs plotting may be broken!');
+      else
+        fprintf('Success. Vulkan should work now.\n');
+      end
     end
   end
 end
