@@ -1811,6 +1811,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     char fbodiag[100];
     PsychFBO *fbo;
     GLenum fborc = GL_FRAMEBUFFER_COMPLETE_EXT;
+    const GLint dedicated = 1;
 
     // If any interop handle that we still have ownership of was previously assigned to this window, then release it:
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -1896,6 +1897,10 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
     // Create memory object for interop memory import:
     glCreateMemoryObjectsEXT(1, &fbo->memoryObject);
+    PsychTestForGLErrors();
+
+    // Setup memory object as dedicated allocation (this may override the tilingMode, e.g., on AMD or Qualcomm):
+    glMemoryObjectParameterivEXT(fbo->memoryObject, GL_DEDICATED_MEMORY_OBJECT_EXT, &dedicated);
     PsychTestForGLErrors();
 
     // Semaphore handle provided?

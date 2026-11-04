@@ -3315,9 +3315,18 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
     // Figure out memory and backing store requirements for image to be exportable to OpenGL:
     vkGetImageMemoryRequirements(vulkan->device, window->interopImage, &memoryRequirements);
 
+    // Mark as dedicated one-memory-object-per-image allocation:
+    VkMemoryDedicatedAllocateInfo dedicatedAllocInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .pNext = NULL,
+        .buffer = VK_NULL_HANDLE,
+        .image = window->interopImage,
+    };
+
+    // For export to OpenGL et al.:
     VkExportMemoryAllocateInfo exportAllocInfo = {
         .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
-        .pNext = NULL,
+        .pNext = &dedicatedAllocInfo,
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT,
         #else
@@ -4204,6 +4213,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         case 0x8086: // Intel gpu: Verified to work with tiled rendering on Iris as of Mesa 21.0.0-devel + OpenGL interop patchset.
         case 0x10de: // NVidia gpu: At least proprietary drivers allow tiled rendering:
         case 0x14e4: // Broadcom gpu: Verified to work with tiled rendering on VideoCore-6 / RaspberryPi 4/400.
+        case 0x5143: // Qualcomm gpu, e.g., Adreno, should support tiling according to Turnip source code.
+        case 0x1002: // AMD gpu: AMD OpenGL drivers should allow tiled rendering with dedicated texture allocations.
         case VK_VENDOR_ID_MESA: // Mesa Honeykrisp or llvmpipe driver, assuming Honeykrisp, ergo: Apple Silicon SoC AGFX gpu.
             if (((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) && !(flags & 0x4)) {
                 window->interopTextureTiled = TRUE;
@@ -4211,7 +4222,6 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             }
             // If tiling is not supported for some reason, fallthrough to linear mode:
 
-        case 0x1002: // AMD gpu: AMD OpenGL drivers currently only allow rendering into linear non-tiled interop texture.
         default:
             if ((formatProps.linearTilingFeatures & requiredMask) == requiredMask) {
                 window->interopTextureTiled = FALSE;
