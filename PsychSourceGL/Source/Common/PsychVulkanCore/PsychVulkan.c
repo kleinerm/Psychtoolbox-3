@@ -4214,9 +4214,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         case 0x10de: // NVidia gpu: At least proprietary drivers allow tiled rendering:
         case 0x14e4: // Broadcom gpu: Verified to work with tiled rendering on VideoCore-6 / RaspberryPi 4/400.
         case 0x5143: // Qualcomm gpu, e.g., Adreno, should support tiling according to Turnip source code.
-        case 0x1002: // AMD gpu: AMD OpenGL drivers should allow tiled rendering with dedicated texture allocations.
+        case 0x1002: // AMD gpu: Mesa OpenGL + Vulkan radv drivers allow tiled rendering with dedicated texture allocations, AMDVLK OSS on Linux fails on some gpu's though.
         case VK_VENDOR_ID_MESA: // Mesa Honeykrisp or llvmpipe driver, assuming Honeykrisp, ergo: Apple Silicon SoC AGFX gpu.
-            if (((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) && !(flags & 0x4)) {
+            if (((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) && !(flags & 0x4) &&
+                !(vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)) {
                 window->interopTextureTiled = TRUE;
                 break;
             }
