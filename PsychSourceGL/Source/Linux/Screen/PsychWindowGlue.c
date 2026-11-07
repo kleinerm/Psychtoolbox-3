@@ -4039,6 +4039,38 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     windowRecord->lastSwaptarget_msc = 0;
 }
 
+/*
+ *  PsychOSIsSoftwareRasterizer()
+ *
+ *  Is the OpenGL renderer that is currently bound to this thread a software
+ *  rasterizer, instead of a real GPU driver?
+ *
+ *  Returns TRUE for Mesa's llvmpipe / softpipe (as used by Xvfb, Xdummy, Xephyr,
+ *  remote X11 or VMs without GPU passthrough), the classic Mesa swrast renderer,
+ *  and similar software fallbacks. Returns TRUE conservatively if no renderer
+ *  string can be queried, e.g., because no OpenGL context is current.
+ *
+ *  Needed by PsychOSSetVBLSyncLevel() below, because some GLX queries crash on
+ *  such renderers - see there for the gory details.
+ */
+static psych_bool PsychOSIsSoftwareRasterizer(void)
+{
+    const char* renderer = (const char*) glGetString(GL_RENDERER);
+    const char* vendor = (const char*) glGetString(GL_VENDOR);
+
+    // No renderer string: No current context, or a broken driver. Be conservative:
+    if (NULL == renderer)
+        return(TRUE);
+
+    if (strstr(renderer, "llvmpipe") || strstr(renderer, "softpipe") ||
+        strstr(renderer, "swrast") || strstr(renderer, "Software Rasterizer") ||
+        strstr(renderer, "Mesa OffScreen") ||
+        (strstr(renderer, "Mesa X11") && vendor && strstr(vendor, "Brian Paul")))
+        return(TRUE);
+
+    return(FALSE);
+}
+
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
@@ -4051,9 +4083,22 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 
     // Most efficient and cross-vendor GLX_EXT_swap_control supported in Mesa since v20.3.0 from December 2020, NVidia/ATI proprietary since at least year 2013:
     if (glxewIsSupported("GLX_EXT_swap_control")) {
+        // Querying the actual interval back only works on real GPU drivers. Mesa's software rasterizers
+        // (llvmpipe/softpipe, as used by Xvfb, Xdummy, remote X11 or VMs without GPU passthrough) do
+        // advertise GLX_EXT_swap_control, but leave the GLX_SWAP_INTERVAL_EXT drawable query dispatch
+        // slot unimplemented. glXQueryDrawable() then calls a NULL function pointer, i.e. it jumps to
+        // address 0 and takes down the whole host application with a SIGSEGV. As this happens inside
+        // libGLX_mesa and not in X11 protocol handling, it can not be caught by an X11 error handler.
+        // On such a renderer there is no real vblank to synchronize to anyway, so simply trust the
+        // requested setting instead of asking the driver back:
+        psych_bool canQueryInterval = !PsychOSIsSoftwareRasterizer();
+
         PsychLockDisplay();
         glXSwapIntervalEXT(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, swapInterval);
-        glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_SWAP_INTERVAL_EXT, (unsigned int*) &myinterval);
+        if (canQueryInterval)
+            glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_SWAP_INTERVAL_EXT, (unsigned int*) &myinterval);
+        else
+            myinterval = swapInterval;
         PsychUnlockDisplay();
     }
     else if (glxewIsSupported("GLX_MESA_swap_control")) {
