@@ -27,6 +27,9 @@ void PsychCleanupSCREENFillPoly(void);
 
 PsychError ScreenExitFunction(void)
 {
+    // Clear scheduled flip callbacks for all onscreen windows.
+    PsychClearAllFlipCallbacks();
+
 	//The timing array holds time values set by Screen internal diagnostics.  It allocates memory with 
 	//malloc to hold the array of times.  This call frees the memory prior to unloading Screen
 	ClearTimingArray();

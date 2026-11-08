@@ -242,6 +242,15 @@ void InitPsychAuthorList(void)
         "kurt@sr-research.com",
         "https://sr-research.com"
     );
+    PsychAddAuthor(
+        // Contributed Screen 'ScheduleCallbacksOnFlip'
+        "Alexander",
+        "D.",
+        "Forrence",
+        "adf",
+        "alex.forrence@gmail.com",
+        "https://github.com/aforren1"
+    );
 }
 
 

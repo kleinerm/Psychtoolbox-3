@@ -421,6 +421,10 @@ PsychError SCREENFlip(void)
         miss_estimate    = flipRequest->miss_estimate;
         beamposatflip    = flipRequest->beamPosAtFlip;
 
+        if (opmode == 0) {
+            PsychRunFlipCallbacks(windowRecord->windowIndex, vbl_timestamp, time_at_onset, time_at_flipend, miss_estimate, (double) beamposatflip);
+        }
+
         // Return timestamp at start of VBL time:
         PsychCopyOutDoubleArg(1, FALSE, vbl_timestamp);
         // Return timestamp at stimulus onset time:
