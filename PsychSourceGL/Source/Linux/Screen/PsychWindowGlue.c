@@ -4049,37 +4049,12 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     if (windowRecord->targetSpecific.syncCounter[1])
         swapInterval = 0;
 
-    // Most efficient and cross-vendor GLX_EXT_swap_control supported in Mesa since v20.3.0 from December 2020, NVidia/ATI proprietary since at least year 2013:
-    if (glxewIsSupported("GLX_EXT_swap_control")) {
+    // Cross-vendor GLX_EXT_swap_control supported in Mesa since v20.3.0 from December 2020, NVidia/ATI proprietary since at least year 2013:
+    if (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(windowRecord->screenNumber)), "GLX_EXT_swap_control")) {
         PsychLockDisplay();
         glXSwapIntervalEXT(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, swapInterval);
         glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_SWAP_INTERVAL_EXT, (unsigned int*) &myinterval);
         PsychUnlockDisplay();
-    }
-    else if (glxewIsSupported("GLX_MESA_swap_control")) {
-        // Need rendering context of window:
-        PsychSetGLContext(windowRecord);
-        PsychLockDisplay();
-        error = glXSwapIntervalMESA(swapInterval);
-        myinterval = glXGetSwapIntervalMESA();
-        PsychUnlockDisplay();
-
-        if (error && (PsychPrefStateGet_Verbosity() > 1))
-            printf("\nPTB-WARNING: glXSwapIntervalMESA() FAILED to %s synchronization to vertical retrace! Error=%i\n", (swapInterval > 0) ? "enable" : "disable", error);
-    }
-    else if (glxewIsSupported("GLX_SGI_swap_control")) {
-        // Hopefully never hit this ancient GLX_SGI_swap_control thing anymore: Does not allow disable of vsync or query of actual setting.
-        // Need rendering context of window:
-        PsychSetGLContext(windowRecord);
-        PsychLockDisplay();
-        error = glXSwapIntervalSGI(swapInterval);
-        PsychUnlockDisplay();
-
-        if (error == 0)
-            myinterval = swapInterval;
-
-        if (error && (PsychPrefStateGet_Verbosity() > 1))
-            printf("\nPTB-WARNING: glXSwapIntervalSGI() FAILED to %s synchronization to vertical retrace! Error=%i\n", (swapInterval > 0) ? "enable" : "disable", error);
     }
 
     if (myinterval != -1000) {
