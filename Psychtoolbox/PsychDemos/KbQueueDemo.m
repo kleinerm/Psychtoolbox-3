@@ -98,7 +98,7 @@ while 1
 
         fprintf('You pressed key %i which is %s\n', min(find(firstPress)), KbName(min(find(firstPress))));
 
-        if firstPress(escapeKey)
+        if firstPress(escapeKey) || firstPress(95)
             break;
         end
     end
@@ -124,11 +124,11 @@ while 1
     if pressed
         % Again, fprintf will give an error if multiple keys have been pressed
         fprintf('"%s" typed at time %.3f seconds\n', KbName(min(find(firstPress))), timeSecs - startSecs);
-        
-        if firstPress(escapeKey)
+
+        if firstPress(escapeKey) || firstPress(95)
             break;
         end
-	end
+    end
 end
 KbQueueRelease(deviceIndex);
 return
@@ -188,7 +188,8 @@ try
     keysOfInterest(rightKey)=1;
     keysOfInterest(leftKey)=1;
     keysOfInterest(escapeKey)=1;
-    
+    keysOfInterest(95)=1; % Key left of 1! key, as ESCAPE replacement on touchbar Macs.
+
     % Use the parameters.
     spotDiameter = spotRadius * 2;
     spotRect = [0 0 spotDiameter spotDiameter];
@@ -244,7 +245,7 @@ try
                     else
                         rotationAngle = 2 * pi;
                     end
-                elseif firstPress(escapeKey)
+                elseif firstPress(escapeKey) || firstPress(95)
                     break;
                 end
             end
