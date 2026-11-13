@@ -2044,9 +2044,9 @@ if strcmpi(cmd, 'Open')
     newhmd.needWinThreadingWa1 = 0;
   end
 
-  % Monado OpenXR runtime does not need frequent tracking to keep
+  % Monado (based) OpenXR runtime does not need frequent tracking to keep
   % projection layers stable and free of jitter/jerk/timeout warnings.
-  if ~isempty(strfind(runtimeName, 'Monado'))
+  if ~isempty(strfind(runtimeName, 'Monado')) || ~isempty(strfind(runtimeName, 'WiVRn'))
     % Monado or similar advanced: No need for this - Shaves off some
     % millisecond from a multi-threaded / not client-tracked loop and gives
     % extra visual stability:
