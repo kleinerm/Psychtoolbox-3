@@ -5569,7 +5569,7 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
 
         // To my current knowledge, only Monado handles frameEndInfo.displayTime properly, so all other
         // runtimes need a manual wait here:
-        if ((openxr->targetPresentTime < DBL_MAX) && !strstr(instanceProperties.runtimeName, "Monado"))
+        if ((openxr->targetPresentTime < DBL_MAX) && !strstr(instanceProperties.runtimeName, "Monado") && !strstr(instanceProperties.runtimeName, "WiVRn"))
             PsychWaitUntilSeconds(openxr->targetPresentTime - openxr->frameDuration);
 
         // If targetDisplayTime is earlier than earliest next possible display time predictedDisplayTime, then set it
@@ -5636,7 +5636,8 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool inInit)
         // On Monado we must do a wait iff Monado specific metrics timestamping is not used, because standard Monado will
         // properly schedule frame onset as per displayTime, but won't block until frame onset, so we need an active wait
         // to guesstimate the right time to xrWaitFrame to get some semblance of a timestamp:
-        if ((openxr->targetPresentTime < DBL_MAX) && (tPredictedOnset == -2) && strstr(instanceProperties.runtimeName, "Monado")) {
+        if ((openxr->targetPresentTime < DBL_MAX) && (tPredictedOnset == -2) &&
+            (strstr(instanceProperties.runtimeName, "Monado") || strstr(instanceProperties.runtimeName, "WiVRn"))) {
             // On Linux we may be able to use metrics timestamping on Monado, so can skip the wait, on other OS'es we can't:
             #if PSYCH_SYSTEM == PSYCH_LINUX
             if (!openxr->pbfile)
