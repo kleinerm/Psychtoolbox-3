@@ -241,6 +241,15 @@ wayland_feedback_presented(void *data,
     windowRecord->reference_ust = wayland_feedback->ust;
     windowRecord->swapcompletiontype = flags;
 
+    // Under protocol version 1, which is what we currently request, a zero refresh_nsec
+    // signals a window present in VRR mode, whereas non-zero means FRR:
+    if ((int) windowRecord->vrrMode == -1) {
+        if (refresh_nsec == 0)
+            windowRecord->gfxcaps |= kPsychGfxCapLinuxVRR;
+        else
+            windowRecord->gfxcaps &= ~kPsychGfxCapLinuxVRR;
+    }
+
     // Delete our own completion wayland_feedback container if swap completion logging
     // isn't enabled:
     if (windowRecord->swapevents_enabled <= 0) destroy_wayland_feedback(wayland_feedback);
@@ -405,6 +414,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     struct waffle_wayland_window *wayland_window;
     struct waffle_context *ctx;
     psych_bool useFullRetina = (windowRecord->specialflags & kPsychNeedRetinaResolution) ? TRUE : FALSE;
+    psych_bool vrr_supported;
+    psych_bool vrr_wanted;
+
+    const char* output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, FALSE, NULL, NULL, NULL);
 
     // Always init the list for wayland present events:
     wl_list_init(&windowRecord->targetSpecific.presentation_feedback_list);
@@ -1274,6 +1287,86 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     free(wafflewin);
     wafflewin = NULL;
 
+    // Initialize our Wayland specific timing extensions, as we'll need it for VRR handling:
+    PsychOSInitializeOpenML(windowRecord);
+
+    // VRR handling for Wayland:
+    switch (windowRecord->vrrMode) {
+        case kPsychVRROff: // Disable VRR:
+            windowRecord->vrrMode = kPsychVRROff;
+            break;
+
+        case kPsychVRRAuto: // Automatic selection of optimal supported method for this setup. Use own custom scheduler, unless Vulkan/WSI or wp_commit_timing is used:
+            windowRecord->vrrMode = ((windowRecord->specialflags & kPsychExternalDisplayMethod) || (windowRecord->targetSpecific.wp_commit_timer)) ? kPsychVRRSimple : kPsychVRROwnScheduled;
+            break;
+
+        case kPsychVRRSimple: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to:
+            windowRecord->vrrMode = kPsychVRRSimple;
+            break;
+
+        case kPsychVRROwnScheduled: // Our own custom async scheduler:
+            windowRecord->vrrMode = kPsychVRROwnScheduled;
+            break;
+
+        default:
+            windowRecord->vrrMode = kPsychVRROff;
+            if (PsychPrefStateGet_Verbosity() > 1)
+                printf("PTB-WARNING: Unsupported VRR mode %i requested. Disabling VRR.\n", windowRecord->vrrMode);
+    }
+
+    // Use vrrMinDuration "as is". Either userspace provided, or reasonable default of
+    // video refresh duration of current video mode, which defines the lowest duration
+    // currently doable on the current VRR hardware implementations:
+    windowRecord->vrrMinDuration = windowRecord->vrrMinDuration;
+
+    // vrrMaxDuration: If provided by userspace, use it "as is". If not provided, our
+    // best guess is 33.3333 msecs corresponding to a minimum refresh rate of 30 Hz,
+    // which seems to be what NVidia G-Sync displays and better FreeSync displays can do:
+    windowRecord->vrrMaxDuration = windowRecord->vrrMaxDuration ? windowRecord->vrrMaxDuration : 1.0 / 30.0;
+
+    vrr_supported = (windowRecord->gfxcaps & kPsychGfxCapLinuxVRR) ? TRUE: FALSE;
+    vrr_wanted = (windowRecord->vrrMode > kPsychVRROff) ? TRUE : FALSE;
+
+    // VRR wanted, but not supported by hardware or Linux kernel or Wayland?
+    if (vrr_wanted && !vrr_supported) {
+        // Game over:
+        vrr_wanted = FALSE;
+
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this window on this display [%s].\n", output_name);
+            printf("PTB-WARNING: Likely your Wayland compositor, or Linux display driver, or graphics and display\n");
+            printf("PTB-WARNING: hardware does not support this, or maybe VRR was disabled by you in the display settings?\n");
+            printf("PTB-WARNING: You need an AMD gpu of the Volcanic Island gpu family (Graphics Core Next 3rd Generation)\n");
+            printf("PTB-WARNING: or later. Use of an older Sea Islands gpu (Graphics Core Next 2nd Generation) should also\n");
+            printf("PTB-WARNING: work with Linux 7.1 or later, or if you add the following kernel boot parameters to older kernels:\n");
+            printf("PTB-WARNING: radeon.cik_support=0 amdgpu.cik_support=1 amdgpu.dc=1.\n");
+            printf("PTB-WARNING:\n");
+            printf("PTB-WARNING: Intel graphics of at least Generation 12 (TigerLake+ / Intel Xe / DG-1 / Alchemist+) should work\n");
+            printf("PTB-WARNING: as well (untested by us), with a DisplayPort adaptive-sync / FreeSync capable display.\n");
+            printf("PTB-WARNING: You always need a FreeSync, G-Sync, or DisplayPort adaptive sync capable display, connected via\n");
+            printf("PTB-WARNING: Displayport or eDP. HDMI2.1 VRR capable displays may also work with some graphics cards on very\n");
+            printf("PTB-WARNING: modern Linux 7.4 kernels on AMD. -> 'help VRRSupport'\n");
+        }
+    }
+
+    // VRR active, but user wants FRR?
+    if (!vrr_wanted && vrr_supported) {
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: UNDESIRED Variable Refresh Rate mode active for this window on this display [%s].\n", output_name);
+            printf("PTB-WARNING: This will go badly timing-wise! Please disable Variable Refresh Mode in your display settings.\n");
+            printf("PTB-WARNING: -> 'help VRRSupport'\n");
+        }
+    }
+
+    if (vrr_supported) {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Detected enabled VRR Variable Refresh Rate mode for this window on output %s.\n", output_name);
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Detected disabled VRR Variable Refresh Rate mode for this window on output %s.\n", output_name);
+    }
+
     return(TRUE);
 }
 
@@ -1577,6 +1670,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
  */
 void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
+    int oldVrrMode;
     struct wp_commit_timing_manager_v1 *wayland_commit_timing_manager = NULL;
 
     // Retrieve underlying native wl_surface stored in xwindowHandle:
@@ -1642,6 +1736,88 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: Enabling Wayland wp_fifo extension for swap control on window %i.\n", windowRecord->windowIndex);
     }
 
+    // Set VRR mode to "Test":
+    oldVrrMode = windowRecord->vrrMode;
+    windowRecord->vrrMode = -1;
+
+    // Linux native VRR support enabled?
+    if (oldVrrMode != kPsychVRROff) {
+        // Enabled. Test if it is working:
+        double tFirst, tLast, tNominal, tMeasured;
+        int i, good = 0;
+        double tError = 0.0;
+
+        // Yes, ostensibly. We know usercode requested it and the Linux kernel + gpu/cable/display
+        // hardware supports it, and we requested it from the XOrg display driver. What we don't
+        // know yet is if the XOrg ddx is of a suitable minimum version and if it is enabled in the
+        // xorg.conf. The only way to find out is by looking for telltale signs of it via measurement.
+        //
+        // Execute a bufferswap, then another one back-to-back, but 1.25 nominal video refresh durations
+        // after the 1st one. Wait for swap completion and check timestamps. If VRR is active, we should
+        // see swap completion roughly 1.25 refreshes later. If VRR is inactive/disabled, then we should
+        // see it complete at least 2.0 refresh durations later.
+        tNominal = 1.0 / ((double) PsychGetNominalFramerate(windowRecord->screenNumber));
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("\nPTB-DEBUG: VRR quick test...\n");
+
+        PsychRealtimePriority(TRUE);
+
+        // Run 60 trials:
+        for (i = 0; i < 60; i++) {
+            glClear(GL_COLOR_BUFFER_BIT);
+            PsychOSFlipWindowBuffers(windowRecord);
+            PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tFirst);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glFinish();
+            PsychWaitUntilSeconds(tFirst + 1.25 * tNominal);
+            PsychOSFlipWindowBuffers(windowRecord);
+            PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tLast);
+            tMeasured = tLast - tFirst;
+            if ((tMeasured < 1.9 * tNominal) && (windowRecord->gfxcaps & kPsychGfxCapLinuxVRR)) {
+                good++;
+
+                // Initial estimation of vrrLatencyCompensation offset:
+                tError += tMeasured - 1.25 * tNominal;
+            }
+
+            if (PsychPrefStateGet_Verbosity() > 9)
+                printf("PTB-DEBUG: [%i of %i] Msecs: %f vs. %f [nominal %f]\n", good, i + 1, 1000.0 * tMeasured, 1000.0 * 1.9 * tNominal, 1000.0 * tNominal);
+        }
+
+        PsychRealtimePriority(FALSE);
+
+        if (PsychPrefStateGet_Verbosity() > 9)
+            printf("\n");
+
+        // Compute initial latency compensation as a simple mean of the measured latencies:
+        windowRecord->vrrLatencyCompensation = (good > 0) ? (tError / (double) good) : 0.0;
+
+        // At least 50 out of 60 as expected for VRR?
+        if (good < 50) {
+            // Nope: Mark VRR as unsupported:
+            windowRecord->gfxcaps &= ~kPsychGfxCapLinuxVRR;
+            windowRecord->gfxcaps &= ~kPsychGfxCapGSync;
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: The VRR startup tests failed for this window. Seems Variable Refresh Rate doesn't work or\n");
+                printf("PTB-WARNING: is disabled. For more info and troubleshooting help, type 'help VRRSupport'.\n");
+                printf("PTB-WARNING: [%i out of %i successful test trials, at least 50 successful ones needed.]\n\n", good, i);
+            }
+        }
+        else if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: VRR all good: Using initial latency compensation of %f msecs.\n", 1000 * windowRecord->vrrLatencyCompensation);
+    }
+    else {
+        // Disabled. Test if it is really disabled:
+        glClear(GL_COLOR_BUFFER_BIT);
+        PsychOSFlipWindowBuffers(windowRecord);
+        PsychOSGetSwapCompletionTimestamp(windowRecord, 0, NULL);
+    }
+
+    // Restore VRR mode setting after completed test:
+    windowRecord->vrrMode = oldVrrMode;
+
     return;
 }
 
@@ -1699,9 +1875,9 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
         return(-1);
 
     // Reject all unsupported parameters and flags:
-    if (targetMSC != 0 || divisor != 0 || remainder != 0 || specialFlags != 0) {
+    if (targetMSC != 0 || divisor != 0 || remainder != 0) {
         if (PsychPrefStateGet_Verbosity() > 1)
-            printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() called with  a non-zero targetMSC %lli, divisor %lli, remainder %lli or specialFlags %i. This is not supported on Wayland. Fallback to simple timing!\n",
+            printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() called with  a non-zero targetMSC %lli, divisor %lli, remainder %lli (specialFlags = %i). This is not supported on Wayland. Fallback to simple timing!\n",
                   targetMSC, divisor, remainder, specialFlags);
 
         // Signal "unsupported" to trigger fallback:
@@ -2210,7 +2386,7 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
         // Robustness improvement for swap scheduling on at least Weston 1.8, likely
         // won't hurt on other Wayland implementations - not for use in refresh rate
         // calibration.
-        if (!onlyForCalibration) {
+        if (!onlyForCalibration && (windowRecord->vrrMode == kPsychVRROff)) {
             // Weston 1.8+ or other compositors, called for swap scheduling, not for
             // sync tests/calibration.
             //
@@ -2278,10 +2454,13 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
 
 psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
 {
-    (void) windowRecord;
+    // Assume disabled if set to disabled:
+    if (!(windowRecord->vrrMode))
+        return(FALSE);
 
-    // Nope, VRR inactive or unsupported:
-    return(FALSE);
+    // The kPsychGfxCapLinuxVRR flag is set on swap completion via present feedback events
+    // if a just completed VRR present is detected:
+    return((windowRecord->gfxcaps & kPsychGfxCapLinuxVRR) ? TRUE: FALSE);
 }
 
 /* PsychOSConstrainPointer()

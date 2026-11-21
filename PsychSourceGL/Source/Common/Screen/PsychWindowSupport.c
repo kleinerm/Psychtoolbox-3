@@ -3291,6 +3291,15 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
                                                                     &(flipRequest->beamPosAtFlip), &(flipRequest->miss_estimate),
                                                                     &(flipRequest->time_at_flipend), &(flipRequest->time_at_onset));
 
+                if (windowRecord->specialflags & kPsychIsEGLWindow) {
+                    // Copy our virtual backbuffer finalizedFBO[0] fbo to backup buffer finalizedFBO[2],
+                    // so the backbuffer can be restored from this backup during "idle swaps" below.
+                    // This because at least under EGL/Wayland, restoring from GL_FRONT buffer doesn't work:
+                    PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE,
+                                             &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL,
+                                             &(windowRecord->fboTable[windowRecord->finalizedFBO[2]]), NULL);
+                }
+
                 // We glFinish() here, to make sure all rendering commands submitted
                 // by our OpenGL context are finished. This means the finalizedFBOs are
                 // "used up" for this redraw cycle and ready for refill by the masterthread:
@@ -3333,10 +3342,20 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 
             // Time for a swap request?
             if (tnow >= lastvbl) {
-                // Copy current frontbuffer to backbuffer for an idle "no-op" swap:
-                glReadBuffer(GL_FRONT);
-                glRasterPos2i(0, (int) PsychGetHeightFromRect(windowRecord->rect));
-                glCopyPixels(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect), GL_COLOR);
+                // Need a different restore path for backbuffer under at least EGL/Wayland,
+                // as reading from GL_FRONT buffer is broken and reads "all black":
+                if (windowRecord->specialflags & kPsychIsEGLWindow) {
+                    // Copy our backup finalizedFBO[2] fbo to true backbuffer:
+                    PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE,
+                                             &(windowRecord->fboTable[windowRecord->finalizedFBO[2]]), NULL,
+                                             &(windowRecord->fboTable[0]), NULL);
+                }
+                else {
+                    // Copy current frontbuffer to backbuffer for an idle "no-op" swap:
+                    glReadBuffer(GL_FRONT);
+                    glRasterPos2i(0, (int) PsychGetHeightFromRect(windowRecord->rect));
+                    glCopyPixels(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect), GL_COLOR);
+                }
 
                 // Trigger a doublebuffer swap in sync with vblank:
                 PsychOSFlipWindowBuffers(windowRecord);
@@ -8048,11 +8067,15 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         // OpenML unsupported:
         if (verbose) printf("No support for OpenML OML_sync_control extension.\n");
 
-        // OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
-        windowRecord->specialflags |= kPsychOpenMLDefective;
+        // Only update timing support status on non-Wayland, as on native Wayland, these flags have been
+        // already properly set during PsychOSOpenOnscreenWindow() -> PsychOSInitializeOpenML() for Wayland:
+        #if !defined(PTB_USE_WAYLAND)
+            // OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+            windowRecord->specialflags |= kPsychOpenMLDefective;
 
-        // OpenML swap scheduling in PsychFlipWindowBuffers() disabled:
-        windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+            // OpenML swap scheduling in PsychFlipWindowBuffers() disabled:
+            windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+        #endif
     }
     #else
         // Make sure we don't compile without OML_sync_control support on Linux, as that would be a shame:
@@ -8089,12 +8112,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     PsychUnlockDisplay();
     #endif
 
-    // If we are on Linux + Waffle backend, we call PsychOSInitializeOpenML()
+    // If we are on Linux + pure Waffle backend, we call PsychOSInitializeOpenML()
     // anyway. It may use any "OpenML equivalent" of a given backend to do
     // the job of OpenML. On most backends it will no-op, on Wayland it will
     // try to use its new presentation extension for swap scheduling and
-    // completion timestamping:
-    #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(PTB_USE_WAFFLE)
+    // completion timestamping. On native Wayland, we already did this as part of
+    // PsychOSOpenOnscreenWindow():
+    #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(PTB_USE_WAFFLE) && !defined(PTB_USE_WAYLAND)
         PsychOSInitializeOpenML(windowRecord);
     #endif
 

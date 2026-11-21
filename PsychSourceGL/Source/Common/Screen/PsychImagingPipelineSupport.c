@@ -425,6 +425,7 @@ void PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *wind
     windowRecord->preConversionFBO[2]=-1;
     windowRecord->finalizedFBO[0]=-1;
     windowRecord->finalizedFBO[1]=-1;
+    windowRecord->finalizedFBO[2]=-1;
     windowRecord->fboCount = 0;
 
     // NULL-out fboTable:
@@ -715,6 +716,18 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
         windowRecord->finalizedFBO[0] = fbocount;
         fbocount++;
+
+        // EGL window, e.g., for EGL/Wayland?
+        if (windowRecord->specialflags & kPsychIsEGLWindow) {
+            // Setup a 2nd bounce buffer to work around non-working reads from GL_FRONT buffers under at least Wayland EGL:
+            if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
+                // Failed!
+                PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for my own VRR scheduler. 2nd bounce buffer!");
+            }
+
+            windowRecord->finalizedFBO[2] = fbocount;
+            fbocount++;
+        }
     }
 
     if ((windowRecord->stereomode == kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
