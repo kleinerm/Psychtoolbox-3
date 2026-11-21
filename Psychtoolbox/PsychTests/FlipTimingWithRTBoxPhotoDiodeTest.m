@@ -277,7 +277,7 @@ end
 Screen('Preference', 'VBLTimestampingMode', conf.VBLTimestampingMode);
 fprintf('Enabling VBLTimestampingMode %i.\n', conf.VBLTimestampingMode);
 
-if useRTbox == 2 && ~useXR && ~(Is64Bit && IsARM && IsWayland)
+if useRTbox == 2 && ~useXR && ~IsWayland
     % Switch Videoswitcher into high precision luminance + trigger mode:
     PsychVideoSwitcher('SwitchMode', res.screenId, 1);
 end
@@ -647,7 +647,7 @@ try
                     res.measuredTime(i) = mytstamp;
                 end
 
-                if (IsOSX && usevulkan) || useXR || ...
+                if (IsOSX && usevulkan) || useXR || IsWayland || ...
                     (IsLinux && ~IsWayland && ~isempty(getenv('PSYCH_EXPERIMENTAL_NETWMTS')) && (Screen('Preference', 'WindowShieldingLevel') < 2000))
                     % Current macOS 10.15.7 Metal will not give us low
                     % enough flip latency to flip back to black within one
