@@ -717,7 +717,8 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     int rc;
     struct termios options;
     int handshake;
-    char* p;
+    const char* p;
+    unsigned char* ptr;
     float infloat;
     int inint;
     unsigned long mics = 0UL;
@@ -745,7 +746,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // Set raw input (non-canonical) mode: No line-based processing or editing of
     // received data via special control characters, unless a processing mode of
     // cooked was explicitely requested:
-    if ((p=strstr(configString, "ProcessingMode="))!=NULL) {
+    if ((p = strstr(configString, "ProcessingMode="))!=NULL) {
         if (strstr(p, "ProcessingMode=Cooked")) {
             // Enable cooked mode:
             device->cookedMode = 1;
@@ -1204,27 +1205,27 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
             // Set InputBufferSize:
             if (device->readBuffer) {
                 // Buffer already exists. Try to realloc:
-                p = (char*) realloc(device->readBuffer, inint);
-                if (p == NULL) {
+                ptr = (char*) realloc(device->readBuffer, inint);
+                if (ptr == NULL) {
                     // Realloc failed:
                     if (verbosity > 0) printf("Reallocation of Inputbuffer of device %s for new size %i failed! (%s)", device->portSpec, inint, strerror(errno));
                     return(PsychError_outofMemory);
                 }
                 // Worked. Assign new values:
-                device->readBuffer = (unsigned char*) p;
+                device->readBuffer = (unsigned char*) ptr;
                 device->readBufferSize = (unsigned int) inint;
             }
             else {
                 // No Buffer yet. Allocate
-                p = malloc(inint);
-                if (p == NULL) {
+                ptr = malloc(inint);
+                if (ptr == NULL) {
                     // Realloc failed:
                     if (verbosity > 0) printf("Allocation of Inputbuffer of device %s of size %i failed! (%s)", device->portSpec, inint, strerror(errno));
                     return(PsychError_outofMemory);
                 }
 
                 // Worked. Assign new values:
-                device->readBuffer = (unsigned char*) p;
+                device->readBuffer = (unsigned char*) ptr;
                 device->readBufferSize = (unsigned int) inint;
             }
 
