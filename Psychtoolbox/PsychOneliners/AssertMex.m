@@ -45,6 +45,7 @@ function callStack = AssertMex(varargin)
 % 13-Feb-2023 mk    Update for PTB 3.0.19.0.
 % 22-Apr-2023 mk    Update for PTB 3.0.19.2.
 % 25-Sep-2025 mk    Update for PTB 3.0.22.2 and Octave 10+ on macOS
+% 23-Nov-2026 mk    Update for PTB 3.0.22.4 and Octave 10+ on Linux.
 
 persistent okNames mexExtensions;
 
@@ -87,12 +88,25 @@ if IsOctave
             end
 
             if IsLinux
+                v = sscanf(version, '%i.%i.%i');
+
                 if ~IsARM
                     % 64-Bit Intel:
-                    fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles' oext]);
+                    % Octave 10 or later?
+                    if v(1) >= 10
+                        fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave10LinuxFiles' oext]);
+                    else
+                        fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles' oext]);
+                    end
                 else
-                    % 32-Bit ARM:
-                    fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
+                    % ARM:
+                    % Octave 10 or later?
+                    if v(1) >= 10
+                        fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave10LinuxFiles' oext]);
+                    else
+                        % This only for 32-Bit RaspberryPi:
+                        fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
+                    end
                 end
             end
 
@@ -106,7 +120,7 @@ if IsOctave
         else
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
-            fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 5.0.0 or later\n', version);
+            fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 6.0.0 or later\n', version);
             fprintf('on Linux, Octave 7.3 on Windows, and Octave 10.2 and later on macOS.\n');
 
             fprintf('Another reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
@@ -119,7 +133,7 @@ if IsOctave
         PsychPaidSupportAndServices(2);
     end
 
-    error('Missing, inaccessible or dysfunctional Psychtoolbox Mex file for this system, or Octave path wrong. Read the help text above carefully!!');
+    error('Missing, inaccessible, or dysfunctional Psychtoolbox Mex file for this system, or Octave path wrong. Read the help text above carefully!!');
 end
 
 % Initialize the persistent variables.

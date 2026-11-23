@@ -73,6 +73,7 @@ function AssertOpenGL
 % 10/30/21  mk      Add special Wayland desktop detection and handling for Screen.mex.
 % 06/15/22  mk      Update ln -s symlink workaround for libdc1394.25.so for our current
 %                   Ubuntu 20.04 build system and therefore libdc1394.25.so for Matlab as well.
+% 11/23/26  mk      Update for Wayland on Octave 10 or on ARM, and Ubuntu 22.04 and GStreamer 1.20+.
 
 persistent oneTimeDone;
 
@@ -90,13 +91,20 @@ try
     if IsLinux(1) && IsOctave && IsWayland && ~isempty(getenv('PSYCH_ALLOW_WAYLAND'))
         % Add path, so our Wayland build of Screen.mex overrides the standard one:
         if IsARM
-            rdir = [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFilesARM64/Wayland'];
+            % Only for Octave 10 or later:
+            rdir = [PsychtoolboxRoot 'PsychBasic/Octave10LinuxFilesARM64/Wayland'];
         else
-            rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
+            v = sscanf(version, '%i.%i.%i');
+            if v(1) >= 10
+                % Octave 10 or later:
+                rdir = [PsychtoolboxRoot 'PsychBasic/Octave10LinuxFiles64/Wayland'];
+            else
+                % Octave 5 - 9:
+                rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
+            end
         end
 
         if exist(rdir, 'dir')
-            setenv('PSYCH_DISABLE_COLORD', '1');
             addpath(rdir);
             fprintf('AssertOpenGL-Info: Added %s with Wayland specific Screen().\n', rdir);
         end
@@ -165,13 +173,14 @@ catch %#ok<*CTCH>
             % version that is installed on the build system == target
             % system, so stuff should just work(tm).
             %
-            % The Matlab mexa64 files however are built on Ubuntu 20.04 LTS
+            % The Matlab mexa64 files however are built on Ubuntu 22.04 LTS
             % atm., linking against libdc1394.so.25, and so Screen.mexa64
             % depends on exactly libdc1394.so.25. Ubuntu 20.10 and later
             % ship with libdc1394.so.25 only, so all is good there. But Ubuntu 20.04
-            % may not in a standard install -> link failure. Try to work around this
+            % was not (in a standard install) causing link failure. Try to work around this
             % by automatically creating a suitable symlink from the required libdc1394.so.25
             % to the available libdc1394.so.22:
+            % This is NOT NEEDED at the moment, just left here as reference for similar future scenarios:
             if ~isempty(strfind(s.message, 'libdc1394.so.25')) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file') && ~exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
                 cmd = 'sudo -S ln -s /lib/x86_64-linux-gnu/libdc1394.so.22 /lib/x86_64-linux-gnu/libdc1394.so.25';
 
@@ -206,11 +215,13 @@ catch %#ok<*CTCH>
         else
             % Octave specific troubleshooting:
             if IsARM
+                % Only cover 32-Bit ARM RaspberryPi, no need for modern ARM 64-Bit distros:
                 tarch = 'arm-linux-gnueabihf';
             else
                 tarch = 'x86_64-linux-gnu';
             end
 
+            % See above: This is NOT NEEDED at the moment, just left here as reference for similar future scenarios:
             if ~isempty(strfind(s.message, 'libdc1394.so.25')) && exist(['/lib/' tarch '/libdc1394.so.22'], 'file') && ~exist(['/lib/' tarch '/libdc1394.so.25'], 'file')
                 cmd = ['sudo -S ln -s /lib/' tarch '/libdc1394.so.22 /lib/' tarch '/libdc1394.so.25'];
 
@@ -254,9 +265,7 @@ catch %#ok<*CTCH>
         fprintf('required dependencies for you by issuing the following commmand in a terminal:\n\n');
         fprintf('sudo apt build-dep psychtoolbox-3\n\n');
         fprintf('\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance and the full set of features, use the latest available versions. E.g., for optimal HDR\n');
-        fprintf('  movie playback GStreamer 1.18 would be needed, although it can be made to work less conveniently with v1.16.\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.20.0 of the core runtime and the gstreamer-base plugins.\n');
         fprintf('  You may need to install additional packages to playback all common audio and video file formats.\n');
         fprintf('  See "help GStreamer" for more info.\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n\n');

@@ -92,6 +92,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 05/24/2025 Disable call to PsychPaidSupportAndServices(). Update Linux requirements wrt.
 %            Ubuntu 22.04-LTS minimum. (MK)
 % 09/25/2025 Update for PTB 3.0.22.2 and Octave 10+ on macOS. (MK)
+% 11/23/2026 Update for PTB 3.0.22.4 and Octave 10+ on Linux. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -356,6 +357,22 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10OSXFilesARM64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFiles64' filesep 'Wayland'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFiles64' filesep 'Wayland']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFilesARM64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFilesARM64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFilesARM64' filesep 'Wayland'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave10LinuxFilesARM64' filesep 'Wayland']);
+        end
+
         % Encode prefix and Octave major version of proper folder:
         octavev = sscanf(version, '%i.%i.%i');
         octavemajorv = octavev(1);
@@ -364,15 +381,18 @@ if IsOctave
 
         fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
 
-        % Octave on Linux with ARM processor, e.g., RaspberryPi?
-        if IsLinux && IsARM
+        % Octave on Linux with 32-Bit ARM processor for RaspberryPi?
+        if IsLinux && IsARM && ~Is64Bit
             % 32-Bit ARM can currently share mex files from Octave 3.8 to at least 6.2,
             % so treat it as Octave 3.8, and all versions will share the same folder:
             octavemajorv = 3;
             octaveminorv = 8;
         end
 
-        if ((octavemajorv >= 5) || (octavemajorv == 4 && octaveminorv >= 4)) && IsLinux
+        if (octavemajorv >= 10) && IsLinux
+            % Octave 10 and later on Linux can use Octave 10 folder mex files:
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave10'];
+        elseif ((octavemajorv >= 5) || (octavemajorv == 4 && octaveminorv >= 4)) && IsLinux
             % Octave-4.4, 5.x, 6.x, 7.x, 8.x and Octave-9.x can share the same mex files in the Octave-5 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave5'];
         elseif ismember(octavemajorv, [3,4]) && IsLinux
@@ -422,7 +442,7 @@ if IsOctave
         addpath(rdir);
 
         % No Wayland specific subfolder on path by default:
-        if exist([rdir filesep 'Wayland'], 'dir')
+        if ~isempty(strfind(path, [rdir filesep 'Wayland']))
             rmpath([rdir filesep 'Wayland']);
         end
 
@@ -444,15 +464,15 @@ if IsOctave
 
     if  (IsOSX && (octavemajorv < 10)) || ...
         (IsWin && (octavemajorv ~= 7 || ~ismember(octaveminorv, 3))) || ...
-        (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 8)))
+        (IsLinux && ~((octavemajorv == 3 && IsARM && ~Is64Bit) || (Is64Bit && octavemajorv >= 6)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
             % On Linux everything from 4.4 to at least 9.x is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, 6.x, 7.x, 8.x or 9.x series.\n');
+            fprintf('WARNING: using the latest stable version of the Octave 6 - 11 (or likely later versions) series.\n');
             fprintf('WARNING: You can get Psychtoolbox for other, or more recent, versions of Octave from NeuroDebian.\n');
         elseif IsOSX
-            fprintf('WARNING: only using Octave 10 and likely later versions with this version of Psychtoolbox.\n');
+            fprintf('WARNING: only using Octave 10, and likely later versions, with this version of Psychtoolbox.\n');
         else
             % On Windows we only care about 7.3 atm:
             fprintf('WARNING: only using Octave 7.3 with this version of Psychtoolbox.\n');
@@ -605,16 +625,15 @@ try
         fprintf('sudo apt build-dep psychtoolbox-3\n');
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
-        fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
+        fprintf('* The OpenGL utility toolkit GLUT: freeglut3 (or glut, glut-3 on old systems) are typical provider packages in most Linux distributions.\n');
         fprintf('\n');
         fprintf('* GStreamer multimedia framework: At least version 1.20 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance and the full set of features, please use the latest available versions.\n');
         fprintf('  You may need to install additional packages to playback all common audio and video file formats.\n');
         fprintf('  See "help GStreamer" for more info.\n');
         fprintf('\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('\n');
-        fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library, version libdc1394.25.or later.\n');
+        fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library, version libdc1394.so.25 or later.\n');
         fprintf('\n');
         fprintf('* libraw1394 Firewire low-level access library.\n');
         fprintf('\n\n');
@@ -627,6 +646,12 @@ try
         fprintf('\n\n');
         fprintf('For PsychPortAudio() support:\n\n');
         fprintf('* libportaudio.so.2 Portaudio sound library.\n');
+        fprintf('\n\n');
+        fprintf('For Vulkan display backend (HDR, WCG, ultra-deep color) support:\n\n');
+        fprintf('* libvulkanloader.so.1 Vulkan loader library and a Vulkan capable graphics card.\n');
+        fprintf('\n\n');
+        fprintf('For OpenXR Virtual/Mixed/Augmented reality display backend support:\n\n');
+        fprintf('* libopenxr_loader.so.1 OpenXR loader library and a OpenXR runtime like Monado or SteamVR.\n');
         fprintf('\n\n');
         fprintf('For Eyelink():\n\n');
         fprintf('* The Eyelink core libraries from the SR-Research download website.\n');

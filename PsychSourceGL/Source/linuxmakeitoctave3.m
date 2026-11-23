@@ -67,27 +67,27 @@ end
 fprintf('Building plugin type %i ...\n\n', mode);
 
 % Target folder depends if this is a 64 bit or 32 bit runtime:
-if ~isempty(strfind(computer, '_64'))
+if Is64Bit
     v = sscanf(version, '%i.%i.%i');
 
-    % Octave 4.4.0 or later?
-    if (v(1) >= 5) || (v(1) == 4 && v(2) >= 4)
-        % Some backwards incompatible mex api changes. Treat it as Octave-5:
-        target = 'PsychBasic/Octave5LinuxFiles64/';
+    % Octave 10 or later?
+    if v(1) >= 10
+        % Yes, e.g., Ubuntu 26.04 and later:
+        if IsARM
+            target = 'PsychBasic/Octave10LinuxFilesARM64/';
+        else
+            target = 'PsychBasic/Octave10LinuxFiles64/';
+        end
     else
-        % Good old <= Octave 4.2. Like Octave 3.8 - 4.2:
-        target = 'PsychBasic/Octave3LinuxFiles64/';
+        % Good old Octave 5 - 9 on 64-Bit Intel, e.g., Ubuntu 22.04 / 24.04:
+        target = 'PsychBasic/Octave5LinuxFiles64/';
     end
 else
-    target = 'PsychBasic/Octave3LinuxFiles/';
-end
-
-% Special folder for ARM binaries:
-if IsARM
-    if Is64Bit
-      target = 'PsychBasic/Octave3LinuxFilesARM64/';
+    % 32-Bit: Only 32-Bit ARM for RaspberryPi is supported.
+    if IsARM
+        target = 'PsychBasic/Octave3LinuxFilesARM/';
     else
-      target = 'PsychBasic/Octave3LinuxFilesARM/';
+        error('Only 32-Bit ARM for RaspberryPi is supported, no other 32-Bit architectures.');
     end
 end
 

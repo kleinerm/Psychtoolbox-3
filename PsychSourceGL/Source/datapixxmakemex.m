@@ -5,12 +5,7 @@ function datapixxmakemex()
         CPYCMD = 'cp ';
         DELCMD = 'rm ';
     elseif (IsLinux)
-        if Is64Bit || IsARM
-          VPIXXDIR = '/home/kleinerm/projects/';
-        else
-          VPIXXDIR = '/media/sf_kleinerm/projects/';
-        end
-
+        VPIXXDIR = '/home/kleinerm/projects/';
         CPYCMD = 'cp ';
         DELCMD = 'rm ';
     elseif (IsWin)
@@ -209,7 +204,15 @@ function datapixxmakemex()
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Linux/Base/*.o'], '/', filesep));
             % We require Octave-5 or later:
             if Is64Bit
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave5LinuxFiles64'], '/', filesep));
+                if v(1) >= 10
+                    if IsARM
+                        system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave10LinuxFilesARM64'], '/', filesep));
+                    else
+                        system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave10LinuxFiles64'], '/', filesep));
+                    end
+                else
+                    system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave5LinuxFiles64'], '/', filesep));
+                end
             else
                 if IsARM
                     system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFilesARM'], '/', filesep));
