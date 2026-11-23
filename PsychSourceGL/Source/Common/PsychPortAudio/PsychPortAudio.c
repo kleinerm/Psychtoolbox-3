@@ -2083,8 +2083,8 @@ PsychError PsychPortAudioExit(void)
             // pactl utility isn't installed or no sound
             // server is running:
             if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server... ");
-            rc += system("pactl suspend-sink 0");
-            rc += system("pactl suspend-source 0");
+            rc += system("pactl suspend-sink 0 > /dev/null 2>&1");
+            rc += system("pactl suspend-source 0 > /dev/null 2>&1");
             if (verbosity > 4) printf("... status %i\n", rc);
 
             pulseaudio_isSuspended = FALSE;
@@ -2117,6 +2117,7 @@ void PsychPortAudioInitialize(void)
         if (pulseaudio_autosuspend && (PSYCH_SYSTEM == PSYCH_LINUX)) {
             int rc = 0;
 
+            // TODO: This approach does not work on systems with Pipewire anymore!
             // Call external "pactl" utility via runtime to ask
             // the server to suspend all sinks and sources,
             // hopefully releasing the underlying low-level audio
@@ -2124,8 +2125,8 @@ void PsychPortAudioInitialize(void)
             // if either the pactl utility isn't installed or no sound
             // server is running:
             if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server... ");
-            rc += system("pactl suspend-sink 1");
-            rc += system("pactl suspend-source 1");
+            rc += system("pactl suspend-sink 1 > /dev/null 2>&1");
+            rc += system("pactl suspend-source 1 > /dev/null 2>&1");
             if (verbosity > 4) printf("... status %i\n", rc);
 
             pulseaudio_isSuspended = TRUE;
