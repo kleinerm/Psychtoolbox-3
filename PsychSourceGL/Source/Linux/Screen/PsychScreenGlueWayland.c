@@ -593,6 +593,8 @@ static const struct wl_output_listener output_listener = {
     output_handle_mode,
     output_handle_done,
     output_handle_scale,
+    0, // name since 4, unused atm. as we allow max version 2
+    0, // description since 4
 };
 
 static void xdg_output_handle_logical_position(void *data, struct zxdg_output_v1 *zxdg_output_v1, int32_t x, int32_t y)
@@ -1118,6 +1120,8 @@ static const struct wl_pointer_listener pointer_listener = {
     0,
     0,
     0,
+    //0, Once we drop Ubuntu 22.04
+    //0,
 };
 
 static void
