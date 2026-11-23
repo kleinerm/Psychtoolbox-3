@@ -510,7 +510,6 @@ const PsychGenericScriptType *PsychGetInArgPtr(int position)
     return((const PsychGenericScriptType*) PsychGetInArgMxPtr(position));
 }
 
-
 /* PsychCheckSizeLimits(size_t m, size_t n, size_t p)
  *
  * Makes sure matrix/vector dimensions stay within the limits imposed
@@ -752,6 +751,8 @@ static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
         // This is tricky because MATLAB abstracts "logicals" conditionally on platform.
         // Depending on OS, MATLAB implements booleans with either 8-bit or 64-bit values.
         format = PsychArgType_boolean;
+    else if (mxIsClass(mxPtr, "function_handle"))
+        format = PsychArgType_functionHandle;
     else
         format = PsychArgType_unclassified;
 
@@ -2055,5 +2056,18 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
     return(mexEvalString(cmdstring));
 }
 
+PsychGenericScriptType* PsychPersist(const PsychGenericScriptType* pcontent)
+{
+    if (!pcontent) return NULL;
+    PsychGenericScriptType* out = mxDuplicateArray((mxArray*) pcontent);
+    mexMakeArrayPersistent(out);
+    return(out);
+}
+
+void PsychUnpersist(const PsychGenericScriptType* pcontent)
+{
+    if (!pcontent) return;
+    mxDestroyArray((mxArray*) pcontent);
+}
 //end of Matlab & Octave only stuff.
 #endif

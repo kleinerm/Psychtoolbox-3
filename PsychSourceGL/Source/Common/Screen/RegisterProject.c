@@ -296,6 +296,8 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("TextTransform", &SCREENTextTransform));
     PsychErrorExit(PsychRegister("ConstrainCursor", &SCREENConstrainCursor));
     PsychErrorExit(PsychRegister("ReadHDRImage", &SCREENReadHDRImage));
+    PsychErrorExit(PsychRegister("ScheduleCallbackOnFlip", &SCREENScheduleCallbackOnFlip));
+    PsychErrorExit(PsychRegister("ClearFlipCallbacks", &SCREENClearFlipCallbacks));
 
     PsychSetModuleAuthorByInitials("awi");
     PsychSetModuleAuthorByInitials("dhb");
@@ -304,6 +306,7 @@ PsychError PsychModuleInit(void)
     PsychSetModuleAuthorByInitials("fjc");
     PsychSetModuleAuthorByInitials("mk");
     PsychSetModuleAuthorByInitials("cb");
+    PsychSetModuleAuthorByInitials("adf");
 
     InitializeSynopsis();
     if (PsychError_none != InitWindowBank())

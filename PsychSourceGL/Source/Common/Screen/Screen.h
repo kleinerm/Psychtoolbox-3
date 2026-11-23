@@ -84,6 +84,7 @@
 #include "ScreenArguments.h"
 #include "RegisterProject.h"
 #include "WindowHelpers.h"
+#include "PsychFlipCallbacks.h"
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychFontGlue.h"
@@ -258,6 +259,8 @@ PsychError SCREENGetFlipInfo(void);
 PsychError SCREENConfigureDisplay(void);
 PsychError SCREENPanelFitter(void);
 PsychError SCREENReadHDRImage(void);
+PsychError SCREENScheduleCallbackOnFlip(void);
+PsychError SCREENClearFlipCallbacks(void);
 //PsychError SCREENSetGLSynchronous(void);        //SCREENSetGLSynchronous.c
 
 //end include once
