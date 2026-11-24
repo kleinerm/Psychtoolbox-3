@@ -127,6 +127,7 @@ function data = MeasureLuminancePrecision(meterType)
 % [1 128]. You'll get a graph for each. Each graph will use the specified
 % number of luminances.
 % o.loadIdentityCLUT = whether to load an identity into CLUT.
+PsychDefaultSetup(1);
 
 %o.luminances=128; % Photometer takes 3 s/luminance. 128 luminances is enough for a pretty graph.
 o.luminances=512; % Photometer takes 3 s/luminance. 512 luminances for a prettier graph.
@@ -234,19 +235,21 @@ try
                 windowInfo.DisplayCoreId,displayEngineVersion,displayGPUFamily);
     end
 
-    % Compare default CLUT with identity.
-    gammaRead=Screen('ReadNormalizedGammaTable',window);
-    maxEntry=size(gammaRead,1)-1;
-    gamma=repmat(((0:maxEntry)/maxEntry)',1,3);
-    delta=gammaRead(:,2)-gamma(:,2);
-    fprintf('Difference between identity and read-back of default CLUT: mean %.9f, sd %.9f\n',mean(delta),std(delta));
+    if ~IsWayland
+        % Compare default CLUT with identity.
+        gammaRead=Screen('ReadNormalizedGammaTable',window);
+        maxEntry=size(gammaRead,1)-1;
+        gamma=repmat(((0:maxEntry)/maxEntry)',1,3);
+        delta=gammaRead(:,2)-gamma(:,2);
+        fprintf('Difference between identity and read-back of default CLUT: mean %.9f, sd %.9f\n',mean(delta),std(delta));
 
-    % Load identity hw lut once, as it can interfere with some precision modes
-    % if done each flip, at least if PTB high precision hacks are used on the
-    % AMD DC display driver:
-    if o.loadIdentityCLUT
-        Screen('LoadNormalizedGammaTable',window,gamma);
-        Screen('Flip',window);
+        % Load identity hw lut once, as it can interfere with some precision modes
+        % if done each flip, at least if PTB high precision hacks are used on the
+        % AMD DC display driver:
+        if o.loadIdentityCLUT
+            Screen('LoadNormalizedGammaTable',window,gamma);
+            Screen('Flip',window);
+        end
     end
 
     %% MEASURE LUMINANCE AT EACH VALUE
