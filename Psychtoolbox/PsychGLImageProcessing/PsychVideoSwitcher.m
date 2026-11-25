@@ -332,6 +332,15 @@ if strcmpi(cmd, 'SwitchMode')
     allWindows = Screen('Windows');
     allWindowKinds = Screen('WindowKind', allWindows);
     onscreenWins = allWindows(allWindowKinds == 1);
+
+    % Work around Octave 11 bug. Looks non-sensical,
+    % but isn't:
+    if isempty(onscreenWins)
+        % Reinitialize to real empty assignment of
+        % "pseudo empty" onscreenWins...
+        onscreenWins = [];
+    end
+
     for win = onscreenWins
         % Is 'win' an onscreen window on screen screenid?
         if Screen('WindowScreenNumber', win) == screenid
