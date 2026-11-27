@@ -20,6 +20,8 @@ function DownloadLexActivator(alsosdk, cleanupafter)
 %                   Cryptlex dropped support for MSVC2019 for some reason.
 % 31-Jan-2026   mk  Upgrade to v3.35.1 SDK and runtimes for Linux fingerprinting stability
 %                   improvements and other minor fixes and improvements.
+% 27-Nov-2026   mk  Add automated setup for matlab-psychtoolbox-3 system
+%                   installed package.
 
     if nargin < 1 || isempty(alsosdk)
         alsosdk = 0;
@@ -35,9 +37,17 @@ function DownloadLexActivator(alsosdk, cleanupafter)
         confirm_recursive_rmdir(0, 'local');
     end
 
+    % Is this part of initial setup of a matlab-psychtoolbox-3 NeuroDebian
+    % package, as called from PsychLicenseHandling?
+    isDebian = ~isempty(strfind(PsychtoolboxVersion, 'Debian package')) && ~alsosdk && cleanupafter; %#ok<STREMP>
+
     try
-        dogetit('Win', './lextmp/windows/');
-        dogetit('Mac', './lextmp/macos/');
+        % Only setup Windows / macOS if this is not NeuroDebian post-install:
+        if ~isDebian
+            dogetit('Win', './lextmp/windows/');
+            dogetit('Mac', './lextmp/macos/');
+        end
+
         dogetit('Linux', './lextmp/linux/');
     catch
         if cleanupafter
@@ -45,7 +55,7 @@ function DownloadLexActivator(alsosdk, cleanupafter)
             rmdir('./lextmp', 's');
         end
 
-        rethrow(lasterror);
+        rethrow(lasterror); %#ok<LERR>
     end
 
     if alsosdk
@@ -60,20 +70,46 @@ function DownloadLexActivator(alsosdk, cleanupafter)
         end
     end
 
-    % Move Windows DLL into PsychPlugins/Intel64/ folder:
-    s1 = copyfile('./lextmp/windows/libs/vc14/x64/LexActivator.dll', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/'], 'f');
+    if isDebian
+        % Move Linux 64-Bit Intel shared library into PsychPlugins/Intel64/ install folder of matlab-psychtoolbox-3 system install:
+        cmd = sprintf('sudo -S cp ./lextmp/linux/libs/gcc/amd64/libLexActivator.so %s', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/']);
+        fprintf('I need to install the license manager library into your Psychtoolbox system\n');
+        fprintf('installation folder to make this Psychtoolbox work.\n');
+        fprintf('\n');
+        fprintf('I will execute the following copy command to achieve this:\n');
+        fprintf('%s\n', cmd);
+        fprintf('\n');
+        fprintf('Please enter now your password to authorize this. You will not see visual\n');
+        fprintf('feedback, ie. you are typing blindly. This requires you to have admin rights, ie.\n');
+        fprintf('the right to execute the sudo command.\n');
+        fprintf('\n');
+        fprintf('Password:\n');
+        fprintf('\n');
+        [rc, msg] = system(cmd);
+        if rc
+            if cleanupafter
+                delete('LexActivator*.zip');
+                rmdir('./lextmp', 's');
+            end
 
-    % Move Linux 64-Bit Intel shared library into PsychPlugins/Intel64/ folder:
-    s2 = copyfile('./lextmp/linux/libs/gcc/amd64/libLexActivator.so', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/'], 'f');
+            error('Copy of LexActivator runtime library to system matlab-psychtoolbox-3 install folder failed: %s', msg);
+        end
+    else
+        % Move Windows DLL into PsychPlugins/Intel64/ folder:
+        s1 = copyfile('./lextmp/windows/libs/vc14/x64/LexActivator.dll', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/'], 'f');
 
-    % Move Linux 64-Bit ARM shared library into PsychPlugins/ARM64/ folder:
-    s3 = copyfile('./lextmp/linux/libs/gcc/arm64/libLexActivator.so', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/ARM64/'], 'f');
+        % Move Linux 64-Bit Intel shared library into PsychPlugins/Intel64/ folder:
+        s2 = copyfile('./lextmp/linux/libs/gcc/amd64/libLexActivator.so', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/Intel64/'], 'f');
 
-    % Move macOS 64-Bit dylib into PsychPlugins/ folder:
-    s4 = copyfile('./lextmp/macos/libs/clang/universal/libLexActivator.dylib', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/'], 'f');
+        % Move Linux 64-Bit ARM shared library into PsychPlugins/ARM64/ folder:
+        s3 = copyfile('./lextmp/linux/libs/gcc/arm64/libLexActivator.so', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/ARM64/'], 'f');
 
-    if ~s1 || ~s2 || ~s3 || ~s4
-        error('Copy of at least one LexActivator runtime library failed!');
+        % Move macOS 64-Bit dylib into PsychPlugins/ folder:
+        s4 = copyfile('./lextmp/macos/libs/clang/universal/libLexActivator.dylib', [PsychtoolboxRoot 'PsychBasic/PsychPlugins/'], 'f');
+
+        if ~s1 || ~s2 || ~s3 || ~s4
+            error('Copy of at least one LexActivator runtime library failed!');
+        end
     end
 
     if cleanupafter
@@ -100,7 +136,7 @@ function dogetit(lextype, target)
     lexzipname = ['LexActivator-' lextype '.zip']
 
     % Download zip file:
-    [f, s] = urlwrite([url '/' lexversion '/' lexzipname], lexzipname);
+    [~, s] = urlwrite([url '/' lexversion '/' lexzipname], lexzipname);
     if ~s
         error('LexActivator download failed for %s to %s', lextype, lexzipname);
     end
