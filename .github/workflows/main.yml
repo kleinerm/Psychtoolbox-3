@@ -50,7 +50,7 @@ jobs:
         run:  sudo apt install eyelinkcore
 
       - name: Integrate Cryptlex LexActivator runtime libraries into Psychtoolbox folder and SDK files alongside Psychtoolbox-3 folder.
-        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../managementtools'); downloadlexactivator(1);"
+        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../managementtools'); DownloadLexActivator(1);"
 
       - name: Set up latest MATLAB
         uses: matlab-actions/setup-matlab@v2

@@ -1,5 +1,5 @@
-function downloadlexactivator(alsosdk, cleanupafter)
-% downloadlexactivator([alsosdk=0][, cleanupafter=0])
+function DownloadLexActivator(alsosdk, cleanupafter)
+% DownloadLexActivator([alsosdk=0][, cleanupafter=0])
 %
 % Download latest Cryptlex LexActivator client SDK and runtime libraries for
 % macOS, Windows and Linux. Unzip them, then copy SDK files and runtime libraries

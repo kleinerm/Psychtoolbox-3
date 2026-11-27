@@ -204,6 +204,7 @@ function rc = PsychLicenseHandling(cmd, varargin)
 % 26-Mar-2025   mk  Add offline "air-gapped" activation support.
 % 27-Mar-2025   mk  Add 'News' function for printing of "push messages".
 % 17-Jan-2026   mk  Refine some user messages wrt. offline activation.
+% 27-Nov-2026   mk  Add NeuroDebian matlab-psychtoolbox-3 licensing setup.
 
 persistent forceReenterKey;
 
@@ -230,8 +231,9 @@ if strcmpi(cmd, 'CheckInstallLMLibs')
         % full source code zip files, or from Matlab Add-On manager,
         % instead of standard "Psychtoolbox folder only" zip file install.
         fprintf('License management support libraries are missing for some reason. Trying to download and install them now...\n');
-        addpath([PsychtoolboxRoot '../managementtools']);
-        downloadlexactivator(0, 1);
+        olddir = cd(PsychHomeDir);
+        DownloadLexActivator(0, 1);
+        cd(olddir);
 
         % Doublecheck:
         if (~IsLinux && (~exist('libLexActivator.dylib', 'file') || ~exist('LexActivator.dll', 'file'))) || ...

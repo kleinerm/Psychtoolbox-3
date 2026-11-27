@@ -22,7 +22,7 @@ jobs:
         run:  sudo apt update ; sudo apt install -y octave
 
       - name: Integrate Cryptlex LexActivator runtime libraries into Psychtoolbox folder
-        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../managementtools'); downloadlexactivator;"
+        run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../managementtools'); DownloadLexActivator;"
 
       - name: Zip the toolbox
         run: zip -r '${{  github.ref_name }}.zip' Psychtoolbox
@@ -43,7 +43,7 @@ jobs:
         run: |
           #gh release upload "${{  github.ref_name }}" "./${{  github.ref_name }}.mltbx"
           gh release upload "${{  github.ref_name }}" "./${{  github.ref_name }}.zip"
-    
+
 
 
       # # This is for diagnostics
